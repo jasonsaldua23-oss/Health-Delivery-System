@@ -210,16 +210,14 @@ $upcomingEvents = array_map(
     },
     array_values(array_filter(
         $dbUpcomingEvents,
-        static fn(array $event): bool => strtolower((string) ($event['station_slug'] ?? '')) === $userStationSlug
+        static function (array $event) use ($userStationSlug): bool {
+            $stationMatches = strtolower((string) ($event['station_slug'] ?? '')) === $userStationSlug;
+            $eventDate = trim((string) ($event['event_date'] ?? ''));
+            $today = date('Y-m-d');
+            return $stationMatches && $eventDate !== '' && $eventDate >= $today;
+        }
     ))
 );
-
-if (empty($upcomingEvents) && !empty($events)) {
-    $upcomingEvents = array_values(array_filter(
-        $events,
-        static fn(array $event): bool => strtolower((string) ($event['barangay'] ?? '')) === $userStationSlug
-    ));
-}
 
 // Load Patient Notifications, Follow-ups, and Booked Appointments
 $patientEmailVal = (string) ($patientAccount['email'] ?? $_SESSION['patient_email'] ?? '');

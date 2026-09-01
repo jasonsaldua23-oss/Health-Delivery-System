@@ -2619,7 +2619,10 @@ function fetch_upcoming_events(array $filters = []): array
     $types = '';
 
     if (($filters['upcoming_only'] ?? true) === true) {
-        $sql .= ' AND event_date >= CURDATE()';
+        $today = date('Y-m-d');
+        $sql .= ' AND event_date >= ?';
+        $params[] = $today;
+        $types .= 's';
     }
 
     if (!empty($filters['station_slug'])) {
