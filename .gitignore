@@ -1,0 +1,28 @@
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+
+# Logs & Runtime
+logs/
+*.log
+sms_log.txt
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+
+# IDEs & System
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

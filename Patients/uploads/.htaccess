@@ -1,0 +1,24 @@
+# ------------------------------------------------------------------------------
+# Health Delivery System - Uploads Directory Security Hardening
+# ------------------------------------------------------------------------------
+
+# Disable directory indexing
+Options -Indexes
+
+# Block execution of all scripts in this directory
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|php8|phps|exe|sh|bat|cmd|pl|cgi|py|js|htm|html)$">
+    Require all denied
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Only allow standard image formats
+<FilesMatch "\.(jpg|jpeg|png|webp|gif|svg|ico)$">
+    Require all granted
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Allow from all
+    </IfModule>
+</FilesMatch>

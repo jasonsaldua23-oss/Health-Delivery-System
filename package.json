@@ -1,0 +1,19 @@
+{
+  "name": "health-delivery-system-latest",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "test:cypress": "cypress run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^26.4.0",
+    "cypress": "^15.21.1"
+  }
+}

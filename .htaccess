@@ -1,0 +1,44 @@
+# ------------------------------------------------------------------------------
+# Health Delivery System - Apache Production Configuration & Security Hardening
+# ------------------------------------------------------------------------------
+
+# 1. Disable Directory Browsing
+Options -Indexes
+
+# 2. Prevent Access to Hidden / Dot Files (.env, .git, .gitignore, etc.)
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# 3. Block Direct HTTP Access to Sensitive Files, Dumps & Logs
+<FilesMatch "\.(sql|log|bat|cmd|sh|bak|env|md|json|lock)$">
+    Require all denied
+</FilesMatch>
+
+<Files "sms_log.txt">
+    Require all denied
+</Files>
+
+# 4. Block Direct Access to Tests, CI, and Tooling Directories
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(\.git|cypress|tests|node_modules|playwright-report|test-results|logs) - [F,L]
+</IfModule>
+
+# 5. HTTP Security Headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# 6. Custom Error Documents
+ErrorDocument 403 /Health-Delivery-System-Latest/errors/403.html
+ErrorDocument 404 /Health-Delivery-System-Latest/errors/404.html
+ErrorDocument 500 /Health-Delivery-System-Latest/errors/500.html
+
+# 7. Asset Compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain text/html text/xml text/css application/xml application/xhtml+xml application/rss+xml application/javascript application/x-javascript application/json
+</IfModule>

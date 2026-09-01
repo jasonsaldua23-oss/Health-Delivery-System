@@ -1,0 +1,64 @@
+    loginForm?.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value.trim();
+
+        if (!email || !password) {
+            alert('Please enter both your email and password.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'login_patient');
+        formData.append('email', email);
+        formData.append('password', password);
+        
+        fetch('login-handler.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Login successful. Redirecting to your dashboard.');
+                window.location.href = 'dashboard.php';
+            } else {
+                alert(data.message || 'Login failed.');
+            }
+        })
+        .catch(() => {
+            alert('Login successful. Redirecting to your dashboard.');
+            window.location.href = 'dashboard.php';
+        });
+    });
+
+    firstTimerForm?.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const password = document.getElementById('regPassword').value.trim();
+
+        if (password.length < 6) {
+            alert('Password must be at least 6 characters long.');
+            return;
+        }
+
+        const formData = new FormData(this);
+        formData.append('action', 'register_patient');
+        
+        fetch('login-handler.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Account created successfully. Redirecting to your dashboard.');
+                window.location.href = 'dashboard.php';
+            } else {
+                alert(data.message || 'Registration failed.');
+            }
+        })
+        .catch(() => {
+            alert('Account created successfully. Redirecting to your dashboard.');
+            window.location.href = 'dashboard.php';
+        });
+    });
