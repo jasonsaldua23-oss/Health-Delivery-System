@@ -3341,13 +3341,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                                         </div>
                                     </div>
                                     <div class="followup-meta-item">
-                                        <span class="meta-icon"><?= iconSvg('clock'); ?></span>
-                                        <div>
-                                            <small>Session / Time Window</small>
-                                            <strong><?= h($fuTime); ?></strong>
-                                        </div>
-                                    </div>
-                                    <div class="followup-meta-item">
                                         <span class="meta-icon"><?= iconSvg('home'); ?></span>
                                         <div>
                                             <small>Health Station</small>
@@ -3364,7 +3357,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                                 <?php endif; ?>
 
                                 <div class="followup-footer-note">
-                                    <span>📌 Please bring a valid ID and arrive at the health station during your scheduled time window.</span>
+                                    <span>📌 Please bring a valid ID and arrive at the health station during clinic hours on your scheduled date.</span>
                                 </div>
                             </div>
                         </article>

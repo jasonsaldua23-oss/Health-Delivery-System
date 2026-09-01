@@ -51,8 +51,8 @@ describe('Patient Portal - End-to-End Test Cases', () => {
     cy.get('#loginStep').should('be.visible');
 
     cy.get('#loginForm').within(() => {
-      cy.get('input[name="login_email"]').type('test3@gmail.com');
-      cy.get('input[name="login_password"]').type('patient123');
+      cy.get('input[name="login_email"]').type('evelyntaboclaon@gmail.com');
+      cy.get('input[name="login_password"]').type('evelyn123');
       cy.get('button[type="submit"]').click();
     });
 
