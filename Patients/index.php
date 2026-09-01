@@ -919,7 +919,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                             </div>
                             <div class="field-group">
                                 <label for="regPurok">Purok / Zone</label>
-                                <input id="regPurok" name="purok" type="text" value="" placeholder="Purok or zone" required>
+                                <select id="regPurok" name="purok" required disabled>
+                                    <option value="">Select Barangay First</option>
+                                </select>
                             </div>
                         </div>
 
@@ -1119,6 +1121,43 @@ document.addEventListener('DOMContentLoaded', function () {
     regPhoneInput?.addEventListener('input', function() {
         this.value = this.value.replace(/\D/g, '').slice(0, 11);
     });
+
+    const regBarangaySelect = document.getElementById('regBarangay');
+    const regPurokSelect = document.getElementById('regPurok');
+    const purokCatalog = <?= json_encode(bacolod_purok_catalog(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?: '{}'; ?>;
+
+    function populateRegPuroks() {
+        if (!regBarangaySelect || !regPurokSelect) return;
+        const selectedBrgy = regBarangaySelect.value.trim();
+        regPurokSelect.innerHTML = '';
+
+        if (!selectedBrgy) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'Select Barangay First';
+            regPurokSelect.appendChild(opt);
+            regPurokSelect.disabled = true;
+            return;
+        }
+
+        const puroks = purokCatalog[selectedBrgy] || [];
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = 'Select Purok';
+        regPurokSelect.appendChild(defaultOpt);
+
+        if (puroks.length > 0) {
+            puroks.forEach(function(purokName) {
+                const opt = document.createElement('option');
+                opt.value = purokName;
+                opt.textContent = purokName;
+                regPurokSelect.appendChild(opt);
+            });
+        }
+        regPurokSelect.disabled = false;
+    }
+
+    regBarangaySelect?.addEventListener('change', populateRegPuroks);
 
     firstTimerForm?.addEventListener('submit', function (event) {
         event.preventDefault();
