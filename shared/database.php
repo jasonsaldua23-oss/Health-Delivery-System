@@ -1061,18 +1061,57 @@ function db(): mysqli
 
     mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-    $hostsToTry = [DB_HOST];
+    $configsToTry = [
+        [
+            'host' => DB_HOST,
+            'user' => DB_USER,
+            'pass' => DB_PASS,
+            'name' => DB_NAME,
+            'port' => DB_PORT
+        ]
+    ];
+
     if (DB_HOST === '127.0.0.1') {
-        $hostsToTry[] = 'localhost';
+        $configsToTry[] = [
+            'host' => 'localhost',
+            'user' => DB_USER,
+            'pass' => DB_PASS,
+            'name' => DB_NAME,
+            'port' => DB_PORT
+        ];
     } elseif (DB_HOST === 'localhost') {
-        $hostsToTry[] = '127.0.0.1';
+        $configsToTry[] = [
+            'host' => '127.0.0.1',
+            'user' => DB_USER,
+            'pass' => DB_PASS,
+            'name' => DB_NAME,
+            'port' => DB_PORT
+        ];
+    }
+
+    // Local XAMPP/development fallback if production user fails on localhost
+    if (in_array(DB_HOST, ['127.0.0.1', 'localhost', '::1'], true) && DB_USER !== 'root') {
+        $configsToTry[] = [
+            'host' => '127.0.0.1',
+            'user' => 'root',
+            'pass' => '',
+            'name' => DB_NAME,
+            'port' => 3306
+        ];
+        $configsToTry[] = [
+            'host' => '127.0.0.1',
+            'user' => 'root',
+            'pass' => '',
+            'name' => 'health_delivery_system',
+            'port' => 3306
+        ];
     }
 
     $lastException = null;
 
-    foreach ($hostsToTry as $host) {
+    foreach ($configsToTry as $cfg) {
         try {
-            $connection = new mysqli($host, DB_USER, DB_PASS, DB_NAME, DB_PORT);
+            $connection = new mysqli($cfg['host'], $cfg['user'], $cfg['pass'], $cfg['name'], $cfg['port']);
             $connection->set_charset('utf8mb4');
             $lastException = null;
             break;
@@ -1082,18 +1121,18 @@ function db(): mysqli
             // Unknown database (code 1049) -> Auto-create database & bootstrap
             if ($exception->getCode() === 1049) {
                 try {
-                    $bootstrap = new mysqli($host, DB_USER, DB_PASS, '', DB_PORT);
+                    $bootstrap = new mysqli($cfg['host'], $cfg['user'], $cfg['pass'], '', $cfg['port']);
                     $bootstrap->set_charset('utf8mb4');
-                    $bootstrap->query('CREATE DATABASE IF NOT EXISTS `' . DB_NAME . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+                    $bootstrap->query('CREATE DATABASE IF NOT EXISTS `' . $cfg['name'] . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
                     $bootstrap->close();
 
-                    $connection = new mysqli($host, DB_USER, DB_PASS, DB_NAME, DB_PORT);
+                    $connection = new mysqli($cfg['host'], $cfg['user'], $cfg['pass'], $cfg['name'], $cfg['port']);
                     $connection->set_charset('utf8mb4');
                     run_database_migrations($connection, false);
                     $lastException = null;
                     break;
                 } catch (Throwable $bootError) {
-                    error_log('Database bootstrap failure on ' . $host . ': ' . $bootError->getMessage());
+                    error_log('Database bootstrap failure on ' . $cfg['host'] . ': ' . $bootError->getMessage());
                     $lastException = $bootError;
                 }
             }
@@ -2619,11 +2658,14 @@ function create_upcoming_event(array $eventData): bool
     $eventDate = trim((string) ($eventData['event_date'] ?? ''));
     $timeLabel = trim((string) ($eventData['time_label'] ?? ''));
     $endTimeLabel = trim((string) ($eventData['end_time_label'] ?? ''));
+    if ($endTimeLabel === '') {
+        $endTimeLabel = $timeLabel;
+    }
     $icon = trim((string) ($eventData['icon'] ?? 'calendar')) ?: 'calendar';
     $accent = trim((string) ($eventData['accent'] ?? 'mint')) ?: 'mint';
     $createdBy = trim((string) ($eventData['created_by'] ?? 'staff-panel'));
 
-    if ($title === '' || $description === '' || $eventDate === '' || $timeLabel === '' || $endTimeLabel === '') {
+    if ($title === '' || $eventDate === '' || $timeLabel === '') {
         return false;
     }
 

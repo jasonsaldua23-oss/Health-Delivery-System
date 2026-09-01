@@ -889,7 +889,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                             </div>
                             <div class="field-group">
                                 <label for="regPhone">Contact Number <em style="color:#ff4f4f;">*</em></label>
-                                <input id="regPhone" name="phone" type="tel" value="" placeholder="09XXXXXXXXX" required>
+                                <input id="regPhone" name="phone" type="tel" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" value="" placeholder="09XXXXXXXXX" required>
                             </div>
                         </div>
 
@@ -938,13 +938,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 </div>
 
                 <div id="loginStep" class="modal-step hidden-step" aria-hidden="true">
-                    <div class="auth-step-header">
-                        <button type="button" class="back-link" data-go-step="choice">
-                            <span class="back-icon"><?= iconSvg('chevron-left'); ?></span>
-                            <span>Back</span>
-                        </button>
-                    </div>
-
                     <form class="auth-form" id="loginForm" novalidate>
                         <div class="field-group">
                             <label for="loginEmail">Email Address</label>
@@ -1122,9 +1115,29 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    const regPhoneInput = document.getElementById('regPhone');
+    regPhoneInput?.addEventListener('input', function() {
+        this.value = this.value.replace(/\D/g, '').slice(0, 11);
+    });
+
     firstTimerForm?.addEventListener('submit', function (event) {
         event.preventDefault();
+        const phone = (document.getElementById('regPhone')?.value || '').trim();
         const password = document.getElementById('regPassword').value.trim();
+
+        // Contact number must only contain digits
+        if (!/^\d+$/.test(phone)) {
+            window.showSystemToast?.('Please correct the contact number. Contact number must contain only numbers.', { type: 'error', theme: 'patient', title: 'Invalid Contact Number' });
+            document.getElementById('regPhone')?.focus();
+            return;
+        }
+
+        // Contact number must be exactly 11 digits
+        if (phone.length !== 11) {
+            window.showSystemToast?.('Please correct the contact number. Contact number must be exactly 11 digits (e.g. 09XXXXXXXXX).', { type: 'error', theme: 'patient', title: 'Invalid Contact Number' });
+            document.getElementById('regPhone')?.focus();
+            return;
+        }
 
         if (password.length < 6) {
             window.showSystemToast?.('Password must be at least 6 characters long.', { type: 'error', theme: 'patient', title: 'Invalid Password' });
