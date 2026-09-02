@@ -2050,6 +2050,34 @@ function fetch_appointment_by_code(string $appointmentCode, ?string $stationScop
     return $result ?: null;
 }
 
+function fetch_appointment_by_code_or_search(string $search, ?string $stationScope = null): ?array
+{
+    $found = fetch_appointment_by_code($search, $stationScope);
+    if ($found !== null) {
+        return $found;
+    }
+    $searchTrimmed = trim($search);
+    if ($searchTrimmed === '') {
+        return null;
+    }
+    $searchWild = '%' . $searchTrimmed . '%';
+    $sql = 'SELECT * FROM appointments WHERE (CONCAT(first_name, " ", last_name) LIKE ? OR first_name LIKE ? OR last_name LIKE ? OR contact_number LIKE ?)';
+    $params = [$searchWild, $searchWild, $searchWild, $searchWild];
+    $types = 'ssss';
+    if ($stationScope !== null) {
+        $sql .= ' AND station_slug = ?';
+        $params[] = $stationScope;
+        $types .= 's';
+    }
+    $sql .= ' ORDER BY id DESC LIMIT 1';
+    $stmt = db()->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+
+    return $result ?: null;
+}
+
 function save_appointment_clinical_details(int $appointmentId, array $data, ?string $stationScope = null): bool
 {
     $appointment = fetch_appointment_by_id($appointmentId);
@@ -2851,6 +2879,16 @@ function fetch_admin_account_by_email(string $email): ?array
 {
     $stmt = db()->prepare('SELECT * FROM admin_accounts WHERE email = ? LIMIT 1');
     $stmt->bind_param('s', $email);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+
+    return $result ?: null;
+}
+
+function fetch_admin_account_by_username(string $username): ?array
+{
+    $stmt = db()->prepare('SELECT * FROM admin_accounts WHERE email = ? OR admin_name = ? LIMIT 1');
+    $stmt->bind_param('ss', $username, $username);
     $stmt->execute();
     $result = $stmt->get_result()->fetch_assoc();
 

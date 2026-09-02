@@ -31,8 +31,9 @@ describe('Patient Portal - End-to-End Test Cases', () => {
       cy.get('input[name="birthdate"], input[name="birth_date"]').type(testPatient.birthDate);
       cy.get('input[name="gender"][value="Male"]').check({ force: true });
       cy.get('input[name="phone"], input[name="contact_number"]').type(testPatient.contactNumber);
-      cy.get('input[name="purok"]').type(testPatient.purok);
       cy.get('select[name="barangay"]').select(testPatient.barangay);
+      cy.get('select[name="purok"]').select(1);
+      cy.get('input[name="street"]').type('Purok 3, Main St');
       cy.get('input[name="email"]').type(testPatient.email);
       cy.get('input[name="password"]').type(testPatient.password);
       cy.get('button[type="submit"]').click();
@@ -41,6 +42,7 @@ describe('Patient Portal - End-to-End Test Cases', () => {
     // Verification of account creation and redirection
     cy.url({ timeout: 10000 }).should('include', 'dashboard.php');
     cy.contains(testPatient.firstName).should('be.visible');
+    cy.screenshot('TC-001_to_TC-008_patient_registration_dashboard');
   });
 
   // Use Case 3 & 4: Patient Login & Dashboard Overview (TC-009 - TC-017)
@@ -59,6 +61,7 @@ describe('Patient Portal - End-to-End Test Cases', () => {
     // Validates login and lands on dashboard (or handles modal redirect)
     cy.url({ timeout: 10000 }).should('include', 'dashboard.php');
     cy.get('#servicesSection, .appointments-section, #appointments, .dashboard-main-content').should('exist');
+    cy.screenshot('TC-009_to_TC-017_patient_login_overview');
   });
 
   // Use Case 5: Book an Appointment (TC-018 - TC-021)
@@ -72,6 +75,7 @@ describe('Patient Portal - End-to-End Test Cases', () => {
     });
 
     cy.url().should('include', 'barangay=alijis');
+    cy.screenshot('TC-018_to_TC-021_appointment_booking');
   });
 
   // Use Case 6: Update Patient Profile (TC-022 - TC-026)
@@ -79,5 +83,6 @@ describe('Patient Portal - End-to-End Test Cases', () => {
     cy.visit('/Patients/dashboard.php');
     cy.get('body').should('be.visible');
     cy.get('.hero-nav-pill, button').contains(/Account/i).click({ force: true });
+    cy.screenshot('TC-022_to_TC-026_profile_settings');
   });
 });

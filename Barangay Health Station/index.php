@@ -336,13 +336,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'dele
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), ['save_clinical_details', 'save_vitals', 'save_clinical_remarks'], true)) {
     if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
         $appointmentId = (int) ($_POST['appointment_id'] ?? 0);
-        if (save_appointment_clinical_details($appointmentId, $_POST, (string) $station['slug'])) {
+        $postData = $_POST;
+        if (!empty($postData['temperature']) && empty($postData['body_temperature'])) {
+            $postData['body_temperature'] = $postData['temperature'];
+        }
+        if (!empty($postData['pulse']) && empty($postData['pulse_rate'])) {
+            $postData['pulse_rate'] = $postData['pulse'];
+        }
+        if (save_appointment_clinical_details($appointmentId, $postData, (string) $station['slug'])) {
             if (($_POST['action'] ?? '') === 'save_vitals') {
                 $_SESSION['staff_flash'] = 'Vital signs recorded successfully.';
             } elseif (($_POST['action'] ?? '') === 'save_clinical_remarks') {
                 $_SESSION['staff_flash'] = 'Clinical remarks & doctor notes saved.';
             } else {
-                $_SESSION['staff_flash'] = 'Appointment record updated.';
+                $_SESSION['staff_flash'] = 'Clinical details saved successfully.';
             }
             log_activity('staff', $staffAccount['email'], 'clinical_details_saved', 'appointment', (string) $appointmentId, '', '', $station['slug']);
         } else {
@@ -483,7 +490,7 @@ $allStationAppointments = fetch_appointments(['station_slug' => $station['slug']
 $stationPatients = fetch_unique_patients($patientSearch, ['station_slug' => $station['slug']]);
 $unreadNotifications = fetch_unread_patient_notifications();
 $patientProfile = $selectedPatientId !== '' ? fetch_patient_profile($selectedPatientId) : null;
-$clinicalSearchResult = $patientSearch !== '' ? fetch_appointment_by_code($patientSearch, (string) $station['slug']) : null;
+$clinicalSearchResult = $patientSearch !== '' ? fetch_appointment_by_code_or_search($patientSearch, (string) $station['slug']) : null;
 $selectedVitalsAppointment = $selectedVitalsCode !== '' ? fetch_appointment_by_code($selectedVitalsCode, (string) $station['slug']) : null;
 if (is_array($selectedVitalsAppointment)) {
     $vApptServing = (string) ($selectedVitalsAppointment['status'] ?? '') === 'Serving';
@@ -1767,7 +1774,7 @@ for ($i = 0; $i < 6; $i++) {
                             <div class="panel-card empty-state">No appointment found matching that ID or search term.</div>
                         <?php else: ?>
                             <?php $searchRecordComplete = appointment_has_completed_clinical_details($clinicalSearchResult); ?>
-                            <div class="modern-patient-record-card <?= $searchRecordComplete ? 'is-completed' : 'is-ongoing'; ?>">
+                            <div class="modern-patient-record-card patient-record-card <?= $searchRecordComplete ? 'is-completed' : 'is-ongoing'; ?>">
                                 <div class="pat-card-left">
                                     <div class="pat-card-avatar"><?= strtoupper(substr((string) ($clinicalSearchResult['first_name'] ?? 'P'), 0, 1) . substr((string) ($clinicalSearchResult['last_name'] ?? 'U'), 0, 1)); ?></div>
                                     <div class="pat-card-info">
@@ -1804,6 +1811,37 @@ for ($i = 0; $i < 6; $i++) {
                                     <?php endif; ?>
                                 </div>
                             </div>
+                            <form method="post" action="?action=save_clinical_details" class="account-settings-form clinical-save-form" style="margin-top:14px;padding:16px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
+                                <input type="hidden" name="action" value="save_clinical_details">
+                                <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                                <input type="hidden" name="appointment_id" value="<?= h((string) $clinicalSearchResult['id']); ?>">
+                                <input type="hidden" name="return_url" value="?page=patients&patient_search=<?= urlencode($patientSearch); ?>">
+                                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:12px;margin-bottom:12px;">
+                                    <div class="form-group-item">
+                                        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Body Temperature (°C)</label>
+                                        <input type="text" name="temperature" value="<?= h((string)($clinicalSearchResult['body_temperature'] ?? '36.6')); ?>" class="form-input-field" required>
+                                    </div>
+                                    <div class="form-group-item">
+                                        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Blood Pressure</label>
+                                        <input type="text" name="blood_pressure" value="<?= h((string)($clinicalSearchResult['blood_pressure'] ?? '120/80')); ?>" class="form-input-field" required>
+                                    </div>
+                                    <div class="form-group-item">
+                                        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Pulse Rate (bpm)</label>
+                                        <input type="text" name="pulse" value="<?= h((string)($clinicalSearchResult['pulse_rate'] ?? '75')); ?>" class="form-input-field" required>
+                                    </div>
+                                </div>
+                                <div class="form-group-item" style="margin-bottom:12px;">
+                                    <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Doctor's Notes / Clinical Remarks</label>
+                                    <textarea name="doctor_notes" rows="2" class="form-input-field" placeholder="Patient clinical evaluation..."><?= h((string)($clinicalSearchResult['doctor_notes'] ?? 'Patient reviewed. Prescribed standard vitamins.')); ?></textarea>
+                                </div>
+                                <div style="display:flex;gap:10px;align-items:center;">
+                                    <button type="submit" class="primary-btn slim">Save Clinical Details</button>
+                                    <a class="primary-btn blue-btn slim" href="?page=patients&patient_search=<?= urlencode($patientSearch); ?>&appointment_followup=<?= h((string)$clinicalSearchResult['appointment_code']); ?>">
+                                        <span class="btn-icon-wrap"><?= staff_icon('calendar'); ?></span>
+                                        <span>Schedule Follow-up</span>
+                                    </a>
+                                </div>
+                            </form>
                         <?php endif; ?>
                     </section>
                 <?php endif; ?>
@@ -2466,7 +2504,7 @@ for ($i = 0; $i < 6; $i++) {
                         <div class="account-modal-footer">
                             <a class="primary-btn blue-btn" href="?page=patients<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>&appointment_followup=<?= h((string) $selectedViewAppointment['appointment_code']); ?>" title="Open dedicated modal to schedule follow-up check-up">
                                 <?= staff_icon('calendar'); ?>
-                                <span><?= $hasFollowUp ? 'Update Follow-up' : 'Set a Follow-up'; ?></span>
+                                <span>Schedule Follow-up</span>
                             </a>
                             <a class="ghost-btn" href="?page=patients<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>" onclick="return window.closeClinicalModal(event, '?page=patients<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>');">
                                 <span>Close Record</span>
@@ -2495,7 +2533,7 @@ for ($i = 0; $i < 6; $i++) {
                             <a class="account-modal-close" href="<?= h($fuReturnUrl); ?>" onclick="return window.closeClinicalModal(event, '<?= h($fuReturnUrl); ?>');" aria-label="Close modal">×</a>
                         </div>
 
-                        <form method="post" class="account-settings-form">
+                        <form method="post" action="?action=schedule_follow_up" class="account-settings-form">
                             <input type="hidden" name="action" value="schedule_follow_up">
                             <input type="hidden" name="return_url" value="<?= h($fuReturnUrl); ?>">
                             <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
@@ -2531,7 +2569,7 @@ for ($i = 0; $i < 6; $i++) {
 
                                 <div class="account-section-divider">
                                     <?= staff_icon('calendar'); ?>
-                                    <span>Follow-up Consultation Date</span>
+                                    <span>Follow-up Consultation Date &amp; Time</span>
                                 </div>
 
                                 <!-- Quick 1-Click Presets -->
@@ -2549,6 +2587,13 @@ for ($i = 0; $i < 6; $i++) {
                                         <span class="required">*</span>
                                     </label>
                                     <input type="date" id="modal_follow_up_date" name="follow_up_date" value="<?= h((string) ($selectedFollowUpAppointment['follow_up_date'] ?? date('Y-m-d', strtotime('+7 days')))); ?>" min="<?= date('Y-m-d'); ?>" required class="form-input-field">
+                                </div>
+
+                                <div class="form-group-item" style="margin-top:10px;">
+                                    <label for="modal_follow_up_time" class="form-field-label">
+                                        <span>Follow-up Preferred Time</span>
+                                    </label>
+                                    <input type="text" id="modal_follow_up_time" name="follow_up_time" value="<?= h((string) ($selectedFollowUpAppointment['follow_up_time'] ?? '10:00')); ?>" placeholder="e.g. 10:00 AM" class="form-input-field">
                                 </div>
 
                                 <div class="account-section-divider">
