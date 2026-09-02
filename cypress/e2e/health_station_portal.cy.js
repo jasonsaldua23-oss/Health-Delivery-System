@@ -84,4 +84,13 @@ describe('Health Station Staff Portal - Operations Suite', () => {
     cy.get('body').should('be.visible');
     cy.screenshot('TC-045_to_TC-048_image_capture');
   });
+
+  // Use Case 24: Station Weekly Operational Reports & Analytics (TC-101 - TC-105)
+  it('TC-101 to TC-105: View weekly operational reports and station performance analytics', () => {
+    cy.get('a[href*="page=reports"]').first().click();
+    cy.url().should('include', 'page=reports');
+    cy.get('.reports-metrics-grid, .reports-metric-card').should('exist');
+    cy.get('.reports-quick-pills a').first().should('be.visible');
+    cy.screenshot('TC-101_to_TC-105_weekly_reports_analytics');
+  });
 });
