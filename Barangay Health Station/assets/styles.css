@@ -7898,7 +7898,7 @@ button { border: 0; cursor: pointer; }
 }
 
 .patient-profile-card .pat-card-avatar.done {
-  background: linear-gradient(135deg, #0d9488, #0f766e);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
   color: #ffffff;
   font-weight: 700;
   font-size: 1.1rem;
@@ -7913,7 +7913,42 @@ button { border: 0; cursor: pointer; }
 .patient-visit-count-pill svg {
   width: 13px;
   height: 13px;
-  color: #10b981;
+  color: #2563eb;
+}
+
+.patient-profile-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff !important;
+  border: none;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);
+}
+
+.patient-profile-open-btn svg {
+  width: 16px;
+  height: 16px;
+  color: #ffffff;
+  transition: transform 0.2s ease;
+}
+
+.patient-profile-open-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.38);
+}
+
+.patient-profile-open-btn:hover svg {
+  transform: scale(1.1);
 }
 
 .patient-profile-header-card {
@@ -7932,12 +7967,12 @@ button { border: 0; cursor: pointer; }
   height: 76px;
   border-radius: 16px;
   overflow: hidden;
-  background: linear-gradient(135deg, #0d9488, #0f766e);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.22);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
 }
 
 .patient-profile-photo-lg {
@@ -7975,9 +8010,9 @@ button { border: 0; cursor: pointer; }
 }
 
 .appt-code-badge.id-pill {
-  background: #f0fdfa;
-  color: #0f766e;
-  border: 1px solid #ccfbf1;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
   font-weight: 700;
   font-size: 0.8rem;
   padding: 3px 10px;
@@ -8007,7 +8042,7 @@ button { border: 0; cursor: pointer; }
 .profile-demo-tag svg {
   width: 14px;
   height: 14px;
-  color: #0d9488;
+  color: #2563eb;
   flex-shrink: 0;
 }
 
@@ -8027,31 +8062,14 @@ button { border: 0; cursor: pointer; }
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.02);
 }
 
-.profile-mini-kpi.teal {
-  background: #f0fdfa;
-  border: 1.5px solid #ccfbf1;
-}
-
-.profile-mini-kpi.teal small {
-  font-size: 0.74rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #0f766e;
-  letter-spacing: 0.04em;
-}
-
-.profile-mini-kpi.teal strong {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: #0d9488;
-}
-
-.profile-mini-kpi.blue {
+.profile-mini-kpi.teal,
+.profile-mini-kpi.brand-kpi {
   background: #eff6ff;
-  border: 1.5px solid #dbeafe;
+  border: 1.5px solid #bfdbfe;
 }
 
-.profile-mini-kpi.blue small {
+.profile-mini-kpi.teal small,
+.profile-mini-kpi.brand-kpi small {
   font-size: 0.74rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -8059,10 +8077,30 @@ button { border: 0; cursor: pointer; }
   letter-spacing: 0.04em;
 }
 
+.profile-mini-kpi.teal strong,
+.profile-mini-kpi.brand-kpi strong {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+.profile-mini-kpi.blue {
+  background: #f0fdf4;
+  border: 1.5px solid #bbf7d0;
+}
+
+.profile-mini-kpi.blue small {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #166534;
+  letter-spacing: 0.04em;
+}
+
 .profile-mini-kpi.blue strong {
   font-size: 1.05rem;
   font-weight: 800;
-  color: #1d4ed8;
+  color: #15803d;
 }
 
 .profile-mini-kpi.blue span {
@@ -8109,8 +8147,8 @@ button { border: 0; cursor: pointer; }
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: #f0fdfa;
-  color: #0d9488;
+  background: #eff6ff;
+  color: #2563eb;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8131,11 +8169,11 @@ button { border: 0; cursor: pointer; }
 .history-badge-count {
   font-size: 0.78rem;
   font-weight: 700;
-  color: #0d9488;
-  background: #f0fdfa;
+  color: #1d4ed8;
+  background: #eff6ff;
   padding: 3px 10px;
   border-radius: 9999px;
-  border: 1px solid #ccfbf1;
+  border: 1px solid #bfdbfe;
 }
 
 .profile-timeline-stack {
@@ -8177,13 +8215,13 @@ button { border: 0; cursor: pointer; }
 }
 
 .service-pill-tag {
-  background: #f0fdfa;
-  color: #0d9488;
+  background: #eff6ff;
+  color: #2563eb;
   font-weight: 700;
   font-size: 0.84rem;
   padding: 4px 10px;
   border-radius: 8px;
-  border: 1px solid #ccfbf1;
+  border: 1px solid #bfdbfe;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -8248,7 +8286,7 @@ button { border: 0; cursor: pointer; }
 .vitals-micro-lbl svg {
   width: 12px;
   height: 12px;
-  color: #0d9488;
+  color: #2563eb;
 }
 
 .vitals-micro-item strong {
@@ -8259,7 +8297,7 @@ button { border: 0; cursor: pointer; }
 
 .history-doc-notes-box {
   background: #f8fafc;
-  border-left: 3.5px solid #0d9488;
+  border-left: 3.5px solid #2563eb;
   padding: 10px 14px;
   border-radius: 0 10px 10px 0;
   margin-bottom: 10px;
@@ -8268,7 +8306,7 @@ button { border: 0; cursor: pointer; }
 }
 
 .notes-head {
-  color: #0f766e;
+  color: #1d4ed8;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -8328,6 +8366,7 @@ button { border: 0; cursor: pointer; }
   text-decoration: none;
   font-weight: 600;
 }
+
 
 /* Patient Profile & Consultation History Modal Dialog Centering */
 #patientProfileModalBackdrop {

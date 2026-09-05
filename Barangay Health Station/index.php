@@ -2391,11 +2391,11 @@ for ($i = 0; $i < 6; $i++) {
                                         <div class="pat-card-info">
                                             <div class="pat-card-title-row">
                                                 <h3 style="font-size: 1.08rem; font-weight: 700; color: #0f172a; margin: 0;"><?= h($prof['full_name']); ?></h3>
-                                                <span class="appt-code-badge" style="background:#f0fdfa; color:#0d9488; border:1px solid #ccfbf1; font-weight:600;">ID: #<?= h($prof['patient_id']); ?></span>
+                                                <span class="appt-code-badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:600;">ID: #<?= h($prof['patient_id']); ?></span>
                                                 <?php if ($patHasPhoto): ?>
                                                     <span class="photo-status-badge verified" style="position:static;transform:none;font-size:0.7rem;padding:2px 8px;">✓ Verified ID</span>
                                                 <?php endif; ?>
-                                                <span class="patient-visit-count-pill" style="font-size: 0.75rem; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; padding: 2px 9px; border-radius: 9999px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                                <span class="patient-visit-count-pill" style="font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 2px 9px; border-radius: 9999px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
                                                     <?= staff_icon('history'); ?> <?= $prof['total_completed']; ?> <?= $prof['total_completed'] === 1 ? 'Visit' : 'Visits'; ?>
                                                 </span>
                                             </div>
@@ -2408,7 +2408,7 @@ for ($i = 0; $i < 6; $i++) {
                                             </div>
                                             <?php if ($latestAppt !== null): ?>
                                                 <div class="patient-latest-visit-row" style="margin-top: 6px; font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                                    <span style="font-weight: 600; color: #0d9488;">Latest Check-up:</span>
+                                                    <span style="font-weight: 600; color: #2563eb;">Latest Check-up:</span>
                                                     <span><?= h((string) $latestAppt['service_name']); ?> (<?= h(date('M j, Y', strtotime((string) $latestAppt['preferred_date']))); ?>)</span>
                                                     <?php if (!empty($latestAppt['blood_pressure'])): ?>
                                                         <span style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1px 6px; border-radius: 4px; font-size: 0.75rem; color: #334155;">BP: <?= h((string) $latestAppt['blood_pressure']); ?></span>
@@ -2418,11 +2418,12 @@ for ($i = 0; $i < 6; $i++) {
                                         </div>
                                     </div>
                                     <div class="pat-card-right">
-                                        <a class="view-medical-file-btn patient-profile-open-btn" href="<?= h($profUrl); ?>" onclick="return window.openPatientProfileModal(event, '<?= h($prof['key']); ?>');" title="View Patient Profile and Appointment History" style="background: linear-gradient(135deg, #0d9488, #0f766e); color: #ffffff; border: none; padding: 8px 16px; border-radius: 10px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25);">
+                                        <a class="view-medical-file-btn patient-profile-open-btn" href="<?= h($profUrl); ?>" onclick="return window.openPatientProfileModal(event, '<?= h($prof['key']); ?>');" title="View Patient Profile and Appointment History" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; border: none; padding: 9px 18px; border-radius: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);">
                                             <?= staff_icon('history'); ?>
                                             <span>View Profile &amp; History</span>
                                         </a>
                                     </div>
+
 
                                     <!-- Hidden template for instant client-side modal popup without page reload -->
                                     <div id="patientProfileContent_<?= h($prof['key']); ?>" style="display: none;">
@@ -2898,7 +2899,7 @@ for ($i = 0; $i < 6; $i++) {
             ?>
             <section class="account-modal-backdrop <?= $selectedPatientProfile !== null ? 'is-active-modal' : 'hidden'; ?>" id="patientProfileModalBackdrop" style="<?= $selectedPatientProfile !== null ? 'display:flex;align-items:center;justify-content:center;' : 'display:none;'; ?>">
                 <div class="account-modal-card clinical-dialog-card patient-profile-dialog-card" role="dialog" aria-modal="true" style="margin: auto; max-width: 840px; width: min(100%, 840px); max-height: 90vh; overflow-y: auto; background: #ffffff; border-radius: 20px; box-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.35);">
-                    <div class="account-modal-header patient-profile-modal-header" style="background: linear-gradient(135deg, #0f766e, #0d9488); color: #ffffff; padding: 20px 24px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="account-modal-header patient-profile-modal-header" style="background: linear-gradient(135deg, #1e40af, #2563eb); color: #ffffff; padding: 20px 24px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center;">
                         <div class="account-modal-title-group" style="display: flex; align-items: center; gap: 14px;">
                             <span class="account-modal-icon" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
                                 <?= staff_icon('patients'); ?>
@@ -2922,11 +2923,12 @@ for ($i = 0; $i < 6; $i++) {
                     </div>
 
                     <div class="account-modal-footer" style="padding: 16px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; background: #fafafa; border-radius: 0 0 20px 20px;">
-                        <a class="primary-btn" href="<?= h($profileReturnUrl); ?>" onclick="return window.closePatientProfileModal(event, '<?= h($profileReturnUrl); ?>');" style="background: linear-gradient(135deg, #0d9488, #0f766e); color: #ffffff; padding: 10px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                        <a class="primary-btn" href="<?= h($profileReturnUrl); ?>" onclick="return window.closePatientProfileModal(event, '<?= h($profileReturnUrl); ?>');" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; padding: 10px 24px; border-radius: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);">
                             <?= staff_icon('check'); ?>
                             <span>Close Record</span>
                         </a>
                     </div>
+
                 </div>
             </section>
         <?php elseif ($page === 'image-capture'): ?>
