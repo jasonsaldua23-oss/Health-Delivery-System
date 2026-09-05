@@ -969,6 +969,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
             </div>
         </div>
     </div>
+
+    <!-- Confidentiality & Data Privacy Consent Modal -->
+    <div id="privacyConsentModal" class="modal-overlay hidden" style="z-index: 10000;">
+        <div class="modal-content privacy-consent-content" style="max-width: 540px; background: #ffffff; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid rgba(226, 232, 240, 0.8);">
+            <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 20px 24px;">
+                <div class="modal-header-left">
+                    <div class="modal-header-icon patient-icon" style="background: linear-gradient(135deg, #0d9488, #0f766e); color: #fff; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                        <?= iconSvg('shield'); ?>
+                    </div>
+                    <div>
+                        <h2 class="modal-title" style="font-size: 1.2rem; font-weight: 700; color: #0f172a; margin: 0;">Data Privacy &amp; Terms</h2>
+                        <p class="modal-subtitle" style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Confidentiality &amp; Information Verification</p>
+                    </div>
+                </div>
+                <button type="button" class="modal-close" id="privacyModalClose" aria-label="Close consent dialog">
+                    <?= iconSvg('close'); ?>
+                </button>
+            </div>
+
+            <div class="modal-body" style="padding: 24px;">
+                <div class="privacy-notice-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; font-size: 0.875rem; line-height: 1.6; color: #334155;">
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
+                        <span style="color: #0d9488; font-size: 1.1rem; display: flex; align-items: center;"><?= iconSvg('sparkle'); ?></span>
+                        <strong style="color: #0f172a; font-size: 0.9rem;">Please review before creating your patient account:</strong>
+                    </div>
+                    <ul style="margin: 0 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 10px; color: #475569;">
+                        <li><strong>Accuracy of Information:</strong> I certify that all confidential details and personal data provided in this registration are true, complete, and accurate to the best of my knowledge.</li>
+                        <li><strong>Data Privacy &amp; Protection:</strong> In compliance with the Data Privacy Act and healthcare standards, your personal health information is strictly confidential and used solely for health station appointments, clinical records, and community care.</li>
+                        <li><strong>Authorized Healthcare Services:</strong> You authorize licensed Barangay Health Station medical staff to access and maintain your electronic patient profile for clinical services.</li>
+                    </ul>
+                </div>
+
+                <div class="terms-checkbox-wrapper" style="background: #f0fdfa; border: 1.5px solid #99f6e4; border-radius: 12px; padding: 14px 16px; margin-bottom: 24px; transition: all 0.2s ease;">
+                    <label class="terms-checkbox-label" for="termsAgreementCheckbox" style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; user-select: none; font-size: 0.875rem; line-height: 1.45; color: #115e59;">
+                        <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreed" value="1" style="margin-top: 3px; width: 19px; height: 19px; accent-color: #0d9488; cursor: pointer; flex-shrink: 0;">
+                        <span>I confirm that all confidential information and details provided are correct and true, and I agree to the <strong>Terms of Service</strong> and <strong>Privacy Policy</strong>.</span>
+                    </label>
+                </div>
+
+                <div style="display: flex; gap: 12px; justify-content: flex-end; align-items: center;">
+                    <button type="button" class="text-action" id="cancelPrivacyBtn" style="padding: 10px 18px; border-radius: 10px; background: transparent; border: 1px solid #cbd5e1; color: #64748b; font-weight: 500; font-size: 0.9rem; cursor: pointer; transition: all 0.15s ease;">
+                        Back to Edit
+                    </button>
+                    <button type="button" id="confirmCreateAccountBtn" class="auth-submit-btn" disabled style="width: auto; padding: 10px 24px; margin: 0; opacity: 0.45; cursor: not-allowed; background: linear-gradient(135deg, #0d9488, #0f766e); transition: all 0.2s ease;">
+                        Create Account
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </main>
 <?php endif; ?>
 <footer class="footer" id="footer"><div class="container footer-grid"><div><div class="brand footer-brand"><span class="brand-icon"><?= iconSvg('heart'); ?></span><span class="brand-copy"><strong>Bacolod Health Stations</strong></span></div><p>Providing quality healthcare services to the communities of Bacolod City.</p></div><div><h3>Contact Information</h3><ul class="footer-list"><li><span class="inline-icon"><?= iconSvg('phone'); ?></span><?= h($contact['phone']); ?></li><li><span class="inline-icon"><?= iconSvg('map'); ?></span><?= h($contact['address']); ?></li><li><span class="inline-icon"><?= iconSvg('clock'); ?></span><?= h($contact['hours']); ?></li></ul></div><div><h3>Quick Links</h3><ul class="footer-links"><li><a href="index.php#stations">Find a Health Station</a></li><li><a href="index.php">Back to Top</a></li><li><a href="index.php#cta">Get Started</a></li></ul></div></div><div class="container footer-bottom"><p>&copy; 2026 Bacolod Health Stations. All rights reserved.</p></div></footer>
@@ -1159,10 +1209,201 @@ document.addEventListener('DOMContentLoaded', function () {
 
     regBarangaySelect?.addEventListener('change', populateRegPuroks);
 
+    const privacyConsentModal = document.getElementById('privacyConsentModal');
+    const privacyModalClose = document.getElementById('privacyModalClose');
+    const cancelPrivacyBtn = document.getElementById('cancelPrivacyBtn');
+    const termsAgreementCheckbox = document.getElementById('termsAgreementCheckbox');
+    const confirmCreateAccountBtn = document.getElementById('confirmCreateAccountBtn');
+
+    const typoDomains = {
+        'pmail.com': 'gmail.com',
+        'cmail.com': 'gmail.com',
+        'gamil.com': 'gmail.com',
+        'gmial.com': 'gmail.com',
+        'gmaill.com': 'gmail.com',
+        'gmai.com': 'gmail.com',
+        'gmaik.com': 'gmail.com',
+        'gmal.com': 'gmail.com',
+        'gmil.com': 'gmail.com',
+        'gmaul.com': 'gmail.com',
+        'gmaol.com': 'gmail.com',
+        'gmai.co': 'gmail.com',
+        'gmaill.co': 'gmail.com',
+        'gmail.con': 'gmail.com',
+        'gmail.co': 'gmail.com',
+        'gmail.cm': 'gmail.com',
+        'gmail.cpm': 'gmail.com',
+        'gmail.ocm': 'gmail.com',
+        'gmail.om': 'gmail.com',
+        'g-mail.com': 'gmail.com',
+        'gmai.clm': 'gmail.com',
+        'gnail.com': 'gmail.com',
+        'fmail.com': 'gmail.com',
+        'vmail.com': 'gmail.com',
+        'tmail.com': 'gmail.com',
+        'bmail.com': 'gmail.com',
+        'gmail.col': 'gmail.com',
+        'gmail.comm': 'gmail.com',
+        'gmail.coom': 'gmail.com',
+        'gmeil.com': 'gmail.com',
+        'gmaill.con': 'gmail.com',
+
+        'yaho.com': 'yahoo.com',
+        'yahooo.com': 'yahoo.com',
+        'yhao.com': 'yahoo.com',
+        'yaho.co': 'yahoo.com',
+        'yahoo.con': 'yahoo.com',
+        'yahoo.cm': 'yahoo.com',
+        'yahoo.cpm': 'yahoo.com',
+        'yahoo.ocm': 'yahoo.com',
+        'uahoo.com': 'yahoo.com',
+        'tahoo.com': 'yahoo.com',
+        'gaho.com': 'yahoo.com',
+        'yhaoo.com': 'yahoo.com',
+        'yahu.com': 'yahoo.com',
+        'ymail.con': 'ymail.com',
+
+        'outlok.com': 'outlook.com',
+        'outloo.com': 'outlook.com',
+        'outlock.com': 'outlook.com',
+        'otlook.com': 'outlook.com',
+        'putlook.com': 'outlook.com',
+        'outlook.con': 'outlook.com',
+        'outllok.com': 'outlook.com',
+        'outluk.com': 'outlook.com',
+
+        'hotmial.com': 'hotmail.com',
+        'hotmale.com': 'hotmail.com',
+        'hotmaill.com': 'hotmail.com',
+        'hotmai.com': 'hotmail.com',
+        'hotmal.com': 'hotmail.com',
+        'hotmaik.com': 'hotmail.com',
+        'hotmali.com': 'hotmail.com',
+        'hotmail.con': 'hotmail.com',
+        'potmail.com': 'hotmail.com',
+        'cotmail.com': 'hotmail.com',
+
+        'icld.com': 'icloud.com',
+        'iclud.com': 'icloud.com',
+        'iclaud.com': 'icloud.com',
+        'icloud.con': 'icloud.com',
+        'icloud.co': 'icloud.com',
+        'icloud.cm': 'icloud.com',
+    };
+
+    function validateEmailMisspelling(email) {
+        if (!email || !email.includes('@')) {
+            return { valid: false, message: 'Please enter a valid email address.' };
+        }
+        const parts = email.toLowerCase().trim().split('@');
+        if (parts.length !== 2 || !parts[0] || !parts[1]) {
+            return { valid: false, message: 'Please enter a valid email address format (e.g. name@domain.com).' };
+        }
+        const domain = parts[1];
+        if (typoDomains[domain]) {
+            return {
+                valid: false,
+                message: `Please correct your email address. "@${domain}" appears to be misspelled. Did you mean "@${typoDomains[domain]}"?`,
+                suggested: typoDomains[domain]
+            };
+        }
+        if (/\.(con|cpm|ocm|cmo|comm|coom)$/i.test(domain)) {
+            return {
+                valid: false,
+                message: `Please correct your email address. The domain end ".${domain}" appears to be misspelled (e.g. ".con" instead of ".com").`
+            };
+        }
+        const standardEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!standardEmailRegex.test(email.trim())) {
+            return { valid: false, message: 'Please enter a valid email address format.' };
+        }
+        return { valid: true };
+    }
+
+    const regEmailInput = document.getElementById('regEmail');
+    regEmailInput?.addEventListener('blur', function() {
+        const val = this.value.trim();
+        if (val) {
+            const check = validateEmailMisspelling(val);
+            if (!check.valid) {
+                window.showSystemToast?.(check.message, { type: 'error', theme: 'patient', title: 'Misspelled Email Notice' });
+            }
+        }
+    });
+
+    function openPrivacyModal() {
+        if (!privacyConsentModal) return;
+        if (termsAgreementCheckbox) termsAgreementCheckbox.checked = false;
+        if (confirmCreateAccountBtn) {
+            confirmCreateAccountBtn.disabled = true;
+            confirmCreateAccountBtn.style.opacity = '0.45';
+            confirmCreateAccountBtn.style.cursor = 'not-allowed';
+            confirmCreateAccountBtn.textContent = 'Create Account';
+        }
+        privacyConsentModal.classList.remove('hidden');
+    }
+
+    function closePrivacyModal() {
+        if (!privacyConsentModal) return;
+        privacyConsentModal.classList.add('hidden');
+    }
+
+    termsAgreementCheckbox?.addEventListener('change', function() {
+        if (!confirmCreateAccountBtn) return;
+        if (this.checked) {
+            confirmCreateAccountBtn.disabled = false;
+            confirmCreateAccountBtn.style.opacity = '1';
+            confirmCreateAccountBtn.style.cursor = 'pointer';
+        } else {
+            confirmCreateAccountBtn.disabled = true;
+            confirmCreateAccountBtn.style.opacity = '0.45';
+            confirmCreateAccountBtn.style.cursor = 'not-allowed';
+        }
+    });
+
+    cancelPrivacyBtn?.addEventListener('click', closePrivacyModal);
+    privacyModalClose?.addEventListener('click', closePrivacyModal);
+    privacyConsentModal?.addEventListener('click', function(e) {
+        if (e.target === privacyConsentModal) {
+            closePrivacyModal();
+        }
+    });
+
     firstTimerForm?.addEventListener('submit', function (event) {
         event.preventDefault();
+        const firstName = (document.getElementById('firstName')?.value || '').trim();
+        const lastName = (document.getElementById('lastName')?.value || '').trim();
+        const birthdate = (document.getElementById('regBirthdate')?.value || '').trim();
+        const genderChecked = document.querySelector('input[name="gender"]:checked');
         const phone = (document.getElementById('regPhone')?.value || '').trim();
-        const password = document.getElementById('regPassword').value.trim();
+        const email = (document.getElementById('regEmail')?.value || '').trim();
+        const password = (document.getElementById('regPassword')?.value || '').trim();
+        const barangay = (document.getElementById('regBarangay')?.value || '').trim();
+        const purok = (document.getElementById('regPurok')?.value || '').trim();
+        const street = (document.getElementById('regStreet')?.value || '').trim();
+
+        if (!firstName) {
+            window.showSystemToast?.('Please enter your first name.', { type: 'error', theme: 'patient', title: 'Missing Information' });
+            document.getElementById('firstName')?.focus();
+            return;
+        }
+
+        if (!lastName) {
+            window.showSystemToast?.('Please enter your last name.', { type: 'error', theme: 'patient', title: 'Missing Information' });
+            document.getElementById('lastName')?.focus();
+            return;
+        }
+
+        if (!birthdate) {
+            window.showSystemToast?.('Please select your date of birth.', { type: 'error', theme: 'patient', title: 'Missing Information' });
+            document.getElementById('regBirthdate')?.focus();
+            return;
+        }
+
+        if (!genderChecked) {
+            window.showSystemToast?.('Please select your gender.', { type: 'error', theme: 'patient', title: 'Missing Information' });
+            return;
+        }
 
         // Contact number must only contain digits
         if (!/^\d+$/.test(phone)) {
@@ -1178,14 +1419,54 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (password.length < 6) {
-            window.showSystemToast?.('Password must be at least 6 characters long.', { type: 'error', theme: 'patient', title: 'Invalid Password' });
+        // Email validation & misspelling check
+        const emailCheck = validateEmailMisspelling(email);
+        if (!emailCheck.valid) {
+            window.showSystemToast?.(emailCheck.message, { type: 'error', theme: 'patient', title: 'Invalid Email Address' });
+            document.getElementById('regEmail')?.focus();
             return;
         }
 
-        const formData = new FormData(this);
+        if (password.length < 6) {
+            window.showSystemToast?.('Password must be at least 6 characters long.', { type: 'error', theme: 'patient', title: 'Invalid Password' });
+            document.getElementById('regPassword')?.focus();
+            return;
+        }
+
+        if (!barangay) {
+            window.showSystemToast?.('Please select your barangay.', { type: 'error', theme: 'patient', title: 'Missing Information' });
+            document.getElementById('regBarangay')?.focus();
+            return;
+        }
+
+        if (!purok) {
+            window.showSystemToast?.('Please select your purok / zone.', { type: 'error', theme: 'patient', title: 'Missing Information' });
+            document.getElementById('regPurok')?.focus();
+            return;
+        }
+
+        if (!street) {
+            window.showSystemToast?.('Please enter your street / house number.', { type: 'error', theme: 'patient', title: 'Missing Information' });
+            document.getElementById('regStreet')?.focus();
+            return;
+        }
+
+        // All inputs are valid -> pop Confidentiality & Data Privacy Consent Modal
+        openPrivacyModal();
+    });
+
+    confirmCreateAccountBtn?.addEventListener('click', function () {
+        if (!termsAgreementCheckbox || !termsAgreementCheckbox.checked || this.disabled) {
+            window.showSystemToast?.('Please check the agreement box confirming that your information is true and agreeing to the terms & policy.', { type: 'warning', theme: 'patient', title: 'Agreement Required' });
+            return;
+        }
+
+        this.disabled = true;
+        this.textContent = 'Creating Account...';
+
+        const formData = new FormData(firstTimerForm);
         formData.append('action', 'register_patient');
-        
+
         fetch('login-handler.php', {
             method: 'POST',
             body: formData
@@ -1195,6 +1476,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.success) {
                 window.location.href = 'dashboard.php';
             } else {
+                closePrivacyModal();
+                confirmCreateAccountBtn.disabled = false;
+                confirmCreateAccountBtn.textContent = 'Create Account';
                 window.showSystemToast?.(data.message || 'Registration failed. Please check the required fields.', { type: 'error', theme: 'patient', title: 'Registration Notice' });
             }
         })

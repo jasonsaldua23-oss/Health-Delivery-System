@@ -39,6 +39,12 @@ describe('Patient Portal - End-to-End Test Cases', () => {
       cy.get('button[type="submit"]').click();
     });
 
+    // Handle Confidentiality & Data Privacy Consent Modal
+    cy.get('#privacyConsentModal').should('be.visible');
+    cy.get('#confirmCreateAccountBtn').should('be.disabled');
+    cy.get('#termsAgreementCheckbox').check({ force: true });
+    cy.get('#confirmCreateAccountBtn').should('not.be.disabled').click();
+
     // Verification of account creation and redirection
     cy.url({ timeout: 10000 }).should('include', 'dashboard.php');
     cy.contains(testPatient.firstName).should('be.visible');

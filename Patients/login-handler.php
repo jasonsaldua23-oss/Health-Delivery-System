@@ -7,6 +7,116 @@ require_once __DIR__ . '/../shared/database.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
+function check_email_misspelling(string $email): ?string
+{
+    if (!str_contains($email, '@')) {
+        return 'Please enter a valid email address with an "@" symbol.';
+    }
+
+    $parts = explode('@', $email);
+    if (count($parts) !== 2) {
+        return 'Please enter a valid email address.';
+    }
+
+    $domain = strtolower(trim($parts[1]));
+
+    $typoMap = [
+        // Gmail typos
+        'pmail.com' => 'gmail.com',
+        'cmail.com' => 'gmail.com',
+        'gamil.com' => 'gmail.com',
+        'gmial.com' => 'gmail.com',
+        'gmaill.com' => 'gmail.com',
+        'gmai.com' => 'gmail.com',
+        'gmaik.com' => 'gmail.com',
+        'gmal.com' => 'gmail.com',
+        'gmil.com' => 'gmail.com',
+        'gmaul.com' => 'gmail.com',
+        'gmaol.com' => 'gmail.com',
+        'gmai.co' => 'gmail.com',
+        'gmaill.co' => 'gmail.com',
+        'gmail.con' => 'gmail.com',
+        'gmail.co' => 'gmail.com',
+        'gmail.cm' => 'gmail.com',
+        'gmail.cpm' => 'gmail.com',
+        'gmail.ocm' => 'gmail.com',
+        'gmail.om' => 'gmail.com',
+        'g-mail.com' => 'gmail.com',
+        'gmai.clm' => 'gmail.com',
+        'gnail.com' => 'gmail.com',
+        'fmail.com' => 'gmail.com',
+        'vmail.com' => 'gmail.com',
+        'tmail.com' => 'gmail.com',
+        'bmail.com' => 'gmail.com',
+        'gmail.col' => 'gmail.com',
+        'gmail.comm' => 'gmail.com',
+        'gmail.coom' => 'gmail.com',
+        'gmeil.com' => 'gmail.com',
+        'gmaill.con' => 'gmail.com',
+
+        // Yahoo typos
+        'yaho.com' => 'yahoo.com',
+        'yahooo.com' => 'yahoo.com',
+        'yhao.com' => 'yahoo.com',
+        'yaho.co' => 'yahoo.com',
+        'yahoo.con' => 'yahoo.com',
+        'yahoo.co' => 'yahoo.com',
+        'yahoo.cm' => 'yahoo.com',
+        'yahoo.cpm' => 'yahoo.com',
+        'yahoo.ocm' => 'yahoo.com',
+        'uahoo.com' => 'yahoo.com',
+        'tahoo.com' => 'yahoo.com',
+        'gaho.com' => 'yahoo.com',
+        'yhaoo.com' => 'yahoo.com',
+        'yahu.com' => 'yahoo.com',
+        'ymail.con' => 'ymail.com',
+        'yahoo.comm' => 'yahoo.com',
+
+        // Outlook typos
+        'outlok.com' => 'outlook.com',
+        'outloo.com' => 'outlook.com',
+        'outlock.com' => 'outlook.com',
+        'otlook.com' => 'outlook.com',
+        'putlook.com' => 'outlook.com',
+        'outlook.con' => 'outlook.com',
+        'outllok.com' => 'outlook.com',
+        'outluk.com' => 'outlook.com',
+        'outlokk.com' => 'outlook.com',
+
+        // Hotmail typos
+        'hotmial.com' => 'hotmail.com',
+        'hotmale.com' => 'hotmail.com',
+        'hotmaill.com' => 'hotmail.com',
+        'hotmai.com' => 'hotmail.com',
+        'hotmal.com' => 'hotmail.com',
+        'hotmaik.com' => 'hotmail.com',
+        'hotmali.com' => 'hotmail.com',
+        'hotmail.con' => 'hotmail.com',
+        'potmail.com' => 'hotmail.com',
+        'cotmail.com' => 'hotmail.com',
+        'hotmaill.con' => 'hotmail.com',
+
+        // iCloud typos
+        'icld.com' => 'icloud.com',
+        'iclud.com' => 'icloud.com',
+        'iclaud.com' => 'icloud.com',
+        'icloud.con' => 'icloud.com',
+        'icloud.co' => 'icloud.com',
+        'icloud.cm' => 'icloud.com',
+    ];
+
+    if (isset($typoMap[$domain])) {
+        $suggested = $typoMap[$domain];
+        return "Please correct your email address. \"@{$domain}\" appears to be misspelled. Did you mean \"@{$suggested}\"?";
+    }
+
+    if (preg_match('/\.(con|cpm|ocm|cmo|comm|coom)$/i', $domain)) {
+        return "Please correct your email address. The domain end \".{$domain}\" appears to be misspelled. Please enter a valid email domain (e.g. .com).";
+    }
+
+    return null;
+}
+
 $action = trim((string) ($_POST['action'] ?? ''));
 
 if ($action === 'login_patient') {
@@ -171,6 +281,13 @@ if ($action === 'register_patient') {
             exit;
         }
 
+        // Validate email domain spelling and prevent common typos (e.g. @pmail.com, @cmail.com, @gamil.com)
+        $typoError = check_email_misspelling($email);
+        if ($typoError !== null) {
+            echo json_encode(['success' => false, 'message' => $typoError], JSON_THROW_ON_ERROR);
+            exit;
+        }
+
         // Check if account already exists
         $existing = fetch_patient_account_by_email($email);
         if ($existing !== null) {
@@ -242,4 +359,7 @@ if ($action === 'register_patient') {
     exit;
 }
 
-echo json_encode(['success' => false, 'message' => 'Invalid action'], JSON_THROW_ON_ERROR);
+if ($action !== '' || ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    echo json_encode(['success' => false, 'message' => 'Invalid action'], JSON_THROW_ON_ERROR);
+    exit;
+}

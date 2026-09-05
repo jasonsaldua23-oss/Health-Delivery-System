@@ -91,6 +91,168 @@ if (!function_exists('staff_icon')) {
     }
 }
 
+if (!function_exists('render_patient_profile_body')) {
+    function render_patient_profile_body(array $prof, array $station, string $programFilter = '', string $patientDateFilter = ''): string
+    {
+        ob_start();
+        $patInitials = strtoupper(substr((string) ($prof['first_name'] ?? 'P'), 0, 1) . substr((string) ($prof['last_name'] ?? 'U'), 0, 1));
+        $patHasPhoto = !empty($prof['photo_path']);
+        ?>
+        <!-- Patient Identity & Demographics Header -->
+        <div class="patient-profile-header-card">
+            <div class="patient-profile-avatar-box">
+                <?php if ($patHasPhoto): ?>
+                    <img src="../Patients/<?= h((string) $prof['photo_path']); ?>" alt="<?= h($prof['full_name']); ?>" class="patient-profile-photo-lg">
+                <?php else: ?>
+                    <div class="patient-profile-initials-lg"><?= h($patInitials); ?></div>
+                <?php endif; ?>
+            </div>
+            <div class="patient-profile-main-meta">
+                <div class="profile-name-badge-row">
+                    <h3><?= h($prof['full_name']); ?></h3>
+                    <span class="appt-code-badge id-pill">ID: #<?= h($prof['patient_id']); ?></span>
+                    <?php if ($patHasPhoto): ?>
+                        <span class="photo-status-badge verified" style="position:static;transform:none;font-size:0.75rem;padding:3px 10px;">✓ Verified Photo</span>
+                    <?php endif; ?>
+                </div>
+                <div class="profile-demographics-grid">
+                    <div class="profile-demo-tag">
+                        <strong>Date of Birth:</strong>
+                        <span><?= !empty($prof['birth_date']) ? h(date('F j, Y', strtotime($prof['birth_date']))) : 'N/A'; ?> (<?= h($prof['age_label']); ?>)</span>
+                    </div>
+                    <div class="profile-demo-tag">
+                        <strong>Gender:</strong>
+                        <span><?= h($prof['gender']); ?></span>
+                    </div>
+                    <div class="profile-demo-tag">
+                        <strong>Contact:</strong>
+                        <span><?= staff_icon('phone'); ?> <?= h($prof['contact_number'] ?: 'None provided'); ?></span>
+                    </div>
+                    <div class="profile-demo-tag full-row">
+                        <strong>Home Address:</strong>
+                        <span><?= staff_icon('pin'); ?> <?= h($prof['complete_address'] ?: 'Barangay ' . $station['barangay'] . ', Bacolod City'); ?></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric Summary KPI Cards -->
+        <div class="profile-kpi-summary-row">
+            <div class="profile-mini-kpi teal">
+                <small>Total Completed Consultations</small>
+                <strong><?= $prof['total_completed']; ?></strong>
+            </div>
+            <div class="profile-mini-kpi blue">
+                <small>Latest Consultation Date</small>
+                <strong><?= !empty($prof['latest_appointment']['preferred_date']) ? h(date('M j, Y', strtotime((string) $prof['latest_appointment']['preferred_date']))) : 'N/A'; ?></strong>
+                <span><?= h((string) ($prof['latest_appointment']['service_name'] ?? '')); ?></span>
+            </div>
+            <div class="profile-mini-kpi purple">
+                <small>Assigned Barangay Station</small>
+                <strong><?= h($station['name']); ?></strong>
+            </div>
+        </div>
+
+        <!-- Appointment History Section Header -->
+        <div class="profile-history-section-head">
+            <div class="history-title-group">
+                <span class="history-sec-icon"><?= staff_icon('history'); ?></span>
+                <h4>Consultation &amp; Appointment History (<?= count($prof['appointments']); ?> <?= count($prof['appointments']) === 1 ? 'Record' : 'Records'; ?>)</h4>
+            </div>
+            <span class="history-badge-count">Chronological History</span>
+        </div>
+
+        <!-- Appointment History Timeline Cards -->
+        <div class="profile-timeline-stack">
+            <?php foreach ($prof['appointments'] as $appt): ?>
+                <?php
+                $apptCode = (string) ($appt['appointment_code'] ?? $appt['reference_code'] ?? '');
+                $hasFollowUp = !empty($appt['follow_up_date']);
+                ?>
+                <article class="history-timeline-entry-card">
+                    <div class="history-entry-top">
+                        <div class="history-service-date">
+                            <span class="service-pill-tag">
+                                <?= staff_icon('stethoscope'); ?> <?= h((string) $appt['service_name']); ?>
+                            </span>
+                            <span class="history-date-label">
+                                <?= h(date('l, F j, Y', strtotime((string) $appt['preferred_date']))); ?>
+                            </span>
+                            <span class="history-time-tag">
+                                <?= staff_icon('clock'); ?> <?= h((string) ($appt['preferred_time'] ?: 'Regular Hours')); ?>
+                            </span>
+                        </div>
+                        <div class="history-top-badges">
+                            <span class="appt-code-badge">#<?= h($apptCode); ?></span>
+                            <span class="status-pill status-confirmed">✓ Completed</span>
+                        </div>
+                    </div>
+
+                    <!-- Vital Signs Strip -->
+                    <div class="history-vitals-strip">
+                        <div class="vitals-micro-item">
+                            <span class="vitals-micro-lbl"><?= staff_icon('pulse'); ?> Temp</span>
+                            <strong><?= h((string) (($appt['body_temperature'] ?? '') !== '' ? $appt['body_temperature'] . ' °C' : 'N/A')); ?></strong>
+                        </div>
+                        <div class="vitals-micro-item">
+                            <span class="vitals-micro-lbl"><?= staff_icon('stethoscope'); ?> BP</span>
+                            <strong><?= h((string) (($appt['blood_pressure'] ?? '') !== '' ? $appt['blood_pressure'] : 'N/A')); ?></strong>
+                        </div>
+                        <div class="vitals-micro-item">
+                            <span class="vitals-micro-lbl"><?= staff_icon('heart'); ?> Pulse</span>
+                            <strong><?= h((string) (($appt['pulse_rate'] ?? '') !== '' ? $appt['pulse_rate'] . ' bpm' : 'N/A')); ?></strong>
+                        </div>
+                        <div class="vitals-micro-item">
+                            <span class="vitals-micro-lbl"><?= staff_icon('sparkle'); ?> Resp</span>
+                            <strong><?= h((string) (($appt['respiration_rate'] ?? '') !== '' ? $appt['respiration_rate'] . ' cpm' : 'N/A')); ?></strong>
+                        </div>
+                    </div>
+
+                    <!-- Doctor's Notes -->
+                    <?php if (!empty($appt['doctor_notes'])): ?>
+                        <div class="history-doc-notes-box">
+                            <strong class="notes-head"><?= staff_icon('edit'); ?> Doctor's Assessment &amp; Clinical Notes:</strong>
+                            <p><?= nl2br(h((string) $appt['doctor_notes'])); ?></p>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Patient Booking Notes -->
+                    <?php if (!empty($appt['notes'])): ?>
+                        <div class="history-complaint-row">
+                            <strong>Chief Complaint / Notes:</strong> <?= h((string) $appt['notes']); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Follow-up Checkup Banner if present -->
+                    <?php if ($hasFollowUp): ?>
+                        <div class="history-followup-alert">
+                            <span class="alert-icon"><?= staff_icon('calendar'); ?></span>
+                            <div>
+                                <strong>Follow-up Consultation Scheduled:</strong>
+                                <span><?= h(date('l, F j, Y', strtotime((string) $appt['follow_up_date']))); ?> (<?= h((string) ($appt['follow_up_time'] ?: 'Morning Session')); ?>)</span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Footer Action -->
+                    <div class="history-entry-actions">
+                        <a class="view-medical-file-btn slim-btn" href="?page=patients<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>&appointment_view=<?= h($apptCode); ?>" title="View complete medical file">
+                            <?= staff_icon('eye'); ?>
+                            <span>View Full Medical Record</span>
+                        </a>
+                        <a class="set-followup-btn slim-btn" href="?page=patients<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>&appointment_followup=<?= h($apptCode); ?>" title="Schedule or edit follow-up check-up">
+                            <?= staff_icon('calendar'); ?>
+                            <span><?= $hasFollowUp ? 'Edit Follow-up' : 'Schedule Follow-up'; ?></span>
+                        </a>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+        <?php
+        return (string) ob_get_clean();
+    }
+}
+
 if (!function_exists('csrf_token_staff')) {
     function csrf_token_staff(): string
     {
@@ -457,6 +619,7 @@ if ($selectedRemarksCode === '' && $selectedRecordCode !== '' && $page !== 'queu
 }
 $selectedViewRecordCode = trim((string) ($_GET['appointment_view'] ?? ''));
 $selectedFollowUpRecordCode = trim((string) ($_GET['appointment_followup'] ?? ''));
+$selectedPatientProfileKey = trim((string) ($_GET['patient_profile'] ?? ''));
 $selectedPhotoAppointmentId = (int) ($_GET['appointment'] ?? 0);
 $eventEditId = (int) ($_GET['edit_event'] ?? 0);
 $showEventModal = (($_GET['show_event_modal'] ?? '') === '1') || $eventEditId > 0;
@@ -566,6 +729,89 @@ $patientRecordEntries = $programFilter === '' ? $patientStationRecords : array_v
     $patientStationRecords,
     static fn(array $item): bool => (string) ($item['service_slug'] ?? '') === $programFilter
 ));
+
+// Group completed patient records by patient to arrange alphabetically by patient name / profile
+$groupedPatientProfiles = [];
+foreach ($patientRecordEntries as $record) {
+    $pId = trim((string) ($record['patient_id'] ?? ''));
+    $pFirst = trim((string) ($record['first_name'] ?? ''));
+    $pLast = trim((string) ($record['last_name'] ?? ''));
+    $pPhone = trim((string) ($record['contact_number'] ?? ''));
+
+    $pKey = $pId !== '' ? 'id_' . strtolower(preg_replace('/[^a-z0-9]/i', '', $pId)) : 'name_' . strtolower(preg_replace('/[^a-z0-9]/i', '', $pFirst . '_' . $pLast . '_' . $pPhone));
+
+    if (!isset($groupedPatientProfiles[$pKey])) {
+        // Collect all completed consultation records for this patient at the station
+        $patientAllCompleted = array_values(array_filter(
+            $allStationAppointments,
+            static function(array $item) use ($pId, $pFirst, $pLast): bool {
+                $isCompleted = (string) ($item['status'] ?? '') === 'Completed';
+                if (!$isCompleted) return false;
+                $itemId = trim((string) ($item['patient_id'] ?? ''));
+                if ($pId !== '' && $itemId !== '' && strcasecmp($pId, $itemId) === 0) {
+                    return true;
+                }
+                return strcasecmp(trim((string) ($item['first_name'] ?? '')), $pFirst) === 0
+                    && strcasecmp(trim((string) ($item['last_name'] ?? '')), $pLast) === 0;
+            }
+        ));
+
+        // Sort appointments chronologically descending (latest first)
+        usort($patientAllCompleted, static function(array $a, array $b): int {
+            $tA = strtotime((string) ($a['preferred_date'] ?? '1970-01-01'));
+            $tB = strtotime((string) ($b['preferred_date'] ?? '1970-01-01'));
+            return $tB <=> $tA;
+        });
+
+        // Resolve patient photo if available in any completed record
+        $patPhoto = '';
+        foreach ($patientAllCompleted as $cAppt) {
+            if (!empty($cAppt['photo_path'])) {
+                $patPhoto = (string) $cAppt['photo_path'];
+                break;
+            }
+        }
+        if ($patPhoto === '' && !empty($record['photo_path'])) {
+            $patPhoto = (string) $record['photo_path'];
+        }
+
+        $groupedPatientProfiles[$pKey] = [
+            'key' => $pKey,
+            'patient_id' => $pId ?: strtoupper(substr(md5($pFirst . $pLast . $pPhone), 0, 6)),
+            'first_name' => $pFirst,
+            'middle_name' => trim((string) ($record['middle_name'] ?? '')),
+            'last_name' => $pLast,
+            'full_name' => full_name($record),
+            'birth_date' => (string) ($record['birth_date'] ?? ''),
+            'age_label' => age_label($record),
+            'gender' => (string) ($record['gender'] ?? 'Not specified'),
+            'contact_number' => $pPhone,
+            'complete_address' => (string) ($record['complete_address'] ?? ''),
+            'photo_path' => $patPhoto,
+            'appointments' => !empty($patientAllCompleted) ? $patientAllCompleted : [$record],
+            'total_completed' => count($patientAllCompleted) ?: 1,
+            'latest_appointment' => !empty($patientAllCompleted) ? $patientAllCompleted[0] : $record,
+        ];
+    }
+}
+
+// Sort patient profiles alphabetically by Last Name, then First Name
+usort($groupedPatientProfiles, static function(array $a, array $b): int {
+    $cmp = strcasecmp((string) ($a['last_name'] ?? ''), (string) ($b['last_name'] ?? ''));
+    if ($cmp !== 0) return $cmp;
+    return strcasecmp((string) ($a['first_name'] ?? ''), (string) ($b['first_name'] ?? ''));
+});
+
+$selectedPatientProfile = null;
+if ($selectedPatientProfileKey !== '') {
+    foreach ($groupedPatientProfiles as $prof) {
+        if ($prof['key'] === $selectedPatientProfileKey || strcasecmp((string)$prof['patient_id'], $selectedPatientProfileKey) === 0) {
+            $selectedPatientProfile = $prof;
+            break;
+        }
+    }
+}
+
 $csrf = csrf_token_staff();
 
 $today = date('Y-m-d');
@@ -2105,69 +2351,82 @@ for ($i = 0; $i < 6; $i++) {
                     </div>
                 </section>
 
-                <!-- Section 2: Recorded Station Medical Records -->
+                <!-- Section 2: Completed Patient Profiles & Medical History -->
                 <section class="patient-section-wrapper" style="margin-top: 32px;">
                     <div class="patient-section-header">
                         <div class="section-title-group">
-                            <span class="sec-icon-pill done"><?= staff_icon('stethoscope'); ?></span>
+                            <span class="sec-icon-pill done"><?= staff_icon('patients'); ?></span>
                             <div>
-                                <h2>Recorded Station Medical History</h2>
-                                <p>Completed patient consultations with saved vital signs and clinical assessment.</p>
+                                <h2>Completed Patient Profiles &amp; Medical History</h2>
+                                <p>Alphabetically organized patient profiles with complete clinical records and past consultation histories.</p>
                             </div>
                         </div>
-                        <span class="patient-section-counter"><?= count($patientRecordEntries); ?> recorded</span>
+                        <span class="patient-section-counter"><?= count($groupedPatientProfiles); ?> <?= count($groupedPatientProfiles) === 1 ? 'patient profile' : 'patient profiles'; ?> (<?= count($patientRecordEntries); ?> <?= count($patientRecordEntries) === 1 ? 'visit' : 'visits'; ?>)</span>
                     </div>
 
                     <div class="patient-cards-stack">
-                        <?php if ($patientRecordEntries === []): ?>
+                        <?php if ($groupedPatientProfiles === []): ?>
                             <div class="panel-card empty-state appt-empty-box">
                                 <div class="appt-empty-icon"><?= staff_icon('patients'); ?></div>
                                 <h3>No completed patient records</h3>
                                 <p>No completed station clinical records found for this service yet.</p>
                             </div>
                         <?php else: ?>
-                            <?php foreach ($patientRecordEntries as $record): ?>
+                            <?php foreach ($groupedPatientProfiles as $prof): ?>
                                 <?php
-                                $patInitials = strtoupper(substr((string) ($record['first_name'] ?? 'P'), 0, 1) . substr((string) ($record['last_name'] ?? 'U'), 0, 1));
-                                $apptCode = (string) ($record['appointment_code'] ?? $record['reference_code'] ?? '');
-                                $hasTemp = !empty($record['body_temperature']);
-                                $hasBP = !empty($record['blood_pressure']);
-                                $hasPR = !empty($record['pulse_rate']);
+                                $patInitials = strtoupper(substr((string) ($prof['first_name'] ?? 'P'), 0, 1) . substr((string) ($prof['last_name'] ?? 'U'), 0, 1));
+                                $patHasPhoto = !empty($prof['photo_path']);
+                                $latestAppt = $prof['latest_appointment'];
+                                $profUrl = '?page=patients' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($patientDateFilter !== '' ? '&patient_date=' . urlencode($patientDateFilter) : '') . '&patient_profile=' . urlencode($prof['key']);
                                 ?>
-                                <article class="modern-patient-record-card is-completed">
+                                <article class="modern-patient-record-card patient-profile-card is-completed" id="profileCard_<?= h($prof['key']); ?>">
                                     <div class="pat-card-left">
-                                        <div class="pat-card-avatar done"><?= h($patInitials); ?></div>
+                                        <div class="pat-card-avatar done" style="<?= $patHasPhoto ? 'background:transparent;' : ''; ?>">
+                                            <?php if ($patHasPhoto): ?>
+                                                <img src="../Patients/<?= h((string) $prof['photo_path']); ?>" alt="<?= h($prof['full_name']); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">
+                                            <?php else: ?>
+                                                <?= h($patInitials); ?>
+                                            <?php endif; ?>
+                                        </div>
                                         <div class="pat-card-info">
                                             <div class="pat-card-title-row">
-                                                <h3><?= h(full_name($record)); ?></h3>
-                                                <?php if ($apptCode !== ''): ?>
-                                                    <span class="appt-code-badge">#<?= h($apptCode); ?></span>
+                                                <h3 style="font-size: 1.08rem; font-weight: 700; color: #0f172a; margin: 0;"><?= h($prof['full_name']); ?></h3>
+                                                <span class="appt-code-badge" style="background:#f0fdfa; color:#0d9488; border:1px solid #ccfbf1; font-weight:600;">ID: #<?= h($prof['patient_id']); ?></span>
+                                                <?php if ($patHasPhoto): ?>
+                                                    <span class="photo-status-badge verified" style="position:static;transform:none;font-size:0.7rem;padding:2px 8px;">✓ Verified ID</span>
                                                 <?php endif; ?>
-                                                <?php if (!empty($record['follow_up_date'])): ?>
-                                                    <span class="follow-up-badge-pill" title="Follow-up scheduled for <?= h(date('M j, Y', strtotime((string) $record['follow_up_date']))); ?>">
-                                                        <?= staff_icon('calendar'); ?> Follow-up: <?= h(date('M j', strtotime((string) $record['follow_up_date']))); ?>
-                                                    </span>
-                                                <?php endif; ?>
+                                                <span class="patient-visit-count-pill" style="font-size: 0.75rem; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; padding: 2px 9px; border-radius: 9999px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                                    <?= staff_icon('history'); ?> <?= $prof['total_completed']; ?> <?= $prof['total_completed'] === 1 ? 'Visit' : 'Visits'; ?>
+                                                </span>
                                             </div>
                                             <div class="pat-card-meta-row">
-                                                <span class="pat-meta-pill service"><?= staff_icon('stethoscope'); ?> <?= h((string) $record['service_name']); ?></span>
-                                                <span class="pat-meta-pill date"><?= staff_icon('calendar'); ?> <?= h(date('M j, Y', strtotime((string) $record['preferred_date']))); ?></span>
-                                                <span class="pat-meta-pill demo"><?= h(age_label($record)); ?> • <?= h((string) ($record['gender'] ?? '')); ?></span>
+                                                <span class="pat-meta-pill demo"><?= h($prof['age_label']); ?> • <?= h($prof['gender']); ?></span>
+                                                <?php if (!empty($prof['contact_number'])): ?>
+                                                    <span class="pat-meta-pill phone"><?= staff_icon('phone'); ?> <?= h($prof['contact_number']); ?></span>
+                                                <?php endif; ?>
+                                                <span class="pat-meta-pill address"><?= staff_icon('pin'); ?> <?= h($prof['complete_address'] ?: 'Barangay ' . $station['barangay'] . ', Bacolod City'); ?></span>
                                             </div>
+                                            <?php if ($latestAppt !== null): ?>
+                                                <div class="patient-latest-visit-row" style="margin-top: 6px; font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                                    <span style="font-weight: 600; color: #0d9488;">Latest Check-up:</span>
+                                                    <span><?= h((string) $latestAppt['service_name']); ?> (<?= h(date('M j, Y', strtotime((string) $latestAppt['preferred_date']))); ?>)</span>
+                                                    <?php if (!empty($latestAppt['blood_pressure'])): ?>
+                                                        <span style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1px 6px; border-radius: 4px; font-size: 0.75rem; color: #334155;">BP: <?= h((string) $latestAppt['blood_pressure']); ?></span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                     <div class="pat-card-right">
-                                        <span class="status-pill status-confirmed">✓ Recorded</span>
-                                        <div class="pat-card-actions-group">
-                                            <a class="view-medical-file-btn" href="?page=patients<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>&appointment_view=<?= h($apptCode); ?>" title="View detailed clinical record">
-                                                <?= staff_icon('eye'); ?>
-                                                <span>View Medical File</span>
-                                            </a>
-                                            <a class="set-followup-btn" href="?page=patients<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>&appointment_followup=<?= h($apptCode); ?>" title="Set or update follow-up consultation date">
-                                                <?= staff_icon('calendar'); ?>
-                                                <span><?= !empty($record['follow_up_date']) ? 'Edit Follow-up' : 'Set Follow-up'; ?></span>
-                                            </a>
-                                        </div>
+                                        <a class="view-medical-file-btn patient-profile-open-btn" href="<?= h($profUrl); ?>" onclick="return window.openPatientProfileModal(event, '<?= h($prof['key']); ?>');" title="View Patient Profile and Appointment History" style="background: linear-gradient(135deg, #0d9488, #0f766e); color: #ffffff; border: none; padding: 8px 16px; border-radius: 10px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25);">
+                                            <?= staff_icon('history'); ?>
+                                            <span>View Profile &amp; History</span>
+                                        </a>
+                                    </div>
+
+                                    <!-- Hidden template for instant client-side modal popup without page reload -->
+                                    <div id="patientProfileContent_<?= h($prof['key']); ?>" style="display: none;">
+                                        <?= render_patient_profile_body($prof, $station, $programFilter, $patientDateFilter); ?>
                                     </div>
                                 </article>
                             <?php endforeach; ?>
@@ -2632,6 +2891,44 @@ for ($i = 0; $i < 6; $i++) {
                     </div>
                 </section>
             <?php endif; ?>
+
+            <!-- Dedicated Patient Profile & Consultation History Modal Dialog -->
+            <?php
+            $profileReturnUrl = '?page=patients' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($patientDateFilter !== '' ? '&patient_date=' . urlencode($patientDateFilter) : '');
+            ?>
+            <section class="account-modal-backdrop <?= $selectedPatientProfile !== null ? 'is-active-modal' : 'hidden'; ?>" id="patientProfileModalBackdrop" style="<?= $selectedPatientProfile !== null ? 'display:flex;' : 'display:none;'; ?>">
+                <div class="account-modal-card clinical-dialog-card patient-profile-dialog-card" role="dialog" aria-modal="true" style="max-width: 840px; width: 95%; max-height: 90vh; overflow-y: auto; background: #ffffff; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);">
+                    <div class="account-modal-header patient-profile-modal-header" style="background: linear-gradient(135deg, #0f766e, #0d9488); color: #ffffff; padding: 20px 24px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                        <div class="account-modal-title-group" style="display: flex; align-items: center; gap: 14px;">
+                            <span class="account-modal-icon" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                                <?= staff_icon('patients'); ?>
+                            </span>
+                            <div>
+                                <h2 style="color: #ffffff; font-size: 1.25rem; margin: 0; font-weight: 700;">Patient Profile &amp; Medical History</h2>
+                                <p style="color: rgba(255, 255, 255, 0.85); font-size: 0.85rem; margin-top: 2px; margin-bottom: 0;">Comprehensive Clinical Records &amp; Consultation Timeline</p>
+                            </div>
+                        </div>
+                        <a class="account-modal-close" href="<?= h($profileReturnUrl); ?>" onclick="return window.closePatientProfileModal(event, '<?= h($profileReturnUrl); ?>');" aria-label="Close modal" style="color: #ffffff; opacity: 0.85; font-size: 1.6rem; text-decoration: none; cursor: pointer; line-height: 1;">×</a>
+                    </div>
+
+                    <div class="account-modal-body" id="patientProfileModalBody" style="padding: 24px;">
+                        <?php if ($selectedPatientProfile !== null): ?>
+                            <?= render_patient_profile_body($selectedPatientProfile, $station, $programFilter, $patientDateFilter); ?>
+                        <?php else: ?>
+                            <div class="panel-card empty-state" style="text-align: center; padding: 30px;">
+                                <p>Select a patient profile to view consultation history.</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="account-modal-footer" style="padding: 16px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; background: #fafafa; border-radius: 0 0 20px 20px;">
+                        <a class="primary-btn" href="<?= h($profileReturnUrl); ?>" onclick="return window.closePatientProfileModal(event, '<?= h($profileReturnUrl); ?>');" style="background: linear-gradient(135deg, #0d9488, #0f766e); color: #ffffff; padding: 10px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+                            <?= staff_icon('check'); ?>
+                            <span>Close Record</span>
+                        </a>
+                    </div>
+                </div>
+            </section>
         <?php elseif ($page === 'image-capture'): ?>
             <?php 
             $captureAppointment = $photoAppointment; 
@@ -4764,7 +5061,7 @@ window.closeClinicalModal = function(e, returnUrl) {
         e.stopPropagation();
     }
     const currentScrollY = window.pageYOffset || document.documentElement.scrollTop || window.scrollY || 0;
-    const modals = document.querySelectorAll('#clinicalModalBackdrop, #viewClinicalModalBackdrop, #followUpModalBackdrop, #vitalsModalBackdrop');
+    const modals = document.querySelectorAll('#clinicalModalBackdrop, #viewClinicalModalBackdrop, #followUpModalBackdrop, #vitalsModalBackdrop, #patientProfileModalBackdrop');
     modals.forEach(m => {
         m.remove();
     });
@@ -4779,6 +5076,7 @@ window.closeClinicalModal = function(e, returnUrl) {
             targetUrl.searchParams.delete('appointment_view');
             targetUrl.searchParams.delete('appointment_followup');
             targetUrl.searchParams.delete('encode_vitals');
+            targetUrl.searchParams.delete('patient_profile');
         }
         window.history.replaceState(null, '', targetUrl.pathname + targetUrl.search);
     } catch (err) {}
@@ -4786,9 +5084,67 @@ window.closeClinicalModal = function(e, returnUrl) {
     return false;
 };
 
+window.openPatientProfileModal = function(e, profileKey) {
+    if (e && e.preventDefault) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const currentScrollY = window.pageYOffset || document.documentElement.scrollTop || window.scrollY || 0;
+    const modal = document.getElementById('patientProfileModalBackdrop');
+    const modalBody = document.getElementById('patientProfileModalBody');
+    const contentEl = document.getElementById('patientProfileContent_' + profileKey);
+
+    if (modal && modalBody && contentEl) {
+        modalBody.innerHTML = contentEl.innerHTML;
+        modal.classList.remove('hidden');
+        modal.classList.add('is-active-modal');
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('patient_profile', profileKey);
+            window.history.replaceState({ profileKey: profileKey }, '', url.pathname + url.search);
+        } catch (err) {}
+
+        return false;
+    }
+
+    return true;
+};
+
+window.closePatientProfileModal = function(e, returnUrl) {
+    if (e && e.preventDefault) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const currentScrollY = window.pageYOffset || document.documentElement.scrollTop || window.scrollY || 0;
+    const modal = document.getElementById('patientProfileModalBackdrop');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('is-active-modal');
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    try {
+        let targetUrl;
+        if (returnUrl) {
+            targetUrl = new URL(returnUrl, window.location.href);
+        } else {
+            targetUrl = new URL(window.location.href);
+            targetUrl.searchParams.delete('patient_profile');
+        }
+        window.history.replaceState(null, '', targetUrl.pathname + targetUrl.search);
+    } catch (err) {}
+
+    window.scrollTo({ top: currentScrollY, behavior: 'instant' });
+    return false;
+};
+
 // Preserve scroll position when opening records or modals across the station
 document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.report-record-btn, .remarks-btn, .view-medical-file-btn, .set-followup-btn, .queue-vitals-btn, .appt-action-btn, .queue-call-btn, .queue-done-btn, .confirm-save-btn, .select-patient-btn, .photo-req');
+    const btn = e.target.closest('.report-record-btn, .remarks-btn, .view-medical-file-btn, .set-followup-btn, .queue-vitals-btn, .appt-action-btn, .queue-call-btn, .queue-done-btn, .confirm-save-btn, .select-patient-btn, .photo-req, .patient-profile-open-btn');
     if (btn) {
         sessionStorage.setItem('station_scroll_pos', window.scrollY);
         if (btn.classList.contains('select-patient-btn') && !btn.classList.contains('is-disabled') && !btn.classList.contains('is-active-badge') && !btn.classList.contains('is-completed-badge')) {
@@ -4796,7 +5152,9 @@ document.addEventListener('click', function(e) {
         }
     }
     if (e.target && e.target.classList && e.target.classList.contains('account-modal-backdrop')) {
-        if (e.target.id === 'clinicalModalBackdrop' || e.target.id === 'viewClinicalModalBackdrop' || e.target.id === 'followUpModalBackdrop' || e.target.id === 'vitalsModalBackdrop') {
+        if (e.target.id === 'patientProfileModalBackdrop') {
+            window.closePatientProfileModal(e);
+        } else if (e.target.id === 'clinicalModalBackdrop' || e.target.id === 'viewClinicalModalBackdrop' || e.target.id === 'followUpModalBackdrop' || e.target.id === 'vitalsModalBackdrop') {
             window.closeClinicalModal(e);
         }
     }
@@ -4812,6 +5170,11 @@ document.addEventListener('submit', function(e) {
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
+        const profileModal = document.getElementById('patientProfileModalBackdrop');
+        if (profileModal && (profileModal.classList.contains('is-active-modal') || profileModal.style.display !== 'none')) {
+            window.closePatientProfileModal(e);
+            return;
+        }
         const openModal = document.querySelector('#clinicalModalBackdrop, #viewClinicalModalBackdrop, #followUpModalBackdrop, #vitalsModalBackdrop');
         if (openModal) {
             window.closeClinicalModal(e);
@@ -5030,8 +5393,10 @@ function toggleDualStatusFilter(clickedVal, otherVal, paramName, event) {
         const isEventModalOpen = eventModal && eventModal.classList.contains('open');
         const unattendedModal = document.getElementById('unattendedModal');
         const isUnattendedModalOpen = unattendedModal && !unattendedModal.hasAttribute('hidden');
+        const profileModalEl = document.getElementById('patientProfileModalBackdrop');
+        const isProfileModalOpen = profileModalEl && (profileModalEl.classList.contains('is-active-modal') || (!profileModalEl.classList.contains('hidden') && profileModalEl.style.display !== 'none'));
 
-        if (isCameraActive || isTyping || isModalOpen || isEventModalOpen || isUnattendedModalOpen) return;
+        if (isCameraActive || isTyping || isModalOpen || isEventModalOpen || isUnattendedModalOpen || isProfileModalOpen) return;
 
         try {
             isStaffSyncing = true;
