@@ -2896,8 +2896,8 @@ for ($i = 0; $i < 6; $i++) {
             <?php
             $profileReturnUrl = '?page=patients' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($patientDateFilter !== '' ? '&patient_date=' . urlencode($patientDateFilter) : '');
             ?>
-            <section class="account-modal-backdrop <?= $selectedPatientProfile !== null ? 'is-active-modal' : 'hidden'; ?>" id="patientProfileModalBackdrop" style="<?= $selectedPatientProfile !== null ? 'display:flex;' : 'display:none;'; ?>">
-                <div class="account-modal-card clinical-dialog-card patient-profile-dialog-card" role="dialog" aria-modal="true" style="max-width: 840px; width: 95%; max-height: 90vh; overflow-y: auto; background: #ffffff; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);">
+            <section class="account-modal-backdrop <?= $selectedPatientProfile !== null ? 'is-active-modal' : 'hidden'; ?>" id="patientProfileModalBackdrop" style="<?= $selectedPatientProfile !== null ? 'display:flex;align-items:center;justify-content:center;' : 'display:none;'; ?>">
+                <div class="account-modal-card clinical-dialog-card patient-profile-dialog-card" role="dialog" aria-modal="true" style="margin: auto; max-width: 840px; width: min(100%, 840px); max-height: 90vh; overflow-y: auto; background: #ffffff; border-radius: 20px; box-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.35);">
                     <div class="account-modal-header patient-profile-modal-header" style="background: linear-gradient(135deg, #0f766e, #0d9488); color: #ffffff; padding: 20px 24px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center;">
                         <div class="account-modal-title-group" style="display: flex; align-items: center; gap: 14px;">
                             <span class="account-modal-icon" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
@@ -5099,6 +5099,8 @@ window.openPatientProfileModal = function(e, profileKey) {
         modal.classList.remove('hidden');
         modal.classList.add('is-active-modal');
         modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
         document.body.style.overflow = 'hidden';
 
         try {
