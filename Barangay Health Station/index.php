@@ -598,6 +598,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'save
     exit;
 }
 $page = $_GET['page'] ?? 'dashboard';
+$view = trim((string) ($_GET['view'] ?? ''));
 $programFilter = trim((string) ($_GET['program'] ?? ''));
 $statusFilter = trim((string) ($_GET['status'] ?? ''));
 $dateFilter = trim((string) ($_GET['date'] ?? 'both'));
@@ -721,7 +722,9 @@ if ($patientSearch !== '') {
             $code = strtolower((string) ($item['appointment_code'] ?? $item['reference_code'] ?? ''));
             $phone = strtolower((string) ($item['contact_number'] ?? ''));
             $svc = strtolower((string) ($item['service_name'] ?? ''));
-            return str_contains($name, $st) || str_contains($code, $st) || str_contains($phone, $st) || str_contains($svc, $st);
+            $pid = strtolower((string) ($item['patient_id'] ?? ''));
+            $addr = strtolower((string) ($item['complete_address'] ?? ''));
+            return str_contains($name, $st) || str_contains($code, $st) || str_contains($phone, $st) || str_contains($svc, $st) || str_contains($pid, $st) || str_contains($addr, $st);
         }
     ));
 }
@@ -737,7 +740,7 @@ $patientRecentEntries = $programFilter === '' ? $recentStationAppointments : arr
     $recentStationAppointments,
     static fn(array $item): bool => (string) ($item['service_slug'] ?? '') === $programFilter
 ));
-$patientRecordEntries = $programFilter === '' ? $patientStationRecords : array_values(array_filter(
+$patientRecordEntries = ($programFilter === '' || $view === 'profiles') ? $patientStationRecords : array_values(array_filter(
     $patientStationRecords,
     static fn(array $item): bool => (string) ($item['service_slug'] ?? '') === $programFilter
 ));
@@ -1977,44 +1980,54 @@ for ($i = 0; $i < 6; $i++) {
                 </section>
             <?php endif; ?>
         <?php elseif ($page === 'patients'): ?>
-            <section class="page-hero">
-                <h1>Patient Records &amp; Clinical Details</h1>
-                <p>Select a health service to encode clinical remarks, doctor's notes, and review completed medical histories.</p>
-            </section>
-            <?php if ($programFilter === ''): ?>
-                <!-- Overview Filter Toolbar -->
+            <?php if ($view === 'profiles'): ?>
+                <!-- Top Breadcrumb Navigation Toolbar -->
+                <div class="appt-detail-topbar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+                    <div class="appt-breadcrumb-trail" style="display:flex; align-items:center; gap:8px; font-size:0.95rem;">
+                        <a href="?page=patients" class="appt-breadcrumb-item" style="display:inline-flex; align-items:center; gap:6px; color:#2563eb; text-decoration:none; font-weight:600;">
+                            <?= staff_icon('patients'); ?>
+                            <span>All Clinical Services</span>
+                        </a>
+                        <span class="appt-breadcrumb-sep" style="color:#94a3b8;">/</span>
+                        <span class="appt-breadcrumb-active" style="color:#0f172a; font-weight:700;">Patient Profiles</span>
+                    </div>
+
+                    <a class="appt-back-btn" href="?page=patients" style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; color:#1d4ed8; padding:8px 16px; border-radius:10px; text-decoration:none; font-weight:600; border:1px solid #bfdbfe;">
+                        <?= staff_icon('arrow-left'); ?>
+                        <span>Back to Services</span>
+                    </a>
+                </div>
+
+                <!-- Page Hero -->
+                <section class="page-hero">
+                    <h1>All Patient Profiles &amp; Medical History</h1>
+                    <p>Complete directory of registered patients and chronological medical histories across all health services.</p>
+                </section>
+
+                <!-- Search Bar Section (Transferred here) -->
                 <section class="appt-filter-card" style="margin-bottom: 24px;">
                     <form method="get" class="appt-filter-form">
                         <input type="hidden" name="page" value="patients">
+                        <input type="hidden" name="view" value="profiles">
 
-                        <div class="appt-search-field">
+                        <div class="appt-search-field" style="flex:1;">
                             <span class="appt-search-icon"><?= staff_icon('search'); ?></span>
-                            <input type="text" name="patient_search" value="<?= h($patientSearch); ?>" placeholder="Search across all programs by name, appointment code, or phone..." maxlength="40">
+                            <input type="text" name="patient_search" value="<?= h($patientSearch); ?>" placeholder="Search all patient profiles by name, ID, phone, or address..." maxlength="50">
                             <?php if ($patientSearch !== ''): ?>
-                                <a href="?page=patients<?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?><?= $patientStatus !== 'both' ? '&patient_status=' . h($patientStatus) : ''; ?>" class="appt-search-clear" title="Clear search">
+                                <a href="?page=patients&view=profiles" class="appt-search-clear" title="Clear search">
                                     <?= staff_icon('x'); ?>
                                 </a>
                             <?php endif; ?>
                         </div>
 
                         <div class="appt-filter-dropdowns">
-                            <div class="appt-date-input-wrap">
-                                <span class="appt-date-input-icon"><?= staff_icon('calendar'); ?></span>
-                                <input type="date" name="patient_date" value="<?= h($patientDateFilter); ?>" class="appt-date-picker-input" title="Filter consultation records by date">
-                                <?php if ($patientDateFilter !== ''): ?>
-                                    <a href="?page=patients<?= $patientSearch !== '' ? '&patient_search=' . h($patientSearch) : ''; ?>" class="appt-date-clear-btn" title="Clear date filter">
-                                        <?= staff_icon('x'); ?>
-                                    </a>
-                                <?php endif; ?>
-                            </div>
-
                             <button type="submit" class="appt-filter-submit-btn">
-                                <?= staff_icon('filter'); ?>
-                                <span>Filter</span>
+                                <?= staff_icon('search'); ?>
+                                <span>Search</span>
                             </button>
 
-                            <?php if ($patientSearch !== '' || $patientDateFilter !== ''): ?>
-                                <a href="?page=patients" class="appt-filter-reset-btn" title="Reset all filters">
+                            <?php if ($patientSearch !== ''): ?>
+                                <a href="?page=patients&view=profiles" class="appt-filter-reset-btn" title="Reset search">
                                     <?= staff_icon('history'); ?>
                                     <span>Reset</span>
                                 </a>
@@ -2023,86 +2036,132 @@ for ($i = 0; $i < 6; $i++) {
                     </form>
                 </section>
 
-                <?php if ($patientSearch !== ''): ?>
-                    <section class="patient-search-result-box" style="margin-bottom: 24px;">
-                        <div class="panel-head">
-                            <h2>Search Result</h2>
+                <!-- 3 KPI Metric Cards for Patient Profiles -->
+                <section class="appt-metrics-grid" style="margin-bottom: 28px;">
+                    <article class="appt-metric-card pending">
+                        <div class="appt-metric-icon">
+                            <?= staff_icon('users'); ?>
                         </div>
-                        <?php if ($clinicalSearchResult === null): ?>
-                            <div class="panel-card empty-state">No appointment found matching that ID or search term.</div>
-                        <?php else: ?>
-                            <?php $searchRecordComplete = appointment_has_completed_clinical_details($clinicalSearchResult); ?>
-                            <div class="modern-patient-record-card patient-record-card <?= $searchRecordComplete ? 'is-completed' : 'is-ongoing'; ?>">
-                                <div class="pat-card-left">
-                                    <div class="pat-card-avatar"><?= strtoupper(substr((string) ($clinicalSearchResult['first_name'] ?? 'P'), 0, 1) . substr((string) ($clinicalSearchResult['last_name'] ?? 'U'), 0, 1)); ?></div>
-                                    <div class="pat-card-info">
-                                        <div class="pat-card-title-row">
-                                            <h3><?= h(full_name($clinicalSearchResult)); ?></h3>
-                                            <span class="appt-code-badge">#<?= h((string) $clinicalSearchResult['appointment_code']); ?></span>
-                                        </div>
-                                        <div class="pat-card-meta-row">
-                                            <span class="pat-meta-pill service"><?= staff_icon('stethoscope'); ?> <?= h((string) $clinicalSearchResult['service_name']); ?></span>
-                                            <span class="pat-meta-pill date"><?= staff_icon('calendar'); ?> <?= h(date('F j, Y', strtotime((string) $clinicalSearchResult['preferred_date']))); ?></span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="pat-card-right">
-                                    <span class="status-pill <?= $searchRecordComplete ? 'status-confirmed' : 'status-pending'; ?>"><?= $searchRecordComplete ? '✓ Recorded' : 'Ongoing'; ?></span>
-                                    <?php if ($searchRecordComplete): ?>
-                                        <a class="view-medical-file-btn" href="?page=patients<?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>&appointment_view=<?= h((string) $clinicalSearchResult['appointment_code']); ?>" title="View detailed clinical record">
-                                            <?= staff_icon('eye'); ?>
-                                            <span>View Medical File</span>
-                                        </a>
-                                    <?php else: ?>
-                                        <?php $isSearchResultServing = (string) ($clinicalSearchResult['status'] ?? '') === 'Serving'; ?>
-                                        <?php if ($isSearchResultServing): ?>
-                                            <a class="remarks-btn is-active" href="?page=patients<?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>&appointment_remarks=<?= h((string) $clinicalSearchResult['appointment_code']); ?>" title="Encode doctor remarks & clinical assessment">
-                                                <?= staff_icon('edit'); ?>
-                                                <span>Remarks</span>
-                                            </a>
-                                        <?php else: ?>
-                                            <button type="button" class="remarks-btn is-disabled" disabled title="Clinical remarks can be encoded once patient consultation begins.">
-                                                <?= staff_icon('edit'); ?>
-                                                <span>Remarks</span>
-                                            </button>
-                                        <?php endif; ?>
-                                    <?php endif; ?>
-                                </div>
+                        <div class="appt-metric-content">
+                            <span class="appt-metric-label">Total Patient Profiles</span>
+                            <strong class="appt-metric-val"><?= number_format(count($groupedPatientProfiles)); ?></strong>
+                        </div>
+                    </article>
+
+                    <article class="appt-metric-card total">
+                        <div class="appt-metric-icon">
+                            <?= staff_icon('check'); ?>
+                        </div>
+                        <div class="appt-metric-content">
+                            <span class="appt-metric-label">Total Completed Consultations</span>
+                            <strong class="appt-metric-val"><?= number_format(count($patientStationRecords)); ?></strong>
+                        </div>
+                    </article>
+
+                    <article class="appt-metric-card cancelled">
+                        <div class="appt-metric-icon">
+                            <?= staff_icon('pin'); ?>
+                        </div>
+                        <div class="appt-metric-content">
+                            <span class="appt-metric-label">Assigned Station</span>
+                            <strong class="appt-metric-val" style="font-size:1.1rem;"><?= h($station['name']); ?></strong>
+                        </div>
+                    </article>
+                </section>
+
+                <!-- Section: Completed Patient Profiles & Medical History across all services -->
+                <section class="patient-section-wrapper">
+                    <div class="patient-section-header">
+                        <div class="section-title-group">
+                            <span class="sec-icon-pill done"><?= staff_icon('patients'); ?></span>
+                            <div>
+                                <h2>Completed Patient Profiles &amp; Medical History</h2>
+                                <p>Alphabetically organized patient profiles with complete clinical records across all station services.</p>
                             </div>
-                            <form method="post" action="?action=save_clinical_details" class="account-settings-form clinical-save-form" style="margin-top:14px;padding:16px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
-                                <input type="hidden" name="action" value="save_clinical_details">
-                                <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
-                                <input type="hidden" name="appointment_id" value="<?= h((string) $clinicalSearchResult['id']); ?>">
-                                <input type="hidden" name="return_url" value="?page=patients&patient_search=<?= urlencode($patientSearch); ?>">
-                                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:12px;margin-bottom:12px;">
-                                    <div class="form-group-item">
-                                        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Body Temperature (°C)</label>
-                                        <input type="text" name="temperature" value="<?= h((string)($clinicalSearchResult['body_temperature'] ?? '36.6')); ?>" class="form-input-field" required>
+                        </div>
+                        <span class="patient-section-counter"><?= count($groupedPatientProfiles); ?> <?= count($groupedPatientProfiles) === 1 ? 'patient profile' : 'patient profiles'; ?> (<?= count($patientStationRecords); ?> <?= count($patientStationRecords) === 1 ? 'visit' : 'visits'; ?>)</span>
+                    </div>
+
+                    <div class="patient-cards-stack">
+                        <?php if ($groupedPatientProfiles === []): ?>
+                            <div class="panel-card empty-state appt-empty-box">
+                                <div class="appt-empty-icon"><?= staff_icon('patients'); ?></div>
+                                <h3>No patient profiles found</h3>
+                                <p><?= $patientSearch !== '' ? 'No patient profiles match your search criteria.' : 'No completed patient clinical records found in the system yet.'; ?></p>
+                            </div>
+                        <?php else: ?>
+                            <?php foreach ($groupedPatientProfiles as $prof): ?>
+                                <?php
+                                $patInitials = strtoupper(substr((string) ($prof['first_name'] ?? 'P'), 0, 1) . substr((string) ($prof['last_name'] ?? 'U'), 0, 1));
+                                $patHasPhoto = !empty($prof['photo_path']);
+                                $latestAppt = $prof['latest_appointment'];
+                                $profUrl = '?page=patients&view=profiles' . ($patientSearch !== '' ? '&patient_search=' . urlencode($patientSearch) : '') . '&patient_profile=' . urlencode($prof['key']);
+                                ?>
+                                <article class="modern-patient-record-card patient-profile-card is-completed" id="profileCard_<?= h($prof['key']); ?>">
+                                    <div class="pat-card-left">
+                                        <div class="pat-card-avatar done">
+                                            <?= h($patInitials); ?>
+                                            <span class="pat-card-avatar-shield" title="Registered Patient Profile">
+                                                <?= staff_icon('shield'); ?>
+                                            </span>
+                                        </div>
+                                        <div class="pat-card-info">
+                                            <div class="pat-card-title-row">
+                                                <h3 style="font-size: 1.08rem; font-weight: 700; color: #0f172a; margin: 0;"><?= h($prof['full_name']); ?></h3>
+                                                <span class="appt-code-badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:600;">ID: #<?= h($prof['patient_id']); ?></span>
+                                                <span class="patient-visit-count-pill" style="font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 2px 9px; border-radius: 9999px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                                    <?= staff_icon('history'); ?> <?= $prof['total_completed']; ?> <?= $prof['total_completed'] === 1 ? 'Visit' : 'Visits'; ?>
+                                                </span>
+                                            </div>
+
+                                            <div class="pat-card-meta-row">
+                                                <span class="pat-meta-pill demo"><?= h($prof['age_label']); ?> • <?= h($prof['gender']); ?></span>
+                                                <?php if (!empty($prof['contact_number'])): ?>
+                                                    <span class="pat-meta-pill phone"><?= staff_icon('phone'); ?> <?= h($prof['contact_number']); ?></span>
+                                                <?php endif; ?>
+                                                <span class="pat-meta-pill address"><?= staff_icon('pin'); ?> <?= h($prof['complete_address'] ?: 'Barangay ' . $station['barangay'] . ', Bacolod City'); ?></span>
+                                            </div>
+                                            <?php if ($latestAppt !== null): ?>
+                                                <div class="patient-latest-visit-row" style="margin-top: 6px; font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                                    <span style="font-weight: 600; color: #2563eb;">Latest Check-up:</span>
+                                                    <span><?= h((string) $latestAppt['service_name']); ?> (<?= h(date('M j, Y', strtotime((string) $latestAppt['preferred_date']))); ?>)</span>
+                                                    <?php if (!empty($latestAppt['blood_pressure'])): ?>
+                                                        <span style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1px 6px; border-radius: 4px; font-size: 0.75rem; color: #334155;">BP: <?= h((string) $latestAppt['blood_pressure']); ?></span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
-                                    <div class="form-group-item">
-                                        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Blood Pressure</label>
-                                        <input type="text" name="blood_pressure" value="<?= h((string)($clinicalSearchResult['blood_pressure'] ?? '120/80')); ?>" class="form-input-field" required>
+                                    <div class="pat-card-right">
+                                        <a class="view-medical-file-btn patient-profile-open-btn" href="<?= h($profUrl); ?>" onclick="return window.openPatientProfileModal(event, '<?= h($prof['key']); ?>');" title="View Patient Profile and Appointment History" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; border: none; padding: 9px 18px; border-radius: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);">
+                                            <?= staff_icon('history'); ?>
+                                            <span>View Profile &amp; History</span>
+                                        </a>
                                     </div>
-                                    <div class="form-group-item">
-                                        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Pulse Rate (bpm)</label>
-                                        <input type="text" name="pulse" value="<?= h((string)($clinicalSearchResult['pulse_rate'] ?? '75')); ?>" class="form-input-field" required>
+
+                                    <!-- Hidden template for instant client-side modal popup without page reload -->
+                                    <div id="patientProfileContent_<?= h($prof['key']); ?>" style="display: none;">
+                                        <?= render_patient_profile_body($prof, $station, '', ''); ?>
                                     </div>
-                                </div>
-                                <div class="form-group-item" style="margin-bottom:12px;">
-                                    <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Doctor's Notes / Clinical Remarks</label>
-                                    <textarea name="doctor_notes" rows="2" class="form-input-field" placeholder="Patient clinical evaluation..."><?= h((string)($clinicalSearchResult['doctor_notes'] ?? 'Patient reviewed. Prescribed standard vitamins.')); ?></textarea>
-                                </div>
-                                <div style="display:flex;gap:10px;align-items:center;">
-                                    <button type="submit" class="primary-btn slim">Save Clinical Details</button>
-                                    <a class="primary-btn blue-btn slim" href="?page=patients&patient_search=<?= urlencode($patientSearch); ?>&appointment_followup=<?= h((string)$clinicalSearchResult['appointment_code']); ?>">
-                                        <span class="btn-icon-wrap"><?= staff_icon('calendar'); ?></span>
-                                        <span>Schedule Follow-up</span>
-                                    </a>
-                                </div>
-                            </form>
+                                </article>
+                            <?php endforeach; ?>
                         <?php endif; ?>
-                    </section>
-                <?php endif; ?>
+                    </div>
+                </section>
+            <?php elseif ($programFilter === ''): ?>
+                <!-- Main Services Overview: Page Hero with Patient Profiles Action Button -->
+                <section class="page-hero" style="display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap;">
+                    <div>
+                        <h1>Patient Records &amp; Clinical Details</h1>
+                        <p>Select a health service to encode clinical remarks and doctor's notes, or view patient profiles across all services.</p>
+                    </div>
+                    <div style="flex-shrink: 0;">
+                        <a href="?page=patients&view=profiles" class="primary-btn blue-btn" style="padding: 12px 22px; font-size: 0.95rem; font-weight: 700; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28); background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; border: none;">
+                            <?= staff_icon('patients'); ?>
+                            <span>Patient Profiles</span>
+                        </a>
+                    </div>
+                </section>
 
                 <section class="services-grid queue-services-grid">
                     <?php foreach ($programs as $program): ?>
@@ -2904,7 +2963,7 @@ for ($i = 0; $i < 6; $i++) {
 
             <!-- Dedicated Patient Profile & Consultation History Modal Dialog -->
             <?php
-            $profileReturnUrl = '?page=patients' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($patientDateFilter !== '' ? '&patient_date=' . urlencode($patientDateFilter) : '');
+            $profileReturnUrl = '?page=patients' . ($view === 'profiles' ? '&view=profiles' : '') . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($patientDateFilter !== '' ? '&patient_date=' . urlencode($patientDateFilter) : '') . ($patientSearch !== '' ? '&patient_search=' . urlencode($patientSearch) : '');
             ?>
             <section class="account-modal-backdrop <?= $selectedPatientProfile !== null ? 'is-active-modal' : 'hidden'; ?>" id="patientProfileModalBackdrop" style="<?= $selectedPatientProfile !== null ? 'display:flex;align-items:center;justify-content:center;' : 'display:none;'; ?>">
                 <div class="account-modal-card clinical-dialog-card patient-profile-dialog-card" role="dialog" aria-modal="true" style="margin: auto; max-width: 840px; width: min(100%, 840px); max-height: 90vh; overflow-y: auto; background: #ffffff; border-radius: 20px; box-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.35);">
