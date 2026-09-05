@@ -843,10 +843,6 @@ $kpiPendingCount = $pendingCount;
 $kpiServingCount = count(array_filter($allStationAppointments, static fn(array $item): bool => in_array((string) ($item['status'] ?? ''), ['Confirmed', 'Serving'], true)));
 $kpiCompletedCount = $completedTodayCount;
 $nextEvent = $stationEvents[0] ?? null;
-$scheduleOverview = [
-    ['time' => '8:00 AM - 12:00 PM', 'label' => 'Morning Consultations', 'tone' => 'blue'],
-    ['time' => '1:00 PM - 5:00 PM', 'label' => 'Afternoon Queue Monitoring', 'tone' => 'violet'],
-];
 $programs = $station['programs'];
 $queueWaitingCount = count(array_filter($queueEntries, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Confirmed'));
 $queueBeingServedCount = count(array_filter($queueEntries, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Serving'));
@@ -1237,28 +1233,6 @@ for ($i = 0; $i < 6; $i++) {
                                     <a href="?page=events" class="dash-event-cta-btn">View All Station Events →</a>
                                 </div>
                             <?php endif; ?>
-                        </div>
-                    </section>
-
-                    <!-- Today's Schedule Overview -->
-                    <section class="panel-card schedule-card">
-                        <div class="panel-head">
-                            <div>
-                                <h2>Today's Station Clinical Flow</h2>
-                                <p class="panel-subtitle">Operational consultation hours and service delivery windows</p>
-                            </div>
-                            <span class="schedule-clock-badge"><?= staff_icon('clock'); ?> <?= date('h:i A'); ?></span>
-                        </div>
-                        <div class="schedule-stack">
-                            <?php foreach ($scheduleOverview as $row): ?>
-                                <div class="schedule-row <?= h($row['tone']); ?>">
-                                    <div class="schedule-row-time">
-                                        <?= staff_icon('clock'); ?>
-                                        <span><?= h($row['time']); ?></span>
-                                    </div>
-                                    <strong><?= h($row['label']); ?></strong>
-                                </div>
-                            <?php endforeach; ?>
                         </div>
                     </section>
                 </div>
