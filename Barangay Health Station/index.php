@@ -101,19 +101,18 @@ if (!function_exists('render_patient_profile_body')) {
         <!-- Patient Identity & Demographics Header -->
         <div class="patient-profile-header-card">
             <div class="patient-profile-avatar-box">
-                <?php if ($patHasPhoto): ?>
-                    <img src="../Patients/<?= h((string) $prof['photo_path']); ?>" alt="<?= h($prof['full_name']); ?>" class="patient-profile-photo-lg">
-                <?php else: ?>
-                    <div class="patient-profile-initials-lg"><?= h($patInitials); ?></div>
-                <?php endif; ?>
+                <div class="patient-profile-initials-lg"><?= h($patInitials); ?></div>
+                <span class="patient-avatar-emblem-badge" title="Registered Health Record">
+                    <?= staff_icon('shield'); ?>
+                </span>
             </div>
             <div class="patient-profile-main-meta">
                 <div class="profile-name-badge-row">
                     <h3><?= h($prof['full_name']); ?></h3>
                     <span class="appt-code-badge id-pill">ID: #<?= h($prof['patient_id']); ?></span>
-                    <?php if ($patHasPhoto): ?>
-                        <span class="photo-status-badge verified" style="position:static;transform:none;font-size:0.75rem;padding:3px 10px;">✓ Verified Photo</span>
-                    <?php endif; ?>
+                    <span class="patient-record-verified-badge">
+                        <?= staff_icon('check'); ?> Verified Patient Record
+                    </span>
                 </div>
                 <div class="profile-demographics-grid">
                     <div class="profile-demo-tag">
@@ -135,6 +134,7 @@ if (!function_exists('render_patient_profile_body')) {
                 </div>
             </div>
         </div>
+
 
         <!-- Metric Summary KPI Cards -->
         <div class="profile-kpi-summary-row">
@@ -223,6 +223,17 @@ if (!function_exists('render_patient_profile_body')) {
                         </div>
                     <?php endif; ?>
 
+                    <!-- Specific Consultation Photo Capture if taken during this visit -->
+                    <?php if (!empty($appt['photo_path'])): ?>
+                        <div class="history-visit-photo-card">
+                            <img src="../Patients/<?= h((string) $appt['photo_path']); ?>" alt="Visit Photo on <?= h((string) $appt['preferred_date']); ?>" class="history-visit-photo-thumb">
+                            <div class="history-visit-photo-info">
+                                <span class="photo-info-label"><?= staff_icon('camera'); ?> Consultation Photo Captured</span>
+                                <span class="photo-info-date">Record #<?= h($apptCode); ?> • <?= h(date('M j, Y', strtotime((string) $appt['preferred_date']))); ?></span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                     <!-- Follow-up Checkup Banner if present -->
                     <?php if ($hasFollowUp): ?>
                         <div class="history-followup-alert">
@@ -233,6 +244,7 @@ if (!function_exists('render_patient_profile_body')) {
                             </div>
                         </div>
                     <?php endif; ?>
+
 
                     <!-- Footer Action -->
                     <div class="history-entry-actions">
@@ -2381,24 +2393,21 @@ for ($i = 0; $i < 6; $i++) {
                                 ?>
                                 <article class="modern-patient-record-card patient-profile-card is-completed" id="profileCard_<?= h($prof['key']); ?>">
                                     <div class="pat-card-left">
-                                        <div class="pat-card-avatar done" style="<?= $patHasPhoto ? 'background:transparent;' : ''; ?>">
-                                            <?php if ($patHasPhoto): ?>
-                                                <img src="../Patients/<?= h((string) $prof['photo_path']); ?>" alt="<?= h($prof['full_name']); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">
-                                            <?php else: ?>
-                                                <?= h($patInitials); ?>
-                                            <?php endif; ?>
+                                        <div class="pat-card-avatar done">
+                                            <?= h($patInitials); ?>
+                                            <span class="pat-card-avatar-shield" title="Registered Patient Profile">
+                                                <?= staff_icon('shield'); ?>
+                                            </span>
                                         </div>
                                         <div class="pat-card-info">
                                             <div class="pat-card-title-row">
                                                 <h3 style="font-size: 1.08rem; font-weight: 700; color: #0f172a; margin: 0;"><?= h($prof['full_name']); ?></h3>
                                                 <span class="appt-code-badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:600;">ID: #<?= h($prof['patient_id']); ?></span>
-                                                <?php if ($patHasPhoto): ?>
-                                                    <span class="photo-status-badge verified" style="position:static;transform:none;font-size:0.7rem;padding:2px 8px;">✓ Verified ID</span>
-                                                <?php endif; ?>
                                                 <span class="patient-visit-count-pill" style="font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 2px 9px; border-radius: 9999px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
                                                     <?= staff_icon('history'); ?> <?= $prof['total_completed']; ?> <?= $prof['total_completed'] === 1 ? 'Visit' : 'Visits'; ?>
                                                 </span>
                                             </div>
+
                                             <div class="pat-card-meta-row">
                                                 <span class="pat-meta-pill demo"><?= h($prof['age_label']); ?> • <?= h($prof['gender']); ?></span>
                                                 <?php if (!empty($prof['contact_number'])): ?>
