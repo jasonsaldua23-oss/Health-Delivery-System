@@ -1272,7 +1272,6 @@ for ($i = 0; $i < 6; $i++) {
                                 <h2>Recent Patient Visits</h2>
                                 <p class="panel-subtitle">Completed consultations and clinical records at this station</p>
                             </div>
-                            <a href="?page=patients" class="panel-link">View All Patients →</a>
                         </div>
                         <div class="dash-recent-list">
                             <?php
@@ -1280,7 +1279,12 @@ for ($i = 0; $i < 6; $i++) {
                                     $allStationAppointments,
                                     static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Completed'
                                 ));
-                                $latestCompletedVisits = array_slice($completedVisits, 0, 7);
+                                usort($completedVisits, static function(array $a, array $b): int {
+                                    $tA = strtotime((string) ($a['preferred_date'] ?? '1970-01-01') . ' ' . (string) ($a['preferred_time'] ?? '00:00:00'));
+                                    $tB = strtotime((string) ($b['preferred_date'] ?? '1970-01-01') . ' ' . (string) ($b['preferred_time'] ?? '00:00:00'));
+                                    return $tB <=> $tA;
+                                });
+                                $latestCompletedVisits = array_slice($completedVisits, 0, 5);
                             ?>
                             <?php if (empty($latestCompletedVisits)): ?>
                                 <div class="empty-state" style="padding:32px 20px;text-align:center;">
