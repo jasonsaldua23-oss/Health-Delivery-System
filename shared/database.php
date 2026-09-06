@@ -1061,27 +1061,31 @@ function db(): mysqli
 
     mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-    $configsToTry = [
-        [
-            'host' => DB_HOST,
-            'user' => DB_USER,
-            'pass' => DB_PASS,
-            'name' => DB_NAME,
-            'port' => DB_PORT
-        ]
-    ];
-
+    $hostOptions = [DB_HOST];
     if (DB_HOST === '127.0.0.1') {
-        $configsToTry[] = [
-            'host' => 'localhost',
-            'user' => DB_USER,
-            'pass' => DB_PASS,
-            'name' => DB_NAME,
-            'port' => DB_PORT
-        ];
+        $hostOptions[] = 'localhost';
     } elseif (DB_HOST === 'localhost') {
+        $hostOptions[] = '127.0.0.1';
+    }
+
+    $dbNameOptions = array_values(array_unique(array_filter([
+        DB_NAME,
+        'u763176290_HDS',
+        'health_delivery_system'
+    ])));
+
+    $userOptions = array_values(array_unique(array_filter([
+        DB_USER,
+        'u763176290_health_del_sys',
+        'root'
+    ])));
+
+    $configsToTry = [];
+
+    // 1. Primary configured attempt
+    foreach ($hostOptions as $h) {
         $configsToTry[] = [
-            'host' => '127.0.0.1',
+            'host' => $h,
             'user' => DB_USER,
             'pass' => DB_PASS,
             'name' => DB_NAME,
@@ -1089,23 +1093,53 @@ function db(): mysqli
         ];
     }
 
-    // Local XAMPP/development fallback if production user fails on localhost
-    if (in_array(DB_HOST, ['127.0.0.1', 'localhost', '::1'], true) && DB_USER !== 'root') {
-        $configsToTry[] = [
-            'host' => '127.0.0.1',
-            'user' => 'root',
-            'pass' => '',
-            'name' => DB_NAME,
-            'port' => 3306
-        ];
-        $configsToTry[] = [
-            'host' => '127.0.0.1',
-            'user' => 'root',
-            'pass' => '',
-            'name' => 'health_delivery_system',
-            'port' => 3306
-        ];
+    // 2. Hostinger database and user pairings with configured password
+    foreach ($hostOptions as $h) {
+        foreach ($dbNameOptions as $dbName) {
+            $configsToTry[] = [
+                'host' => $h,
+                'user' => 'u763176290_health_del_sys',
+                'pass' => DB_PASS,
+                'name' => $dbName,
+                'port' => DB_PORT
+            ];
+        }
     }
+
+    // 3. Local XAMPP / development fallbacks (root with empty password or root password)
+    if (in_array(DB_HOST, ['127.0.0.1', 'localhost', '::1'], true)) {
+        foreach ($hostOptions as $h) {
+            foreach ($dbNameOptions as $dbName) {
+                $configsToTry[] = [
+                    'host' => $h,
+                    'user' => 'root',
+                    'pass' => '',
+                    'name' => $dbName,
+                    'port' => 3306
+                ];
+                $configsToTry[] = [
+                    'host' => $h,
+                    'user' => 'root',
+                    'pass' => 'root',
+                    'name' => $dbName,
+                    'port' => 3306
+                ];
+            }
+        }
+    }
+
+    // Deduplicate configs
+    $uniqueConfigs = [];
+    $seenKeys = [];
+    foreach ($configsToTry as $cfg) {
+        $key = "{$cfg['host']}|{$cfg['user']}|{$cfg['pass']}|{$cfg['name']}|{$cfg['port']}";
+        if (!isset($seenKeys[$key])) {
+            $seenKeys[$key] = true;
+            $uniqueConfigs[] = $cfg;
+        }
+    }
+    $configsToTry = $uniqueConfigs;
+
 
     $lastException = null;
 

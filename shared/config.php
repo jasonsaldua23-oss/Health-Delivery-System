@@ -26,7 +26,7 @@ if (!defined('DB_PORT')) {
 }
 
 if (!defined('DB_USER')) {
-    define('DB_USER', (string) ($envUser ?: 'root'));
+    define('DB_USER', (string) ($envUser ?: 'u763176290_health_del_sys'));
 }
 
 if (!defined('DB_PASS')) {
@@ -34,8 +34,9 @@ if (!defined('DB_PASS')) {
 }
 
 if (!defined('DB_NAME')) {
-    define('DB_NAME', (string) ($envName ?: 'health_delivery_system'));
+    define('DB_NAME', (string) ($envName ?: 'u763176290_HDS'));
 }
+
 
 if (!defined('APP_ENV')) {
     define('APP_ENV', (string) ($_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production'));

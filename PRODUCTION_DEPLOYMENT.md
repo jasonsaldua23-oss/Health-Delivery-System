@@ -34,18 +34,19 @@ Edit `.env` with your secure credentials:
 ```ini
 APP_ENV=production
 APP_NAME="Health Delivery System - Bacolod"
-APP_URL=https://health.bacolodcity.gov.ph
+APP_URL=https://your-domain.com
 
-# Database Connection
+# Database Connection (Hostinger hPanel)
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_USER=health_app_user
-DB_PASS=YourStrongProductionPasswordHere!
-DB_NAME=health_delivery_system
+DB_USER=u763176290_health_del_sys
+DB_PASS=Your_Hostinger_Database_Password_Here
+DB_NAME=u763176290_HDS
 
 # Brevo SMS Gateway Key
 BREVO_API_KEY=your_brevo_api_key_here
 ```
+
 
 ### Step 3: Run Database Migrations
 Execute the standalone CLI migration runner:
