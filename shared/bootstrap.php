@@ -7,12 +7,25 @@ declare(strict_types=1);
  * Centralized initialization for environment, security, sessions, and error handling.
  */
 
-// 1. Load Environment Variables (.env)
+// 1. Load Environment Variables (.env or .env.example fallback)
 (function () {
-    $envFile = dirname(__DIR__) . '/.env';
-    if (!file_exists($envFile) || !is_readable($envFile)) {
+    $candidates = [
+        dirname(__DIR__) . '/.env',
+        dirname(__DIR__) . '/.env.production',
+        dirname(__DIR__) . '/.env.example',
+    ];
+    $envFile = null;
+    foreach ($candidates as $cand) {
+        if (file_exists($cand) && is_readable($cand)) {
+            $envFile = $cand;
+            break;
+        }
+    }
+
+    if ($envFile === null) {
         return;
     }
+
 
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     if ($lines === false) {
