@@ -1061,44 +1061,36 @@ function db(): mysqli
 
     mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-    $hostOptions = [DB_HOST];
-    if (DB_HOST === '127.0.0.1') {
-        $hostOptions[] = 'localhost';
-    } elseif (DB_HOST === 'localhost') {
-        $hostOptions[] = '127.0.0.1';
+    $isLocalDev = (
+        (isset($_SERVER['SERVER_NAME']) && in_array($_SERVER['SERVER_NAME'], ['localhost', '127.0.0.1', '::1'], true)) ||
+        (isset($_SERVER['DOCUMENT_ROOT']) && (str_contains($_SERVER['DOCUMENT_ROOT'], 'xampp') || str_contains($_SERVER['DOCUMENT_ROOT'], 'wamp'))) ||
+        (php_sapi_name() === 'cli' && strtoupper(substr(PHP_OS, 0, 3)) === 'WIN')
+    );
+
+    $hostOptions = [];
+    if (DB_HOST === 'localhost') {
+        $hostOptions = ['localhost', '127.0.0.1'];
+    } elseif (DB_HOST === '127.0.0.1') {
+        $hostOptions = ['127.0.0.1', 'localhost'];
+    } else {
+        $hostOptions = [DB_HOST, 'localhost', '127.0.0.1'];
     }
 
     $dbNameOptions = array_values(array_unique(array_filter([
         DB_NAME,
         'u763176290_HDS',
+        'u763176290_hds',
         'health_delivery_system'
-    ])));
-
-    $userOptions = array_values(array_unique(array_filter([
-        DB_USER,
-        'u763176290_health_del_sys',
-        'root'
     ])));
 
     $configsToTry = [];
 
-    // 1. Primary configured attempt
-    foreach ($hostOptions as $h) {
-        $configsToTry[] = [
-            'host' => $h,
-            'user' => DB_USER,
-            'pass' => DB_PASS,
-            'name' => DB_NAME,
-            'port' => DB_PORT
-        ];
-    }
-
-    // 2. Hostinger database and user pairings with configured password
+    // 1. Primary configured credentials across host options & database case options
     foreach ($hostOptions as $h) {
         foreach ($dbNameOptions as $dbName) {
             $configsToTry[] = [
                 'host' => $h,
-                'user' => 'u763176290_health_del_sys',
+                'user' => DB_USER,
                 'pass' => DB_PASS,
                 'name' => $dbName,
                 'port' => DB_PORT
@@ -1106,9 +1098,24 @@ function db(): mysqli
         }
     }
 
-    // 3. Local XAMPP / development fallbacks (root with empty password or root password)
-    if (in_array(DB_HOST, ['127.0.0.1', 'localhost', '::1'], true)) {
+    // 2. Fallback to Hostinger default user pairing if DB_USER is not already u763176290_health_del_sys
+    if (DB_USER !== 'u763176290_health_del_sys') {
         foreach ($hostOptions as $h) {
+            foreach ($dbNameOptions as $dbName) {
+                $configsToTry[] = [
+                    'host' => $h,
+                    'user' => 'u763176290_health_del_sys',
+                    'pass' => DB_PASS,
+                    'name' => $dbName,
+                    'port' => DB_PORT
+                ];
+            }
+        }
+    }
+
+    // 3. Local development fallback (only on local machine / XAMPP)
+    if ($isLocalDev) {
+        foreach (['127.0.0.1', 'localhost'] as $h) {
             foreach ($dbNameOptions as $dbName) {
                 $configsToTry[] = [
                     'host' => $h,
@@ -1140,16 +1147,19 @@ function db(): mysqli
     }
     $configsToTry = $uniqueConfigs;
 
-
+    $primaryException = null;
     $lastException = null;
 
-    foreach ($configsToTry as $cfg) {
+    foreach ($configsToTry as $idx => $cfg) {
         try {
             $connection = new mysqli($cfg['host'], $cfg['user'], $cfg['pass'], $cfg['name'], $cfg['port']);
             $connection->set_charset('utf8mb4');
             $lastException = null;
             break;
         } catch (mysqli_sql_exception $exception) {
+            if ($idx === 0 || $primaryException === null) {
+                $primaryException = $exception;
+            }
             $lastException = $exception;
 
             // Unknown database (code 1049) -> Auto-create database & bootstrap
@@ -1174,7 +1184,8 @@ function db(): mysqli
     }
 
     if (!($connection instanceof mysqli)) {
-        $errMsg = $lastException !== null ? $lastException->getMessage() : 'Unknown database connection error';
+        $activeException = $primaryException ?? $lastException;
+        $errMsg = $activeException !== null ? $activeException->getMessage() : 'Unknown database connection error';
         error_log('Database connection error: ' . $errMsg);
         http_response_code(500);
 
@@ -1182,6 +1193,7 @@ function db(): mysqli
         $nameSafe = htmlspecialchars(DB_NAME, ENT_QUOTES, 'UTF-8');
         $userSafe = htmlspecialchars(DB_USER, ENT_QUOTES, 'UTF-8');
         $errSafe = htmlspecialchars($errMsg, ENT_QUOTES, 'UTF-8');
+
 
         echo '<!DOCTYPE html>
 <html lang="en">

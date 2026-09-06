@@ -35,13 +35,10 @@ declare(strict_types=1);
                 $val = $m[1];
             }
 
-            if (!isset($_ENV[$key])) {
-                $_ENV[$key] = $val;
-            }
-            if (!isset($_SERVER[$key])) {
-                $_SERVER[$key] = $val;
-            }
+            $_ENV[$key] = $val;
+            $_SERVER[$key] = $val;
             putenv("{$key}={$val}");
+
         }
     }
 })();
