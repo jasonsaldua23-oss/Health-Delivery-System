@@ -83,3 +83,26 @@
 | **WB73** | `geofence_point_is_allowed()` | Verify access permission for in-bounds coordinates | Coordinates inside allowed area (`lat=10.676, lng=122.951`) | Returns allowed = true | Returned true permitting system access | Pass | In-bounds coordinates allowed |
 | **WB74** | `geofence_point_is_allowed()` | Verify access restriction for out-of-bounds coords | Coordinates outside allowed area (`lat=14.5995, lng=120.9842`) | Returns allowed = false | Returned false restricting system access | Pass | Out-of-bounds coords rejected |
 | **WB75** | `geofence_parse_coordinates()` | Verify sanitization of malformed coordinates | Non-numeric coordinates (`"abc", "xyz"`) | Coordinates rejected (returns null) | Returned null rejecting malformed coordinates | Pass | Malformed coords rejected |
+
+---
+
+## White Box Testing Evidence (Screenshots)
+
+The terminal test execution screenshots are saved in the project under [`tests/screenshots/whitebox/`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox):
+
+1. **Overall Results Summary:** [`whitebox_results_summary.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/whitebox_results_summary.png)
+2. **Complete Full-Trace Log:** [`whitebox_full_execution.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/whitebox_full_execution.png)
+3. **Module 1 (WB01–WB06 Patient Login):** [`WB01_WB06_patient_login.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/WB01_WB06_patient_login.png)
+4. **Module 2 (WB07–WB10 Admin Login):** [`WB07_WB10_admin_login.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/WB07_WB10_admin_login.png)
+5. **Module 3 (WB11–WB15 Staff Login):** [`WB11_WB15_staff_login.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/WB11_WB15_staff_login.png)
+6. **Module 4 (WB16–WB23 Appointment Slots):** [`WB16_WB23_appointment_slots.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/WB16_WB23_appointment_slots.png)
+7. **Module 5 (WB24–WB35 Patient Booking):** [`WB24_WB35_patient_booking.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/WB24_WB35_patient_booking.png)
+8. **Module 6 (WB36–WB42 Patient Profile):** [`WB36_WB42_patient_profile.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/WB36_WB42_patient_profile.png)
+9. **Module 7 (WB43–WB44 Patient History):** [`WB43_WB44_patient_history.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/WB43_WB44_patient_history.png)
+10. **Module 8 (WB45–WB48 Clinical Details):** [`WB45_WB48_clinical_details.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/WB45_WB48_clinical_details.png)
+11. **Module 9 (WB49–WB52 Appointment Completion):** [`WB49_WB52_appointment_completion.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/WB49_WB52_appointment_completion.png)
+12. **Module 10 (WB53–WB64 Appointment Status):** [`WB53_WB64_appointment_status.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/WB53_WB64_appointment_status.png)
+13. **Module 11 (WB65–WB68 Unattended Sync):** [`WB65_WB68_unattended_sync.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/WB65_WB68_unattended_sync.png)
+14. **Module 12 (WB69–WB72 Patient Account):** [`WB69_WB72_patient_account.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/WB69_WB72_patient_account.png)
+15. **Module 13 (WB73–WB75 Geofence Logic):** [`WB73_WB75_geofence.png`](file:///c:/xampp/htdocs/Health-Delivery-System-Latest/tests/screenshots/whitebox/WB73_WB75_geofence.png)
+
