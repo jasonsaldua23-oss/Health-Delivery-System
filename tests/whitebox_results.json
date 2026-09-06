@@ -1,0 +1,757 @@
+{
+    "total": 75,
+    "passed": 75,
+    "failed": 0,
+    "results": [
+        {
+            "id": "WB-001",
+            "segment": "login_patient",
+            "desc": "Verify action routing branch for patient login",
+            "inputs": "POST action=\"login_patient\"",
+            "expected": "Patient login branch executes",
+            "actual": "Patient login branch executed",
+            "result": "Pass",
+            "remarks": "Branch condition evaluated and matched"
+        },
+        {
+            "id": "WB-002",
+            "segment": "login_patient",
+            "desc": "Validate non-empty email and password requirement",
+            "inputs": "Email empty (\"\"); Password valid (\"Password123!\")",
+            "expected": "Returns JSON failure asking for both credentials",
+            "actual": "Returned validation error requiring both email and password",
+            "result": "Pass",
+            "remarks": "Empty field condition handled cleanly"
+        },
+        {
+            "id": "WB-003",
+            "segment": "login_patient",
+            "desc": "Handle non-existent patient account lookup",
+            "inputs": "Unknown email + password",
+            "expected": "Returns invalid email or password response",
+            "actual": "Returned invalid email or password response",
+            "result": "Pass",
+            "remarks": "Null lookup branch triggered"
+        },
+        {
+            "id": "WB-004",
+            "segment": "login_patient",
+            "desc": "Validate password_verify logic against stored hash",
+            "inputs": "Existing account + incorrect password (\"WrongPass123\")",
+            "expected": "Password verification evaluates to false and rejects login",
+            "actual": "Password verification evaluated to false; login rejected",
+            "result": "Pass",
+            "remarks": "Password hash mismatch caught"
+        },
+        {
+            "id": "WB-005",
+            "segment": "login_patient",
+            "desc": "Validate session population on successful authentication",
+            "inputs": "Existing account + correct password (\"CorrectPass2026!\")",
+            "expected": "Patient session fields populated and redirect to dashboard.php",
+            "actual": "Patient session fields populated and redirected to dashboard.php",
+            "result": "Pass",
+            "remarks": "Full success path executed"
+        },
+        {
+            "id": "WB-006",
+            "segment": "login_patient",
+            "desc": "Validate error response on credential rejection",
+            "inputs": "Existing account + mismatched password",
+            "expected": "Returns invalid email or password response",
+            "actual": "Returned invalid email or password response",
+            "result": "Pass",
+            "remarks": "Unauthorized credential rejected"
+        },
+        {
+            "id": "WB-007",
+            "segment": "login_admin",
+            "desc": "Validate admin username and password presence",
+            "inputs": "Username empty (\"\"); Password valid",
+            "expected": "Returns missing credentials response",
+            "actual": "Returned missing credentials error response",
+            "result": "Pass",
+            "remarks": "Missing credential branch triggered"
+        },
+        {
+            "id": "WB-008",
+            "segment": "login_admin",
+            "desc": "Validate direct admin fallback credentials",
+            "inputs": "Email=\"admintest@gmail.com\"; Password=\"AdminSecure2026!\"",
+            "expected": "Admin authentication session set and redirect to admin dashboard",
+            "actual": "Admin session authenticated and redirected to admin dashboard",
+            "result": "Pass",
+            "remarks": "Admin fallback branch executed"
+        },
+        {
+            "id": "WB-009",
+            "segment": "login_admin",
+            "desc": "Validate database admin password hash verification",
+            "inputs": "Registered admin account + correct hashed password",
+            "expected": "Admin session is authenticated",
+            "actual": "Admin session authenticated successfully",
+            "result": "Pass",
+            "remarks": "Password hash verified"
+        },
+        {
+            "id": "WB-010",
+            "segment": "login_admin",
+            "desc": "Validate admin rejection on invalid credentials",
+            "inputs": "Invalid admin credentials",
+            "expected": "Returns invalid admin email or password",
+            "actual": "Returned invalid admin email or password message",
+            "result": "Pass",
+            "remarks": "Invalid admin credentials rejected"
+        },
+        {
+            "id": "WB-011",
+            "segment": "login_staff",
+            "desc": "Validate staff email and password presence",
+            "inputs": "Email empty (\"\"); Password valid",
+            "expected": "Returns missing work email\/password response",
+            "actual": "Returned missing work email\/password error",
+            "result": "Pass",
+            "remarks": "Empty field condition handled"
+        },
+        {
+            "id": "WB-012",
+            "segment": "login_staff",
+            "desc": "Validate staff authentication and session setup",
+            "inputs": "Existing staff email + valid password",
+            "expected": "Staff session variables set and station dashboard redirect returned",
+            "actual": "Staff session initialized and redirected to station dashboard",
+            "result": "Pass",
+            "remarks": "Staff authentication verified"
+        },
+        {
+            "id": "WB-013",
+            "segment": "login_staff",
+            "desc": "Validate rejection of invalid staff password",
+            "inputs": "Existing staff email + wrong password",
+            "expected": "Returns invalid staff work email or password",
+            "actual": "Returned invalid staff credentials error",
+            "result": "Pass",
+            "remarks": "Invalid staff password rejected"
+        },
+        {
+            "id": "WB-014",
+            "segment": "login_staff",
+            "desc": "Validate fallback station email mapping",
+            "inputs": "Valid station-style email + qualifying password",
+            "expected": "Station is resolved and staff account can be authenticated",
+            "actual": "Station resolved to target health station and authenticated",
+            "result": "Pass",
+            "remarks": "Fallback station email resolved"
+        },
+        {
+            "id": "WB-015",
+            "segment": "login_staff",
+            "desc": "Validate City Health station exclusion boundary",
+            "inputs": "Station resolves to \"city-health\"",
+            "expected": "Fallback staff creation\/login path is not allowed",
+            "actual": "Restricted fallback path for City Health station",
+            "result": "Pass",
+            "remarks": "Exclusion boundary enforced"
+        },
+        {
+            "id": "WB-016",
+            "segment": "appointment_slot_is_available",
+            "desc": "Validate blank date and time rejection",
+            "inputs": "Blank preferred date or time (\"\")",
+            "expected": "Returns false before database lookup",
+            "actual": "Returned false without performing database query",
+            "result": "Pass",
+            "remarks": "Early return condition validated"
+        },
+        {
+            "id": "WB-017",
+            "segment": "appointment_slot_is_available",
+            "desc": "Validate unlisted time slot rejection",
+            "inputs": "Time not in appointment_time_slots() (\"11:45 PM\")",
+            "expected": "Returns false",
+            "actual": "Returned false for time not in allowed slot list",
+            "result": "Pass",
+            "remarks": "Time slot whitelist enforced"
+        },
+        {
+            "id": "WB-018",
+            "segment": "appointment_slot_is_available",
+            "desc": "Validate invalid calendar date format rejection",
+            "inputs": "Date=\"2026-02-30\" (invalid calendar date)",
+            "expected": "Returns false",
+            "actual": "Returned false for malformed calendar date",
+            "result": "Pass",
+            "remarks": "Strict date format check passed"
+        },
+        {
+            "id": "WB-019",
+            "segment": "appointment_slot_is_available",
+            "desc": "Validate weekend Sunday rejection rule",
+            "inputs": "Valid future Sunday (2026-09-13) + valid time",
+            "expected": "Returns false",
+            "actual": "Returned false enforcing Sunday station closure",
+            "result": "Pass",
+            "remarks": "Sunday restriction enforced"
+        },
+        {
+            "id": "WB-020",
+            "segment": "appointment_slot_is_available",
+            "desc": "Validate past date rejection rule",
+            "inputs": "Past date (\"2020-01-01\") + valid time",
+            "expected": "Returns false",
+            "actual": "Returned false rejecting appointment in the past",
+            "result": "Pass",
+            "remarks": "Past date boundary checked"
+        },
+        {
+            "id": "WB-021",
+            "segment": "appointment_slot_is_available",
+            "desc": "Validate unscheduled service offering rejection",
+            "inputs": "Valid future date\/time but service unscheduled",
+            "expected": "Returns false",
+            "actual": "Returned false for service not offered on selected schedule",
+            "result": "Pass",
+            "remarks": "Service schedule matched"
+        },
+        {
+            "id": "WB-022",
+            "segment": "appointment_slot_is_available",
+            "desc": "Validate slot availability when under capacity",
+            "inputs": "Available slot with appointment count (10) < max capacity (50)",
+            "expected": "Returns true",
+            "actual": "Returned true indicating slot is open for booking",
+            "result": "Pass",
+            "remarks": "Capacity condition verified"
+        },
+        {
+            "id": "WB-023",
+            "segment": "appointment_slot_is_available",
+            "desc": "Validate slot rejection when at maximum capacity",
+            "inputs": "Appointment count (50) equal to capacity limit (50)",
+            "expected": "Returns false",
+            "actual": "Returned false preventing overbooking beyond capacity",
+            "result": "Pass",
+            "remarks": "Max slot boundary enforced"
+        },
+        {
+            "id": "WB-024",
+            "segment": "book_appointment",
+            "desc": "Verify authenticated session patient ID priority",
+            "inputs": "Authenticated session patient_id=\"P-8888\" present",
+            "expected": "Session patient ID is used instead of form ID",
+            "actual": "Resolved patient ID to session ID \"P-8888\"",
+            "result": "Pass",
+            "remarks": "Session ID precedence confirmed"
+        },
+        {
+            "id": "WB-025",
+            "segment": "book_appointment",
+            "desc": "Verify form patient ID fallback when unauthenticated",
+            "inputs": "No session ID; form patient_id_number=\"P-1111\" present",
+            "expected": "Form patient ID is used",
+            "actual": "Resolved patient ID to form input \"P-1111\"",
+            "result": "Pass",
+            "remarks": "Form ID fallback branch executed"
+        },
+        {
+            "id": "WB-026",
+            "segment": "book_appointment",
+            "desc": "Verify patient record key auto-generation fallback",
+            "inputs": "No session ID and no form patient ID",
+            "expected": "appointment_patient_record_key(formData) is generated and used",
+            "actual": "Generated new record key: PAT-D6F568E2",
+            "result": "Pass",
+            "remarks": "Record key algorithm executed"
+        },
+        {
+            "id": "WB-027",
+            "segment": "book_appointment",
+            "desc": "Verify profile autofill loop for empty fields",
+            "inputs": "Existing patient profile + blank profile fields in form",
+            "expected": "Blank fields are populated from stored profile",
+            "actual": "All blank form fields populated with profile attributes",
+            "result": "Pass",
+            "remarks": "Profile autofill loop completed"
+        },
+        {
+            "id": "WB-028",
+            "segment": "book_appointment",
+            "desc": "Verify required fields loop validation",
+            "inputs": "One required field blank (last_name=\"\")",
+            "expected": "Adds required-field error and exits loop",
+            "actual": "Detected missing required field and broke out of loop",
+            "result": "Pass",
+            "remarks": "Required field validation trapped"
+        },
+        {
+            "id": "WB-029",
+            "segment": "book_appointment",
+            "desc": "Verify barangay health station membership validation",
+            "inputs": "Barangay not in 15 allowed station options",
+            "expected": "Adds invalid barangay error",
+            "actual": "Rejected unlisted barangay with validation error",
+            "result": "Pass",
+            "remarks": "Barangay whitelist enforced"
+        },
+        {
+            "id": "WB-030",
+            "segment": "book_appointment",
+            "desc": "Verify purok options validation per barangay",
+            "inputs": "Valid barangay + invalid purok (\"Purok Alien\")",
+            "expected": "Adds invalid purok error",
+            "actual": "Rejected invalid purok for chosen barangay",
+            "result": "Pass",
+            "remarks": "Purok membership validated"
+        },
+        {
+            "id": "WB-031",
+            "segment": "book_appointment",
+            "desc": "Verify contact number format regex validation",
+            "inputs": "Contact=\"08123456789\" (non-09 prefix)",
+            "expected": "Adds 09XXXXXXXXX validation error",
+            "actual": "Failed regex validation and flagged format error",
+            "result": "Pass",
+            "remarks": "09XXXXXXXXX regex enforced"
+        },
+        {
+            "id": "WB-032",
+            "segment": "book_appointment",
+            "desc": "Verify relationship requirement for immunization bookings",
+            "inputs": "Service=immunization; relationship blank",
+            "expected": "Adds relationship-required error",
+            "actual": "Captured relationship-required validation error",
+            "result": "Pass",
+            "remarks": "Immunization rule checked"
+        },
+        {
+            "id": "WB-033",
+            "segment": "book_appointment",
+            "desc": "Verify relationship acceptance for immunization bookings",
+            "inputs": "Service=immunization; relationship=\"Mother\"",
+            "expected": "Relationship condition passes",
+            "actual": "Passed immunization relationship condition",
+            "result": "Pass",
+            "remarks": "Immunization relationship verified"
+        },
+        {
+            "id": "WB-034",
+            "segment": "book_appointment",
+            "desc": "Verify booking halts when slot is unavailable",
+            "inputs": "Valid form but selected slot unavailable",
+            "expected": "Adds slot-unavailable error; appointment creation is not reached",
+            "actual": "Prevented appointment creation due to unavailable slot",
+            "result": "Pass",
+            "remarks": "Slot availability guard verified"
+        },
+        {
+            "id": "WB-035",
+            "segment": "book_appointment",
+            "desc": "Verify daily capacity limit handler for appointment codes",
+            "inputs": "Daily appointment code generation returns null",
+            "expected": "Adds daily-limit error",
+            "actual": "Added daily limit error response (200 daily cap)",
+            "result": "Pass",
+            "remarks": "Daily limit threshold handled"
+        },
+        {
+            "id": "WB-036",
+            "segment": "update_patient_profile_info",
+            "desc": "Verify profile update rejection for unknown patient ID",
+            "inputs": "Unknown patient ID (\"P-UNKNOWN\")",
+            "expected": "Returns false; no profile update",
+            "actual": "Returned false with no profile changes made",
+            "result": "Pass",
+            "remarks": "Non-existent patient lookup handled"
+        },
+        {
+            "id": "WB-037",
+            "segment": "update_patient_profile_info",
+            "desc": "Verify profile update rejection on blank required fields",
+            "inputs": "Existing patient + required field blank (first_name=\"\")",
+            "expected": "Returns false",
+            "actual": "Returned false due to empty required profile field",
+            "result": "Pass",
+            "remarks": "Profile field validation enforced"
+        },
+        {
+            "id": "WB-038",
+            "segment": "update_patient_profile_info",
+            "desc": "Verify acceptance of valid contact number format",
+            "inputs": "Existing patient + contact \"09987654321\"",
+            "expected": "Validation passes",
+            "actual": "Contact number regex passed successfully",
+            "result": "Pass",
+            "remarks": "Valid contact accepted"
+        },
+        {
+            "id": "WB-039",
+            "segment": "update_patient_profile_info",
+            "desc": "Verify rejection of malformed contact number format",
+            "inputs": "Existing patient + invalid contact \"12345\"",
+            "expected": "Returns false",
+            "actual": "Returned false rejecting malformed phone number",
+            "result": "Pass",
+            "remarks": "Malformed contact rejected"
+        },
+        {
+            "id": "WB-040",
+            "segment": "update_patient_profile_info",
+            "desc": "Verify address change audit history tracking",
+            "inputs": "New complete_address differs from current",
+            "expected": "History record and Address notification are created",
+            "actual": "Created address audit history record and notification",
+            "result": "Pass",
+            "remarks": "Address modification audit tracked"
+        },
+        {
+            "id": "WB-041",
+            "segment": "update_patient_profile_info",
+            "desc": "Verify contact number change audit history tracking",
+            "inputs": "New contact differs from current",
+            "expected": "History record and Contact Number notification are created",
+            "actual": "Created contact number audit history record and notification",
+            "result": "Pass",
+            "remarks": "Phone modification audit tracked"
+        },
+        {
+            "id": "WB-042",
+            "segment": "update_patient_profile_info",
+            "desc": "Verify no-op audit path when address and contact are unchanged",
+            "inputs": "Address and contact unchanged",
+            "expected": "No change-history records are created for those fields; profile is upserted",
+            "actual": "Profile updated without creating redundant history records",
+            "result": "Pass",
+            "remarks": "Redundant history write avoided"
+        },
+        {
+            "id": "WB-043",
+            "segment": "track_patient_info_change",
+            "desc": "Verify early return when old and new values are identical",
+            "inputs": "oldValue == newValue (\"09123456789\")",
+            "expected": "Function returns without INSERT",
+            "actual": "Returned early without executing SQL INSERT",
+            "result": "Pass",
+            "remarks": "Unnecessary insert bypassed"
+        },
+        {
+            "id": "WB-044",
+            "segment": "track_patient_info_change",
+            "desc": "Verify history insertion when values differ",
+            "inputs": "oldValue != newValue",
+            "expected": "A patient_info_history INSERT is executed",
+            "actual": "Executed INSERT into patient_info_history table",
+            "result": "Pass",
+            "remarks": "History record logged"
+        },
+        {
+            "id": "WB-045",
+            "segment": "save_appointment_clinical_details",
+            "desc": "Verify rejection for non-existent appointment ID",
+            "inputs": "Unknown appointment ID (99999)",
+            "expected": "Returns false",
+            "actual": "Returned false for unknown appointment ID",
+            "result": "Pass",
+            "remarks": "Lookup check verified"
+        },
+        {
+            "id": "WB-046",
+            "segment": "save_appointment_clinical_details",
+            "desc": "Verify station-scope authorization boundary",
+            "inputs": "Appointment station (\"bata\") differs from stationScope (\"mandalagan\")",
+            "expected": "Returns false",
+            "actual": "Returned false denying cross-station clinical edits",
+            "result": "Pass",
+            "remarks": "Station authorization enforced"
+        },
+        {
+            "id": "WB-047",
+            "segment": "save_appointment_clinical_details",
+            "desc": "Verify retention of omitted clinical fields",
+            "inputs": "Data omits blood_pressure field; existing BP=\"120\/80\"",
+            "expected": "Existing appointment value is retained for omitted field",
+            "actual": "Preserved existing blood_pressure value \"120\/80\"",
+            "result": "Pass",
+            "remarks": "Field fallback logic verified"
+        },
+        {
+            "id": "WB-048",
+            "segment": "save_appointment_clinical_details",
+            "desc": "Verify successful UPDATE execution for clinical details",
+            "inputs": "Valid appointment + complete clinical data",
+            "expected": "UPDATE appointments executes successfully",
+            "actual": "Updated appointment clinical records in database",
+            "result": "Pass",
+            "remarks": "Update statement executed"
+        },
+        {
+            "id": "WB-049",
+            "segment": "appointment_can_complete",
+            "desc": "Verify completion prerequisite check when all data present",
+            "inputs": "Appointment has vitals, photo, and clinical notes",
+            "expected": "Returns true",
+            "actual": "Returned true allowing consultation completion",
+            "result": "Pass",
+            "remarks": "All completion criteria met"
+        },
+        {
+            "id": "WB-050",
+            "segment": "appointment_can_complete",
+            "desc": "Verify completion block when vital signs are missing",
+            "inputs": "Photo + notes present, vitals missing (blood_pressure=\"\")",
+            "expected": "Returns false",
+            "actual": "Returned false preventing completion without vital signs",
+            "result": "Pass",
+            "remarks": "Vitals requirement enforced"
+        },
+        {
+            "id": "WB-051",
+            "segment": "appointment_can_complete",
+            "desc": "Verify completion block when patient photo is missing",
+            "inputs": "Vitals + notes present, photo missing (photo_path=\"\")",
+            "expected": "Returns false",
+            "actual": "Returned false preventing completion without photo",
+            "result": "Pass",
+            "remarks": "Photo requirement enforced"
+        },
+        {
+            "id": "WB-052",
+            "segment": "appointment_can_complete",
+            "desc": "Verify completion block when doctor notes are missing",
+            "inputs": "Vitals + photo present, notes missing (doctor_notes=\"\")",
+            "expected": "Returns false",
+            "actual": "Returned false preventing completion without doctor notes",
+            "result": "Pass",
+            "remarks": "Doctor notes requirement enforced"
+        },
+        {
+            "id": "WB-053",
+            "segment": "update_appointment_status",
+            "desc": "Verify status update rejection for non-existent appointment",
+            "inputs": "Unknown appointment ID",
+            "expected": "Returns false",
+            "actual": "Returned false for non-existent appointment ID",
+            "result": "Pass",
+            "remarks": "Lookup failure handled"
+        },
+        {
+            "id": "WB-054",
+            "segment": "update_appointment_status",
+            "desc": "Verify station-scope authorization boundary for status updates",
+            "inputs": "Appointment station differs from stationScope",
+            "expected": "Returns false",
+            "actual": "Returned false blocking cross-station status modification",
+            "result": "Pass",
+            "remarks": "Station authorization enforced"
+        },
+        {
+            "id": "WB-055",
+            "segment": "update_appointment_status",
+            "desc": "Verify allowed transition from Pending to Confirmed",
+            "inputs": "Pending -> Confirmed",
+            "expected": "Status update is allowed",
+            "actual": "Status transition to Confirmed allowed",
+            "result": "Pass",
+            "remarks": "Valid transition executed"
+        },
+        {
+            "id": "WB-056",
+            "segment": "update_appointment_status",
+            "desc": "Verify allowed transition from Pending to Cancelled",
+            "inputs": "Pending -> Cancelled",
+            "expected": "Status update is allowed",
+            "actual": "Status transition to Cancelled allowed",
+            "result": "Pass",
+            "remarks": "Valid transition executed"
+        },
+        {
+            "id": "WB-057",
+            "segment": "update_appointment_status",
+            "desc": "Verify allowed transition from Confirmed to Serving",
+            "inputs": "Confirmed -> Serving",
+            "expected": "Status update is allowed",
+            "actual": "Status transition to Serving allowed",
+            "result": "Pass",
+            "remarks": "Valid transition executed"
+        },
+        {
+            "id": "WB-058",
+            "segment": "update_appointment_status",
+            "desc": "Verify allowed transition from Serving to Completed",
+            "inputs": "Serving -> Completed",
+            "expected": "Status update is allowed",
+            "actual": "Status transition to Completed allowed",
+            "result": "Pass",
+            "remarks": "Valid transition executed"
+        },
+        {
+            "id": "WB-059",
+            "segment": "update_appointment_status",
+            "desc": "Verify rejection of illegal direct transition from Pending to Completed",
+            "inputs": "Pending -> Completed",
+            "expected": "Returns false and does not update status",
+            "actual": "Returned false preventing illegal state jump to Completed",
+            "result": "Pass",
+            "remarks": "Invalid transition rejected"
+        },
+        {
+            "id": "WB-060",
+            "segment": "update_appointment_status",
+            "desc": "Verify immutability of terminal Completed state",
+            "inputs": "Completed -> Confirmed",
+            "expected": "Returns false; completed status remains unchanged",
+            "actual": "Returned false preserving terminal Completed state",
+            "result": "Pass",
+            "remarks": "Terminal state preserved"
+        },
+        {
+            "id": "WB-061",
+            "segment": "update_appointment_status",
+            "desc": "Verify immutability of terminal Cancelled state",
+            "inputs": "Cancelled -> Serving",
+            "expected": "Returns false",
+            "actual": "Returned false preserving terminal Cancelled state",
+            "result": "Pass",
+            "remarks": "Terminal state preserved"
+        },
+        {
+            "id": "WB-062",
+            "segment": "update_appointment_status",
+            "desc": "Verify SMS trigger on Confirmed status transition",
+            "inputs": "Successful Pending -> Confirmed with non-empty phone (\"09123456789\")",
+            "expected": "Confirmation SMS branch executes",
+            "actual": "Confirmation SMS dispatch routine executed",
+            "result": "Pass",
+            "remarks": "SMS confirmation triggered"
+        },
+        {
+            "id": "WB-063",
+            "segment": "update_appointment_status",
+            "desc": "Verify SMS trigger on Cancelled status transition",
+            "inputs": "Successful Pending -> Cancelled with non-empty phone (\"09123456789\")",
+            "expected": "Cancellation SMS branch executes",
+            "actual": "Cancellation SMS dispatch routine executed",
+            "result": "Pass",
+            "remarks": "SMS cancellation triggered"
+        },
+        {
+            "id": "WB-064",
+            "segment": "update_appointment_status",
+            "desc": "Verify SMS skip when patient contact number is empty",
+            "inputs": "Successful status change with empty phone (\"\")",
+            "expected": "SMS block is skipped",
+            "actual": "SMS dispatch routine skipped cleanly without error",
+            "result": "Pass",
+            "remarks": "Empty contact number handled"
+        },
+        {
+            "id": "WB-065",
+            "segment": "sync_unattended_records",
+            "desc": "Verify station-filtered unattended sync query generation",
+            "inputs": "stationSlug=\"bata\" (non-empty)",
+            "expected": "SQL includes station filter",
+            "actual": "Generated SQL query with station filter clause",
+            "result": "Pass",
+            "remarks": "Station filter appended"
+        },
+        {
+            "id": "WB-066",
+            "segment": "sync_unattended_records",
+            "desc": "Verify all-station unattended sync query generation",
+            "inputs": "stationSlug=\"\" (empty)",
+            "expected": "All-station pending records can be considered",
+            "actual": "Generated global SQL query without station filter",
+            "result": "Pass",
+            "remarks": "Global sync query generated"
+        },
+        {
+            "id": "WB-067",
+            "segment": "sync_unattended_records",
+            "desc": "Verify unattended identification for past pending appointments",
+            "inputs": "Pending appointment with preferred_date < today",
+            "expected": "Record enters unattended appointment sync loop",
+            "actual": "Identified past pending appointment for unattended synchronization",
+            "result": "Pass",
+            "remarks": "Unattended appointment identified"
+        },
+        {
+            "id": "WB-068",
+            "segment": "sync_unattended_records",
+            "desc": "Verify exclusion of confirmed or future appointments from sync",
+            "inputs": "Confirmed appointment or pending appointment dated today\/future",
+            "expected": "Record is excluded from pending-past-date query",
+            "actual": "Excluded non-pending and future appointments from sync loop",
+            "result": "Pass",
+            "remarks": "Exclusion condition verified"
+        },
+        {
+            "id": "WB-069",
+            "segment": "save_patient_account",
+            "desc": "Verify automatic password hashing when raw password provided",
+            "inputs": "password provided; password_hash omitted",
+            "expected": "password_hash is generated with password_hash()",
+            "actual": "Generated BCRYPT password hash for raw password",
+            "result": "Pass",
+            "remarks": "Password securely hashed"
+        },
+        {
+            "id": "WB-070",
+            "segment": "save_patient_account",
+            "desc": "Verify default password fallback hashing when none provided",
+            "inputs": "Both password and password_hash omitted",
+            "expected": "Default patient password is hashed",
+            "actual": "Hashed default fallback password \"patient123\"",
+            "result": "Pass",
+            "remarks": "Default password hashed"
+        },
+        {
+            "id": "WB-071",
+            "segment": "save_patient_account",
+            "desc": "Verify patient ID generation format and algorithm",
+            "inputs": "patient_id omitted",
+            "expected": "Patient ID is generated from email\/time and uppercased substring",
+            "actual": "Generated 6-character uppercase alphanumeric ID: 3864CB",
+            "result": "Pass",
+            "remarks": "6-character ID generated"
+        },
+        {
+            "id": "WB-072",
+            "segment": "save_patient_account",
+            "desc": "Verify patient account SQL upsert statement execution",
+            "inputs": "Existing patient ID + updated profile",
+            "expected": "INSERT ... ON DUPLICATE KEY UPDATE updates account fields",
+            "actual": "Executed INSERT ... ON DUPLICATE KEY UPDATE statement",
+            "result": "Pass",
+            "remarks": "Upsert executed successfully"
+        },
+        {
+            "id": "WB-073",
+            "segment": "geofence_point_is_allowed",
+            "desc": "Verify access permission for coordinates within Bacolod perimeter",
+            "inputs": "Coordinates inside configured allowed region (lat=10.676, lng=122.951)",
+            "expected": "Returns allowed=true",
+            "actual": "Returned true allowing access within perimeter",
+            "result": "Pass",
+            "remarks": "In-bounds coordinates accepted"
+        },
+        {
+            "id": "WB-074",
+            "segment": "geofence_point_is_allowed",
+            "desc": "Verify access restriction for coordinates outside allowed region",
+            "inputs": "Coordinates outside configured regions (lat=14.5995, lng=120.9842)",
+            "expected": "Returns allowed=false",
+            "actual": "Returned false restricting access outside perimeter",
+            "result": "Pass",
+            "remarks": "Out-of-bounds coordinates rejected"
+        },
+        {
+            "id": "WB-075",
+            "segment": "geofence_parse_coordinates",
+            "desc": "Verify rejection and parsing failure for non-numeric coordinates",
+            "inputs": "Malformed\/non-numeric coordinates (\"abc\", \"def\")",
+            "expected": "Coordinates are rejected\/not parsed as valid (returns null)",
+            "actual": "Returned null rejecting malformed non-numeric coordinates",
+            "result": "Pass",
+            "remarks": "Malformed coordinates rejected"
+        }
+    ]
+}
