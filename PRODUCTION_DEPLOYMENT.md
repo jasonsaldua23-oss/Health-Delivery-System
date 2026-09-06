@@ -34,7 +34,8 @@ Edit `.env` with your secure credentials:
 ```ini
 APP_ENV=production
 APP_NAME="Health Delivery System - Bacolod"
-APP_URL=https://your-domain.com
+APP_URL=https://bsns.online
+
 
 # Database Connection (Hostinger hPanel)
 DB_HOST=127.0.0.1

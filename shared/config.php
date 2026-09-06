@@ -47,8 +47,9 @@ if (!defined('APP_NAME')) {
 }
 
 if (!defined('APP_URL')) {
-    define('APP_URL', (string) ($_ENV['APP_URL'] ?? getenv('APP_URL') ?: 'http://localhost/Health-Delivery-System-Latest'));
+    define('APP_URL', (string) ($_ENV['APP_URL'] ?? getenv('APP_URL') ?: 'https://bsns.online'));
 }
+
 
 if (!defined('BREVO_API_KEY')) {
     define('BREVO_API_KEY', (string) ($_ENV['BREVO_API_KEY'] ?? getenv('BREVO_API_KEY') ?: ''));
