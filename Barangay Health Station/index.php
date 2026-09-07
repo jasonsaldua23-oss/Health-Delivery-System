@@ -3619,14 +3619,14 @@ for ($i = 0; $i < 6; $i++) {
 
                                         <div class="event-actions-dropdown" style="display: flex; align-items: center; gap: 6px;">
                                             <a href="?page=events&edit_event=<?= h((string) $event['id']); ?>" class="event-action-icon edit" title="Reschedule Event" style="background: #eff6ff; border: 1px solid #bfdbfe; color: #2563eb; border-radius: 8px; padding: 6px 8px; text-decoration: none;">
-                                                <?= staff_icon('edit'); ?>
+                                                <?= staff_icon('clock'); ?>
                                             </a>
                                             <form method="post" style="margin:0;" onsubmit="return confirm('Deactivate this event and remove it from patient portals?');">
                                                 <input type="hidden" name="action" value="deactivate_event">
                                                 <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
                                                 <input type="hidden" name="event_id" value="<?= h((string) $event['id']); ?>">
                                                 <button type="submit" class="event-action-icon" title="Deactivate Event" style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; border-radius: 8px; padding: 6px 8px; cursor: pointer;">
-                                                    <?= staff_icon('clock'); ?>
+                                                    <?= staff_icon('edit'); ?>
                                                 </button>
                                             </form>
                                         </div>
@@ -3752,7 +3752,7 @@ for ($i = 0; $i < 6; $i++) {
                         <div class="account-modal-header" style="background: linear-gradient(135deg, #1e40af, #2563eb); color: #ffffff; padding: 20px 24px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center;">
                             <div class="account-modal-title-group" style="display: flex; align-items: center; gap: 12px;">
                                 <span class="account-modal-icon" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;">
-                                    <?= staff_icon('edit'); ?>
+                                    <?= staff_icon('clock'); ?>
                                 </span>
                                 <div>
                                     <h2 style="color: #ffffff; margin: 0; font-size: 1.25rem; font-weight: 700;">Reschedule Active Event</h2>
