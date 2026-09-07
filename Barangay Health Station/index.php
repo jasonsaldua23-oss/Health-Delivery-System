@@ -3526,7 +3526,7 @@ for ($i = 0; $i < 6; $i++) {
 
                                     <!-- Admin Target Month Banner -->
                                     <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
-                                        <span style="color: #2563eb;"><?= staff_icon('calendar'); ?></span>
+                                        <span style="color: #2563eb; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex-shrink: 0;"><?= staff_icon('calendar'); ?></span>
                                         <div style="font-size: 0.84rem;">
                                             <span style="color: #1e40af; font-weight: 600;">Admin Suggested Month:</span>
                                             <strong style="color: #1d4ed8; font-weight: 700;"><?= h($monthFormatted); ?></strong>
@@ -3534,12 +3534,12 @@ for ($i = 0; $i < 6; $i++) {
                                     </div>
 
                                     <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; color: #64748b;">
-                                        <div style="display: flex; align-items: center; gap: 6px;">
-                                            <?= staff_icon('clock'); ?>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: #64748b; flex-shrink: 0;"><?= staff_icon('clock'); ?></span>
                                             <span>Tentative Hours: <strong><?= h((string)$event['time_label']); ?><?php if (!empty($event['end_time_label'])): ?> - <?= h((string)$event['end_time_label']); ?><?php endif; ?></strong></span>
                                         </div>
-                                        <div style="display: flex; align-items: center; gap: 6px;">
-                                            <?= staff_icon('pin'); ?>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: #64748b; flex-shrink: 0;"><?= staff_icon('pin'); ?></span>
                                             <span>Target Station: <strong><?= h((string)$event['station_name']); ?></strong></span>
                                         </div>
                                     </div>
@@ -3638,8 +3638,8 @@ for ($i = 0; $i < 6; $i++) {
                                 </div>
 
                                 <div class="event-card-footer" style="border-top: 1px solid #f1f5f9; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; color: #64748b;">
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <?= staff_icon('clock'); ?>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: #64748b; flex-shrink: 0;"><?= staff_icon('clock'); ?></span>
                                         <span><?= h((string)$event['time_label']); ?><?php if (!empty($event['end_time_label'])): ?> - <?= h((string)$event['end_time_label']); ?><?php endif; ?></span>
                                     </div>
                                     <span style="background: #ecfdf5; color: #065f46; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px;">
@@ -3688,7 +3688,7 @@ for ($i = 0; $i < 6; $i++) {
                                 <!-- Event Summary Box -->
                                 <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                                        <span style="color: #2563eb;"><?= staff_icon($eventToActivate['icon'] ?? 'calendar'); ?></span>
+                                        <span style="color: #2563eb; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0;"><?= staff_icon($eventToActivate['icon'] ?? 'calendar'); ?></span>
                                         <strong style="font-size: 1.05rem; color: #0f172a;"><?= h((string) $eventToActivate['title']); ?></strong>
                                     </div>
                                     <p style="color: #64748b; font-size: 0.88rem; margin: 0; line-height: 1.45;"><?= nl2br(h((string) $eventToActivate['description'])); ?></p>
@@ -3696,7 +3696,7 @@ for ($i = 0; $i < 6; $i++) {
 
                                 <!-- Admin Suggested Month Highlight -->
                                 <div style="background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
-                                    <div style="width: 38px; height: 38px; border-radius: 10px; background: #dbeafe; color: #1d4ed8; display: grid; place-items: center; flex-shrink: 0;">
+                                    <div style="width: 36px; height: 36px; border-radius: 10px; background: #dbeafe; color: #1d4ed8; display: grid; place-items: center; flex-shrink: 0;">
                                         <?= staff_icon('calendar'); ?>
                                     </div>
                                     <div>

@@ -8542,12 +8542,18 @@ button { border: 0; cursor: pointer; }
 }
 
 /* ==========================================================================
-   STAFF EVENTS REDESIGN & VACCINE SUMMARY CARDS
+   STAFF EVENTS REDESIGN & VACCINE SUMMARY CARDS & ICON SIZING
    ========================================================================== */
 
 .staff-events-hero {
   position: relative;
   overflow: hidden;
+}
+
+.staff-events-hero svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 
 .staff-event-stats-strip .event-stat-tile {
@@ -8557,6 +8563,20 @@ button { border: 0; cursor: pointer; }
 .staff-event-stats-strip .event-stat-tile:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06) !important;
+}
+
+.staff-event-stats-strip .event-stat-tile svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.staff-events-section-icon svg,
+section h2 svg,
+section h4 svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .staff-inactive-event-card {
@@ -8569,8 +8589,27 @@ button { border: 0; cursor: pointer; }
   border-color: #f59e0b !important;
 }
 
+.staff-inactive-event-card svg,
+.modern-event-card svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.event-category-chip svg {
+  width: 13px !important;
+  height: 13px !important;
+  flex-shrink: 0;
+}
+
 .staff-activate-btn {
   transition: all 0.18s ease;
+}
+
+.staff-activate-btn svg {
+  width: 15px !important;
+  height: 15px !important;
+  flex-shrink: 0;
 }
 
 .staff-activate-btn:hover {
@@ -8579,13 +8618,68 @@ button { border: 0; cursor: pointer; }
   filter: brightness(1.05);
 }
 
+.event-action-icon svg {
+  width: 14px !important;
+  height: 14px !important;
+  flex-shrink: 0;
+}
+
+.event-date-block svg {
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0;
+}
+
+.account-modal-header svg {
+  width: 18px !important;
+  height: 18px !important;
+  flex-shrink: 0;
+}
+
+.account-modal-icon svg {
+  width: 20px !important;
+  height: 20px !important;
+  flex-shrink: 0;
+}
+
+.account-modal-body svg {
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0;
+}
+
+.account-modal-footer svg {
+  width: 15px !important;
+  height: 15px !important;
+  flex-shrink: 0;
+}
+
+.appt-empty-icon svg,
+.panel-card.empty-state svg {
+  width: 26px !important;
+  height: 26px !important;
+  flex-shrink: 0;
+}
+
 .vaccine-summary-card {
   box-shadow: 0 2px 6px rgba(22, 101, 52, 0.05);
   animation: fadeIn 0.2s ease;
 }
 
+.vaccine-summary-card svg {
+  width: 18px !important;
+  height: 18px !important;
+  flex-shrink: 0;
+}
+
 .profile-vaccine-badge-box {
   animation: fadeIn 0.2s ease;
+}
+
+.profile-vaccine-badge-box svg {
+  width: 15px !important;
+  height: 15px !important;
+  flex-shrink: 0;
 }
 
 
