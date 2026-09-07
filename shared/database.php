@@ -1272,10 +1272,12 @@ function db(): mysqli
         exit;
     }
 
-    // Auto-check if core tables exist. If missing, auto-migrate seamlessly on first run!
+    // Auto-check if core tables and latest columns exist. If missing, auto-migrate seamlessly on connection!
     try {
-        $check = $connection->query("SHOW TABLES LIKE 'station_service_assignments'");
-        if (!$check || $check->num_rows === 0) {
+        if (!db_column_exists($connection, 'upcoming_events', 'status') 
+            || !db_column_exists($connection, 'appointments', 'vaccine_type') 
+            || !db_column_exists($connection, 'appointments', 'reminder_sms_sent')
+            || !db_column_exists($connection, 'station_service_assignments', 'daily_capacity')) {
             run_database_migrations($connection, false);
         }
     } catch (Throwable $e) {
