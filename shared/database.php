@@ -572,6 +572,8 @@ function create_appointments_table(mysqli $connection, string $engine = 'InnoDB'
             blood_pressure VARCHAR(30) DEFAULT NULL,
             vaccine_type VARCHAR(150) DEFAULT NULL,
             doctor_notes TEXT DEFAULT NULL,
+            reminder_sms_sent TINYINT(1) NOT NULL DEFAULT 0,
+            reminder_sent_at TIMESTAMP NULL DEFAULT NULL,
             photo_path VARCHAR(255) DEFAULT NULL,
             status VARCHAR(30) NOT NULL DEFAULT "Pending",
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -579,7 +581,8 @@ function create_appointments_table(mysqli $connection, string $engine = 'InnoDB'
             INDEX idx_station_slug (station_slug),
             INDEX idx_service_slug (service_slug),
             INDEX idx_status (status),
-            INDEX idx_preferred_date (preferred_date)
+            INDEX idx_preferred_date (preferred_date),
+            INDEX idx_reminder_due (preferred_date, reminder_sms_sent, status)
         ) ENGINE=' . $engine . ' DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
     );
 }
@@ -1007,6 +1010,15 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
     if (!db_column_exists($connection, 'appointments', 'vaccine_type')) {
         $connection->query('ALTER TABLE appointments ADD COLUMN vaccine_type VARCHAR(150) DEFAULT NULL AFTER blood_pressure');
         $log[] = 'Added appointments.vaccine_type';
+    }
+
+    if (!db_column_exists($connection, 'appointments', 'reminder_sms_sent')) {
+        $connection->query('ALTER TABLE appointments ADD COLUMN reminder_sms_sent TINYINT(1) NOT NULL DEFAULT 0 AFTER doctor_notes');
+        $log[] = 'Added appointments.reminder_sms_sent';
+    }
+    if (!db_column_exists($connection, 'appointments', 'reminder_sent_at')) {
+        $connection->query('ALTER TABLE appointments ADD COLUMN reminder_sent_at TIMESTAMP NULL DEFAULT NULL AFTER reminder_sms_sent');
+        $log[] = 'Added appointments.reminder_sent_at';
     }
 
     if (!db_column_exists($connection, 'staff_accounts', 'birth_date')) {
@@ -3988,7 +4000,160 @@ function schedule_appointment_follow_up(
         $nStmt->execute();
     } catch (Throwable $e) {}
 
+    // Send instant SMS notification to the patient the moment staff submits follow-up
+    $patientPhone = trim((string) ($appointment['contact_number'] ?? ''));
+    if ($patientPhone !== '') {
+        $patientFullName = trim(($appointment['first_name'] ?? '') . ' ' . ($appointment['last_name'] ?? ''));
+        if ($patientFullName === '') {
+            $patientFullName = 'Patient';
+        }
+        $timeStr = $followUpTime !== '' ? " at {$followUpTime}" : "";
+        $smsFollowUpMsg = "Health Delivery System: Hello {$patientFullName}, you have been scheduled for a follow-up consultation for {$serviceName} at {$stationName} on {$formattedDate}{$timeStr}. Please arrive 10-15 minutes prior to your schedule.";
+        sendBrevoSMS($patientPhone, $smsFollowUpMsg, $appointmentId);
+    }
+
+    $stationSlug = (string) ($appointment['station_slug'] ?? '');
+    log_activity(
+        'staff',
+        $scheduledBy !== '' ? $scheduledBy : $stationSlug,
+        'follow_up_scheduled',
+        'appointment',
+        (string) $appointmentId,
+        '',
+        $followUpDate,
+        $stationSlug
+    );
+
     return true;
+}
+
+/**
+ * Send automated SMS reminders to patients with appointments scheduled for a target date (defaults to tomorrow).
+ */
+function send_appointment_reminders_due(?string $targetDate = null): array
+{
+    $connection = db();
+    if ($targetDate === null || $targetDate === '') {
+        $targetDate = date('Y-m-d', strtotime('+1 day'));
+    }
+
+    $formattedTargetDate = date('F j, Y', strtotime($targetDate));
+
+    $sql = 'SELECT * FROM appointments 
+            WHERE preferred_date = ? 
+              AND status IN ("Confirmed", "Pending")
+              AND (reminder_sms_sent = 0 OR reminder_sms_sent IS NULL)
+              AND contact_number IS NOT NULL 
+              AND TRIM(contact_number) != ""';
+
+    $stmt = $connection->prepare($sql);
+    $stmt->bind_param('s', $targetDate);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $processed = 0;
+    $sent = 0;
+    $failed = 0;
+    $details = [];
+
+    $updateStmt = $connection->prepare('UPDATE appointments SET reminder_sms_sent = 1, reminder_sent_at = NOW() WHERE id = ?');
+
+    while ($appt = $result->fetch_assoc()) {
+        $processed++;
+        $apptId = (int) $appt['id'];
+        $phone = trim((string) ($appt['contact_number'] ?? ''));
+        $firstName = trim((string) ($appt['first_name'] ?? ''));
+        $lastName = trim((string) ($appt['last_name'] ?? ''));
+        $patientName = trim($firstName . ' ' . $lastName);
+        if ($patientName === '') {
+            $patientName = 'Patient';
+        }
+        $serviceName = trim((string) ($appt['service_name'] ?? 'Medical Consultation'));
+        $stationName = trim((string) ($appt['station_name'] ?? 'Barangay Health Station'));
+        $timeSlot = trim((string) ($appt['preferred_time'] ?? ''));
+        $timeStr = $timeSlot !== '' ? " at {$timeSlot}" : "";
+
+        $reminderMessage = "Health Delivery System Reminder: Hello {$patientName}, this is a reminder for your scheduled {$serviceName} appointment at {$stationName} tomorrow, {$formattedTargetDate}{$timeStr}. Please bring a valid ID and arrive 10-15 minutes early.";
+
+        $isSuccess = sendBrevoSMS($phone, $reminderMessage, $apptId);
+
+        // Update reminder flag so we don't duplicate
+        $updateStmt->bind_param('i', $apptId);
+        $updateStmt->execute();
+
+        if ($isSuccess) {
+            $sent++;
+        } else {
+            $failed++;
+        }
+
+        // Add in-app reminder notification
+        $refCode = (string) ($appt['appointment_code'] ?? $appt['reference_code'] ?? '');
+        $patientId = (string) ($appt['patient_id'] ?? '');
+        if ($patientId === '') {
+            $patientId = (string) ($appt['email'] ?? $refCode);
+        }
+        $inAppNotif = "Appointment Reminder: You have a scheduled appointment for {$serviceName} at {$stationName} tomorrow, {$formattedTargetDate}{$timeStr}.";
+
+        try {
+            $nStmt = $connection->prepare(
+                'INSERT INTO ' . DB_TABLE_APPOINTMENT_NOTIFICATIONS . ' 
+                 (appointment_id, reference_code, patient_id, status, message, is_read) 
+                 VALUES (?, ?, ?, "Reminder", ?, 0)'
+            );
+            $nStmt->bind_param('isss', $apptId, $refCode, $patientId, $inAppNotif);
+            $nStmt->execute();
+        } catch (Throwable $e) {}
+
+        $details[] = [
+            'appointment_id' => $apptId,
+            'patient_name' => $patientName,
+            'phone' => $phone,
+            'target_date' => $targetDate,
+            'status' => $isSuccess ? 'sent' : 'logged_or_offline',
+        ];
+    }
+
+    return [
+        'target_date' => $targetDate,
+        'processed' => $processed,
+        'sent' => $sent,
+        'failed' => $failed,
+        'details' => $details,
+    ];
+}
+
+/**
+ * Opportunistic auto-dispatcher: Runs seamlessly in the background on web requests.
+ */
+function auto_dispatch_due_appointment_reminders(): array
+{
+    static $alreadyRan = false;
+    if ($alreadyRan) {
+        return ['skipped' => true, 'reason' => 'already_run_this_request'];
+    }
+    $alreadyRan = true;
+
+    try {
+        $tomorrow = date('Y-m-d', strtotime('+1 day'));
+        $connection = db();
+        $checkStmt = $connection->prepare(
+            'SELECT COUNT(*) AS cnt FROM appointments 
+             WHERE preferred_date = ? 
+               AND status IN ("Confirmed", "Pending") 
+               AND (reminder_sms_sent = 0 OR reminder_sms_sent IS NULL) 
+               AND contact_number IS NOT NULL 
+               AND TRIM(contact_number) != ""'
+        );
+        $checkStmt->bind_param('s', $tomorrow);
+        $checkStmt->execute();
+        $row = $checkStmt->get_result()->fetch_assoc();
+        if ((int) ($row['cnt'] ?? 0) > 0) {
+            return send_appointment_reminders_due($tomorrow);
+        }
+    } catch (Throwable $e) {}
+
+    return ['skipped' => true, 'reason' => 'no_due_reminders'];
 }
 
 /**

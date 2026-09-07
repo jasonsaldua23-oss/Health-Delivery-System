@@ -577,7 +577,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'sche
 
         if ($appointmentId > 0 && $followUpDate !== '') {
             if (schedule_appointment_follow_up($appointmentId, $followUpDate, $followUpTime, $followUpNotes, (string) ($staffAccount['email'] ?? ''))) {
-                $_SESSION['staff_flash'] = 'Follow-up consultation scheduled for ' . date('F j, Y', strtotime($followUpDate)) . '. The patient has been notified on their dashboard!';
+                $_SESSION['staff_flash'] = 'Follow-up consultation scheduled for ' . date('F j, Y', strtotime($followUpDate)) . '. The patient has been notified via SMS and on their dashboard!';
                 log_activity('staff', (string) ($staffAccount['email'] ?? ''), 'follow_up_scheduled', 'appointment', (string) $appointmentId, '', '', (string) $station['slug']);
             } else {
                 $_SESSION['staff_flash'] = 'Unable to schedule follow-up. Please try again.';
