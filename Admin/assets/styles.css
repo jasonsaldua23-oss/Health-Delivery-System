@@ -6668,11 +6668,14 @@ button, input, select { font: inherit; }
     color: #64748b;
 }
 
+/* Admin Event Card Grid & Sizing */
 .admin-event-card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 380px));
     gap: 22px;
-    align-items: stretch;
+    align-items: start;
+    justify-content: start;
+    width: 100%;
 }
 
 .admin-event-card {
@@ -6680,14 +6683,17 @@ button, input, select { font: inherit; }
     border: 1.5px solid #e2e8f0;
     border-radius: 18px;
     overflow: hidden;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04);
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 380px;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .admin-event-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
@@ -6700,7 +6706,7 @@ button, input, select { font: inherit; }
 }
 
 .admin-event-card-header {
-    padding: 18px 20px 20px;
+    padding: 16px 18px 16px;
     background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #7c3aed 100%);
     color: #ffffff;
 }
@@ -6713,15 +6719,15 @@ button, input, select { font: inherit; }
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 12px;
+    gap: 8px;
+    margin-bottom: 10px;
     flex-wrap: wrap;
 }
 
 .admin-event-pill-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
 }
 
@@ -6729,11 +6735,11 @@ button, input, select { font: inherit; }
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 4px 10px;
+    padding: 3px 9px;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.2);
     color: #ffffff;
-    font-size: 0.74rem;
+    font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.4px;
@@ -6741,8 +6747,8 @@ button, input, select { font: inherit; }
 }
 
 .admin-event-pill svg {
-    width: 13px !important;
-    height: 13px !important;
+    width: 12px !important;
+    height: 12px !important;
     flex-shrink: 0;
 }
 
@@ -6750,16 +6756,16 @@ button, input, select { font: inherit; }
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 4px 10px;
+    padding: 3px 9px;
     border-radius: 999px;
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     font-weight: 700;
     letter-spacing: 0.2px;
 }
 
 .admin-status-pill svg {
-    width: 13px !important;
-    height: 13px !important;
+    width: 12px !important;
+    height: 12px !important;
     flex-shrink: 0;
 }
 
@@ -6782,9 +6788,9 @@ button, input, select { font: inherit; }
 }
 
 .admin-event-action-btn {
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
     border-radius: 8px;
     display: inline-flex;
     align-items: center;
@@ -6820,36 +6826,41 @@ button, input, select { font: inherit; }
 
 .admin-event-card-header h3 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: #ffffff;
     line-height: 1.35;
+    word-break: break-word;
 }
 
 .admin-event-card-body {
-    padding: 20px 20px 22px;
+    padding: 16px 18px 18px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 16px;
+    gap: 14px;
     flex: 1;
 }
 
 .admin-event-card-body p {
     margin: 0;
     color: #475569;
-    font-size: 0.92rem;
-    line-height: 1.55;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .admin-event-schedule-box {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    padding: 14px 16px;
+    padding: 12px 14px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .admin-event-schedule-box.box-active {
@@ -6865,28 +6876,28 @@ button, input, select { font: inherit; }
 .admin-event-meta-line {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     color: #334155;
-    font-size: 0.88rem;
+    font-size: 0.84rem;
     font-weight: 500;
 }
 
 .admin-event-meta-line svg {
-    width: 16px !important;
-    height: 16px !important;
+    width: 15px !important;
+    height: 15px !important;
     color: #6366f1;
     flex-shrink: 0;
 }
 
 .admin-event-meta-line.primary-date {
     color: #166534;
-    font-size: 0.94rem;
+    font-size: 0.88rem;
 }
 
 .admin-event-meta-line.primary-date svg {
     color: #16a34a;
-    width: 17px !important;
-    height: 17px !important;
+    width: 16px !important;
+    height: 16px !important;
 }
 
 .admin-event-meta-line.pending-month {
@@ -6895,31 +6906,250 @@ button, input, select { font: inherit; }
 
 .admin-event-meta-line.pending-month svg {
     color: #d97706;
-    width: 17px !important;
-    height: 17px !important;
+    width: 16px !important;
+    height: 16px !important;
 }
 
-.admin-event-modal-card {
-    max-width: 620px;
-    border-radius: 18px;
+/* ══════════════════════════════════════════════════════════════
+   ADMIN CREATE / EDIT EVENT MODAL STYLES
+   ══════════════════════════════════════════════════════════════ */
+.event-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 20px;
+    transition: opacity 0.2s ease;
+}
+
+.event-modal-card {
+    width: min(100%, 580px);
+    background: #ffffff;
+    border-radius: 22px;
+    box-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(226, 232, 240, 0.8);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    animation: userModalPopIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.report-modal-icon-badge {
+.event-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #7c3aed 100%);
+    color: #ffffff;
+}
+
+.event-modal-head-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.event-modal-icon-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 44px;
     height: 44px;
     min-width: 44px;
     border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
     flex-shrink: 0;
+    backdrop-filter: blur(4px);
 }
 
-.report-modal-icon-badge svg {
+.event-modal-icon-badge svg {
     width: 22px !important;
     height: 22px !important;
     flex-shrink: 0;
+}
+
+.event-modal-head h2 {
+    margin: 0;
+    font-size: 1.18rem;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.25;
+}
+
+.event-modal-head p {
+    margin: 3px 0 0;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.event-modal-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    font-size: 1.4rem;
+    cursor: pointer;
+    transition: all 0.16s ease;
+    line-height: 1;
+    padding: 0;
+}
+
+.event-modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    transform: scale(1.05);
+}
+
+.event-modal-form {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.event-form-body {
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow-y: auto;
+    max-height: calc(90vh - 150px);
+}
+
+.event-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.event-form-group label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #334155;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    display: flex;
+    align-items: center;
+}
+
+.required-mark {
+    color: #ef4444;
+    margin-left: 3px;
+    font-weight: 700;
+}
+
+.event-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.event-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.event-input-icon {
+    position: absolute;
+    left: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.event-input-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+    flex-shrink: 0;
+}
+
+.event-form-input {
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1.5px solid #d8e2ef;
+    background: #f8fafc;
+    font-size: 0.88rem;
+    color: #0f172a;
+    outline: none;
+    box-sizing: border-box;
+    transition: all 0.16s ease;
+    font-family: inherit;
+}
+
+.event-form-input.has-icon {
+    padding-left: 38px;
+}
+
+.event-form-input:focus {
+    background: #ffffff;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3.5px rgba(99, 102, 241, 0.15);
+}
+
+.event-form-input:disabled {
+    background: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+select.event-form-input {
+    cursor: pointer;
+    appearance: auto;
+}
+
+textarea.event-form-textarea {
+    min-height: 80px;
+    height: auto;
+    resize: vertical;
+    line-height: 1.5;
+    padding: 10px 14px;
+}
+
+.event-field-hint {
+    font-size: 0.74rem;
+    color: #64748b;
+    margin-top: 1px;
+}
+
+.event-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 14px 24px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
+.event-cancel-btn {
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.88rem;
+}
+
+.event-submit-btn {
+    padding: 10px 22px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.88rem;
 }
 
 .appt-empty-icon svg {
@@ -6939,6 +7169,19 @@ button, input, select { font: inherit; }
     width: 18px !important;
     height: 18px !important;
     flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .admin-event-card-grid {
+        grid-template-columns: 1fr;
+        justify-content: stretch;
+    }
+    .admin-event-card {
+        max-width: 100%;
+    }
+    .event-form-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 

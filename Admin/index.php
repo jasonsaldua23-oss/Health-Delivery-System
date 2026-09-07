@@ -2594,104 +2594,111 @@ if (!function_exists('peso')) {
             </section>
 
             <!-- Admin Create / Edit Event Modal -->
-            <div class="service-modal-overlay report-modal-backdrop" id="adminEventModalBackdrop" style="<?= $showEventModal ? 'display:flex;' : 'display:none;'; ?>" onclick="if(event.target===this)closeAdminEventModal()">
-                <div class="service-modal-card admin-event-modal-card">
-                    <div class="report-modal-header" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #7c3aed 100%); color: #ffffff;">
-                        <div class="report-modal-header-left">
-                            <div class="report-modal-icon-badge" style="background:rgba(255,255,255,0.2);color:#ffffff;">
+            <div class="event-modal-backdrop" id="adminEventModalBackdrop" style="<?= $showEventModal ? 'display:flex;' : 'display:none;'; ?>" onclick="if(event.target===this)closeAdminEventModal()">
+                <div class="event-modal-card" id="adminEventModalCard">
+                    <div class="event-modal-head">
+                        <div class="event-modal-head-left">
+                            <div class="event-modal-icon-badge">
                                 <?= admin_icon('calendar'); ?>
                             </div>
                             <div>
-                                <h3 id="adminEventModalTitle" style="color:#ffffff;"><?= $eventEditing !== null ? 'Update Community Health Event' : 'Create &amp; Dispatch Community Event'; ?></h3>
-                                <p style="color:rgba(255,255,255,0.85);">Set event guidelines and suggested target month for Barangay Health Station staff to schedule</p>
+                                <h2 id="adminEventModalTitle"><?= $eventEditing !== null ? 'Update Community Health Event' : 'Create &amp; Dispatch Community Event'; ?></h2>
+                                <p>Set event guidelines and suggested target month for Barangay Health Station staff</p>
                             </div>
                         </div>
-                        <button type="button" class="modal-close-btn report-modal-close" style="color:#ffffff;" onclick="closeAdminEventModal()">&times;</button>
+                        <button type="button" class="event-modal-close-btn" onclick="closeAdminEventModal()" title="Close dialog">&times;</button>
                     </div>
 
-                    <form method="post" id="adminEventForm" class="service-modal-form" style="padding: 24px;">
+                    <form method="post" id="adminEventForm" class="event-modal-form">
                         <input type="hidden" name="action" id="adminEventAction" value="<?= $eventEditing !== null ? 'update_event' : 'create_event'; ?>">
                         <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
                         <input type="hidden" name="event_id" id="adminEventId" value="<?= h((string) ($eventEditing['id'] ?? '')); ?>">
 
-                        <div class="form-group-item">
-                            <label for="adminEventStationSelect" class="form-field-label">
-                                <span>Target Health Station / Barangay</span>
-                                <span class="required">*</span>
-                            </label>
-                            <select name="station_slug" id="adminEventStationSelect" class="form-input-field" required <?= $eventEditing !== null ? 'disabled' : ''; ?>>
-                                <option value="all" <?= ($eventEditing === null || ($eventEditing['station_slug'] ?? '') === 'all') ? 'selected' : ''; ?>>📢 All Barangay Health Stations (Broadcast)</option>
-                                <?php foreach ($stations as $stItem): ?>
-                                    <?php if ($stItem['slug'] !== 'city-health'): ?>
-                                        <option value="<?= h($stItem['slug']); ?>" <?= (($eventEditing['station_slug'] ?? '') === $stItem['slug']) ? 'selected' : ''; ?>><?= h($stItem['name']); ?></option>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            </select>
-                            <small class="field-subnote" style="color:#64748b;font-size:0.8rem;margin-top:4px;">Selecting "All Stations" will create an inactive event template for each barangay station.</small>
-                        </div>
-
-                        <div class="form-group-item" style="margin-top:14px;">
-                            <label for="adminEventTitleInput" class="form-field-label">
-                                <span>Event Title</span>
-                                <span class="required">*</span>
-                            </label>
-                            <input type="text" name="title" id="adminEventTitleInput" value="<?= h((string) ($eventEditing['title'] ?? '')); ?>" placeholder="e.g. National Child Immunization Caravan" required class="form-input-field" maxlength="200">
-                        </div>
-
-                        <div class="form-row-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
-                            <div class="form-group-item">
-                                <label for="adminEventCategorySelect" class="form-field-label">
-                                    <span>Event Category</span>
-                                    <span class="required">*</span>
+                        <div class="event-form-body">
+                            <div class="event-form-group">
+                                <label for="adminEventStationSelect">
+                                    <span>Target Health Station / Barangay <span class="required-mark">*</span></span>
                                 </label>
-                                <select name="icon" id="adminEventCategorySelect" class="form-input-field" required>
-                                    <option value="syringe" <?= (($eventEditing['icon'] ?? '') === 'syringe') ? 'selected' : ''; ?>>💉 Vaccination Drive</option>
-                                    <option value="community" <?= (($eventEditing['icon'] ?? '') === 'community') ? 'selected' : ''; ?>>🍲 Feeding Program</option>
-                                    <option value="heart" <?= (($eventEditing['icon'] ?? '') === 'heart') ? 'selected' : ''; ?>>🩺 Free Medical Mission</option>
-                                    <option value="calendar" <?= (($eventEditing['icon'] ?? '') === 'calendar') ? 'selected' : ''; ?>>📋 Health Seminar / Workshop</option>
-                                    <option value="pulse" <?= (($eventEditing['icon'] ?? '') === 'pulse') ? 'selected' : ''; ?>>🩸 Blood Donation / Screening</option>
-                                    <option value="other" <?= (($eventEditing['icon'] ?? '') === 'other') ? 'selected' : ''; ?>>✨ General Outreach Event</option>
-                                </select>
+                                <div class="event-input-wrapper">
+                                    <span class="event-input-icon"><?= admin_icon('map'); ?></span>
+                                    <select name="station_slug" id="adminEventStationSelect" class="event-form-input has-icon" required <?= $eventEditing !== null ? 'disabled' : ''; ?>>
+                                        <option value="all" <?= ($eventEditing === null || ($eventEditing['station_slug'] ?? '') === 'all') ? 'selected' : ''; ?>>📢 All Barangay Health Stations (Broadcast)</option>
+                                        <?php foreach ($stations as $stItem): ?>
+                                            <?php if ($stItem['slug'] !== 'city-health'): ?>
+                                                <option value="<?= h($stItem['slug']); ?>" <?= (($eventEditing['station_slug'] ?? '') === $stItem['slug']) ? 'selected' : ''; ?>><?= h($stItem['name']); ?></option>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <small class="event-field-hint">Selecting "All Stations" creates an inactive event template for each barangay station.</small>
                             </div>
 
-                            <div class="form-group-item">
-                                <label for="adminEventMonthInput" class="form-field-label">
-                                    <span>Suggested Target Month</span>
-                                    <span class="required">*</span>
+                            <div class="event-form-group">
+                                <label for="adminEventTitleInput">
+                                    <span>Event Title <span class="required-mark">*</span></span>
                                 </label>
-                                <input type="month" name="target_month" id="adminEventMonthInput" min="<?= date('Y-m'); ?>" value="<?= h((string) ($eventEditing['target_month'] ?? date('Y-m'))); ?>" required class="form-input-field">
+                                <div class="event-input-wrapper">
+                                    <span class="event-input-icon"><?= admin_icon('edit'); ?></span>
+                                    <input type="text" name="title" id="adminEventTitleInput" value="<?= h((string) ($eventEditing['title'] ?? '')); ?>" placeholder="e.g. National Child Immunization Caravan" required class="event-form-input has-icon" maxlength="200">
+                                </div>
+                            </div>
+
+                            <div class="event-form-row">
+                                <div class="event-form-group">
+                                    <label for="adminEventCategorySelect">
+                                        <span>Event Category <span class="required-mark">*</span></span>
+                                    </label>
+                                    <select name="icon" id="adminEventCategorySelect" class="event-form-input" required>
+                                        <option value="syringe" <?= (($eventEditing['icon'] ?? '') === 'syringe') ? 'selected' : ''; ?>>💉 Vaccination Drive</option>
+                                        <option value="community" <?= (($eventEditing['icon'] ?? '') === 'community') ? 'selected' : ''; ?>>🍲 Feeding Program</option>
+                                        <option value="heart" <?= (($eventEditing['icon'] ?? '') === 'heart') ? 'selected' : ''; ?>>🩺 Free Medical Mission</option>
+                                        <option value="calendar" <?= (($eventEditing['icon'] ?? '') === 'calendar') ? 'selected' : ''; ?>>📋 Health Seminar / Workshop</option>
+                                        <option value="pulse" <?= (($eventEditing['icon'] ?? '') === 'pulse') ? 'selected' : ''; ?>>🩸 Blood Donation / Screening</option>
+                                        <option value="other" <?= (($eventEditing['icon'] ?? '') === 'other') ? 'selected' : ''; ?>>✨ General Outreach Event</option>
+                                    </select>
+                                </div>
+
+                                <div class="event-form-group">
+                                    <label for="adminEventMonthInput">
+                                        <span>Suggested Target Month <span class="required-mark">*</span></span>
+                                    </label>
+                                    <input type="month" name="target_month" id="adminEventMonthInput" min="<?= date('Y-m'); ?>" value="<?= h((string) ($eventEditing['target_month'] ?? date('Y-m'))); ?>" required class="event-form-input">
+                                </div>
+                            </div>
+
+                            <div class="event-form-row">
+                                <div class="event-form-group">
+                                    <label for="adminEventStartTimeInput">
+                                        <span>Tentative Start Time <span class="required-mark">*</span></span>
+                                    </label>
+                                    <div class="event-input-wrapper">
+                                        <span class="event-input-icon"><?= admin_icon('clock'); ?></span>
+                                        <input type="text" name="time_label" id="adminEventStartTimeInput" value="<?= h((string) ($eventEditing['time_label'] ?? '8:00 AM')); ?>" placeholder="e.g. 8:00 AM" required class="event-form-input has-icon">
+                                    </div>
+                                </div>
+
+                                <div class="event-form-group">
+                                    <label for="adminEventEndTimeInput">
+                                        <span>Tentative End Time <span class="required-mark">*</span></span>
+                                    </label>
+                                    <div class="event-input-wrapper">
+                                        <span class="event-input-icon"><?= admin_icon('clock'); ?></span>
+                                        <input type="text" name="end_time_label" id="adminEventEndTimeInput" value="<?= h((string) ($eventEditing['end_time_label'] ?? '12:00 PM')); ?>" placeholder="e.g. 12:00 PM" required class="event-form-input has-icon">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="event-form-group">
+                                <label for="adminEventDescInput">
+                                    <span>Description &amp; Guidelines for Station Staff <span class="required-mark">*</span></span>
+                                </label>
+                                <textarea name="description" id="adminEventDescInput" rows="3" placeholder="Describe the health event objectives, target puroks, required logistics, and guidance for station staff..." required class="event-form-input event-form-textarea"><?= h((string) ($eventEditing['description'] ?? '')); ?></textarea>
                             </div>
                         </div>
 
-                        <div class="form-row-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
-                            <div class="form-group-item">
-                                <label for="adminEventStartTimeInput" class="form-field-label">
-                                    <span>Tentative Start Time</span>
-                                    <span class="required">*</span>
-                                </label>
-                                <input type="text" name="time_label" id="adminEventStartTimeInput" value="<?= h((string) ($eventEditing['time_label'] ?? '8:00 AM')); ?>" placeholder="e.g. 8:00 AM" required class="form-input-field">
-                            </div>
-
-                            <div class="form-group-item">
-                                <label for="adminEventEndTimeInput" class="form-field-label">
-                                    <span>Tentative End Time</span>
-                                    <span class="required">*</span>
-                                </label>
-                                <input type="text" name="end_time_label" id="adminEventEndTimeInput" value="<?= h((string) ($eventEditing['end_time_label'] ?? '12:00 PM')); ?>" placeholder="e.g. 12:00 PM" required class="form-input-field">
-                            </div>
-                        </div>
-
-                        <div class="form-group-item" style="margin-top:14px;">
-                            <label for="adminEventDescInput" class="form-field-label">
-                                <span>Description &amp; Guidelines for Station Staff</span>
-                                <span class="required">*</span>
-                            </label>
-                            <textarea name="description" id="adminEventDescInput" rows="4" placeholder="Describe the health event objectives, target puroks, required logistics, and guidance for station staff..." required class="form-input-field" style="height:auto;padding:12px 16px;resize:vertical;"><?= h((string) ($eventEditing['description'] ?? '')); ?></textarea>
-                        </div>
-
-                        <div class="modal-actions" style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px;">
-                            <button type="button" class="dash-hero-btn secondary" onclick="closeAdminEventModal()">Cancel</button>
-                            <button type="submit" class="primary-btn green-btn" id="adminEventSubmitBtn" style="min-width:160px;justify-content:center;">
+                        <div class="event-modal-footer">
+                            <button type="button" class="dash-hero-btn secondary event-cancel-btn" onclick="closeAdminEventModal()">Cancel</button>
+                            <button type="submit" class="green-btn event-submit-btn" id="adminEventSubmitBtn">
                                 <?= admin_icon('check'); ?>
                                 <span id="adminEventSubmitText"><?= $eventEditing !== null ? 'Save Changes' : 'Create &amp; Dispatch'; ?></span>
                             </button>
