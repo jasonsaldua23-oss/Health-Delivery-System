@@ -187,8 +187,8 @@ if ($selectedStation === null && !empty($stations)) {
 $servicesForBarangay = $selectedStation['programs'] ?? [];
 $userStationSlug = strtolower($stationSlug);
 
-// Load upcoming events ONLY for the registered barangay
-$dbUpcomingEvents = fetch_upcoming_events(['upcoming_only' => true]);
+// Load upcoming events ONLY for the registered barangay (Active / published only)
+$dbUpcomingEvents = fetch_upcoming_events(['status' => 'active', 'upcoming_only' => true]);
 $upcomingEvents = array_map(
     static function (array $event): array {
         $startTime = trim((string) ($event['time_label'] ?? ''));
@@ -3206,6 +3206,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                                     </div>
                                 </div>
 
+                                <?php if (!empty($appt['vaccine_type'])): ?>
+                                    <div class="appt-vaccine-box" style="margin-top: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+                                        <span style="color: #16a34a; font-size: 1rem;">💉</span>
+                                        <div style="font-size: 0.85rem;">
+                                            <span style="color: #166534; font-weight: 600;">Type of Vaccine:</span>
+                                            <strong style="color: #14532d;"><?= h((string) $appt['vaccine_type']); ?></strong>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
                                 <?php if ($apptNotes !== ''): ?>
                                     <div class="appt-notes-box">
                                         <strong>Note:</strong> <?= h($apptNotes); ?>
@@ -4100,6 +4110,17 @@ function openAppointmentSlipModal(appt) {
         statusEl.innerHTML = '<span class="val-col status-pill status-' + st.toLowerCase() + '">' + st + '</span>';
     }
 
+    const vaccineRow = document.getElementById('slipModalVaccineRow');
+    const vaccineEl = document.getElementById('slipModalVaccine');
+    if (vaccineRow && vaccineEl) {
+        if (appt.vaccine_type) {
+            vaccineEl.textContent = appt.vaccine_type;
+            vaccineRow.style.display = '';
+        } else {
+            vaccineRow.style.display = 'none';
+        }
+    }
+
     if (modal) {
         modal.classList.add('active');
         modal.classList.add('open');
@@ -4215,6 +4236,10 @@ function downloadAppointmentSlipDirectly(appt) {
         ['Registered Address:', appt.complete_address || 'Bacolod City']
     ];
 
+    if (appt.vaccine_type) {
+        rows.push(['Vaccine Administered:', appt.vaccine_type]);
+    }
+
     let rowY = 460;
     rows.forEach((r, idx) => {
         const isLeft = idx % 2 === 0;
@@ -4309,6 +4334,10 @@ function downloadAppointmentSlipDirectly(appt) {
                     <tr>
                         <td class="label-col">Booking Status</td>
                         <td class="val-col" id="slipModalStatus">-</td>
+                    </tr>
+                    <tr id="slipModalVaccineRow" style="display:none; background: #f0fdf4;">
+                        <td class="label-col" style="color: #166534; font-weight: 700;">Vaccine Administered</td>
+                        <td class="val-col" id="slipModalVaccine" style="color: #14532d; font-weight: 700;">-</td>
                     </tr>
                 </tbody>
             </table>
@@ -4420,6 +4449,16 @@ function downloadAppointmentSlipDirectly(appt) {
                                 <strong><?= h($hTime); ?></strong>
                             </div>
                         </div>
+
+                        <?php if (!empty($hAppt['vaccine_type'])): ?>
+                            <div class="appt-vaccine-box" style="margin-bottom: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+                                <span style="color: #16a34a; font-size: 1rem;">💉</span>
+                                <div style="font-size: 0.85rem;">
+                                    <span style="color: #166534; font-weight: 600;">Type of Vaccine:</span>
+                                    <strong style="color: #14532d;"><?= h((string) $hAppt['vaccine_type']); ?></strong>
+                                </div>
+                            </div>
+                        <?php endif; ?>
 
                         <?php if ($hNotes !== ''): ?>
                             <div class="appt-notes-box" style="margin-bottom: 10px; padding: 8px 12px; font-size: 0.8rem;">

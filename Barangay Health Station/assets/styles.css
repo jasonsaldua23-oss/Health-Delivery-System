@@ -8541,6 +8541,54 @@ button { border: 0; cursor: pointer; }
   }
 }
 
+/* ==========================================================================
+   STAFF EVENTS REDESIGN & VACCINE SUMMARY CARDS
+   ========================================================================== */
+
+.staff-events-hero {
+  position: relative;
+  overflow: hidden;
+}
+
+.staff-event-stats-strip .event-stat-tile {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.staff-event-stats-strip .event-stat-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06) !important;
+}
+
+.staff-inactive-event-card {
+  transition: all 0.2s ease;
+}
+
+.staff-inactive-event-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.15) !important;
+  border-color: #f59e0b !important;
+}
+
+.staff-activate-btn {
+  transition: all 0.18s ease;
+}
+
+.staff-activate-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.35) !important;
+  filter: brightness(1.05);
+}
+
+.vaccine-summary-card {
+  box-shadow: 0 2px 6px rgba(22, 101, 52, 0.05);
+  animation: fadeIn 0.2s ease;
+}
+
+.profile-vaccine-badge-box {
+  animation: fadeIn 0.2s ease;
+}
+
+
 
 
 

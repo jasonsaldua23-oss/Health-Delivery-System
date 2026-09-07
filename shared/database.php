@@ -524,16 +524,20 @@ function create_upcoming_events_table(mysqli $connection, string $engine = 'Inno
             station_name VARCHAR(255) NOT NULL,
             title VARCHAR(255) NOT NULL,
             description TEXT NOT NULL,
-            event_date DATE NOT NULL,
+            target_month VARCHAR(20) DEFAULT NULL,
+            event_date DATE DEFAULT NULL,
             time_label VARCHAR(100) NOT NULL,
             end_time_label VARCHAR(100) DEFAULT NULL,
             icon VARCHAR(50) NOT NULL DEFAULT "calendar",
             accent VARCHAR(50) NOT NULL DEFAULT "mint",
+            status VARCHAR(20) NOT NULL DEFAULT "inactive",
             created_by VARCHAR(150) DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_event_station (station_slug),
-            INDEX idx_event_date (event_date)
+            INDEX idx_event_date (event_date),
+            INDEX idx_event_status (status),
+            INDEX idx_event_target_month (target_month)
         ) ENGINE=' . $engine . ' DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
     );
 }
@@ -566,6 +570,7 @@ function create_appointments_table(mysqli $connection, string $engine = 'InnoDB'
             pulse_rate VARCHAR(30) DEFAULT NULL,
             respiration_rate VARCHAR(30) DEFAULT NULL,
             blood_pressure VARCHAR(30) DEFAULT NULL,
+            vaccine_type VARCHAR(150) DEFAULT NULL,
             doctor_notes TEXT DEFAULT NULL,
             photo_path VARCHAR(255) DEFAULT NULL,
             status VARCHAR(30) NOT NULL DEFAULT "Pending",
@@ -987,6 +992,22 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
         $connection->query('ALTER TABLE upcoming_events ADD COLUMN end_time_label VARCHAR(100) DEFAULT NULL AFTER time_label');
         $log[] = 'Added upcoming_events.end_time_label';
     }
+    if (!db_column_exists($connection, 'upcoming_events', 'target_month')) {
+        $connection->query('ALTER TABLE upcoming_events ADD COLUMN target_month VARCHAR(20) DEFAULT NULL AFTER description');
+        $log[] = 'Added upcoming_events.target_month';
+    }
+    if (!db_column_exists($connection, 'upcoming_events', 'status')) {
+        $connection->query('ALTER TABLE upcoming_events ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT "active" AFTER accent');
+        $log[] = 'Added upcoming_events.status';
+    }
+    try {
+        $connection->query('ALTER TABLE upcoming_events MODIFY COLUMN event_date DATE NULL DEFAULT NULL');
+    } catch (Throwable $e) {}
+
+    if (!db_column_exists($connection, 'appointments', 'vaccine_type')) {
+        $connection->query('ALTER TABLE appointments ADD COLUMN vaccine_type VARCHAR(150) DEFAULT NULL AFTER blood_pressure');
+        $log[] = 'Added appointments.vaccine_type';
+    }
 
     if (!db_column_exists($connection, 'staff_accounts', 'birth_date')) {
         $connection->query('ALTER TABLE staff_accounts ADD COLUMN birth_date DATE DEFAULT NULL AFTER password_hash');
@@ -1027,6 +1048,8 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
         ['appointments', 'idx_appt_patient', 'patient_id'],
         ['patient_accounts', 'idx_pat_email', 'email'],
         ['patient_accounts', 'idx_pat_id', 'patient_id'],
+        ['upcoming_events', 'idx_event_status', 'status'],
+        ['upcoming_events', 'idx_event_target_month', 'target_month'],
     ];
     foreach ($indexes as [$tbl, $idxName, $cols]) {
         try {
@@ -1377,8 +1400,8 @@ function seed_upcoming_events(mysqli $connection): void
     }
 
     $stmt = $connection->prepare(
-        'INSERT INTO upcoming_events (station_slug, station_name, title, description, event_date, time_label, icon, accent, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO upcoming_events (station_slug, station_name, title, description, target_month, event_date, time_label, icon, accent, status, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
 
     foreach (default_upcoming_event_seed() as $event) {
@@ -1392,12 +1415,14 @@ function seed_upcoming_events(mysqli $connection): void
         $title = (string) $event['title'];
         $description = (string) $event['description'];
         $eventDate = (string) $event['event_date'];
+        $targetMonth = date('Y-m', strtotime($eventDate));
         $timeLabel = (string) $event['time_label'];
         $icon = (string) $event['icon'];
         $accent = (string) $event['accent'];
+        $status = 'active';
         $createdBy = 'system-seed';
 
-        $stmt->bind_param('sssssssss', $stationSlug, $stationName, $title, $description, $eventDate, $timeLabel, $icon, $accent, $createdBy);
+        $stmt->bind_param('sssssssssss', $stationSlug, $stationName, $title, $description, $targetMonth, $eventDate, $timeLabel, $icon, $accent, $status, $createdBy);
         $stmt->execute();
     }
 }
@@ -2139,14 +2164,15 @@ function save_appointment_clinical_details(int $appointmentId, array $data, ?str
     $pulseRate = array_key_exists('pulse_rate', $data) ? trim((string) $data['pulse_rate']) : (string) ($appointment['pulse_rate'] ?? '');
     $respirationRate = array_key_exists('respiration_rate', $data) ? trim((string) $data['respiration_rate']) : (string) ($appointment['respiration_rate'] ?? '');
     $bloodPressure = array_key_exists('blood_pressure', $data) ? trim((string) $data['blood_pressure']) : (string) ($appointment['blood_pressure'] ?? '');
+    $vaccineType = array_key_exists('vaccine_type', $data) ? trim((string) $data['vaccine_type']) : (string) ($appointment['vaccine_type'] ?? '');
     $doctorNotes = array_key_exists('doctor_notes', $data) ? trim((string) $data['doctor_notes']) : (string) ($appointment['doctor_notes'] ?? '');
 
     $stmt = db()->prepare(
         'UPDATE appointments
-         SET body_temperature = ?, pulse_rate = ?, respiration_rate = ?, blood_pressure = ?, doctor_notes = ?
+         SET body_temperature = ?, pulse_rate = ?, respiration_rate = ?, blood_pressure = ?, vaccine_type = ?, doctor_notes = ?
          WHERE id = ?'
     );
-    $stmt->bind_param('sssssi', $bodyTemperature, $pulseRate, $respirationRate, $bloodPressure, $doctorNotes, $appointmentId);
+    $stmt->bind_param('ssssssi', $bodyTemperature, $pulseRate, $respirationRate, $bloodPressure, $vaccineType, $doctorNotes, $appointmentId);
 
     return $stmt->execute();
 }
@@ -2686,23 +2712,55 @@ function fetch_patient_profile(string $patientId): ?array
     return fetch_patient_profile_by_patient_id($patientId);
 }
 
+function is_vaccination_service(string $serviceSlug, string $serviceName = ''): bool
+{
+    $slug = strtolower(trim($serviceSlug));
+    $name = strtolower(trim($serviceName));
+
+    return in_array($slug, ['immunization', 'flu', 'vaccination', 'covid-vaccine', 'vaccine'], true)
+        || stripos($slug, 'vaccin') !== false
+        || stripos($slug, 'immuniz') !== false
+        || stripos($name, 'vaccin') !== false
+        || stripos($name, 'immuniz') !== false;
+}
+
 function fetch_upcoming_events(array $filters = []): array
 {
     $sql = 'SELECT * FROM upcoming_events WHERE 1=1';
     $params = [];
     $types = '';
 
+    if (isset($filters['status']) && $filters['status'] !== 'all' && $filters['status'] !== '') {
+        $sql .= ' AND status = ?';
+        $params[] = (string) $filters['status'];
+        $types .= 's';
+    }
+
     if (($filters['upcoming_only'] ?? true) === true) {
         $today = date('Y-m-d');
-        $sql .= ' AND event_date >= ?';
-        $params[] = $today;
-        $types .= 's';
+        if (($filters['status'] ?? '') === 'active') {
+            $sql .= ' AND event_date >= ?';
+            $params[] = $today;
+            $types .= 's';
+        } else {
+            $sql .= ' AND (event_date IS NULL OR event_date >= ?)';
+            $params[] = $today;
+            $types .= 's';
+        }
     }
 
     if (!empty($filters['station_slug'])) {
         $sql .= ' AND station_slug = ?';
         $params[] = $filters['station_slug'];
         $types .= 's';
+    }
+
+    if (!empty($filters['target_month'])) {
+        $sql .= ' AND (target_month = ? OR event_date LIKE ?)';
+        $targetMonthVal = (string) $filters['target_month'];
+        $monthPattern = $targetMonthVal . '%';
+        array_push($params, $targetMonthVal, $monthPattern);
+        $types .= 'ss';
     }
 
     if (!empty($filters['search'])) {
@@ -2712,7 +2770,7 @@ function fetch_upcoming_events(array $filters = []): array
         $types .= 'sss';
     }
 
-    $sql .= ' ORDER BY event_date ASC, time_label ASC, created_at DESC';
+    $sql .= ' ORDER BY status ASC, CASE WHEN event_date IS NULL THEN 0 ELSE 1 END, event_date ASC, time_label ASC, created_at DESC';
 
     $stmt = db()->prepare($sql);
     if ($params !== []) {
@@ -2725,37 +2783,61 @@ function fetch_upcoming_events(array $filters = []): array
 
 function create_upcoming_event(array $eventData): bool
 {
-    $station = fetch_station_by_slug_catalog((string) ($eventData['station_slug'] ?? ''));
-    if ($station === null) {
-        return false;
-    }
-
+    $stationSlugInput = trim((string) ($eventData['station_slug'] ?? ''));
     $title = trim((string) ($eventData['title'] ?? ''));
     $description = trim((string) ($eventData['description'] ?? ''));
+    $targetMonth = trim((string) ($eventData['target_month'] ?? ''));
     $eventDate = trim((string) ($eventData['event_date'] ?? ''));
-    $timeLabel = trim((string) ($eventData['time_label'] ?? ''));
-    $endTimeLabel = trim((string) ($eventData['end_time_label'] ?? ''));
+    $eventDateVal = $eventDate !== '' ? $eventDate : null;
+    $timeLabel = trim((string) ($eventData['time_label'] ?? '8:00 AM'));
+    $endTimeLabel = trim((string) ($eventData['end_time_label'] ?? '12:00 PM'));
     if ($endTimeLabel === '') {
         $endTimeLabel = $timeLabel;
     }
     $icon = trim((string) ($eventData['icon'] ?? 'calendar')) ?: 'calendar';
-    $accent = trim((string) ($eventData['accent'] ?? 'mint')) ?: 'mint';
-    $createdBy = trim((string) ($eventData['created_by'] ?? 'staff-panel'));
+    $accent = trim((string) ($eventData['accent'] ?? 'blue')) ?: 'blue';
+    $status = trim((string) ($eventData['status'] ?? 'inactive')) ?: 'inactive';
+    $createdBy = trim((string) ($eventData['created_by'] ?? 'admin-panel'));
 
-    if ($title === '' || $eventDate === '' || $timeLabel === '') {
+    if ($title === '') {
         return false;
     }
 
-    $stmt = db()->prepare(
-        'INSERT INTO upcoming_events (station_slug, station_name, title, description, event_date, time_label, end_time_label, icon, accent, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    );
+    // Support broadcasting to 'all' stations or a specific station
+    $targetStations = [];
+    if ($stationSlugInput === 'all' || $stationSlugInput === '') {
+        foreach (health_station_catalog() as $st) {
+            if ((string) ($st['slug'] ?? '') !== 'city-health') {
+                $targetStations[] = $st;
+            }
+        }
+    } else {
+        $singleStation = fetch_station_by_slug_catalog($stationSlugInput);
+        if ($singleStation !== null) {
+            $targetStations[] = $singleStation;
+        }
+    }
 
-    $stationSlug = (string) $station['slug'];
-    $stationName = (string) $station['name'];
-    $stmt->bind_param('ssssssssss', $stationSlug, $stationName, $title, $description, $eventDate, $timeLabel, $endTimeLabel, $icon, $accent, $createdBy);
+    if (empty($targetStations)) {
+        return false;
+    }
 
-    return $stmt->execute();
+    $success = true;
+    foreach ($targetStations as $station) {
+        $stSlug = (string) $station['slug'];
+        $stName = (string) $station['name'];
+
+        $stmt = db()->prepare(
+            'INSERT INTO upcoming_events (station_slug, station_name, title, description, target_month, event_date, time_label, end_time_label, icon, accent, status, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->bind_param('ssssssssssss', $stSlug, $stName, $title, $description, $targetMonth, $eventDateVal, $timeLabel, $endTimeLabel, $icon, $accent, $status, $createdBy);
+        if (!$stmt->execute()) {
+            $success = false;
+        }
+    }
+
+    return $success;
 }
 
 function delete_upcoming_event(int $eventId, ?string $stationScope = null): bool
@@ -2794,26 +2876,55 @@ function update_upcoming_event(int $eventId, array $eventData, ?string $stationS
         return false;
     }
 
-    $title = trim((string) ($eventData['title'] ?? ''));
-    $description = trim((string) ($eventData['description'] ?? ''));
-    $eventDate = trim((string) ($eventData['event_date'] ?? ''));
-    $timeLabel = trim((string) ($eventData['time_label'] ?? ''));
-    $endTimeLabel = trim((string) ($eventData['end_time_label'] ?? ''));
-    $icon = trim((string) ($eventData['icon'] ?? $existing['icon'])) ?: (string) $existing['icon'];
-    $accent = trim((string) ($eventData['accent'] ?? $existing['accent'])) ?: (string) $existing['accent'];
+    $title = array_key_exists('title', $eventData) ? trim((string) $eventData['title']) : (string) $existing['title'];
+    $description = array_key_exists('description', $eventData) ? trim((string) $eventData['description']) : (string) $existing['description'];
+    $targetMonth = array_key_exists('target_month', $eventData) ? trim((string) $eventData['target_month']) : (string) ($existing['target_month'] ?? '');
+    
+    $eventDate = array_key_exists('event_date', $eventData) ? trim((string) $eventData['event_date']) : (string) ($existing['event_date'] ?? '');
+    $eventDateVal = $eventDate !== '' ? $eventDate : null;
 
-    if ($title === '' || $description === '' || $eventDate === '' || $timeLabel === '' || $endTimeLabel === '') {
+    $timeLabel = array_key_exists('time_label', $eventData) ? trim((string) $eventData['time_label']) : (string) ($existing['time_label'] ?? '');
+    $endTimeLabel = array_key_exists('end_time_label', $eventData) ? trim((string) $eventData['end_time_label']) : (string) ($existing['end_time_label'] ?? '');
+    $icon = array_key_exists('icon', $eventData) ? (trim((string) $eventData['icon']) ?: (string) $existing['icon']) : (string) $existing['icon'];
+    $accent = array_key_exists('accent', $eventData) ? (trim((string) $eventData['accent']) ?: (string) $existing['accent']) : (string) $existing['accent'];
+    $status = array_key_exists('status', $eventData) ? (trim((string) $eventData['status']) ?: (string) ($existing['status'] ?? 'inactive')) : (string) ($existing['status'] ?? 'inactive');
+
+    if ($title === '') {
         return false;
     }
 
     $stmt = db()->prepare(
         'UPDATE upcoming_events
-         SET title = ?, description = ?, event_date = ?, time_label = ?, end_time_label = ?, icon = ?, accent = ?
+         SET title = ?, description = ?, target_month = ?, event_date = ?, time_label = ?, end_time_label = ?, icon = ?, accent = ?, status = ?
          WHERE id = ?'
     );
-    $stmt->bind_param('sssssssi', $title, $description, $eventDate, $timeLabel, $endTimeLabel, $icon, $accent, $eventId);
+    $stmt->bind_param('sssssssssi', $title, $description, $targetMonth, $eventDateVal, $timeLabel, $endTimeLabel, $icon, $accent, $status, $eventId);
 
     return $stmt->execute();
+}
+
+function activate_upcoming_event(int $eventId, string $eventDate, string $timeLabel, string $endTimeLabel, ?string $stationScope = null): bool
+{
+    $existing = fetch_upcoming_event_by_id($eventId);
+    if ($existing === null) {
+        return false;
+    }
+
+    if ($stationScope !== null && $existing['station_slug'] !== $stationScope) {
+        return false;
+    }
+
+    $eventDate = trim($eventDate);
+    if ($eventDate === '') {
+        return false;
+    }
+
+    return update_upcoming_event($eventId, [
+        'event_date' => $eventDate,
+        'time_label' => trim($timeLabel) ?: '8:00 AM',
+        'end_time_label' => trim($endTimeLabel) ?: (trim($timeLabel) ?: '12:00 PM'),
+        'status' => 'active',
+    ], $stationScope);
 }
 
 function fetch_staff_account_by_email(string $email): ?array

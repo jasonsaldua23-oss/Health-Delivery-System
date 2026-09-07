@@ -60,7 +60,7 @@ $events = array_map(
         ];
     },
     array_values(array_filter(
-        fetch_upcoming_events(['upcoming_only' => true]),
+        fetch_upcoming_events(['upcoming_only' => true, 'status' => 'active']),
         static fn(array $event): bool => (string) ($event['station_slug'] ?? '') !== 'city-health'
     ))
 );

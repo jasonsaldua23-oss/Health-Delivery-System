@@ -208,6 +208,14 @@ if (!function_exists('render_patient_profile_body')) {
                         </div>
                     </div>
 
+                    <?php if (!empty($appt['vaccine_type']) || is_vaccination_service((string) ($appt['service_slug'] ?? ''), (string) ($appt['service_name'] ?? ''))): ?>
+                        <div class="profile-vaccine-badge-box" style="margin-top: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+                            <span style="color: #16a34a;"><?= staff_icon('syringe'); ?></span>
+                            <span style="color: #166534; font-size: 0.84rem; font-weight: 600;">Type of Vaccine:</span>
+                            <strong style="color: #14532d; font-size: 0.9rem;"><?= h((string) (!empty($appt['vaccine_type']) ? $appt['vaccine_type'] : 'Vaccination Service')); ?></strong>
+                        </div>
+                    <?php endif; ?>
+
                     <!-- Doctor's Notes -->
                     <?php if (!empty($appt['doctor_notes'])): ?>
                         <div class="history-doc-notes-box">
@@ -453,22 +461,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appointment_id'], $_P
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'create_event')) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'activate_event')) {
     if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
-        $created = create_upcoming_event([
-            'station_slug' => $station['slug'],
-            'title' => trim((string) ($_POST['title'] ?? '')),
-            'description' => trim((string) ($_POST['description'] ?? '')),
-            'event_date' => trim((string) ($_POST['event_date'] ?? '')),
-            'time_label' => trim((string) ($_POST['time_label'] ?? '')),
-            'end_time_label' => trim((string) ($_POST['end_time_label'] ?? '')),
-            'icon' => trim((string) ($_POST['icon'] ?? 'calendar')),
-            'accent' => trim((string) ($_POST['accent'] ?? 'mint')),
-            'created_by' => $staffAccount['email'],
-        ]);
-        $_SESSION['staff_flash'] = $created ? 'Upcoming event saved.' : 'Unable to save event. Please complete all fields.';
-        if ($created) {
-            log_activity('staff', $staffAccount['email'], 'event_created', 'event', '', '', '', $station['slug']);
+        $eventId = (int) ($_POST['event_id'] ?? 0);
+        $eventDate = trim((string) ($_POST['event_date'] ?? ''));
+        $timeLabel = trim((string) ($_POST['time_label'] ?? '08:00 AM'));
+        $endTimeLabel = trim((string) ($_POST['end_time_label'] ?? '12:00 PM'));
+
+        if ($eventId > 0 && $eventDate !== '') {
+            if (activate_upcoming_event($eventId, $eventDate, $timeLabel, $endTimeLabel, (string) $station['slug'])) {
+                $_SESSION['staff_flash'] = 'Event date scheduled and activated! It is now published on the patient dashboard.';
+                log_activity('staff', (string) ($staffAccount['email'] ?? ''), 'event_activated', 'event', (string) $eventId, '', '', (string) $station['slug']);
+            } else {
+                $_SESSION['staff_flash'] = 'Unable to activate event. Please verify the date selection.';
+            }
+        } else {
+            $_SESSION['staff_flash'] = 'Please choose a valid date within the suggested month.';
+        }
+    }
+
+    header('Location: index.php?page=events');
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'deactivate_event')) {
+    if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
+        $eventId = (int) ($_POST['event_id'] ?? 0);
+        if ($eventId > 0) {
+            update_upcoming_event($eventId, ['status' => 'inactive'], (string) $station['slug']);
+            $_SESSION['staff_flash'] = 'Event deactivated and unpublished from patient portal.';
+            log_activity('staff', (string) ($staffAccount['email'] ?? ''), 'event_deactivated', 'event', (string) $eventId, '', '', (string) $station['slug']);
         }
     }
 
@@ -478,20 +500,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'crea
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'update_event')) {
     if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
-        update_upcoming_event(
-            (int) ($_POST['event_id'] ?? 0),
-            [
-                'title' => trim((string) ($_POST['title'] ?? '')),
-                'description' => trim((string) ($_POST['description'] ?? '')),
-                'event_date' => trim((string) ($_POST['event_date'] ?? '')),
-                'time_label' => trim((string) ($_POST['time_label'] ?? '')),
-                'end_time_label' => trim((string) ($_POST['end_time_label'] ?? '')),
-                'icon' => trim((string) ($_POST['icon'] ?? 'calendar')),
-                'accent' => trim((string) ($_POST['accent'] ?? 'mint')),
-            ],
-            (string) $station['slug']
-        );
-        $_SESSION['staff_flash'] = 'Event updated.';
+        $eventId = (int) ($_POST['event_id'] ?? 0);
+        if ($eventId > 0) {
+            update_upcoming_event(
+                $eventId,
+                [
+                    'title' => trim((string) ($_POST['title'] ?? '')),
+                    'description' => trim((string) ($_POST['description'] ?? '')),
+                    'event_date' => trim((string) ($_POST['event_date'] ?? '')),
+                    'time_label' => trim((string) ($_POST['time_label'] ?? '')),
+                    'end_time_label' => trim((string) ($_POST['end_time_label'] ?? '')),
+                    'icon' => trim((string) ($_POST['icon'] ?? 'calendar')),
+                    'accent' => trim((string) ($_POST['accent'] ?? 'mint')),
+                    'status' => 'active',
+                ],
+                (string) $station['slug']
+            );
+            $_SESSION['staff_flash'] = 'Event schedule updated successfully.';
+            log_activity('staff', (string) ($staffAccount['email'] ?? ''), 'event_updated', 'event', (string) $eventId, '', '', (string) $station['slug']);
+        }
     }
 
     header('Location: index.php?page=events');
@@ -500,8 +527,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'upda
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'delete_event')) {
     if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
-        delete_upcoming_event((int) ($_POST['event_id'] ?? 0), (string) $station['slug']);
+        $eventId = (int) ($_POST['event_id'] ?? 0);
+        delete_upcoming_event($eventId, (string) $station['slug']);
         $_SESSION['staff_flash'] = 'Event removed.';
+        log_activity('staff', (string) ($staffAccount['email'] ?? ''), 'event_deleted', 'event', (string) $eventId, '', '', (string) $station['slug']);
     }
 
     header('Location: index.php?page=events');
@@ -635,6 +664,7 @@ $selectedFollowUpRecordCode = trim((string) ($_GET['appointment_followup'] ?? ''
 $selectedPatientProfileKey = trim((string) ($_GET['patient_profile'] ?? ''));
 $selectedPhotoAppointmentId = (int) ($_GET['appointment'] ?? 0);
 $eventEditId = (int) ($_GET['edit_event'] ?? 0);
+$activateEventId = (int) ($_GET['activate_event'] ?? 0);
 $showEventModal = (($_GET['show_event_modal'] ?? '') === '1') || $eventEditId > 0;
 $flash = (string) ($_SESSION['staff_flash'] ?? '');
 unset($_SESSION['staff_flash']);
@@ -657,11 +687,21 @@ $queueEntries = fetch_queue_entries([
     'search' => $appointmentSearch,
 ]);
 $groupedQueue = queue_groups($queueEntries, $programFilter);
-$stationEvents = fetch_upcoming_events([
+$allStationEvents = fetch_upcoming_events([
     'station_slug' => $station['slug'],
-    'upcoming_only' => true,
+    'status' => 'all',
 ]);
+$inactiveStationEvents = array_values(array_filter(
+    $allStationEvents,
+    static fn(array $e): bool => ($e['status'] ?? 'inactive') === 'inactive'
+));
+$activeStationEvents = array_values(array_filter(
+    $allStationEvents,
+    static fn(array $e): bool => ($e['status'] ?? 'inactive') === 'active' && !empty($e['event_date']) && (string) $e['event_date'] >= date('Y-m-d')
+));
+$stationEvents = $allStationEvents;
 $eventEditing = $eventEditId > 0 ? fetch_upcoming_event_by_id($eventEditId) : null;
+$eventToActivate = $activateEventId > 0 ? fetch_upcoming_event_by_id($activateEventId) : null;
 $allStationAppointments = fetch_appointments(['station_slug' => $station['slug']]);
 $stationPatients = fetch_unique_patients($patientSearch, ['station_slug' => $station['slug']]);
 $unreadNotifications = fetch_unread_patient_notifications();
@@ -1941,6 +1981,18 @@ for ($i = 0; $i < 6; $i++) {
                                         <input type="text" id="queue_blood_pres" name="blood_pressure" value="<?= h((string) ($selectedVitalsAppointment['blood_pressure'] ?? '')); ?>" placeholder="e.g. 120/80 mmHg" required class="form-input-field">
                                     </div>
                                 </div>
+
+                                <?php if (is_vaccination_service((string) ($selectedVitalsAppointment['service_slug'] ?? ''), (string) ($selectedVitalsAppointment['service_name'] ?? ''))): ?>
+                                    <div class="form-group-item full-width" style="margin-top: 18px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 14px; padding: 16px 18px;">
+                                        <label for="queue_vaccine_type" class="form-field-label" style="color: #166534; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                                            <span style="display:inline-flex;color:#16a34a;"><?= staff_icon('syringe'); ?></span>
+                                            <span>Type of Vaccine</span>
+                                            <span class="required" style="color: #dc2626;">*</span>
+                                        </label>
+                                        <input type="text" id="queue_vaccine_type" name="vaccine_type" value="<?= h((string) ($selectedVitalsAppointment['vaccine_type'] ?? '')); ?>" placeholder="e.g. Pentavalent, PCV, MMR, Influenza, COVID-19, Hepatitis B..." required class="form-input-field" style="border-color: #86efac; background: #ffffff; font-size: 0.95rem;">
+                                        <small style="display: block; margin-top: 6px; color: #15803d; font-size: 0.82rem;">Encode the specific brand, antigen, or formulation administered during this vaccination visit.</small>
+                                    </div>
+                                <?php endif; ?>
                             </div>
 
                             <div class="account-modal-footer">
@@ -2465,6 +2517,21 @@ for ($i = 0; $i < 6; $i++) {
                                     </div>
                                 </div>
 
+                                <?php if (!empty($selectedRemarksAppointment['vaccine_type']) || is_vaccination_service((string) ($selectedRemarksAppointment['service_slug'] ?? ''), (string) ($selectedRemarksAppointment['service_name'] ?? ''))): ?>
+                                    <div class="vaccine-summary-card" style="margin-top: 14px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <div style="width: 38px; height: 38px; border-radius: 10px; background: #dcfce7; color: #16a34a; display: grid; place-items: center; font-size: 1.2rem;">
+                                                <?= staff_icon('syringe'); ?>
+                                            </div>
+                                            <div>
+                                                <small style="color: #166534; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; display: block;">Type of Vaccine Administered</small>
+                                                <strong style="color: #14532d; font-size: 1.05rem; font-weight: 700;"><?= h((string) (($selectedRemarksAppointment['vaccine_type'] ?? '') !== '' ? $selectedRemarksAppointment['vaccine_type'] : 'Not yet recorded')); ?></strong>
+                                            </div>
+                                        </div>
+                                        <span style="background: #bbf7d0; color: #166534; font-size: 0.76rem; font-weight: 700; padding: 4px 10px; border-radius: 999px;">Vaccine Record</span>
+                                    </div>
+                                <?php endif; ?>
+
                                 <div class="account-section-divider">
                                     <?= staff_icon('edit'); ?>
                                     <span>Doctor's Clinical Notes &amp; Findings</span>
@@ -2651,6 +2718,21 @@ for ($i = 0; $i < 6; $i++) {
                                     <strong class="vital-box-val"><?= h((string) (($selectedViewAppointment['blood_pressure'] ?? '') !== '' ? $selectedViewAppointment['blood_pressure'] : 'N/A')); ?></strong>
                                 </div>
                             </div>
+
+                            <?php if (!empty($selectedViewAppointment['vaccine_type']) || is_vaccination_service((string) ($selectedViewAppointment['service_slug'] ?? ''), (string) ($selectedViewAppointment['service_name'] ?? ''))): ?>
+                                <div class="vaccine-summary-card" style="margin-top: 14px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div style="width: 38px; height: 38px; border-radius: 10px; background: #dcfce7; color: #16a34a; display: grid; place-items: center; font-size: 1.2rem;">
+                                            <?= staff_icon('syringe'); ?>
+                                        </div>
+                                        <div>
+                                            <small style="color: #166534; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; display: block;">Type of Vaccine Administered</small>
+                                            <strong style="color: #14532d; font-size: 1.05rem; font-weight: 700;"><?= h((string) (($selectedViewAppointment['vaccine_type'] ?? '') !== '' ? $selectedViewAppointment['vaccine_type'] : 'Not yet recorded')); ?></strong>
+                                        </div>
+                                    </div>
+                                    <span style="background: #bbf7d0; color: #166534; font-size: 0.76rem; font-weight: 700; padding: 4px 10px; border-radius: 999px;">Vaccine Record</span>
+                                </div>
+                            <?php endif; ?>
 
                             <div class="account-section-divider">
                                 <?= staff_icon('edit'); ?>
@@ -3347,109 +3429,345 @@ for ($i = 0; $i < 6; $i++) {
                 </div>
             </section>
         <?php elseif ($page === 'events'): ?>
-            <!-- Upcoming Events Header -->
-            <div class="events-page-header">
-                <div>
-                    <h1>Barangay Health Events &amp; Outreach</h1>
-                    <p>Schedule vaccination drives, feeding programs, medical missions, and health seminars.</p>
+            <!-- Staff Events Header -->
+            <section class="page-hero staff-events-hero" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%); color: #ffffff; border-radius: 18px; padding: 28px 32px; margin-bottom: 24px; box-shadow: 0 10px 25px -5px rgba(30, 64, 175, 0.25);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25); padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; color: #e0e7ff; margin-bottom: 10px;">
+                            <?= staff_icon('calendar'); ?>
+                            <span>Station Events Operations &amp; Scheduling</span>
+                        </div>
+                        <h1 style="color: #ffffff; font-size: 1.85rem; font-weight: 800; margin: 0 0 6px 0; letter-spacing: -0.5px;">Barangay Health Events &amp; Outreach</h1>
+                        <p style="color: #bfdbfe; font-size: 0.95rem; margin: 0; max-width: 680px;">Review health initiatives proposed by City Health Admin, choose an exact date within the suggested month to activate, and manage your published station schedule.</p>
+                    </div>
                 </div>
-                <a class="primary-btn" href="?page=events&show_event_modal=1">
-                    <?= staff_icon('plus'); ?>
-                    <span>Schedule New Event</span>
-                </a>
+            </section>
+
+            <!-- Staff Events KPI Summary Strip -->
+            <div class="staff-event-stats-strip" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 28px;">
+                <div class="event-stat-tile" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+                    <div style="width: 46px; height: 46px; border-radius: 12px; background: #eff6ff; color: #2563eb; display: grid; place-items: center; flex-shrink: 0;">
+                        <?= staff_icon('calendar'); ?>
+                    </div>
+                    <div>
+                        <strong style="display: block; font-size: 1.5rem; font-weight: 800; color: #0f172a; line-height: 1.1;"><?= count($allStationEvents); ?></strong>
+                        <span style="font-size: 0.82rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Total Initiatives</span>
+                    </div>
+                </div>
+
+                <div class="event-stat-tile" style="background: #ffffff; border: 1px solid <?= count($inactiveStationEvents) > 0 ? '#fde68a' : '#e2e8f0'; ?>; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+                    <div style="width: 46px; height: 46px; border-radius: 12px; background: #fffbeb; color: #d97706; display: grid; place-items: center; flex-shrink: 0;">
+                        <?= staff_icon('clock'); ?>
+                    </div>
+                    <div>
+                        <strong style="display: block; font-size: 1.5rem; font-weight: 800; color: <?= count($inactiveStationEvents) > 0 ? '#b45309' : '#0f172a'; ?>; line-height: 1.1;"><?= count($inactiveStationEvents); ?></strong>
+                        <span style="font-size: 0.82rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Awaiting Date &amp; Activation</span>
+                    </div>
+                </div>
+
+                <div class="event-stat-tile" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+                    <div style="width: 46px; height: 46px; border-radius: 12px; background: #ecfdf5; color: #059669; display: grid; place-items: center; flex-shrink: 0;">
+                        <?= staff_icon('check'); ?>
+                    </div>
+                    <div>
+                        <strong style="display: block; font-size: 1.5rem; font-weight: 800; color: #0f172a; line-height: 1.1;"><?= count($activeStationEvents); ?></strong>
+                        <span style="font-size: 0.82rem; font-weight: 600; color: #64748b; text-transform: uppercase;">Active &amp; Published</span>
+                    </div>
+                </div>
             </div>
 
-            <!-- Events Cards Grid -->
-            <section class="modern-events-grid">
-                <?php if ($stationEvents === []): ?>
-                    <div class="panel-card empty-state appt-empty-box" style="grid-column: 1 / -1;">
-                        <div class="appt-empty-icon"><?= staff_icon('events'); ?></div>
-                        <h3>No upcoming events scheduled</h3>
-                        <p>No health events or community drives have been scheduled yet for <?= h($station['name']); ?>.</p>
+            <!-- ── SECTION 1: INACTIVE INITIATIVES AWAITING ACTIVATION ── -->
+            <section style="margin-bottom: 36px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: #fef3c7; color: #b45309;">
+                            <?= staff_icon('clock'); ?>
+                        </span>
+                        <div>
+                            <h2 style="font-size: 1.2rem; font-weight: 700; color: #0f172a; margin: 0;">Awaiting Staff Date Selection &amp; Activation</h2>
+                            <p style="color: #64748b; font-size: 0.85rem; margin: 2px 0 0 0;">Initiatives created by City Health Admin that need an exact scheduled date before becoming visible to patients.</p>
+                        </div>
+                    </div>
+                    <span style="background: #fef3c7; color: #92400e; font-size: 0.8rem; font-weight: 700; padding: 4px 12px; border-radius: 999px; border: 1px solid #fde68a;">
+                        <?= count($inactiveStationEvents); ?> Pending
+                    </span>
+                </div>
+
+                <?php if (empty($inactiveStationEvents)): ?>
+                    <div class="panel-card empty-state" style="background: #ffffff; border: 1px dashed #cbd5e1; border-radius: 16px; padding: 32px 24px; text-align: center;">
+                        <div style="width: 48px; height: 48px; border-radius: 50%; background: #ecfdf5; color: #059669; display: grid; place-items: center; margin: 0 auto 12px; font-size: 1.3rem;">
+                            <?= staff_icon('check'); ?>
+                        </div>
+                        <h4 style="font-size: 1.05rem; font-weight: 700; color: #0f172a; margin: 0 0 4px 0;">All Admin Initiatives Scheduled</h4>
+                        <p style="color: #64748b; font-size: 0.88rem; margin: 0 auto; max-width: 480px;">There are no inactive events awaiting date activation for <?= h($station['name']); ?>. Any newly broadcasted initiatives from Admin will appear here.</p>
                     </div>
                 <?php else: ?>
-                    <?php foreach ($stationEvents as $event): ?>
-                        <?php
-                        $eventTime = strtotime((string) $event['event_date']);
-                        $eventMonth = date('M', $eventTime);
-                        $eventDay = date('j', $eventTime);
-                        $eventYear = date('Y', $eventTime);
-                        $eventDayName = date('l', $eventTime);
-                        $iconType = (string) ($event['icon'] ?? 'calendar');
-                        ?>
-                        <article class="modern-event-card">
-                            <div class="event-card-top-bar">
-                                <div class="event-date-block">
-                                    <span class="event-month"><?= h($eventMonth); ?></span>
-                                    <span class="event-day"><?= h($eventDay); ?></span>
-                                    <span class="event-year"><?= h($eventYear); ?></span>
-                                </div>
-
-                                <div class="event-card-heading">
-                                    <div class="event-category-chip cat-<?= h($iconType); ?>">
-                                        <?= staff_icon($iconType); ?>
-                                        <span><?= h(ucfirst(str_replace('-', ' ', $iconType))); ?></span>
+                    <div class="inactive-events-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px;">
+                        <?php foreach ($inactiveStationEvents as $event): ?>
+                            <?php
+                            $targetMonthVal = !empty($event['target_month']) ? (string)$event['target_month'] : date('Y-m');
+                            $monthFormatted = date('F Y', strtotime($targetMonthVal . '-01'));
+                            $iconType = (string) ($event['icon'] ?? 'calendar');
+                            ?>
+                            <article class="staff-inactive-event-card" style="background: #ffffff; border: 1.5px solid #fde68a; border-radius: 16px; padding: 22px; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.08); display: flex; flex-direction: column; justify-content: space-between; gap: 16px;">
+                                <div>
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px;">
+                                        <div class="event-category-chip cat-<?= h($iconType); ?>" style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 700;">
+                                            <?= staff_icon($iconType); ?>
+                                            <span><?= h(ucfirst(str_replace('-', ' ', $iconType))); ?></span>
+                                        </div>
+                                        <span style="background: #fffbeb; color: #92400e; border: 1px solid #fde68a; font-size: 0.74rem; font-weight: 700; padding: 3px 8px; border-radius: 999px;">
+                                            ⚠️ Inactive
+                                        </span>
                                     </div>
-                                    <h3><?= h($event['title']); ?></h3>
+
+                                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;"><?= h((string)$event['title']); ?></h3>
+                                    <p style="color: #64748b; font-size: 0.88rem; margin: 0 0 14px 0; line-height: 1.45;"><?= nl2br(h((string)$event['description'])); ?></p>
+
+                                    <!-- Admin Target Month Banner -->
+                                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                                        <span style="color: #2563eb;"><?= staff_icon('calendar'); ?></span>
+                                        <div style="font-size: 0.84rem;">
+                                            <span style="color: #1e40af; font-weight: 600;">Admin Suggested Month:</span>
+                                            <strong style="color: #1d4ed8; font-weight: 700;"><?= h($monthFormatted); ?></strong>
+                                        </div>
+                                    </div>
+
+                                    <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; color: #64748b;">
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <?= staff_icon('clock'); ?>
+                                            <span>Tentative Hours: <strong><?= h((string)$event['time_label']); ?><?php if (!empty($event['end_time_label'])): ?> - <?= h((string)$event['end_time_label']); ?><?php endif; ?></strong></span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <?= staff_icon('pin'); ?>
+                                            <span>Target Station: <strong><?= h((string)$event['station_name']); ?></strong></span>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div class="event-actions-dropdown">
-                                    <a href="?page=events&edit_event=<?= h((string) $event['id']); ?>" class="event-action-icon edit" title="Edit Event">
-                                        <?= staff_icon('edit'); ?>
+                                <div style="border-top: 1px solid #f1f5f9; padding-top: 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                                    <a href="?page=events&activate_event=<?= h((string)$event['id']); ?>" class="staff-activate-btn" style="flex: 1; text-align: center; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; padding: 9px 14px; border-radius: 10px; font-size: 0.88rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">
+                                        <?= staff_icon('calendar'); ?>
+                                        <span>Choose Date &amp; Activate</span>
                                     </a>
-                                    <form method="post" style="margin:0;" onsubmit="return confirm('Are you sure you want to delete this event?');">
+
+                                    <form method="post" style="margin: 0;" onsubmit="return confirm('Are you sure you want to dismiss this event?');">
                                         <input type="hidden" name="action" value="delete_event">
                                         <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
-                                        <input type="hidden" name="event_id" value="<?= h((string) $event['id']); ?>">
-                                        <button type="submit" class="event-action-icon delete" title="Delete Event">
+                                        <input type="hidden" name="event_id" value="<?= h((string)$event['id']); ?>">
+                                        <button type="submit" class="event-action-icon delete" title="Dismiss Event" style="background: #fee2e2; border: 1px solid #fca5a5; color: #dc2626; border-radius: 10px; padding: 8px 10px; cursor: pointer;">
                                             <?= staff_icon('trash'); ?>
                                         </button>
                                     </form>
                                 </div>
-                            </div>
-
-                            <div class="event-card-content">
-                                <p class="event-desc"><?= nl2br(h($event['description'])); ?></p>
-                            </div>
-
-                            <div class="event-card-footer">
-                                <div class="event-footer-item">
-                                    <?= staff_icon('clock'); ?>
-                                    <span><?= h($event['time_label']); ?><?php if (!empty($event['end_time_label'])): ?> - <?= h((string) $event['end_time_label']); ?><?php endif; ?></span>
-                                </div>
-                                <div class="event-footer-item">
-                                    <?= staff_icon('pin'); ?>
-                                    <span><?= h($event['station_name']); ?></span>
-                                </div>
-                            </div>
-                        </article>
-                    <?php endforeach; ?>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
             </section>
 
-            <!-- Event Create/Edit Modal -->
-            <?php if ($showEventModal): ?>
-                <section class="account-modal-backdrop" id="eventModalBackdrop">
-                    <div class="account-modal-card" role="dialog" aria-modal="true">
-                        <div class="account-modal-header">
-                            <div class="account-modal-title-group">
-                                <span class="account-modal-icon"><?= staff_icon('calendar'); ?></span>
+            <!-- ── SECTION 2: ACTIVE & PUBLISHED EVENTS ── -->
+            <section>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: #ecfdf5; color: #059669;">
+                            <?= staff_icon('check'); ?>
+                        </span>
+                        <div>
+                            <h2 style="font-size: 1.2rem; font-weight: 700; color: #0f172a; margin: 0;">Active &amp; Published Health Events</h2>
+                            <p style="color: #64748b; font-size: 0.85rem; margin: 2px 0 0 0;">Community programs currently active and visible to patients on their portal dashboards.</p>
+                        </div>
+                    </div>
+                    <span style="background: #ecfdf5; color: #065f46; font-size: 0.8rem; font-weight: 700; padding: 4px 12px; border-radius: 999px; border: 1px solid #a7f3d0;">
+                        <?= count($activeStationEvents); ?> Active
+                    </span>
+                </div>
+
+                <?php if (empty($activeStationEvents)): ?>
+                    <div class="panel-card empty-state appt-empty-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 32px 24px; text-align: center;">
+                        <div class="appt-empty-icon"><?= staff_icon('events'); ?></div>
+                        <h4 style="font-size: 1.05rem; font-weight: 700; color: #0f172a; margin: 0 0 4px 0;">No Active Events Published</h4>
+                        <p style="color: #64748b; font-size: 0.88rem; margin: 0 auto; max-width: 480px;">Select a date from the pending initiatives above to activate and publish events for <?= h($station['name']); ?>.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="modern-events-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px;">
+                        <?php foreach ($activeStationEvents as $event): ?>
+                            <?php
+                            $eventTime = !empty($event['event_date']) ? strtotime((string) $event['event_date']) : time();
+                            $eventMonth = date('M', $eventTime);
+                            $eventDay = date('j', $eventTime);
+                            $eventYear = date('Y', $eventTime);
+                            $eventDayName = date('l', $eventTime);
+                            $iconType = (string) ($event['icon'] ?? 'calendar');
+                            ?>
+                            <article class="modern-event-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: space-between; gap: 16px;">
                                 <div>
-                                    <h2><?= $eventEditing !== null ? 'Update Health Event' : 'Schedule New Health Event'; ?></h2>
-                                    <p>Organize community outreach, immunization, and medical services for <?= h($station['name']); ?>.</p>
+                                    <div class="event-card-top-bar" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+                                        <div class="event-date-block" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 8px 12px; text-align: center; min-width: 62px;">
+                                            <span class="event-month" style="display: block; font-size: 0.72rem; font-weight: 700; color: #2563eb; text-transform: uppercase;"><?= h($eventMonth); ?></span>
+                                            <span class="event-day" style="display: block; font-size: 1.4rem; font-weight: 800; color: #1e3a8a; line-height: 1.1;"><?= h($eventDay); ?></span>
+                                            <span class="event-year" style="display: block; font-size: 0.68rem; color: #64748b;"><?= h($eventYear); ?></span>
+                                        </div>
+
+                                        <div style="flex: 1;">
+                                            <div class="event-category-chip cat-<?= h($iconType); ?>" style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 6px; font-size: 0.76rem; font-weight: 700; margin-bottom: 6px;">
+                                                <?= staff_icon($iconType); ?>
+                                                <span><?= h(ucfirst(str_replace('-', ' ', $iconType))); ?></span>
+                                            </div>
+                                            <h3 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.3;"><?= h((string)$event['title']); ?></h3>
+                                        </div>
+
+                                        <div class="event-actions-dropdown" style="display: flex; align-items: center; gap: 6px;">
+                                            <a href="?page=events&edit_event=<?= h((string) $event['id']); ?>" class="event-action-icon edit" title="Reschedule Event" style="background: #eff6ff; border: 1px solid #bfdbfe; color: #2563eb; border-radius: 8px; padding: 6px 8px; text-decoration: none;">
+                                                <?= staff_icon('edit'); ?>
+                                            </a>
+                                            <form method="post" style="margin:0;" onsubmit="return confirm('Deactivate this event and remove it from patient portals?');">
+                                                <input type="hidden" name="action" value="deactivate_event">
+                                                <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                                                <input type="hidden" name="event_id" value="<?= h((string) $event['id']); ?>">
+                                                <button type="submit" class="event-action-icon" title="Deactivate Event" style="background: #fffbeb; border: 1px solid #fde68a; color: #b45309; border-radius: 8px; padding: 6px 8px; cursor: pointer;">
+                                                    <?= staff_icon('clock'); ?>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+
+                                    <div class="event-card-content">
+                                        <p class="event-desc" style="color: #64748b; font-size: 0.88rem; margin: 0 0 12px 0; line-height: 1.45;"><?= nl2br(h((string)$event['description'])); ?></p>
+                                    </div>
+                                </div>
+
+                                <div class="event-card-footer" style="border-top: 1px solid #f1f5f9; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; color: #64748b;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <?= staff_icon('clock'); ?>
+                                        <span><?= h((string)$event['time_label']); ?><?php if (!empty($event['end_time_label'])): ?> - <?= h((string)$event['end_time_label']); ?><?php endif; ?></span>
+                                    </div>
+                                    <span style="background: #ecfdf5; color: #065f46; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px;">
+                                        ✓ Published
+                                    </span>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </section>
+
+            <!-- ── SCHEDULE & ACTIVATE EVENT MODAL (When staff clicks "Choose Date & Activate") ── -->
+            <?php if ($eventToActivate !== null): ?>
+                <?php
+                $targetMonth = !empty($eventToActivate['target_month']) ? (string)$eventToActivate['target_month'] : date('Y-m');
+                $targetMonthTimestamp = strtotime($targetMonth . '-01');
+                $monthNameLabel = date('F Y', $targetMonthTimestamp);
+                $minDay = date('Y-m-01', $targetMonthTimestamp);
+                $maxDay = date('Y-m-t', $targetMonthTimestamp);
+                if (date('Y-m') === $targetMonth && date('Y-m-d') > $minDay) {
+                    $minDay = date('Y-m-d');
+                }
+                ?>
+                <section class="account-modal-backdrop" id="activateEventModalBackdrop" style="display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 1000; padding: 20px;">
+                    <div class="account-modal-card" role="dialog" aria-modal="true" style="background: #ffffff; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto; border: 1px solid #bfdbfe;">
+                        <div class="account-modal-header" style="background: linear-gradient(135deg, #1e40af, #2563eb); color: #ffffff; padding: 20px 24px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                            <div class="account-modal-title-group" style="display: flex; align-items: center; gap: 12px;">
+                                <span class="account-modal-icon" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;">
+                                    <?= staff_icon('calendar'); ?>
+                                </span>
+                                <div>
+                                    <h2 style="color: #ffffff; margin: 0; font-size: 1.25rem; font-weight: 700;">Schedule &amp; Activate Event</h2>
+                                    <p style="color: rgba(255, 255, 255, 0.85); margin: 2px 0 0 0; font-size: 0.84rem;">Select an exact day in <?= h($monthNameLabel); ?> to publish to patients</p>
                                 </div>
                             </div>
-                            <a class="account-modal-close" href="?page=events" aria-label="Close modal">×</a>
+                            <a class="account-modal-close" href="?page=events" style="color: #ffffff; font-size: 1.5rem; text-decoration: none;" aria-label="Close modal">×</a>
                         </div>
 
                         <form method="post" class="account-settings-form">
-                            <input type="hidden" name="action" value="<?= $eventEditing !== null ? 'update_event' : 'create_event'; ?>">
+                            <input type="hidden" name="action" value="activate_event">
                             <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
-                            <?php if ($eventEditing !== null): ?>
-                                <input type="hidden" name="event_id" value="<?= h((string) $eventEditing['id']); ?>">
-                            <?php endif; ?>
+                            <input type="hidden" name="event_id" value="<?= h((string) $eventToActivate['id']); ?>">
 
-                            <div class="account-modal-body">
+                            <div class="account-modal-body" style="padding: 24px;">
+                                <!-- Event Summary Box -->
+                                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                        <span style="color: #2563eb;"><?= staff_icon($eventToActivate['icon'] ?? 'calendar'); ?></span>
+                                        <strong style="font-size: 1.05rem; color: #0f172a;"><?= h((string) $eventToActivate['title']); ?></strong>
+                                    </div>
+                                    <p style="color: #64748b; font-size: 0.88rem; margin: 0; line-height: 1.45;"><?= nl2br(h((string) $eventToActivate['description'])); ?></p>
+                                </div>
+
+                                <!-- Admin Suggested Month Highlight -->
+                                <div style="background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                                    <div style="width: 38px; height: 38px; border-radius: 10px; background: #dbeafe; color: #1d4ed8; display: grid; place-items: center; flex-shrink: 0;">
+                                        <?= staff_icon('calendar'); ?>
+                                    </div>
+                                    <div>
+                                        <small style="color: #1e40af; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px;">Admin Suggested Month</small>
+                                        <strong style="color: #1e3a8a; font-size: 1.05rem; display: block; font-weight: 800;"><?= h($monthNameLabel); ?></strong>
+                                    </div>
+                                </div>
+
+                                <div class="form-group-item">
+                                    <label for="activate_event_date" class="form-field-label">
+                                        <span>Pick Exact Event Date (within <?= h($monthNameLabel); ?>)</span>
+                                        <span class="required" style="color: #dc2626;">*</span>
+                                    </label>
+                                    <input type="date" id="activate_event_date" name="event_date" min="<?= h($minDay); ?>" max="<?= h($maxDay); ?>" value="<?= h(!empty($eventToActivate['event_date']) ? (string)$eventToActivate['event_date'] : $minDay); ?>" required class="form-input-field" style="font-size: 1rem; padding: 12px 14px;">
+                                    <small style="color: #64748b; font-size: 0.8rem; margin-top: 4px; display: block;">Date selection is restricted to the target month configured by City Health Admin.</small>
+                                </div>
+
+                                <div class="form-row-grid" style="margin-top: 16px;">
+                                    <div class="form-group-item">
+                                        <label for="activate_time_label" class="form-field-label">
+                                            <span>Start Time</span>
+                                            <span class="required">*</span>
+                                        </label>
+                                        <input type="text" id="activate_time_label" name="time_label" value="<?= h((string) ($eventToActivate['time_label'] ?: '08:00 AM')); ?>" placeholder="e.g. 08:30 AM" required class="form-input-field">
+                                    </div>
+
+                                    <div class="form-group-item">
+                                        <label for="activate_end_time_label" class="form-field-label">
+                                            <span>End Time</span>
+                                            <span class="required">*</span>
+                                        </label>
+                                        <input type="text" id="activate_end_time_label" name="end_time_label" value="<?= h((string) ($eventToActivate['end_time_label'] ?: '12:00 PM')); ?>" placeholder="e.g. 11:30 AM" required class="form-input-field">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="account-modal-footer" style="padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; background: #fafafa; border-radius: 0 0 20px 20px;">
+                                <a class="ghost-btn" href="?page=events">Cancel</a>
+                                <button type="submit" class="primary-btn" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; padding: 10px 22px; border-radius: 12px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
+                                    <?= staff_icon('check'); ?>
+                                    <span>Activate &amp; Publish Event</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            <?php endif; ?>
+
+            <!-- ── RESCHEDULE / EDIT ACTIVE EVENT MODAL ── -->
+            <?php if ($eventEditing !== null && $eventToActivate === null): ?>
+                <section class="account-modal-backdrop" id="eventModalBackdrop" style="display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 1000; padding: 20px;">
+                    <div class="account-modal-card" role="dialog" aria-modal="true" style="background: #ffffff; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto;">
+                        <div class="account-modal-header" style="background: linear-gradient(135deg, #1e40af, #2563eb); color: #ffffff; padding: 20px 24px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                            <div class="account-modal-title-group" style="display: flex; align-items: center; gap: 12px;">
+                                <span class="account-modal-icon" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;">
+                                    <?= staff_icon('edit'); ?>
+                                </span>
+                                <div>
+                                    <h2 style="color: #ffffff; margin: 0; font-size: 1.25rem; font-weight: 700;">Reschedule Active Event</h2>
+                                    <p style="color: rgba(255, 255, 255, 0.85); margin: 2px 0 0 0; font-size: 0.84rem;">Update event date, time schedule, or details</p>
+                                </div>
+                            </div>
+                            <a class="account-modal-close" href="?page=events" style="color: #ffffff; font-size: 1.5rem; text-decoration: none;" aria-label="Close modal">×</a>
+                        </div>
+
+                        <form method="post" class="account-settings-form">
+                            <input type="hidden" name="action" value="update_event">
+                            <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                            <input type="hidden" name="event_id" value="<?= h((string) $eventEditing['id']); ?>">
+
+                            <div class="account-modal-body" style="padding: 24px;">
                                 <div class="form-group-item">
                                     <label for="event_title_input" class="form-field-label">
                                         <span>Event Title</span>
@@ -3512,11 +3830,11 @@ for ($i = 0; $i < 6; $i++) {
                                 <input type="hidden" name="accent" value="blue">
                             </div>
 
-                            <div class="account-modal-footer">
+                            <div class="account-modal-footer" style="padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; background: #fafafa; border-radius: 0 0 20px 20px;">
                                 <a class="ghost-btn" href="?page=events">Cancel</a>
-                                <button type="submit" class="primary-btn">
+                                <button type="submit" class="primary-btn" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; padding: 10px 22px; border-radius: 12px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
                                     <?= staff_icon('check'); ?>
-                                    <span><?= $eventEditing !== null ? 'Save Changes' : 'Publish Event'; ?></span>
+                                    <span>Save &amp; Update Schedule</span>
                                 </button>
                             </div>
                         </form>

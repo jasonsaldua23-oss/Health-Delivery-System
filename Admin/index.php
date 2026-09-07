@@ -182,6 +182,9 @@ if ($queueDateFilter === '') {
     $queueDateFilter = 'today';
 }
 $eventStationFilter = trim((string) ($_GET['event_station'] ?? ''));
+$eventStatusFilter = trim((string) ($_GET['event_status'] ?? 'all'));
+$eventEditId = (int) ($_GET['edit_event'] ?? 0);
+$showEventModal = ($page === 'events' && (($_GET['show_event_modal'] ?? '') === '1')) || $eventEditId > 0;
 $adminQueueProgramFilter = trim((string) ($_GET['queue_program'] ?? ''));
 $patientViewId = trim((string) ($_GET['patient'] ?? ''));
 $patientViewAppointmentId = (int) ($_GET['patient_visit'] ?? 0);
@@ -194,6 +197,84 @@ $showUserModal = $page === 'users' && (($_GET['show_user_modal'] ?? '') === '1')
 $serviceManagementStation = trim((string) ($_GET['station'] ?? ''));
 $adminFlash = (string) ($_SESSION['admin_flash'] ?? '');
 unset($_SESSION['admin_flash']);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'create_event')) {
+    if (verify_csrf($_POST['csrf_token'] ?? null)) {
+        $stationSlug = trim((string) ($_POST['station_slug'] ?? 'all'));
+        $title = trim((string) ($_POST['title'] ?? ''));
+        $description = trim((string) ($_POST['description'] ?? ''));
+        $targetMonth = trim((string) ($_POST['target_month'] ?? date('Y-m')));
+        $startTime = trim((string) ($_POST['time_label'] ?? '8:00 AM'));
+        $endTime = trim((string) ($_POST['end_time_label'] ?? '12:00 PM'));
+        $icon = trim((string) ($_POST['icon'] ?? 'calendar'));
+        $accent = trim((string) ($_POST['accent'] ?? 'blue'));
+
+        if ($title !== '' && $targetMonth !== '') {
+            $created = create_upcoming_event([
+                'station_slug' => $stationSlug,
+                'title' => $title,
+                'description' => $description,
+                'target_month' => $targetMonth,
+                'time_label' => $startTime,
+                'end_time_label' => $endTime,
+                'icon' => $icon,
+                'accent' => $accent,
+                'status' => 'inactive',
+                'created_by' => (string) ($adminAccount['email'] ?? 'admin'),
+            ]);
+            $_SESSION['admin_flash'] = $created
+                ? 'Community event created successfully! It is now dispatched to the Health Station(s) as Inactive awaiting date assignment.'
+                : 'Unable to create event. Please check required fields.';
+            if ($created) {
+                log_activity('admin', (string) ($adminAccount['email'] ?? 'admin'), 'event_created', 'event', '', '', '', $stationSlug);
+            }
+        } else {
+            $_SESSION['admin_flash'] = 'Event title and suggested target month are required.';
+        }
+    }
+    header('Location: index.php?page=events');
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'update_event')) {
+    if (verify_csrf($_POST['csrf_token'] ?? null)) {
+        $eventId = (int) ($_POST['event_id'] ?? 0);
+        if ($eventId > 0) {
+            $updated = update_upcoming_event($eventId, [
+                'title' => trim((string) ($_POST['title'] ?? '')),
+                'description' => trim((string) ($_POST['description'] ?? '')),
+                'target_month' => trim((string) ($_POST['target_month'] ?? '')),
+                'event_date' => trim((string) ($_POST['event_date'] ?? '')),
+                'time_label' => trim((string) ($_POST['time_label'] ?? '')),
+                'end_time_label' => trim((string) ($_POST['end_time_label'] ?? '')),
+                'icon' => trim((string) ($_POST['icon'] ?? 'calendar')),
+                'accent' => trim((string) ($_POST['accent'] ?? 'blue')),
+                'status' => trim((string) ($_POST['status'] ?? 'inactive')),
+            ]);
+            $_SESSION['admin_flash'] = $updated ? 'Event updated successfully.' : 'Unable to update event.';
+            if ($updated) {
+                log_activity('admin', (string) ($adminAccount['email'] ?? 'admin'), 'event_updated', 'event', (string) $eventId);
+            }
+        }
+    }
+    header('Location: index.php?page=events');
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'delete_event')) {
+    if (verify_csrf($_POST['csrf_token'] ?? null)) {
+        $eventId = (int) ($_POST['event_id'] ?? 0);
+        if ($eventId > 0) {
+            $deleted = delete_upcoming_event($eventId);
+            $_SESSION['admin_flash'] = $deleted ? 'Event removed successfully.' : 'Unable to remove event.';
+            if ($deleted) {
+                log_activity('admin', (string) ($adminAccount['email'] ?? 'admin'), 'event_deleted', 'event', (string) $eventId);
+            }
+        }
+    }
+    header('Location: index.php?page=events');
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appointment_id'], $_POST['new_status'])) {
     if (verify_csrf($_POST['csrf_token'] ?? null)) {
@@ -384,7 +465,12 @@ if ($selectedAdminVisit !== null && $patientProfile !== null) {
 }
 $appointments = fetch_appointments(['station_slug' => $stationView, 'service_slug' => $programFilter, 'status' => $status, 'search' => $search, 'date' => $dateFilter]);
 $allStationAppointments = $stationView !== '' ? fetch_appointments(['station_slug' => $stationView, 'date' => $dateFilter]) : [];
-$upcomingEvents = fetch_upcoming_events(['upcoming_only' => true]);
+$allUpcomingEvents = fetch_upcoming_events(['upcoming_only' => false]);
+$countAllEvents = count($allUpcomingEvents);
+$countActiveEvents = count(array_filter($allUpcomingEvents, static fn(array $e): bool => (string) ($e['status'] ?? '') === 'active'));
+$countInactiveEvents = count(array_filter($allUpcomingEvents, static fn(array $e): bool => (string) ($e['status'] ?? '') === 'inactive'));
+$eventEditing = $eventEditId > 0 ? fetch_upcoming_event_by_id($eventEditId) : null;
+$upcomingEvents = $allUpcomingEvents;
 $adminAccounts = fetch_admin_accounts();
 $staffAccounts = fetch_staff_accounts();
 $activities = recent_activity();
@@ -420,7 +506,7 @@ if ($page === 'reports' && (($_GET['export'] ?? '') === 'csv')) {
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
     $output = fopen('php://output', 'w');
-    fputcsv($output, ['Appointment Code', 'Reference Code', 'Patient Name', 'Birth Date', 'Gender', 'Contact Number', 'Address', 'Barangay Health Center', 'Service', 'Date', 'Time', 'Status', 'Temperature', 'Pulse', 'Blood Pressure', 'Doctor Notes', 'Created At']);
+    fputcsv($output, ['Appointment Code', 'Reference Code', 'Patient Name', 'Birth Date', 'Gender', 'Contact Number', 'Address', 'Barangay Health Center', 'Service', 'Date', 'Time', 'Status', 'Vaccine Type', 'Temperature', 'Pulse', 'Blood Pressure', 'Doctor Notes', 'Created At']);
     foreach ($exportAppointments as $row) {
         fputcsv($output, [
             $row['appointment_code'] ?: $row['reference_code'],
@@ -435,6 +521,7 @@ if ($page === 'reports' && (($_GET['export'] ?? '') === 'csv')) {
             $row['preferred_date'],
             $row['preferred_time'],
             $row['status'],
+            $row['vaccine_type'] ?? '',
             $row['body_temperature'] ?? '',
             $row['pulse_rate'] ?? '',
             $row['blood_pressure'] ?? '',
@@ -478,9 +565,12 @@ if ($page === 'queue' && $stationView !== '') {
 }
 
 $filteredUpcomingEvents = array_values(array_filter(
-    $upcomingEvents,
-    static function (array $event) use ($eventStationFilter, $search): bool {
+    $allUpcomingEvents,
+    static function (array $event) use ($eventStationFilter, $eventStatusFilter, $search): bool {
         if ($eventStationFilter !== '' && (string) ($event['station_slug'] ?? '') !== $eventStationFilter) {
+            return false;
+        }
+        if ($eventStatusFilter !== 'all' && $eventStatusFilter !== '' && (string) ($event['status'] ?? '') !== $eventStatusFilter) {
             return false;
         }
         if ($search !== '') {
@@ -488,7 +578,8 @@ $filteredUpcomingEvents = array_values(array_filter(
             $title = mb_strtolower((string) ($event['title'] ?? ''));
             $desc = mb_strtolower((string) ($event['description'] ?? ''));
             $stName = mb_strtolower((string) ($event['station_name'] ?? ''));
-            if (strpos($title, $s) === false && strpos($desc, $s) === false && strpos($stName, $s) === false) {
+            $tMonth = mb_strtolower((string) ($event['target_month'] ?? ''));
+            if (strpos($title, $s) === false && strpos($desc, $s) === false && strpos($stName, $s) === false && strpos($tMonth, $s) === false) {
                 return false;
             }
         }
@@ -1154,6 +1245,12 @@ if (!function_exists('peso')) {
                                             <span class="vital-label">Blood Pressure</span>
                                             <strong class="vital-value"><?= !empty($selectedAdminVisit['blood_pressure']) ? h((string) $selectedAdminVisit['blood_pressure']) : '<em class="not-set">Not recorded</em>'; ?></strong>
                                         </div>
+                                        <?php if (!empty($selectedAdminVisit['vaccine_type'])): ?>
+                                            <div class="vital-metric-card" style="grid-column: 1 / -1; background: #eff6ff; border: 1px solid #bfdbfe;">
+                                                <span class="vital-label" style="color: #1e40af; font-weight: 700;">Type of Vaccine Administered</span>
+                                                <strong class="vital-value" style="color: #1e3a8a; font-size: 1.05rem;"><?= h((string) $selectedAdminVisit['vaccine_type']); ?></strong>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
 
@@ -2320,8 +2417,43 @@ if (!function_exists('peso')) {
         <?php elseif ($page === 'events'): ?>
             <section class="page-header action-head events-page-head">
                 <div class="action-head-copy">
-                    <h1>Upcoming Events</h1>
-                    <p>View scheduled health events and community medical programs across all health centers</p>
+                    <div class="admin-eyebrow-pill">
+                        <?= admin_icon('clock'); ?>
+                        <span>Community Health Management</span>
+                    </div>
+                    <h1>Upcoming Events &amp; Outreach</h1>
+                    <p>Create, suggest, and coordinate community health programs, immunization drives, and medical missions across all health stations</p>
+                </div>
+                <div class="header-actions">
+                    <button type="button" class="green-btn" id="openCreateEventModalBtn" onclick="openAdminEventModal()">
+                        <?= admin_icon('plus'); ?>
+                        <span>Create New Event</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- 3 KPI Status Summary Tiles -->
+            <section class="admin-event-stats-strip">
+                <div class="event-stat-tile total">
+                    <div class="stat-tile-icon"><?= admin_icon('calendar'); ?></div>
+                    <div class="stat-tile-info">
+                        <span class="stat-tile-num"><?= number_format($countAllEvents); ?></span>
+                        <span class="stat-tile-lbl">Total Programs Registered</span>
+                    </div>
+                </div>
+                <div class="event-stat-tile active">
+                    <div class="stat-tile-icon"><?= admin_icon('check'); ?></div>
+                    <div class="stat-tile-info">
+                        <span class="stat-tile-num"><?= number_format($countActiveEvents); ?></span>
+                        <span class="stat-tile-lbl">Active &amp; Published to Patients</span>
+                    </div>
+                </div>
+                <div class="event-stat-tile inactive">
+                    <div class="stat-tile-icon"><?= admin_icon('clock'); ?></div>
+                    <div class="stat-tile-info">
+                        <span class="stat-tile-num"><?= number_format($countInactiveEvents); ?></span>
+                        <span class="stat-tile-lbl">Inactive • Awaiting Staff Date Assignment</span>
+                    </div>
                 </div>
             </section>
 
@@ -2332,9 +2464,9 @@ if (!function_exists('peso')) {
 
                     <div class="appt-search-field">
                         <span class="appt-search-icon"><?= admin_icon('search'); ?></span>
-                        <input type="text" name="search" value="<?= h($search); ?>" placeholder="Search events by title, description, or station..." maxlength="40">
+                        <input type="text" name="search" value="<?= h($search); ?>" placeholder="Search events by title, description, station, or month..." maxlength="40">
                         <?php if ($search !== ''): ?>
-                            <a href="?page=events&event_station=<?= h($eventStationFilter); ?>" class="appt-search-clear" title="Clear search">
+                            <a href="?page=events&event_station=<?= h($eventStationFilter); ?>&event_status=<?= h($eventStatusFilter); ?>" class="appt-search-clear" title="Clear search">
                                 <?= admin_icon('x'); ?>
                             </a>
                         <?php endif; ?>
@@ -2345,9 +2477,18 @@ if (!function_exists('peso')) {
                             <span class="appt-select-icon"><?= admin_icon('map'); ?></span>
                             <select name="event_station" onchange="this.form.submit()">
                                 <option value="" <?= $eventStationFilter === '' ? 'selected' : ''; ?>>All Barangays</option>
-                                <?php foreach ($stations as $station): ?>
-                                    <option value="<?= h($station['slug']); ?>" <?= $eventStationFilter === $station['slug'] ? 'selected' : ''; ?>><?= h($station['name']); ?></option>
+                                <?php foreach ($stations as $stItem): ?>
+                                    <option value="<?= h($stItem['slug']); ?>" <?= $eventStationFilter === $stItem['slug'] ? 'selected' : ''; ?>><?= h($stItem['name']); ?></option>
                                 <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="appt-select-wrap">
+                            <span class="appt-select-icon"><?= admin_icon('filter'); ?></span>
+                            <select name="event_status" onchange="this.form.submit()">
+                                <option value="all" <?= $eventStatusFilter === 'all' ? 'selected' : ''; ?>>All Statuses (<?= $countAllEvents; ?>)</option>
+                                <option value="active" <?= $eventStatusFilter === 'active' ? 'selected' : ''; ?>>Active Only (<?= $countActiveEvents; ?>)</option>
+                                <option value="inactive" <?= $eventStatusFilter === 'inactive' ? 'selected' : ''; ?>>Inactive / Pending (<?= $countInactiveEvents; ?>)</option>
                             </select>
                         </div>
 
@@ -2359,35 +2500,274 @@ if (!function_exists('peso')) {
                 </form>
             </section>
 
+            <!-- Event Cards Grid -->
             <section class="admin-event-card-grid">
                 <?php if ($filteredUpcomingEvents === []): ?>
                     <div class="panel-card empty-state appt-empty-box" style="grid-column: 1 / -1;">
                         <div class="appt-empty-icon"><?= admin_icon('clock'); ?></div>
-                        <h3>No Upcoming Events Found</h3>
-                        <p>There are no scheduled health center events matching your filter criteria.</p>
-                        <?php if ($eventStationFilter !== '' || $search !== ''): ?>
+                        <h3>No Health Events Found</h3>
+                        <p>There are no community health center events matching your filter criteria.</p>
+                        <?php if ($eventStationFilter !== '' || $eventStatusFilter !== 'all' || $search !== ''): ?>
                             <a href="?page=events" class="dash-hero-btn secondary" style="margin-top:14px;display:inline-flex;">Reset Filters</a>
+                        <?php else: ?>
+                            <button type="button" class="green-btn" style="margin-top:14px;display:inline-flex;" onclick="openAdminEventModal()">
+                                <?= admin_icon('plus'); ?>
+                                <span>Create First Event</span>
+                            </button>
                         <?php endif; ?>
                     </div>
                 <?php else: ?>
                     <?php foreach ($filteredUpcomingEvents as $event): ?>
-                        <article class="admin-event-card">
+                        <?php
+                        $isEventActive = (string) ($event['status'] ?? 'inactive') === 'active';
+                        $hasConfirmedDate = !empty($event['event_date']);
+                        $targetMonthStr = (string) ($event['target_month'] ?? '');
+                        $formattedMonth = $targetMonthStr !== '' ? date('F Y', strtotime($targetMonthStr . '-01')) : '';
+                        $iconType = (string) ($event['icon'] ?? 'calendar');
+                        ?>
+                        <article class="admin-event-card <?= $isEventActive ? 'is-active' : 'is-pending'; ?>">
                             <div class="admin-event-card-header">
                                 <div class="admin-event-card-top">
-                                    <span class="admin-event-pill"><?= h(ucfirst(str_replace('-', ' ', (string) $event['icon']))); ?></span>
+                                    <div class="admin-event-pill-row">
+                                        <span class="admin-event-pill icon-pill cat-<?= h($iconType); ?>">
+                                            <?= ucfirst(str_replace('-', ' ', $iconType)); ?>
+                                        </span>
+                                        <?php if ($isEventActive): ?>
+                                            <span class="admin-status-pill status-active-pill">
+                                                <?= admin_icon('check'); ?>
+                                                <span>Active • Published</span>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="admin-status-pill status-pending-pill">
+                                                <?= admin_icon('clock'); ?>
+                                                <span>Inactive • Pending Date</span>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="admin-event-actions-top">
+                                        <button type="button" class="admin-event-action-btn edit" title="Edit Event" onclick="editAdminEvent(<?= htmlspecialchars(json_encode($event), ENT_QUOTES, 'UTF-8'); ?>)">
+                                            <?= admin_icon('edit'); ?>
+                                        </button>
+                                        <form method="post" style="margin:0;display:inline;" onsubmit="return confirm('Are you sure you want to remove this event?');">
+                                            <input type="hidden" name="action" value="delete_event">
+                                            <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                                            <input type="hidden" name="event_id" value="<?= h((string) $event['id']); ?>">
+                                            <button type="submit" class="admin-event-action-btn delete" title="Delete Event">
+                                                <?= admin_icon('trash'); ?>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                                 <h3><?= h($event['title']); ?></h3>
                             </div>
                             <div class="admin-event-card-body">
-                                <p><?= h($event['description']); ?></p>
-                                <div class="admin-event-meta-line"><?= admin_icon('calendar'); ?><span><?= h(date('D, M j, Y', strtotime((string) $event['event_date']))); ?></span></div>
-                                <div class="admin-event-meta-line"><?= admin_icon('clock'); ?><span><?= h($event['time_label']); ?><?php if (!empty($event['end_time_label'])): ?> - <?= h((string) $event['end_time_label']); ?><?php endif; ?></span></div>
-                                <div class="admin-event-meta-line"><?= admin_icon('map'); ?><span><?= h($event['station_name']); ?></span></div>
+                                <p><?= nl2br(h($event['description'])); ?></p>
+                                
+                                <div class="admin-event-schedule-box <?= $isEventActive ? 'box-active' : 'box-pending'; ?>">
+                                    <?php if ($isEventActive && $hasConfirmedDate): ?>
+                                        <div class="admin-event-meta-line primary-date">
+                                            <?= admin_icon('calendar'); ?>
+                                            <strong><?= h(date('D, M j, Y', strtotime((string) $event['event_date']))); ?></strong>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="admin-event-meta-line pending-month">
+                                            <?= admin_icon('calendar'); ?>
+                                            <span>Suggested Month: <strong><?= $formattedMonth ?: 'Awaiting Station Assignment'; ?></strong></span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <div class="admin-event-meta-line">
+                                        <?= admin_icon('clock'); ?>
+                                        <span><?= h($event['time_label']); ?><?php if (!empty($event['end_time_label'])): ?> - <?= h((string) $event['end_time_label']); ?><?php endif; ?></span>
+                                    </div>
+
+                                    <div class="admin-event-meta-line">
+                                        <?= admin_icon('map'); ?>
+                                        <span><?= h($event['station_name']); ?></span>
+                                    </div>
+                                </div>
                             </div>
                         </article>
                     <?php endforeach; ?>
                 <?php endif; ?>
             </section>
+
+            <!-- Admin Create / Edit Event Modal -->
+            <div class="service-modal-overlay report-modal-backdrop" id="adminEventModalBackdrop" style="<?= $showEventModal ? 'display:flex;' : 'display:none;'; ?>" onclick="if(event.target===this)closeAdminEventModal()">
+                <div class="service-modal-card admin-event-modal-card">
+                    <div class="report-modal-header" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #7c3aed 100%); color: #ffffff;">
+                        <div class="report-modal-header-left">
+                            <div class="report-modal-icon-badge" style="background:rgba(255,255,255,0.2);color:#ffffff;">
+                                <?= admin_icon('calendar'); ?>
+                            </div>
+                            <div>
+                                <h3 id="adminEventModalTitle" style="color:#ffffff;"><?= $eventEditing !== null ? 'Update Community Health Event' : 'Create &amp; Dispatch Community Event'; ?></h3>
+                                <p style="color:rgba(255,255,255,0.85);">Set event guidelines and suggested target month for Barangay Health Station staff to schedule</p>
+                            </div>
+                        </div>
+                        <button type="button" class="modal-close-btn report-modal-close" style="color:#ffffff;" onclick="closeAdminEventModal()">&times;</button>
+                    </div>
+
+                    <form method="post" id="adminEventForm" class="service-modal-form" style="padding: 24px;">
+                        <input type="hidden" name="action" id="adminEventAction" value="<?= $eventEditing !== null ? 'update_event' : 'create_event'; ?>">
+                        <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                        <input type="hidden" name="event_id" id="adminEventId" value="<?= h((string) ($eventEditing['id'] ?? '')); ?>">
+
+                        <div class="form-group-item">
+                            <label for="adminEventStationSelect" class="form-field-label">
+                                <span>Target Health Station / Barangay</span>
+                                <span class="required">*</span>
+                            </label>
+                            <select name="station_slug" id="adminEventStationSelect" class="form-input-field" required <?= $eventEditing !== null ? 'disabled' : ''; ?>>
+                                <option value="all" <?= ($eventEditing === null || ($eventEditing['station_slug'] ?? '') === 'all') ? 'selected' : ''; ?>>📢 All Barangay Health Stations (Broadcast)</option>
+                                <?php foreach ($stations as $stItem): ?>
+                                    <?php if ($stItem['slug'] !== 'city-health'): ?>
+                                        <option value="<?= h($stItem['slug']); ?>" <?= (($eventEditing['station_slug'] ?? '') === $stItem['slug']) ? 'selected' : ''; ?>><?= h($stItem['name']); ?></option>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </select>
+                            <small class="field-subnote" style="color:#64748b;font-size:0.8rem;margin-top:4px;">Selecting "All Stations" will create an inactive event template for each barangay station.</small>
+                        </div>
+
+                        <div class="form-group-item" style="margin-top:14px;">
+                            <label for="adminEventTitleInput" class="form-field-label">
+                                <span>Event Title</span>
+                                <span class="required">*</span>
+                            </label>
+                            <input type="text" name="title" id="adminEventTitleInput" value="<?= h((string) ($eventEditing['title'] ?? '')); ?>" placeholder="e.g. National Child Immunization Caravan" required class="form-input-field" maxlength="200">
+                        </div>
+
+                        <div class="form-row-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
+                            <div class="form-group-item">
+                                <label for="adminEventCategorySelect" class="form-field-label">
+                                    <span>Event Category</span>
+                                    <span class="required">*</span>
+                                </label>
+                                <select name="icon" id="adminEventCategorySelect" class="form-input-field" required>
+                                    <option value="syringe" <?= (($eventEditing['icon'] ?? '') === 'syringe') ? 'selected' : ''; ?>>💉 Vaccination Drive</option>
+                                    <option value="community" <?= (($eventEditing['icon'] ?? '') === 'community') ? 'selected' : ''; ?>>🍲 Feeding Program</option>
+                                    <option value="heart" <?= (($eventEditing['icon'] ?? '') === 'heart') ? 'selected' : ''; ?>>🩺 Free Medical Mission</option>
+                                    <option value="calendar" <?= (($eventEditing['icon'] ?? '') === 'calendar') ? 'selected' : ''; ?>>📋 Health Seminar / Workshop</option>
+                                    <option value="pulse" <?= (($eventEditing['icon'] ?? '') === 'pulse') ? 'selected' : ''; ?>>🩸 Blood Donation / Screening</option>
+                                    <option value="other" <?= (($eventEditing['icon'] ?? '') === 'other') ? 'selected' : ''; ?>>✨ General Outreach Event</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group-item">
+                                <label for="adminEventMonthInput" class="form-field-label">
+                                    <span>Suggested Target Month</span>
+                                    <span class="required">*</span>
+                                </label>
+                                <input type="month" name="target_month" id="adminEventMonthInput" min="<?= date('Y-m'); ?>" value="<?= h((string) ($eventEditing['target_month'] ?? date('Y-m'))); ?>" required class="form-input-field">
+                            </div>
+                        </div>
+
+                        <div class="form-row-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
+                            <div class="form-group-item">
+                                <label for="adminEventStartTimeInput" class="form-field-label">
+                                    <span>Tentative Start Time</span>
+                                    <span class="required">*</span>
+                                </label>
+                                <input type="text" name="time_label" id="adminEventStartTimeInput" value="<?= h((string) ($eventEditing['time_label'] ?? '8:00 AM')); ?>" placeholder="e.g. 8:00 AM" required class="form-input-field">
+                            </div>
+
+                            <div class="form-group-item">
+                                <label for="adminEventEndTimeInput" class="form-field-label">
+                                    <span>Tentative End Time</span>
+                                    <span class="required">*</span>
+                                </label>
+                                <input type="text" name="end_time_label" id="adminEventEndTimeInput" value="<?= h((string) ($eventEditing['end_time_label'] ?? '12:00 PM')); ?>" placeholder="e.g. 12:00 PM" required class="form-input-field">
+                            </div>
+                        </div>
+
+                        <div class="form-group-item" style="margin-top:14px;">
+                            <label for="adminEventDescInput" class="form-field-label">
+                                <span>Description &amp; Guidelines for Station Staff</span>
+                                <span class="required">*</span>
+                            </label>
+                            <textarea name="description" id="adminEventDescInput" rows="4" placeholder="Describe the health event objectives, target puroks, required logistics, and guidance for station staff..." required class="form-input-field" style="height:auto;padding:12px 16px;resize:vertical;"><?= h((string) ($eventEditing['description'] ?? '')); ?></textarea>
+                        </div>
+
+                        <div class="modal-actions" style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px;">
+                            <button type="button" class="dash-hero-btn secondary" onclick="closeAdminEventModal()">Cancel</button>
+                            <button type="submit" class="primary-btn green-btn" id="adminEventSubmitBtn" style="min-width:160px;justify-content:center;">
+                                <?= admin_icon('check'); ?>
+                                <span id="adminEventSubmitText"><?= $eventEditing !== null ? 'Save Changes' : 'Create &amp; Dispatch'; ?></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <script>
+            function openAdminEventModal() {
+                const modal = document.getElementById('adminEventModalBackdrop');
+                const form = document.getElementById('adminEventForm');
+                const title = document.getElementById('adminEventModalTitle');
+                const action = document.getElementById('adminEventAction');
+                const eventId = document.getElementById('adminEventId');
+                const submitText = document.getElementById('adminEventSubmitText');
+                const stationSelect = document.getElementById('adminEventStationSelect');
+
+                if (title) title.textContent = 'Create & Dispatch Community Event';
+                if (action) action.value = 'create_event';
+                if (eventId) eventId.value = '';
+                if (submitText) submitText.textContent = 'Create & Dispatch';
+                if (stationSelect) stationSelect.disabled = false;
+                if (form) form.reset();
+
+                const monthInput = document.getElementById('adminEventMonthInput');
+                if (monthInput && !monthInput.value) {
+                    const now = new Date();
+                    const y = now.getFullYear();
+                    const m = String(now.getMonth() + 1).padStart(2, '0');
+                    monthInput.value = `${y}-${m}`;
+                }
+
+                if (modal) modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeAdminEventModal() {
+                const modal = document.getElementById('adminEventModalBackdrop');
+                if (modal) modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+
+            function editAdminEvent(eventData) {
+                if (!eventData) return;
+                const modal = document.getElementById('adminEventModalBackdrop');
+                const title = document.getElementById('adminEventModalTitle');
+                const action = document.getElementById('adminEventAction');
+                const eventId = document.getElementById('adminEventId');
+                const submitText = document.getElementById('adminEventSubmitText');
+                const titleInput = document.getElementById('adminEventTitleInput');
+                const descInput = document.getElementById('adminEventDescInput');
+                const iconSelect = document.getElementById('adminEventCategorySelect');
+                const monthInput = document.getElementById('adminEventMonthInput');
+                const startInput = document.getElementById('adminEventStartTimeInput');
+                const endInput = document.getElementById('adminEventEndTimeInput');
+                const stationSelect = document.getElementById('adminEventStationSelect');
+
+                if (title) title.textContent = 'Update Health Event';
+                if (action) action.value = 'update_event';
+                if (eventId) eventId.value = eventData.id || '';
+                if (submitText) submitText.textContent = 'Save Changes';
+                if (titleInput) titleInput.value = eventData.title || '';
+                if (descInput) descInput.value = eventData.description || '';
+                if (iconSelect) iconSelect.value = eventData.icon || 'calendar';
+                if (monthInput) monthInput.value = eventData.target_month || (eventData.event_date ? eventData.event_date.substring(0, 7) : '');
+                if (startInput) startInput.value = eventData.time_label || '8:00 AM';
+                if (endInput) endInput.value = eventData.end_time_label || eventData.time_label || '12:00 PM';
+                if (stationSelect) {
+                    stationSelect.value = eventData.station_slug || '';
+                    stationSelect.disabled = true;
+                }
+
+                if (modal) modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+            </script>
         <?php elseif ($page === 'users'): ?>
             <?php
                 $healthStationList = array_values(array_filter($stations, static function(array $station): bool {
@@ -3698,6 +4078,10 @@ if (!function_exists('peso')) {
                                     <span class="vital-label">Blood Pressure</span>
                                     <strong class="vital-value" id="reportVisitBp"><em class="not-set">Not recorded</em></strong>
                                 </div>
+                                <div class="vital-metric-card" id="reportVisitVaccineCard" style="display:none; grid-column: 1 / -1; background: #eff6ff; border: 1px solid #bfdbfe;">
+                                    <span class="vital-label" style="color: #1e40af; font-weight: 700;">Type of Vaccine Administered</span>
+                                    <strong class="vital-value" id="reportVisitVaccine" style="color: #1e3a8a; font-size: 1.05rem;">-</strong>
+                                </div>
                             </div>
                         </div>
 
@@ -3815,6 +4199,18 @@ if (!function_exists('peso')) {
                     pulseEl.innerHTML = data.pulse_rate ? (data.pulse_rate + ' bpm') : '<em class="not-set">Not recorded</em>';
                     respEl.innerHTML = data.respiration_rate ? (data.respiration_rate + ' cpm') : '<em class="not-set">Not recorded</em>';
                     bpEl.innerHTML = data.blood_pressure ? data.blood_pressure : '<em class="not-set">Not recorded</em>';
+                    
+                    // Vaccine
+                    const vaccineCard = document.getElementById('reportVisitVaccineCard');
+                    const vaccineEl = document.getElementById('reportVisitVaccine');
+                    if (vaccineCard && vaccineEl) {
+                        if (data.vaccine_type && data.vaccine_type.trim()) {
+                            vaccineEl.textContent = data.vaccine_type;
+                            vaccineCard.style.display = 'block';
+                        } else {
+                            vaccineCard.style.display = 'none';
+                        }
+                    }
                     
                     // Notes
                     const notesEl = document.getElementById('reportVisitNotes');
