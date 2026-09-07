@@ -2530,7 +2530,8 @@ if (!function_exists('peso')) {
                                 <div class="admin-event-card-top">
                                     <div class="admin-event-pill-row">
                                         <span class="admin-event-pill icon-pill cat-<?= h($iconType); ?>">
-                                            <?= ucfirst(str_replace('-', ' ', $iconType)); ?>
+                                            <?= admin_icon($iconType === 'other' ? 'sparkle' : $iconType); ?>
+                                            <span><?= ucfirst(str_replace('-', ' ', $iconType)); ?></span>
                                         </span>
                                         <?php if ($isEventActive): ?>
                                             <span class="admin-status-pill status-active-pill">
