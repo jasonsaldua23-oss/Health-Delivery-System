@@ -17,6 +17,11 @@ $envUser = $parsedUrl['user'] ?? $_ENV['DB_USER'] ?? $_ENV['MYSQLUSER'] ?? $_ENV
 $envPass = $parsedUrl['pass'] ?? $_ENV['DB_PASS'] ?? $_ENV['MYSQLPASSWORD'] ?? $_ENV['MYSQL_PASSWORD'] ?? $_ENV['DATABASE_PASSWORD'] ?? (getenv('DB_PASS') !== false ? getenv('DB_PASS') : (getenv('MYSQLPASSWORD') !== false ? getenv('MYSQLPASSWORD') : (getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : null)));
 $envName = isset($parsedUrl['path']) ? ltrim($parsedUrl['path'], '/') : ($_ENV['DB_NAME'] ?? $_ENV['MYSQLDATABASE'] ?? $_ENV['MYSQL_DATABASE'] ?? $_ENV['DATABASE_NAME'] ?? getenv('DB_NAME') ?: getenv('MYSQLDATABASE') ?: getenv('MYSQL_DATABASE') ?: getenv('DATABASE_NAME'));
 
+// Filter out placeholder passwords from template .env.example
+if (is_string($envPass) && (str_contains($envPass, 'Your_') || str_contains($envPass, '_Password_Here') || $envPass === 'your_password_here')) {
+    $envPass = null;
+}
+
 if (!defined('DB_HOST')) {
     define('DB_HOST', (string) ($envHost ?: '127.0.0.1'));
 }
@@ -30,7 +35,7 @@ if (!defined('DB_USER')) {
 }
 
 if (!defined('DB_PASS')) {
-    define('DB_PASS', (string) ($envPass !== null ? $envPass : ''));
+    define('DB_PASS', (string) ($envPass !== null && $envPass !== '' ? $envPass : 'qfA*ZwVyDzBpz36'));
 }
 
 if (!defined('DB_NAME')) {

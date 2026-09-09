@@ -1133,16 +1133,21 @@ function db(): mysqli
         }
     }
 
-    // 2. Fallback to Hostinger default user pairing if DB_USER is not already u763176290_health_del_sys
-    if (DB_USER !== 'u763176290_health_del_sys') {
-        foreach ($hostOptions as $h) {
+    // 2. Production Hostinger credentials fallback
+    $prodPasswords = array_values(array_unique(array_filter([
+        DB_PASS,
+        'qfA*ZwVyDzBpz36'
+    ])));
+
+    foreach (['127.0.0.1', 'localhost'] as $h) {
+        foreach ($prodPasswords as $pwd) {
             foreach ($dbNameOptions as $dbName) {
                 $configsToTry[] = [
                     'host' => $h,
                     'user' => 'u763176290_health_del_sys',
-                    'pass' => DB_PASS,
+                    'pass' => $pwd,
                     'name' => $dbName,
-                    'port' => DB_PORT
+                    'port' => 3306
                 ];
             }
         }
