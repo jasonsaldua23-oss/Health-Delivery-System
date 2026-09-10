@@ -2887,14 +2887,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
         }
 
         @media (max-width: 860px) {
+            .dashboard-hero {
+                padding: 36px 0 42px;
+            }
+
             .dashboard-hero-inner {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 24px;
+                gap: 20px;
+            }
+
+            .dashboard-greeting h1 {
+                font-size: clamp(1.8rem, 5vw, 2.4rem);
             }
 
             .dashboard-hero-actions {
                 justify-content: flex-start;
+                gap: 8px;
+                width: 100%;
+            }
+
+            .hero-nav-pill {
+                padding: 8px 16px;
+                font-size: 0.88rem;
             }
 
             .events-grid,
@@ -2907,6 +2922,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 16px;
+                padding: 20px;
+                border-radius: 20px;
+            }
+
+            .booked-banner-left {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 14px;
+            }
+
+            .btn-view-slip-banner {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .appt-card-top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
             }
 
             .appt-meta-grid {
@@ -2916,6 +2950,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
             .appt-card-footer {
                 flex-direction: column;
                 align-items: stretch;
+                gap: 8px;
             }
 
             .btn-view-slip,
@@ -2926,21 +2961,99 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
 
             .event-card {
                 flex-direction: column;
+                padding: 20px;
             }
 
             .form-row-grid {
                 grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .account-modal-card,
+            .slip-modal-card,
+            .history-modal-card {
+                max-width: 100%;
+                border-radius: 20px;
+                max-height: calc(100vh - 24px);
             }
 
             .account-modal-header,
-            .account-modal-body {
-                padding-left: 20px;
-                padding-right: 20px;
+            .slip-modal-header,
+            .history-modal-header {
+                padding: 18px 20px;
+                border-radius: 20px 20px 0 0;
+            }
+
+            .account-modal-body,
+            .slip-modal-body,
+            .history-modal-body {
+                padding: 20px 18px 24px;
             }
 
             .account-action-box {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+
+            .history-item-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .history-modal-tabs-bar {
+                padding: 10px 16px;
+            }
+
+            .slip-modal-actions {
+                flex-direction: column;
+                width: 100%;
+                gap: 8px;
+            }
+
+            .slip-modal-actions button,
+            .slip-modal-actions a {
+                width: 100% !important;
+                justify-content: center;
+            }
+
+            .notif-dropdown-popover {
+                position: fixed;
+                top: 80px;
+                left: 12px;
+                right: 12px;
+                width: auto;
+                max-width: calc(100vw - 24px);
+                border-radius: 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .section-title-wrap {
+                gap: 12px;
+            }
+
+            .section-title-wrap .section-icon.gold {
+                width: 48px;
+                height: 48px;
+                border-radius: 14px;
+            }
+
+            .section-title-wrap .section-icon svg {
+                width: 24px;
+                height: 24px;
+            }
+
+            .section-title-copy h2 {
+                font-size: 1.5rem;
+            }
+
+            .service-card,
+            .patient-appt-card {
+                padding: 20px 16px;
+                border-radius: 18px;
+            }
+
+            .slip-reference-hero strong {
+                font-size: 1.45rem;
             }
         }
     </style>

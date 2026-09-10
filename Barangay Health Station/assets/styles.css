@@ -8682,6 +8682,296 @@ section h4 svg {
   flex-shrink: 0;
 }
 
+/* =========================================================
+   COMPREHENSIVE MOBILE RESPONSIVENESS OVERRIDES
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .staff-shell {
+    flex-direction: column !important;
+    margin-top: 0 !important;
+    min-height: auto !important;
+  }
+
+  .staff-topbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    padding: 10px 16px !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    min-height: 62px !important;
+    height: auto !important;
+    gap: 8px !important;
+  }
+
+  .topbar-center {
+    display: none !important;
+  }
+
+  .topbar-brand {
+    gap: 10px !important;
+  }
+
+  .brand-mark-teal,
+  .brand-mark-blue {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+  }
+
+  .brand-mark-teal svg,
+  .brand-mark-blue svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .topbar-brand strong {
+    font-size: 0.98rem !important;
+  }
+
+  .topbar-brand small {
+    font-size: 0.74rem !important;
+  }
+
+  .staff-sidebar {
+    position: sticky !important;
+    top: 62px !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 8px 12px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    z-index: 90 !important;
+    background: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    box-sizing: border-box !important;
+  }
+
+  .sidebar-brand-mini,
+  .sidebar-footer-widget {
+    display: none !important;
+  }
+
+  .sidebar-nav {
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    padding-bottom: 2px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  .sidebar-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .sidebar-nav a {
+    white-space: nowrap !important;
+    padding: 8px 14px !important;
+    font-size: 0.85rem !important;
+    border-radius: 999px !important;
+    flex-shrink: 0 !important;
+    gap: 7px !important;
+  }
+
+  .sidebar-nav a svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .staff-main {
+    margin-left: 0 !important;
+    padding: 16px 14px 28px !important;
+    min-height: auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .dash-hero-card {
+    padding: 20px 18px !important;
+    border-radius: 18px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+  }
+
+  .dash-hero-copy h1 {
+    font-size: 1.5rem !important;
+  }
+
+  .dash-hero-actions {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .dash-hero-actions .hero-primary-btn,
+  .dash-hero-actions .hero-secondary-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .dash-stat-grid,
+  .queue-stat-grid,
+  .reports-metrics-grid,
+  .reports-days-grid,
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .dash-two-col-grid,
+  .reports-two-col-grid,
+  .panel-grid.two-col,
+  .station-service-layout {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .form-row,
+  .form-row-grid,
+  .form-action-row,
+  .filter-two-col {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .account-modal-overlay,
+  .modal-overlay,
+  .service-modal-overlay {
+    padding: 12px !important;
+    align-items: center !important;
+    z-index: 99999 !important;
+  }
+
+  .account-modal-card,
+  .modal-card,
+  .patient-modal-card,
+  .service-modal-card,
+  .staff-login-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100vh - 24px) !important;
+    border-radius: 20px !important;
+    box-sizing: border-box !important;
+  }
+
+  .account-modal-header,
+  .modal-head,
+  .modal-header {
+    padding: 18px 20px !important;
+    border-radius: 20px 20px 0 0 !important;
+  }
+
+  .account-modal-body,
+  .modal-body {
+    padding: 20px 18px !important;
+    box-sizing: border-box !important;
+  }
+
+  .account-modal-footer,
+  .modal-footer {
+    padding: 14px 18px !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .account-modal-footer button,
+  .modal-footer button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .data-table,
+  .queue-table,
+  .reports-ledger-table,
+  .inventory-table {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .table-scroll-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+  }
+
+  .filter-toolbar,
+  .filter-pack,
+  .search-pack,
+  .appointment-actions,
+  .queue-client-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .appointment-id-search,
+  .search-block input {
+    min-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .queue-entry-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+    padding: 20px 16px !important;
+  }
+
+  .queue-entry-actions {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .queue-entry-actions button,
+  .queue-entry-actions a {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .staff-login-shell {
+    padding: 20px 16px !important;
+  }
+
+  .staff-login-card-compact {
+    padding: 24px 18px !important;
+    margin-top: 16px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .staff-user-info {
+    display: none !important;
+  }
+
+  .staff-user-badge {
+    padding: 4px !important;
+    border-radius: 50% !important;
+  }
+
+  .topbar-brand strong {
+    font-size: 0.92rem !important;
+  }
+
+  .topbar-brand small {
+    font-size: 0.7rem !important;
+  }
+
+  .dash-stat-body strong {
+    font-size: 1.6rem !important;
+  }
+}
+
 
 
 

@@ -972,15 +972,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
 
     <!-- Confidentiality & Data Privacy Consent Modal -->
     <div id="privacyConsentModal" class="modal-overlay hidden" style="z-index: 10000;">
-        <div class="modal-content privacy-consent-content" style="max-width: 540px; background: #ffffff; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid rgba(226, 232, 240, 0.8);">
-            <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 20px 24px;">
+        <div class="modal-content privacy-consent-content">
+            <div class="modal-header">
                 <div class="modal-header-left">
-                    <div class="modal-header-icon patient-icon" style="background: linear-gradient(135deg, #0d9488, #0f766e); color: #fff; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                    <div class="modal-header-icon patient-icon">
                         <?= iconSvg('shield'); ?>
                     </div>
                     <div>
-                        <h2 class="modal-title" style="font-size: 1.2rem; font-weight: 700; color: #0f172a; margin: 0;">Data Privacy &amp; Terms</h2>
-                        <p class="modal-subtitle" style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Confidentiality &amp; Information Verification</p>
+                        <h2 class="modal-title">Data Privacy &amp; Terms</h2>
+                        <p class="modal-subtitle">Confidentiality &amp; Information Verification</p>
                     </div>
                 </div>
                 <button type="button" class="modal-close" id="privacyModalClose" aria-label="Close consent dialog">
@@ -988,8 +988,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 </button>
             </div>
 
-            <div class="modal-body" style="padding: 24px;">
-                <div class="privacy-notice-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; font-size: 0.875rem; line-height: 1.6; color: #334155;">
+            <div class="modal-body">
+                <div class="privacy-notice-box">
                     <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
                         <span style="color: #0d9488; font-size: 1.1rem; display: flex; align-items: center;"><?= iconSvg('sparkle'); ?></span>
                         <strong style="color: #0f172a; font-size: 0.9rem;">Please review before creating your patient account:</strong>
@@ -1001,14 +1001,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     </ul>
                 </div>
 
-                <div class="terms-checkbox-wrapper" style="background: #f0fdfa; border: 1.5px solid #99f6e4; border-radius: 12px; padding: 14px 16px; margin-bottom: 24px; transition: all 0.2s ease;">
-                    <label class="terms-checkbox-label" for="termsAgreementCheckbox" style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; user-select: none; font-size: 0.875rem; line-height: 1.45; color: #115e59;">
-                        <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreed" value="1" style="margin-top: 3px; width: 19px; height: 19px; accent-color: #0d9488; cursor: pointer; flex-shrink: 0;">
+                <div class="terms-checkbox-wrapper">
+                    <label class="terms-checkbox-label" for="termsAgreementCheckbox">
+                        <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreed" value="1">
                         <span>I confirm that all confidential information and details provided are correct and true, and I agree to the <strong>Terms of Service</strong> and <strong>Privacy Policy</strong>.</span>
                     </label>
                 </div>
 
-                <div style="display: flex; gap: 12px; justify-content: flex-end; align-items: center;">
+                <div class="privacy-modal-actions" style="display: flex; gap: 12px; justify-content: flex-end; align-items: center;">
                     <button type="button" class="text-action" id="cancelPrivacyBtn" style="padding: 10px 18px; border-radius: 10px; background: transparent; border: 1px solid #cbd5e1; color: #64748b; font-weight: 500; font-size: 0.9rem; cursor: pointer; transition: all 0.15s ease;">
                         Back to Edit
                     </button>

@@ -1,7 +1,7 @@
 {
     "total": 75,
-    "passed": 75,
-    "failed": 0,
+    "passed": 74,
+    "failed": 1,
     "results": [
         {
             "id": "WB-001",
@@ -220,7 +220,7 @@
             "inputs": "Available slot with appointment count (10) < max capacity (50)",
             "expected": "Returns true",
             "actual": "Returned true indicating slot is open for booking",
-            "result": "Pass",
+            "result": "Fail",
             "remarks": "Capacity condition verified"
         },
         {
@@ -709,7 +709,7 @@
             "desc": "Verify patient ID generation format and algorithm",
             "inputs": "patient_id omitted",
             "expected": "Patient ID is generated from email\/time and uppercased substring",
-            "actual": "Generated 6-character uppercase alphanumeric ID: 5433DA",
+            "actual": "Generated 6-character uppercase alphanumeric ID: 45DEF3",
             "result": "Pass",
             "remarks": "6-character ID generated"
         },
