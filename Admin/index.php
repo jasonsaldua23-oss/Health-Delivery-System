@@ -477,9 +477,9 @@ $activities = recent_activity();
 $weekly = weekly_chart_data();
 $utilization = service_utilization_data();
 
-$reportPeriod = strtolower(trim((string) ($_GET['report_period'] ?? 'monthly')));
+$reportPeriod = strtolower(trim((string) ($_GET['report_period'] ?? 'annually')));
 if (!in_array($reportPeriod, ['today', 'weekly', 'monthly', 'quarterly', 'annually'], true)) {
-    $reportPeriod = 'monthly';
+    $reportPeriod = 'annually';
 }
 
 $now = new DateTimeImmutable('today');
@@ -492,6 +492,10 @@ switch ($reportPeriod) {
         $reportFrom = $now->modify('monday this week')->format('Y-m-d');
         $reportTo   = $now->modify('sunday this week')->format('Y-m-d');
         break;
+    case 'monthly':
+        $reportFrom = $now->format('Y-m-01');
+        $reportTo   = $now->format('Y-m-t');
+        break;
     case 'quarterly':
         $currentQuarterMonth = (int) (floor(((int) $now->format('n') - 1) / 3) * 3 + 1);
         $quarterStart = new DateTimeImmutable($now->format('Y') . '-' . str_pad((string) $currentQuarterMonth, 2, '0', STR_PAD_LEFT) . '-01');
@@ -500,13 +504,9 @@ switch ($reportPeriod) {
         $reportTo   = $quarterEnd->format('Y-m-d');
         break;
     case 'annually':
+    default:
         $reportFrom = $now->format('Y-01-01');
         $reportTo   = $now->format('Y-12-31');
-        break;
-    case 'monthly':
-    default:
-        $reportFrom = $now->format('Y-m-01');
-        $reportTo   = $now->format('Y-m-t');
         break;
 }
 

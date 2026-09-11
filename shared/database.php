@@ -3676,10 +3676,10 @@ function report_summary_stats($fromDateOrFilters = '', string $toDate = ''): arr
     ];
 
     if (empty($filters['report_from'])) {
-        $filters['report_from'] = date('Y-m-01');
+        $filters['report_from'] = date('Y-01-01');
     }
     if (empty($filters['report_to'])) {
-        $filters['report_to'] = date('Y-m-d');
+        $filters['report_to'] = date('Y-12-31');
     }
 
     $builder = build_report_filter_sql($filters);
