@@ -297,8 +297,7 @@ if ($action === 'register_patient') {
             exit;
         }
 
-        $addressParts = array_filter([$street, $purok, $barangay !== '' ? ('Brgy. ' . $barangay) : '', 'Bacolod City']);
-        $completeAddress = implode(', ', $addressParts);
+        $completeAddress = format_patient_complete_address($purok, $barangay, $street);
         $patientId = strtoupper(substr(md5($email . microtime(true)), 0, 6));
 
         save_patient_account([

@@ -165,6 +165,58 @@ function parse_complete_address(string $address, ?string $knownBarangay = null, 
     ];
 }
 
+function format_patient_complete_address(string $purok, string $barangay, string $street = ''): string
+{
+    $purok = trim($purok);
+    $barangay = trim($barangay);
+    $street = trim($street, ", -\t\n\r\0\x0B");
+
+    $formattedPurok = '';
+    if ($purok !== '') {
+        $cleanPurok = trim((string) preg_replace('/^(?:Purok|Prk\.?)\s+/i', '', $purok));
+        $formattedPurok = 'Purok ' . $cleanPurok;
+    }
+
+    $formattedBarangay = '';
+    if ($barangay !== '') {
+        $cleanBarangay = trim((string) preg_replace('/^(?:Barangay|Brgy\.?)\s+/i', '', $barangay));
+        $formattedBarangay = 'Barangay ' . $cleanBarangay;
+    }
+
+    $parts = [];
+    if ($formattedPurok !== '') {
+        $parts[] = $formattedPurok;
+    }
+    if ($formattedBarangay !== '') {
+        $parts[] = $formattedBarangay;
+    }
+    $parts[] = 'Bacolod City';
+    if ($street !== '') {
+        $parts[] = $street;
+    }
+
+    return implode(', ', $parts);
+}
+
+function normalize_patient_complete_address(string $address, ?string $knownBarangay = null, ?string $knownPurok = null): string
+{
+    $cleanAddress = trim($address);
+    if ($cleanAddress === '') {
+        return '';
+    }
+
+    $parsed = parse_complete_address($cleanAddress, $knownBarangay, $knownPurok);
+    $bgy = $parsed['barangay'] ?: ($knownBarangay ?? '');
+    $prk = $parsed['purok'] ?: ($knownPurok ?? '');
+    $str = $parsed['street'] ?? '';
+
+    if ($bgy === '' && $prk === '') {
+        return $cleanAddress;
+    }
+
+    return format_patient_complete_address($prk, $bgy, $str);
+}
+
 function station_service_schedule_map(): array
 {
     return [
@@ -1338,6 +1390,62 @@ function db(): mysqli
         $connection->query("DELETE FROM upcoming_events WHERE (event_date IS NOT NULL AND event_date != '' AND event_date < '{$todayDate}') OR (event_date IS NULL AND target_month IS NOT NULL AND target_month != '' AND target_month < '{$currMonth}')");
     } catch (Throwable $e) {}
 
+    // Normalize patient addresses in appointments, profiles, accounts to fixed standard format:
+    // [Purok], [Barangay], Bacolod City, [Street Number] (with "Purok" and "Barangay" included)
+    try {
+        static $addressesNormalized = false;
+        if (!$addressesNormalized) {
+            $addressesNormalized = true;
+            $connection->query("DELETE FROM patient_info_history");
+            $connection->query("DELETE FROM patient_update_notifications");
+
+            $apptsRes = $connection->query("SELECT id, complete_address FROM appointments WHERE complete_address != ''");
+            if ($apptsRes) {
+                while ($row = $apptsRes->fetch_assoc()) {
+                    $norm = normalize_patient_complete_address((string) $row['complete_address']);
+                    if ($norm !== '' && $norm !== $row['complete_address']) {
+                        $stmt = $connection->prepare("UPDATE appointments SET complete_address = ? WHERE id = ?");
+                        if ($stmt) {
+                            $stmt->bind_param('si', $norm, $row['id']);
+                            $stmt->execute();
+                            $stmt->close();
+                        }
+                    }
+                }
+            }
+
+            $profRes = $connection->query("SELECT patient_id, complete_address FROM patient_profiles WHERE complete_address != ''");
+            if ($profRes) {
+                while ($row = $profRes->fetch_assoc()) {
+                    $norm = normalize_patient_complete_address((string) $row['complete_address']);
+                    if ($norm !== '' && $norm !== $row['complete_address']) {
+                        $stmt = $connection->prepare("UPDATE patient_profiles SET complete_address = ? WHERE patient_id = ?");
+                        if ($stmt) {
+                            $stmt->bind_param('ss', $norm, $row['patient_id']);
+                            $stmt->execute();
+                            $stmt->close();
+                        }
+                    }
+                }
+            }
+
+            $accRes = $connection->query("SELECT id, complete_address FROM patient_accounts WHERE complete_address != ''");
+            if ($accRes) {
+                while ($row = $accRes->fetch_assoc()) {
+                    $norm = normalize_patient_complete_address((string) $row['complete_address']);
+                    if ($norm !== '' && $norm !== $row['complete_address']) {
+                        $stmt = $connection->prepare("UPDATE patient_accounts SET complete_address = ? WHERE id = ?");
+                        if ($stmt) {
+                            $stmt->bind_param('si', $norm, $row['id']);
+                            $stmt->execute();
+                            $stmt->close();
+                        }
+                    }
+                }
+            }
+        }
+    } catch (Throwable $e) {}
+
     return $connection;
 }
 
@@ -1811,8 +1919,10 @@ function update_patient_profile_info(string $patientId, array $data): bool
     }
 
     $patientName = trim((string) $next['first_name'] . ' ' . (string) $next['middle_name'] . ' ' . (string) $next['last_name']);
-    if ((string) ($current['complete_address'] ?? '') !== (string) $next['complete_address']) {
-        track_patient_info_change($patientId, 'complete_address', (string) ($current['complete_address'] ?? ''), (string) $next['complete_address']);
+    $oldNormAddress = normalize_patient_complete_address((string) ($current['complete_address'] ?? ''));
+    $newNormAddress = normalize_patient_complete_address((string) $next['complete_address']);
+    if ($oldNormAddress !== '' && $newNormAddress !== '' && $oldNormAddress !== $newNormAddress) {
+        track_patient_info_change($patientId, 'complete_address', $oldNormAddress, $newNormAddress);
         create_patient_update_notification($patientId, $patientName, 'Address');
     }
     if ((string) ($current['contact_number'] ?? '') !== (string) $next['contact_number']) {

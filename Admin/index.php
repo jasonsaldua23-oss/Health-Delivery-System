@@ -1391,7 +1391,6 @@ if (!function_exists('peso')) {
                                     <th>Age / Gender</th>
                                     <th>Health Station &amp; Address</th>
                                     <th>Contact Information</th>
-                                    <th>Consultations</th>
                                     <th>Last Visit</th>
                                     <th>Actions</th>
                                 </tr>
@@ -1442,11 +1441,6 @@ if (!function_exists('peso')) {
                                         <td>
                                             <div style="font-weight:600;color:#2563eb;"><?= h((string) $patient['contact_number']); ?></div>
                                             <small style="color:#64748b;"><?= !empty($patient['email']) ? h((string) $patient['email']) : 'No email'; ?></small>
-                                        </td>
-                                        <td>
-                                            <span class="patient-visits-badge">
-                                                <?= (int) ($patient['total_visits'] ?? 1); ?> <?= ((int) ($patient['total_visits'] ?? 1)) === 1 ? 'Visit' : 'Visits'; ?>
-                                            </span>
                                         </td>
                                         <td>
                                             <div><?= !empty($patient['last_visit']) ? h(date('M j, Y', strtotime((string) $patient['last_visit']))) : 'N/A'; ?></div>

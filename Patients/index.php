@@ -245,11 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'upda
     $purokVal = trim((string) ($_POST['purok'] ?? ''));
     $barangayVal = trim((string) ($_POST['address_barangay'] ?? ''));
     $remainderVal = trim((string) ($_POST['address_remainder'] ?? ''));
-    $addressParts = array_values(array_filter([$barangayVal, $purokVal, $remainderVal]));
-    if ($addressParts !== []) {
-        $addressParts[] = 'Bacolod City';
-    }
-    $updateData['complete_address'] = implode(', ', $addressParts);
+    $updateData['complete_address'] = format_patient_complete_address($purokVal, $barangayVal, $remainderVal);
 
     $profileUpdated = $patientId !== '' && update_patient_profile_info($patientId, $updateData);
 
@@ -280,11 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
     $purokVal = trim((string) ($_POST['purok'] ?? ''));
     $barangayVal = trim((string) ($_POST['address_barangay'] ?? ''));
     $remainderVal = trim((string) ($_POST['address_remainder'] ?? ''));
-    $addressParts = array_values(array_filter([$barangayVal, $purokVal, $remainderVal]));
-    if ($addressParts !== []) {
-        $addressParts[] = 'Bacolod City';
-    }
-    $formData['complete_address'] = implode(', ', $addressParts);
+    $formData['complete_address'] = format_patient_complete_address($purokVal, $barangayVal, $remainderVal);
 
     // Patient Profile & Identification
     $patientId = '';
@@ -347,14 +339,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
     }
 
     if ($errors === [] && $patientProfile !== null) {
-        $oldAddress = trim((string) ($patientProfile['complete_address'] ?? ''));
-        $newAddress = trim($formData['complete_address']);
+        $oldNormAddress = normalize_patient_complete_address((string) ($patientProfile['complete_address'] ?? ''));
+        $newNormAddress = normalize_patient_complete_address($formData['complete_address']);
         $oldContact = trim((string) ($patientProfile['contact_number'] ?? ''));
         $newContact = trim($formData['contact_number']);
         $patientName = trim($formData['first_name'] . ' ' . $formData['middle_name'] . ' ' . $formData['last_name']);
 
-        if ($oldAddress !== '' && $newAddress !== '' && $oldAddress !== $newAddress) {
-            track_patient_info_change($patientId, 'complete_address', $oldAddress, $newAddress);
+        if ($oldNormAddress !== '' && $newNormAddress !== '' && $oldNormAddress !== $newNormAddress) {
+            track_patient_info_change($patientId, 'complete_address', $oldNormAddress, $newNormAddress);
             create_patient_update_notification($patientId, $patientName, 'Address');
         }
 
