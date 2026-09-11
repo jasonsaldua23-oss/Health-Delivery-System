@@ -477,20 +477,47 @@ $activities = recent_activity();
 $weekly = weekly_chart_data();
 $utilization = service_utilization_data();
 
-$reportFrom = trim((string) ($_GET['report_from'] ?? ''));
-$reportTo   = trim((string) ($_GET['report_to'] ?? ''));
+$reportPeriod = strtolower(trim((string) ($_GET['report_period'] ?? 'monthly')));
+if (!in_array($reportPeriod, ['today', 'weekly', 'monthly', 'quarterly', 'annually'], true)) {
+    $reportPeriod = 'monthly';
+}
+
+$now = new DateTimeImmutable('today');
+switch ($reportPeriod) {
+    case 'today':
+        $reportFrom = $now->format('Y-m-d');
+        $reportTo   = $now->format('Y-m-d');
+        break;
+    case 'weekly':
+        $reportFrom = $now->modify('monday this week')->format('Y-m-d');
+        $reportTo   = $now->modify('sunday this week')->format('Y-m-d');
+        break;
+    case 'quarterly':
+        $currentQuarterMonth = (int) (floor(((int) $now->format('n') - 1) / 3) * 3 + 1);
+        $quarterStart = new DateTimeImmutable($now->format('Y') . '-' . str_pad((string) $currentQuarterMonth, 2, '0', STR_PAD_LEFT) . '-01');
+        $quarterEnd = $quarterStart->modify('+3 months -1 day');
+        $reportFrom = $quarterStart->format('Y-m-d');
+        $reportTo   = $quarterEnd->format('Y-m-d');
+        break;
+    case 'annually':
+        $reportFrom = $now->format('Y-01-01');
+        $reportTo   = $now->format('Y-12-31');
+        break;
+    case 'monthly':
+    default:
+        $reportFrom = $now->format('Y-m-01');
+        $reportTo   = $now->format('Y-m-t');
+        break;
+}
+
 $reportGender = trim((string) ($_GET['gender'] ?? ''));
 $reportAgeGroup = trim((string) ($_GET['age_group'] ?? ''));
 $reportStation = trim((string) ($_GET['station_slug'] ?? ''));
 $reportService = trim((string) ($_GET['service_slug'] ?? ''));
 $reportStatus = trim((string) ($_GET['status_filter'] ?? ''));
 
-if ($reportFrom === '' || $reportTo === '') {
-    $reportFrom = date('Y-m-01');
-    $reportTo   = date('Y-m-d');
-}
-
 $reportFilters = [
+    'report_period' => $reportPeriod,
     'report_from'   => $reportFrom,
     'report_to'     => $reportTo,
     'gender'        => $reportGender,
@@ -3344,6 +3371,12 @@ if (!function_exists('peso')) {
                     'pediatric' => 'Infants & Children (0-12y)',
                     '13-17' => 'Adolescents (13-17y)',
                     'adolescent' => 'Adolescents (13-17y)',
+                    '18-30' => 'Young Adults (18-30y)',
+                    'young_adult' => 'Young Adults (18-30y)',
+                    '31-45' => 'Middle Adults (31-45y)',
+                    'mid_adult' => 'Middle Adults (31-45y)',
+                    '46-59' => 'Mature Adults (46-59y)',
+                    'mature_adult' => 'Mature Adults (46-59y)',
                     '18-59' => 'Adults (18-59y)',
                     'adult' => 'Adults (18-59y)',
                     '60+' => 'Seniors (60y+)',
@@ -3382,7 +3415,7 @@ if (!function_exists('peso')) {
                 </div>
                 <div class="report-chips-list">
                     <div class="report-chip date">
-                        <span>📅 <?= h(date('M j, Y', strtotime($reportFrom))); ?> &ndash; <?= h(date('M j, Y', strtotime($reportTo))); ?></span>
+                        <span>📅 Period: <strong><?= h(ucfirst($reportPeriod)); ?></strong> (<?= h(date('M j, Y', strtotime($reportFrom))); ?><?= $reportFrom !== $reportTo ? ' &ndash; ' . h(date('M j, Y', strtotime($reportTo))) : ''; ?>)</span>
                     </div>
 
                     <?php if ($reportGender !== '' && strtolower($reportGender) !== 'all'): ?>
@@ -3441,7 +3474,7 @@ if (!function_exists('peso')) {
                     <?php endif; ?>
 
                     <?php if ($activeFilterCount > 0): ?>
-                        <a href="?page=reports&report_from=<?= h($reportFrom); ?>&report_to=<?= h($reportTo); ?>" class="report-clear-all-btn">Clear all filters</a>
+                        <a href="?page=reports&report_period=<?= h($reportPeriod); ?>" class="report-clear-all-btn">Clear other filters</a>
                     <?php endif; ?>
                 </div>
             </section>
@@ -3829,7 +3862,7 @@ if (!function_exists('peso')) {
                                     <th>Age / Gender</th>
                                     <th>Health Station</th>
                                     <th>Service</th>
-                                    <th>Date &amp; Time</th>
+                                    <th>Date</th>
                                     <th>Status</th>
                                     <th>Action</th>
                                 </tr>
@@ -3854,7 +3887,6 @@ if (!function_exists('peso')) {
                                         <td><span class="report-service-tag"><?= h((string) $appt['service_name']); ?></span></td>
                                         <td>
                                             <div><?= h(date('M j, Y', strtotime((string) $appt['preferred_date']))); ?></div>
-                                            <small style="color:#94a3b8;"><?= h((string) $appt['preferred_time']); ?></small>
                                         </td>
                                         <td>
                                             <span class="status-pill status-<?= h($statusClass); ?>"><?= h((string) $appt['status']); ?></span>
@@ -3893,30 +3925,35 @@ if (!function_exists('peso')) {
                         <input type="hidden" name="page" value="reports">
                         
                         <div class="report-modal-body">
-                            <!-- Group 1: Date Range & Quick Presets -->
+                            <!-- Group 1: Date Range & Period -->
                             <div class="report-filter-group">
                                 <div class="report-group-title">
                                     <span class="group-num">1</span>
                                     <span>Date Range &amp; Period</span>
                                 </div>
-                                <div class="date-preset-pills">
-                                    <button type="button" class="preset-pill" onclick="setDatePreset('this_month', this)">This Month</button>
-                                    <button type="button" class="preset-pill" onclick="setDatePreset('last_30_days', this)">Last 30 Days</button>
-                                    <button type="button" class="preset-pill" onclick="setDatePreset('this_year', this)">This Year</button>
-                                    <button type="button" class="preset-pill" onclick="setDatePreset('all_time', this)">All Time</button>
-                                </div>
-                                <div class="filter-two-col">
-                                    <div class="clean-field">
-                                        <label for="filterReportFrom">Start Date</label>
-                                        <div class="clean-input-wrap">
-                                            <input type="date" name="report_from" id="filterReportFrom" value="<?= h($reportFrom); ?>" required>
-                                        </div>
-                                    </div>
-                                    <div class="clean-field">
-                                        <label for="filterReportTo">End Date</label>
-                                        <div class="clean-input-wrap">
-                                            <input type="date" name="report_to" id="filterReportTo" value="<?= h($reportTo); ?>" required>
-                                        </div>
+                                <div class="clean-field">
+                                    <label>Report Timeframe</label>
+                                    <div class="period-segmented-control">
+                                        <label class="period-segment-label">
+                                            <input type="radio" name="report_period" value="today" <?= $reportPeriod === 'today' ? 'checked' : ''; ?>>
+                                            <span class="segment-btn">Today</span>
+                                        </label>
+                                        <label class="period-segment-label">
+                                            <input type="radio" name="report_period" value="weekly" <?= $reportPeriod === 'weekly' ? 'checked' : ''; ?>>
+                                            <span class="segment-btn">Weekly</span>
+                                        </label>
+                                        <label class="period-segment-label">
+                                            <input type="radio" name="report_period" value="monthly" <?= $reportPeriod === 'monthly' ? 'checked' : ''; ?>>
+                                            <span class="segment-btn">Monthly</span>
+                                        </label>
+                                        <label class="period-segment-label">
+                                            <input type="radio" name="report_period" value="quarterly" <?= $reportPeriod === 'quarterly' ? 'checked' : ''; ?>>
+                                            <span class="segment-btn">Quarterly</span>
+                                        </label>
+                                        <label class="period-segment-label">
+                                            <input type="radio" name="report_period" value="annually" <?= $reportPeriod === 'annually' ? 'checked' : ''; ?>>
+                                            <span class="segment-btn">Annually</span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -3952,7 +3989,9 @@ if (!function_exists('peso')) {
                                             <option value="" <?= $reportAgeGroup === '' ? 'selected' : ''; ?>>All Age Groups</option>
                                             <option value="0-12" <?= ($reportAgeGroup === '0-12' || $reportAgeGroup === 'pediatric') ? 'selected' : ''; ?>>Infants &amp; Children (0 &ndash; 12 years)</option>
                                             <option value="13-17" <?= ($reportAgeGroup === '13-17' || $reportAgeGroup === 'adolescent') ? 'selected' : ''; ?>>Adolescents (13 &ndash; 17 years)</option>
-                                            <option value="18-59" <?= ($reportAgeGroup === '18-59' || $reportAgeGroup === 'adult') ? 'selected' : ''; ?>>Adults (18 &ndash; 59 years)</option>
+                                            <option value="18-30" <?= ($reportAgeGroup === '18-30' || $reportAgeGroup === 'young_adult') ? 'selected' : ''; ?>>Young Adults (18 &ndash; 30 years)</option>
+                                            <option value="31-45" <?= ($reportAgeGroup === '31-45' || $reportAgeGroup === 'mid_adult') ? 'selected' : ''; ?>>Middle Adults (31 &ndash; 45 years)</option>
+                                            <option value="46-59" <?= ($reportAgeGroup === '46-59' || $reportAgeGroup === 'mature_adult') ? 'selected' : ''; ?>>Mature Adults (46 &ndash; 59 years)</option>
                                             <option value="60+" <?= ($reportAgeGroup === '60+' || $reportAgeGroup === 'senior') ? 'selected' : ''; ?>>Senior Citizens (60+ years)</option>
                                         </select>
                                     </div>
@@ -4255,40 +4294,6 @@ if (!function_exists('peso')) {
                     closeReportVisitModal();
                 }
             });
-
-            function setDatePreset(preset, btn) {
-                const fromInput = document.getElementById('filterReportFrom');
-                const toInput = document.getElementById('filterReportTo');
-                const now = new Date();
-                
-                document.querySelectorAll('.preset-pill').forEach(el => el.classList.remove('active'));
-                if (btn) btn.classList.add('active');
-
-                const formatDate = (d) => {
-                    const year = d.getFullYear();
-                    const month = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}`;
-                };
-
-                if (preset === 'this_month') {
-                    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-                    fromInput.value = formatDate(firstDay);
-                    toInput.value = formatDate(now);
-                } else if (preset === 'last_30_days') {
-                    const past30 = new Date();
-                    past30.setDate(now.getDate() - 30);
-                    fromInput.value = formatDate(past30);
-                    toInput.value = formatDate(now);
-                } else if (preset === 'this_year') {
-                    const firstDayYear = new Date(now.getFullYear(), 0, 1);
-                    fromInput.value = formatDate(firstDayYear);
-                    toInput.value = formatDate(now);
-                } else if (preset === 'all_time') {
-                    fromInput.value = '2024-01-01';
-                    toInput.value = formatDate(now);
-                }
-            }
             </script>
         <?php endif; ?>
     </main>

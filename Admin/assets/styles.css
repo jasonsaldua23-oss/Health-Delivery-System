@@ -4125,6 +4125,9 @@ button, input, select { font: inherit; }
 
 .demo-bar-fill.age-pediatric { background: #06b6d4; }
 .demo-bar-fill.age-adolescent { background: #3b82f6; }
+.demo-bar-fill.age-young-adult { background: #10b981; }
+.demo-bar-fill.age-mid-adult { background: #14b8a6; }
+.demo-bar-fill.age-mature-adult { background: #f59e0b; }
 .demo-bar-fill.age-adult { background: #10b981; }
 .demo-bar-fill.age-senior { background: #8b5cf6; }
 
@@ -4184,13 +4187,22 @@ button, input, select { font: inherit; }
   font-weight: 600;
 }
 
+/* Station Performance Table alignments */
+.report-perf-table th:not(:first-child),
+.report-perf-table td:not(:first-child) {
+  text-align: center;
+}
+
 /* Rate badge in tables */
 .rate-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 700;
+  margin: 0 auto;
 }
 
 .rate-badge.high { background: #dcfce7; color: #15803d; }
@@ -4454,6 +4466,40 @@ button, input, select { font: inherit; }
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
+/* Period Segmented Control */
+.period-segmented-control {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.period-segment-label {
+  cursor: pointer;
+  user-select: none;
+  margin: 0;
+}
+
+.period-segment-label input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.period-segment-label input:checked + .segment-btn {
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 700;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.08);
+}
+
+.period-segment-label:hover .segment-btn {
+  color: #0f172a;
+}
+
 /* Gender Segmented Control */
 .gender-segmented-control {
   display: grid;
@@ -4590,6 +4636,9 @@ button, input, select { font: inherit; }
   .filter-two-col,
   .gender-segmented-control {
     grid-template-columns: 1fr;
+  }
+  .period-segmented-control {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 

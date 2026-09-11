@@ -3299,6 +3299,12 @@ function build_report_filter_sql(array $filters, string $tableAlias = ''): array
             $conditions[] = "TIMESTAMPDIFF(YEAR, {$prefix}birth_date, CURDATE()) BETWEEN 0 AND 12";
         } elseif ($ageGroup === '13-17' || $ageGroup === 'adolescent') {
             $conditions[] = "TIMESTAMPDIFF(YEAR, {$prefix}birth_date, CURDATE()) BETWEEN 13 AND 17";
+        } elseif ($ageGroup === '18-30' || $ageGroup === 'young_adult') {
+            $conditions[] = "TIMESTAMPDIFF(YEAR, {$prefix}birth_date, CURDATE()) BETWEEN 18 AND 30";
+        } elseif ($ageGroup === '31-45' || $ageGroup === 'mid_adult') {
+            $conditions[] = "TIMESTAMPDIFF(YEAR, {$prefix}birth_date, CURDATE()) BETWEEN 31 AND 45";
+        } elseif ($ageGroup === '46-59' || $ageGroup === 'mature_adult') {
+            $conditions[] = "TIMESTAMPDIFF(YEAR, {$prefix}birth_date, CURDATE()) BETWEEN 46 AND 59";
         } elseif ($ageGroup === '18-59' || $ageGroup === 'adult') {
             $conditions[] = "TIMESTAMPDIFF(YEAR, {$prefix}birth_date, CURDATE()) BETWEEN 18 AND 59";
         } elseif ($ageGroup === '60+' || $ageGroup === 'senior') {
@@ -3581,7 +3587,9 @@ function demographics_breakdown_data(array $filters = []): array
                 SUM(CASE WHEN LOWER(gender) NOT IN (\'female\', \'male\') THEN 1 ELSE 0 END) AS count_other,
                 SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 0 AND 12 THEN 1 ELSE 0 END) AS age_pediatric,
                 SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 13 AND 17 THEN 1 ELSE 0 END) AS age_adolescent,
-                SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 18 AND 59 THEN 1 ELSE 0 END) AS age_adult,
+                SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 18 AND 30 THEN 1 ELSE 0 END) AS age_young_adult,
+                SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 31 AND 45 THEN 1 ELSE 0 END) AS age_mid_adult,
+                SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 46 AND 59 THEN 1 ELSE 0 END) AS age_mature_adult,
                 SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) >= 60 THEN 1 ELSE 0 END) AS age_senior,
                 COUNT(*) AS total
             FROM appointments
@@ -3599,10 +3607,12 @@ function demographics_breakdown_data(array $filters = []): array
     $male = (int) ($row['count_male'] ?? 0);
     $other = (int) ($row['count_other'] ?? 0);
 
-    $pediatric = (int) ($row['age_pediatric'] ?? 0);
-    $adolescent = (int) ($row['age_adolescent'] ?? 0);
-    $adult = (int) ($row['age_adult'] ?? 0);
-    $senior = (int) ($row['age_senior'] ?? 0);
+    $pediatric   = (int) ($row['age_pediatric'] ?? 0);
+    $adolescent  = (int) ($row['age_adolescent'] ?? 0);
+    $youngAdult  = (int) ($row['age_young_adult'] ?? 0);
+    $midAdult    = (int) ($row['age_mid_adult'] ?? 0);
+    $matureAdult = (int) ($row['age_mature_adult'] ?? 0);
+    $senior      = (int) ($row['age_senior'] ?? 0);
 
     return [
         'total' => $total,
@@ -3612,10 +3622,12 @@ function demographics_breakdown_data(array $filters = []): array
             'other'  => ['count' => $other, 'pct' => $total > 0 ? round($other * 100 / $total) : 0],
         ],
         'age_groups' => [
-            'pediatric'  => ['label' => 'Infants & Children (0-12y)', 'count' => $pediatric, 'pct' => $total > 0 ? round($pediatric * 100 / $total) : 0],
-            'adolescent' => ['label' => 'Adolescents (13-17y)', 'count' => $adolescent, 'pct' => $total > 0 ? round($adolescent * 100 / $total) : 0],
-            'adult'      => ['label' => 'Adults (18-59y)', 'count' => $adult, 'pct' => $total > 0 ? round($adult * 100 / $total) : 0],
-            'senior'     => ['label' => 'Seniors (60y+)', 'count' => $senior, 'pct' => $total > 0 ? round($senior * 100 / $total) : 0],
+            'pediatric'    => ['label' => 'Infants & Children (0-12y)', 'count' => $pediatric, 'pct' => $total > 0 ? round($pediatric * 100 / $total) : 0],
+            'adolescent'   => ['label' => 'Adolescents (13-17y)', 'count' => $adolescent, 'pct' => $total > 0 ? round($adolescent * 100 / $total) : 0],
+            'young-adult'  => ['label' => 'Young Adults (18-30y)', 'count' => $youngAdult, 'pct' => $total > 0 ? round($youngAdult * 100 / $total) : 0],
+            'mid-adult'    => ['label' => 'Middle Adults (31-45y)', 'count' => $midAdult, 'pct' => $total > 0 ? round($midAdult * 100 / $total) : 0],
+            'mature-adult' => ['label' => 'Mature Adults (46-59y)', 'count' => $matureAdult, 'pct' => $total > 0 ? round($matureAdult * 100 / $total) : 0],
+            'senior'       => ['label' => 'Seniors (60y+)', 'count' => $senior, 'pct' => $total > 0 ? round($senior * 100 / $total) : 0],
         ],
     ];
 }
