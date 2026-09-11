@@ -259,7 +259,7 @@
             "desc": "Verify patient record key auto-generation fallback",
             "inputs": "No session ID and no form patient ID",
             "expected": "appointment_patient_record_key(formData) is generated and used",
-            "actual": "Generated new record key: PAT-D6F568E2",
+            "actual": "Generated new record key: PAT-692B84CF",
             "result": "Pass",
             "remarks": "Record key algorithm executed"
         },
@@ -709,7 +709,7 @@
             "desc": "Verify patient ID generation format and algorithm",
             "inputs": "patient_id omitted",
             "expected": "Patient ID is generated from email\/time and uppercased substring",
-            "actual": "Generated 6-character uppercase alphanumeric ID: 9C706B",
+            "actual": "Generated 6-character uppercase alphanumeric ID: D51C0F",
             "result": "Pass",
             "remarks": "6-character ID generated"
         },

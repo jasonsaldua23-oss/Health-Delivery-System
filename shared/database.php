@@ -1338,19 +1338,6 @@ function seed_patient_accounts(mysqli $connection): void
             'station_slug' => 'bata',
             'station_name' => 'Bata Barangay Health Station',
         ],
-        [
-            'patient_id' => 'HE6JH6',
-            'email' => 'juan.delacruz@gmail.com',
-            'first_name' => 'Juan',
-            'middle_name' => 'M',
-            'last_name' => 'Dela Cruz',
-            'birth_date' => '1992-03-24',
-            'gender' => 'Male',
-            'contact_number' => '09191234567',
-            'complete_address' => 'Purok Riverside, Brgy. Bata, Bacolod City',
-            'station_slug' => 'bata',
-            'station_name' => 'Bata Barangay Health Station',
-        ],
     ];
 
     foreach ($defaultPatients as $p) {

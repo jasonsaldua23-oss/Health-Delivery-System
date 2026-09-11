@@ -1,7 +1,7 @@
 describe('Patient Portal - End-to-End Test Cases', () => {
   const testPatient = {
-    firstName: 'Juan',
-    lastName: 'Dela Cruz',
+    firstName: 'Maria',
+    lastName: 'Santos',
     birthDate: '1995-05-15',
     gender: 'Male',
     contactNumber: '09123456789',

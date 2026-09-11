@@ -3284,7 +3284,7 @@ if (!function_exists('peso')) {
                         } else {
                             if (createActionInput) createActionInput.value = 'create_staff_account';
                             if (nameFieldLabel) nameFieldLabel.textContent = 'Staff Full Name';
-                            if (userNameInput) userNameInput.placeholder = 'e.g. Nurse Juan Dela Cruz';
+                            if (userNameInput) userNameInput.placeholder = 'e.g. Nurse Maria Santos';
                             if (userEmailInput) userEmailInput.placeholder = 'e.g. staff-bata@bata.health or leo@bata.health';
                             adminOnlyFields.forEach(el => el.classList.add('hidden'));
                             staffOnlyFields.forEach(el => el.classList.remove('hidden'));

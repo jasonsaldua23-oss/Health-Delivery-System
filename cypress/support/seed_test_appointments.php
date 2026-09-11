@@ -30,19 +30,19 @@ $connection->query("
     ),
     (
         'REF-TEST-001', 'TC-BATA-1', 'AD00A8', 'bata', 'Bata Barangay Health Station',
-        'consultation', 'General Consultation', 'Juan', 'Dela Cruz', '1995-05-15', 'Male',
+        'consultation', 'General Consultation', 'Mekai', 'Dela Cruz', '1995-05-15', 'Female',
         '09123456789', 'Sunriser, Bata, Bacolod City', '{$today}', '09:30 AM', 'Pending',
         '36.6', '75', '18', '120/80', 'Initial consultation notes', 'uploads/patient_6a014e0ee4da13.26109864.jpg'
     ),
     (
         'REF-TEST-002', 'TC-BATA-2', 'AD00A8', 'bata', 'Bata Barangay Health Station',
-        'consultation', 'General Consultation', 'Juan', 'Dela Cruz', '1995-05-15', 'Male',
+        'consultation', 'General Consultation', 'Mekai', 'Dela Cruz', '1995-05-15', 'Female',
         '09123456789', 'Sunriser, Bata, Bacolod City', '{$today}', '10:00 AM', 'Confirmed',
         '36.6', '75', '18', '120/80', 'Triage consultation notes', 'uploads/patient_6a014e0ee4da13.26109864.jpg'
     ),
     (
         'REF-TEST-003', 'TC-BATA-3', 'AD00A8', 'bata', 'Bata Barangay Health Station',
-        'consultation', 'General Consultation', 'Juan', 'Dela Cruz', '1995-05-15', 'Male',
+        'consultation', 'General Consultation', 'Mekai', 'Dela Cruz', '1995-05-15', 'Female',
         '09123456789', 'Sunriser, Bata, Bacolod City', '{$today}', '10:30 AM', 'Completed',
         '36.6', '75', '18', '120/80', 'Completed consultation notes', 'uploads/patient_6a014e0ee4da13.26109864.jpg'
     )

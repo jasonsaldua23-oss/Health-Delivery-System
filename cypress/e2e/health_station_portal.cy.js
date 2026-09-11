@@ -53,7 +53,7 @@ describe('Health Station Staff Portal - Operations Suite', () => {
   // Use Case 13 & 23: Patient Records, Vitals & Follow-Up (TC-054 - TC-060, TC-096 - TC-100)
   it('TC-054 to TC-060 & TC-096 to TC-100: Record vital signs and schedule follow-up consultation', () => {
     cy.get('a[href*="page=patients"]').first().click();
-    cy.get('input[type="search"], input[name="patient_search"]').type('Juan Dela Cruz{enter}');
+    cy.get('input[type="search"], input[name="patient_search"]').type('Zacarias{enter}');
 
     cy.get('.patient-record-card, .patient-row, article').first().click();
     

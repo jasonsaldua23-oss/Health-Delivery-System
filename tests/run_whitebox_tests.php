@@ -422,7 +422,7 @@ recordTest(
 
 // WB-026: Generated record-key branch
 $emptyFormId = '';
-$genId26 = mock_record_key(['first_name' => 'Juan', 'last_name' => 'Cruz', 'birth_date' => '1990-01-01']);
+$genId26 = mock_record_key(['first_name' => 'Maria', 'last_name' => 'Santos', 'birth_date' => '1990-01-01']);
 recordTest(
     'WB-026',
     'book_appointment',
@@ -607,7 +607,7 @@ function mock_update_patient_profile(string $patientId, array $data, ?array $moc
 }
 
 // WB-036: Patient lookup failure branch
-$res36 = mock_update_patient_profile('P-UNKNOWN', ['first_name' => 'Juan'], null);
+$res36 = mock_update_patient_profile('P-UNKNOWN', ['first_name' => 'Maria'], null);
 recordTest(
     'WB-036',
     'update_patient_profile_info',
@@ -620,7 +620,7 @@ recordTest(
 );
 
 // WB-037: Required-field loop
-$existingProf = ['first_name' => 'Juan', 'last_name' => 'Dela Cruz', 'birth_date' => '1990-01-01', 'gender' => 'Male', 'contact_number' => '09123456789', 'complete_address' => 'Bata, Bacolod'];
+$existingProf = ['first_name' => 'Maria', 'last_name' => 'Santos', 'birth_date' => '1990-01-01', 'gender' => 'Female', 'contact_number' => '09123456789', 'complete_address' => 'Bata, Bacolod'];
 $res37 = mock_update_patient_profile('P-101', ['first_name' => ''], $existingProf);
 recordTest(
     'WB-037',
@@ -686,7 +686,7 @@ recordTest(
 );
 
 // WB-042: No-change path
-$res42 = mock_update_patient_profile('P-101', ['first_name' => 'Juan'], $existingProf);
+$res42 = mock_update_patient_profile('P-101', ['first_name' => 'Maria'], $existingProf);
 recordTest(
     'WB-042',
     'update_patient_profile_info',
