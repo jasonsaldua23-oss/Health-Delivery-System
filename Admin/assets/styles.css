@@ -4004,8 +4004,8 @@ button, input, select { font: inherit; }
 .report-monthly-bar-chart {
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: space-around;
+  gap: 20px;
   height: 220px;
   padding: 20px 10px 10px;
   margin-top: 10px;
@@ -4017,6 +4017,7 @@ button, input, select { font: inherit; }
   flex-direction: column;
   align-items: center;
   flex: 1;
+  max-width: 140px;
   height: 100%;
 }
 
@@ -4024,13 +4025,13 @@ button, input, select { font: inherit; }
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   flex: 1;
   width: 100%;
 }
 
 .report-bar-pair .bar {
-  width: 18px;
+  width: 22px;
   border-radius: 6px 6px 0 0;
   position: relative;
   transition: transform 0.2s ease, opacity 0.2s ease;

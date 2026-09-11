@@ -566,7 +566,9 @@ $demographics        = demographics_breakdown_data($reportFilters);
 $stationPerformance  = station_performance_data($reportFilters);
 $servicePerformance  = service_performance_data($reportFilters);
 $barangayCompletedStats = barangay_completed_analytics($reportFilters);
-$reportAppointmentsList = fetch_filtered_report_appointments($reportFilters, 5);
+$recentCompletedFilters = $reportFilters;
+$recentCompletedFilters['status'] = 'Completed';
+$reportAppointmentsList = fetch_filtered_report_appointments($recentCompletedFilters, 5);
 $infoChangeLog       = patient_info_change_log(20);
 $activityLog         = fetch_activity_log(30, $reportFrom, $reportTo);
 $healthEventsSummary = health_events_summary();
@@ -3842,16 +3844,16 @@ if (!function_exists('peso')) {
                 </article>
             </section>
 
-            <!-- Filtered Appointment Records Table -->
+            <!-- Recent Appointment Records Table -->
             <section class="panel-card report-appointments-table-card" style="margin-top:20px;">
                 <div class="dash-card-head">
                     <div>
-                        <h3>Filtered Patient Visits &amp; Appointments</h3>
-                        <p>Showing <?= count($reportAppointmentsList); ?> latest records matching active filter criteria</p>
+                        <h3>Recent Patient Visits &amp; Appointments</h3>
+                        <p>Showing <?= count($reportAppointmentsList); ?> latest completed records matching active filter criteria</p>
                     </div>
                 </div>
                 <?php if ($reportAppointmentsList === []): ?>
-                    <div class="empty-state">No appointments match the selected filter combination.</div>
+                    <div class="empty-state">No completed appointments match the selected filter combination.</div>
                 <?php else: ?>
                     <div class="table-scroll-wrapper">
                         <table class="data-table">

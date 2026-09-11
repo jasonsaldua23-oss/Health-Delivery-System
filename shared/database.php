@@ -1299,6 +1299,16 @@ function db(): mysqli
         } catch (Throwable $ignored) {}
     }
 
+    // Ensure any legacy test sample account Juan Dela Cruz (#SP5L5M2F) is purged on every request
+    try {
+        $connection->query("DELETE FROM appointments WHERE (first_name = 'Juan' AND last_name = 'Dela Cruz') OR appointment_code = 'SP5L5M2F' OR email = 'juan.delacruz@gmail.com' OR patient_id = 'HE6JH6'");
+        $connection->query("DELETE FROM patient_profiles WHERE (first_name = 'Juan' AND last_name = 'Dela Cruz') OR email = 'juan.delacruz@gmail.com' OR patient_id = 'HE6JH6'");
+        $connection->query("DELETE FROM patient_accounts WHERE (first_name = 'Juan' AND last_name = 'Dela Cruz') OR email = 'juan.delacruz@gmail.com' OR patient_id = 'HE6JH6'");
+        $connection->query("DELETE FROM patient_info_history WHERE patient_id = 'HE6JH6'");
+        $connection->query("DELETE FROM patient_update_notifications WHERE patient_id = 'HE6JH6'");
+        $connection->query("DELETE FROM appointment_status_notifications WHERE patient_id = 'HE6JH6'");
+    } catch (Throwable $e) {}
+
     return $connection;
 }
 
@@ -3322,6 +3332,10 @@ function build_report_filter_sql(array $filters, string $tableAlias = ''): array
         $types .= 's';
     }
 
+    // Exclude sample test account Juan Dela Cruz from report analytics
+    $conditions[] = "NOT ({$prefix}first_name = 'Juan' AND {$prefix}last_name = 'Dela Cruz')";
+    $conditions[] = "NOT (COALESCE({$prefix}patient_id, '') = 'HE6JH6')";
+
     $whereSql = $conditions !== [] ? 'WHERE ' . implode(' AND ', $conditions) : '';
 
     return [
@@ -3339,23 +3353,36 @@ function monthly_trends_data($fromDateOrFilters = '', string $toDate = ''): arra
         'report_to'   => $toDate,
     ];
 
-    if (empty($filters['report_from'])) {
-        $filters['report_from'] = date('Y-m-d', strtotime('-5 months', strtotime(date('Y-m-01'))));
-    }
-    if (empty($filters['report_to'])) {
-        $filters['report_to'] = date('Y-m-d', strtotime('last day of this month'));
+    // Always compute exactly 3 rolling months: [Month-2, Month-1, Current Month (farthest right)]
+    $now = new DateTimeImmutable('first day of this month');
+    $monthKeys = [];
+    $monthLabels = [];
+    $apptsByMonth = [];
+    $patsByMonth = [];
+
+    for ($i = 2; $i >= 0; $i--) {
+        $dt = $now->modify("-{$i} months");
+        $key = $dt->format('Y-m');
+        $label = $dt->format('M');
+        $monthKeys[] = $key;
+        $monthLabels[] = $label;
+        $apptsByMonth[$key] = 0;
+        $patsByMonth[$key] = 0;
     }
 
-    $builder = build_report_filter_sql($filters);
+    $trendFilters = $filters;
+    $trendFilters['report_from'] = $now->modify('-2 months')->format('Y-m-01');
+    $trendFilters['report_to']   = $now->format('Y-m-t');
+
+    $builder = build_report_filter_sql($trendFilters);
     $where = $builder['where'] !== '' ? $builder['where'] . ' AND status <> \'Cancelled\'' : 'WHERE status <> \'Cancelled\'';
 
-    $sql = 'SELECT DATE_FORMAT(preferred_date, \'%b\') AS month_label,
-                   DATE_FORMAT(preferred_date, \'%Y-%m\') AS month_key,
+    $sql = 'SELECT DATE_FORMAT(preferred_date, \'%Y-%m\') AS month_key,
                    COUNT(*) AS appointments,
                    COUNT(DISTINCT COALESCE(patient_id, CONCAT(first_name, last_name, birth_date))) AS patients
             FROM appointments
             ' . $where . '
-            GROUP BY month_key, month_label
+            GROUP BY month_key
             ORDER BY month_key ASC';
 
     $stmt = db()->prepare($sql);
@@ -3365,23 +3392,19 @@ function monthly_trends_data($fromDateOrFilters = '', string $toDate = ''): arra
     $stmt->execute();
     $result = $stmt->get_result();
 
-    $months = [];
-    $appointments = [];
-    $patients = [];
-
     while ($row = $result->fetch_assoc()) {
-        $months[]       = $row['month_label'];
-        $appointments[] = (int) $row['appointments'];
-        $patients[]     = (int) $row['patients'];
+        $k = (string) $row['month_key'];
+        if (isset($apptsByMonth[$k])) {
+            $apptsByMonth[$k] = (int) $row['appointments'];
+            $patsByMonth[$k] = (int) $row['patients'];
+        }
     }
 
-    if ($months === []) {
-        $months       = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-        $appointments = [0, 0, 0, 0, 0, 0];
-        $patients     = [0, 0, 0, 0, 0, 0];
-    }
-
-    return ['months' => $months, 'appointments' => $appointments, 'patients' => $patients];
+    return [
+        'months' => $monthLabels,
+        'appointments' => array_values($apptsByMonth),
+        'patients' => array_values($patsByMonth),
+    ];
 }
 
 function station_performance_data(array $filters = []): array
