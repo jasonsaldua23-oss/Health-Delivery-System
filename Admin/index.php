@@ -2829,6 +2829,7 @@ if (!function_exists('peso')) {
                 document.body.style.overflow = 'hidden';
             </script>
         <?php elseif ($page === 'users'): ?>
+            <?php
                 $healthStationList = array_values(array_filter($stations, static function(array $station): bool {
                     $slug = (string) ($station['slug'] ?? '');
                     $name = (string) ($station['name'] ?? '');
