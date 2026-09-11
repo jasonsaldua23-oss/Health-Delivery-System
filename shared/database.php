@@ -3610,8 +3610,15 @@ function demographics_breakdown_data(array $filters = []): array
                 SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 46 AND 59 THEN 1 ELSE 0 END) AS age_mature_adult,
                 SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) >= 60 THEN 1 ELSE 0 END) AS age_senior,
                 COUNT(*) AS total
-            FROM appointments
-            ' . $where;
+            FROM (
+                SELECT
+                    COALESCE(NULLIF(patient_id, \'\'), CONCAT(first_name, \'|\', last_name, \'|\', birth_date)) AS unique_patient_key,
+                    MAX(gender) AS gender,
+                    MAX(birth_date) AS birth_date
+                FROM appointments
+                ' . $where . '
+                GROUP BY unique_patient_key
+            ) AS distinct_patients';
 
     $stmt = db()->prepare($sql);
     if ($builder['params'] !== []) {

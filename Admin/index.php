@@ -3760,7 +3760,7 @@ if (!function_exists('peso')) {
                     <div class="dash-card-head">
                         <div>
                             <h3>Demographic Distribution</h3>
-                            <p>Age group and gender breakdown for filtered period</p>
+                            <p>Age group and gender breakdown of unique patients</p>
                         </div>
                     </div>
                     
