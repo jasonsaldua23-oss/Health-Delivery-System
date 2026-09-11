@@ -484,6 +484,8 @@ function create_admin_accounts_table(mysqli $connection, string $engine = 'InnoD
             office_name VARCHAR(255) NOT NULL,
             email VARCHAR(150) NOT NULL UNIQUE,
             password_hash VARCHAR(255) NOT NULL,
+            last_active_at TIMESTAMP NULL DEFAULT NULL,
+            is_logged_in TINYINT(1) NOT NULL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_admin_email (email)
@@ -507,6 +509,8 @@ function create_staff_accounts_table(mysqli $connection, string $engine = 'InnoD
             home_address VARCHAR(255) DEFAULT NULL,
             emergency_contact VARCHAR(100) DEFAULT NULL,
             emergency_phone VARCHAR(30) DEFAULT NULL,
+            last_active_at TIMESTAMP NULL DEFAULT NULL,
+            is_logged_in TINYINT(1) NOT NULL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_station_slug (station_slug),
@@ -1053,6 +1057,22 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
         $connection->query('ALTER TABLE staff_accounts ADD COLUMN emergency_phone VARCHAR(30) DEFAULT NULL AFTER emergency_contact');
         $log[] = 'Added staff_accounts.emergency_phone';
     }
+    if (!db_column_exists($connection, 'admin_accounts', 'last_active_at')) {
+        $connection->query('ALTER TABLE admin_accounts ADD COLUMN last_active_at TIMESTAMP NULL DEFAULT NULL AFTER password_hash');
+        $log[] = 'Added admin_accounts.last_active_at';
+    }
+    if (!db_column_exists($connection, 'admin_accounts', 'is_logged_in')) {
+        $connection->query('ALTER TABLE admin_accounts ADD COLUMN is_logged_in TINYINT(1) NOT NULL DEFAULT 0 AFTER last_active_at');
+        $log[] = 'Added admin_accounts.is_logged_in';
+    }
+    if (!db_column_exists($connection, 'staff_accounts', 'last_active_at')) {
+        $connection->query('ALTER TABLE staff_accounts ADD COLUMN last_active_at TIMESTAMP NULL DEFAULT NULL AFTER emergency_phone');
+        $log[] = 'Added staff_accounts.last_active_at';
+    }
+    if (!db_column_exists($connection, 'staff_accounts', 'is_logged_in')) {
+        $connection->query('ALTER TABLE staff_accounts ADD COLUMN is_logged_in TINYINT(1) NOT NULL DEFAULT 0 AFTER last_active_at');
+        $log[] = 'Added staff_accounts.is_logged_in';
+    }
 
     try {
         $idxRes = $connection->query("SHOW INDEX FROM staff_accounts WHERE Key_name = 'station_slug'");
@@ -1287,7 +1307,9 @@ function db(): mysqli
 
     // Auto-check if core tables and latest columns exist. If missing, auto-migrate seamlessly on connection!
     try {
-        if (!db_column_exists($connection, 'upcoming_events', 'status') 
+        if (!db_column_exists($connection, 'admin_accounts', 'last_active_at')
+            || !db_column_exists($connection, 'staff_accounts', 'last_active_at')
+            || !db_column_exists($connection, 'upcoming_events', 'status') 
             || !db_column_exists($connection, 'appointments', 'vaccine_type') 
             || !db_column_exists($connection, 'appointments', 'reminder_sms_sent')
             || !db_column_exists($connection, 'station_service_assignments', 'daily_capacity')) {
@@ -3071,7 +3093,7 @@ function update_staff_account_details(int $staffId, array $data): bool
 
 function fetch_staff_accounts(): array
 {
-    $result = db()->query('SELECT id, station_slug, station_name, staff_name, email FROM staff_accounts ORDER BY station_name');
+    $result = db()->query('SELECT id, station_slug, station_name, staff_name, email, last_active_at, is_logged_in FROM staff_accounts ORDER BY station_name');
     $rows = [];
     while ($row = $result->fetch_assoc()) {
         $rows[] = $row;
@@ -3131,13 +3153,84 @@ function fetch_admin_account_by_username(string $username): ?array
 
 function fetch_admin_accounts(): array
 {
-    $result = db()->query('SELECT id, admin_name, office_name, email FROM admin_accounts ORDER BY admin_name');
+    $result = db()->query('SELECT id, admin_name, office_name, email, last_active_at, is_logged_in FROM admin_accounts ORDER BY admin_name');
     $rows = [];
     while ($row = $result->fetch_assoc()) {
         $rows[] = $row;
     }
 
     return $rows;
+}
+
+function record_user_login(string $role, string $email): void
+{
+    $table = strtolower($role) === 'admin' ? 'admin_accounts' : 'staff_accounts';
+    try {
+        $stmt = db()->prepare("UPDATE `{$table}` SET is_logged_in = 1, last_active_at = NOW() WHERE LOWER(email) = LOWER(?)");
+        if ($stmt) {
+            $stmt->bind_param('s', $email);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } catch (Throwable $e) {}
+}
+
+function record_user_logout(string $role, string $email): void
+{
+    $table = strtolower($role) === 'admin' ? 'admin_accounts' : 'staff_accounts';
+    try {
+        $stmt = db()->prepare("UPDATE `{$table}` SET is_logged_in = 0, last_active_at = NULL WHERE LOWER(email) = LOWER(?)");
+        if ($stmt) {
+            $stmt->bind_param('s', $email);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } catch (Throwable $e) {}
+}
+
+function record_user_activity(string $role, string $email): void
+{
+    $table = strtolower($role) === 'admin' ? 'admin_accounts' : 'staff_accounts';
+    try {
+        $stmt = db()->prepare("UPDATE `{$table}` SET is_logged_in = 1, last_active_at = NOW() WHERE LOWER(email) = LOWER(?)");
+        if ($stmt) {
+            $stmt->bind_param('s', $email);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } catch (Throwable $e) {}
+}
+
+function is_user_active(array $account, int $thresholdMinutes = 5): bool
+{
+    $email = strtolower(trim((string) ($account['email'] ?? '')));
+    if ($email === '') {
+        return false;
+    }
+
+    // Current active admin session in PHP
+    if (!empty($_SESSION['admin_authenticated']) && strtolower((string) ($_SESSION['admin_email'] ?? '')) === $email) {
+        return true;
+    }
+
+    // Current active staff session in PHP
+    if (!empty($_SESSION['staff_authenticated']) && strtolower((string) ($_SESSION['staff_email'] ?? '')) === $email) {
+        return true;
+    }
+
+    $isLoggedIn = !empty($account['is_logged_in']);
+    $lastActive = $account['last_active_at'] ?? null;
+
+    if (!$isLoggedIn || empty($lastActive)) {
+        return false;
+    }
+
+    $lastActiveTime = strtotime((string) $lastActive);
+    if ($lastActiveTime === false) {
+        return false;
+    }
+
+    return (time() - $lastActiveTime) <= ($thresholdMinutes * 60);
 }
 
 function create_admin_account(array $accountData): bool

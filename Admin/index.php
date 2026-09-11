@@ -129,6 +129,9 @@ if (!function_exists('is_admin_authenticated')) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logout') && is_admin_authenticated()) {
     if (verify_csrf($_POST['csrf_token'] ?? null)) {
+        if (!empty($_SESSION['admin_email'])) {
+            record_user_logout('admin', (string) $_SESSION['admin_email']);
+        }
         unset($_SESSION['admin_authenticated'], $_SESSION['admin_email'], $_SESSION['admin_name']);
     }
 
@@ -167,6 +170,8 @@ if (!is_admin_authenticated()) {
     header('Location: ../Patients/index.php#portal');
     exit;
 }
+
+record_user_activity('admin', (string) $_SESSION['admin_email']);
 
 $page = $_GET['page'] ?? 'dashboard';
 $stationView = trim((string) ($_GET['station'] ?? ''));
@@ -2930,8 +2935,9 @@ if (!function_exists('peso')) {
                                     </div>
                                 </div>
                                 <div class="user-row-right">
-                                    <span class="user-status-indicator active">
-                                        <span class="dot"></span> Active
+                                    <?php $isAdminActive = is_user_active($account); ?>
+                                    <span class="user-status-indicator <?= $isAdminActive ? 'active' : 'offline'; ?>">
+                                        <span class="dot"></span> <?= $isAdminActive ? 'Active' : 'Offline'; ?>
                                     </span>
                                     <?php if (count($adminAccounts) > 1): ?>
                                         <form method="post" onsubmit="return confirm('Are you sure you want to remove administrator <?= h(addslashes($account['admin_name'])); ?>?');" style="margin:0;">
@@ -3039,8 +3045,9 @@ if (!function_exists('peso')) {
                                                 </div>
                                             </div>
                                             <div class="user-row-right">
-                                                <span class="user-status-indicator active">
-                                                    <span class="dot"></span> Active
+                                                <?php $isStaffActive = is_user_active($account); ?>
+                                                <span class="user-status-indicator <?= $isStaffActive ? 'active' : 'offline'; ?>">
+                                                    <span class="dot"></span> <?= $isStaffActive ? 'Active' : 'Offline'; ?>
                                                 </span>
                                                 <form method="post" onsubmit="return confirm('Are you sure you want to remove staff account <?= h(addslashes($account['staff_name'])); ?>?');" style="margin:0;">
                                                     <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
@@ -4451,7 +4458,11 @@ function toggleDualDateFilter(clickedType, paramName, event) {
         '.stat-cards',
         '.station-queue-grid',
         '.admin-overview-grid',
-        '.reports-table-wrap'
+        '.reports-table-wrap',
+        '.user-organized-list',
+        '.user-selection-grid',
+        '.user-station-grid',
+        '#staff-list-container'
     ];
 
     setInterval(async function () {

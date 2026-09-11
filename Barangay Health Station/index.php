@@ -321,6 +321,9 @@ if (!function_exists('queue_groups')) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logout') && is_staff_authenticated()) {
     if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
+        if (!empty($_SESSION['staff_email'])) {
+            record_user_logout('staff', (string) $_SESSION['staff_email']);
+        }
         unset(
             $_SESSION['staff_authenticated'],
             $_SESSION['staff_email'],
@@ -338,6 +341,8 @@ if (!is_staff_authenticated()) {
     header('Location: ../Patients/index.php#portal');
     exit;
 }
+
+record_user_activity('staff', (string) $_SESSION['staff_email']);
 
 $staffAccount = fetch_staff_account_by_email((string) $_SESSION['staff_email']);
 if (!is_array($staffAccount)) {

@@ -198,6 +198,7 @@ if ($action === 'login_admin') {
         $_SESSION['admin_authenticated'] = true;
         $_SESSION['admin_email'] = is_array($adminAccount) ? (string) $adminAccount['email'] : 'admintest@gmail.com';
         $_SESSION['admin_name'] = is_array($adminAccount) ? (string) $adminAccount['admin_name'] : 'Admin User';
+        record_user_login('admin', (string) $_SESSION['admin_email']);
 
         session_write_close();
         echo json_encode([
@@ -234,6 +235,7 @@ if ($action === 'login_staff') {
             $_SESSION['staff_name'] = (string) $staffAccount['staff_name'];
             $_SESSION['staff_station_slug'] = (string) $staffAccount['station_slug'];
             $_SESSION['staff_station_name'] = (string) $staffAccount['station_name'];
+            record_user_login('staff', (string) $staffAccount['email']);
 
             session_write_close();
             echo json_encode([

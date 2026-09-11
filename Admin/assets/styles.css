@@ -1770,19 +1770,35 @@ button, input, select { font: inherit; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #047857;
   font-size: 0.76rem;
   font-weight: 700;
   padding: 4px 10px;
   border-radius: 999px;
+  transition: all 0.2s ease;
 }
-.user-status-indicator .dot {
+.user-status-indicator.active {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+}
+.user-status-indicator.active .dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: #10b981;
+  box-shadow: 0 0 0 2.5px rgba(16, 185, 129, 0.2);
+}
+
+.user-status-indicator.offline {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+}
+.user-status-indicator.offline .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #94a3b8;
 }
 
 .user-delete-icon-btn {
