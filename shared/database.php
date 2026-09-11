@@ -928,6 +928,14 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
     ensure_unattended_queue_table($connection);
     $log[] = 'Core tables verified';
 
+    // Purge sample test account Juan Dela Cruz across appointments, profiles, accounts, and history
+    $connection->query("DELETE FROM appointments WHERE (first_name = 'Juan' AND last_name = 'Dela Cruz') OR appointment_code = 'SP5L5M2F' OR email = 'juan.delacruz@gmail.com' OR patient_id = 'HE6JH6'");
+    $connection->query("DELETE FROM patient_profiles WHERE (first_name = 'Juan' AND last_name = 'Dela Cruz') OR email = 'juan.delacruz@gmail.com' OR patient_id = 'HE6JH6'");
+    $connection->query("DELETE FROM patient_accounts WHERE (first_name = 'Juan' AND last_name = 'Dela Cruz') OR email = 'juan.delacruz@gmail.com' OR patient_id = 'HE6JH6'");
+    $connection->query("DELETE FROM patient_info_history WHERE patient_id = 'HE6JH6'");
+    $connection->query("DELETE FROM patient_update_notifications WHERE patient_id = 'HE6JH6'");
+    $connection->query("DELETE FROM appointment_status_notifications WHERE patient_id = 'HE6JH6'");
+
     // Ensure columns
     if (!db_column_exists($connection, 'station_service_assignments', 'daily_capacity')) {
         $connection->query('ALTER TABLE station_service_assignments ADD COLUMN daily_capacity INT UNSIGNED NOT NULL DEFAULT 200 AFTER sort_order');
