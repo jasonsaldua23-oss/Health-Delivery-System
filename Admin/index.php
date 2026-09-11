@@ -1390,7 +1390,7 @@ if (!function_exists('peso')) {
                                     <th style="text-align: center;">Patient Profile</th>
                                     <th style="text-align: center;">Age / Gender</th>
                                     <th>Health Station &amp; Address</th>
-                                    <th>Contact Information</th>
+                                    <th style="text-align: center;">Contact Information</th>
                                     <th>Last Visit</th>
                                     <th>Actions</th>
                                 </tr>
@@ -1438,7 +1438,7 @@ if (!function_exists('peso')) {
                                             <?php endif; ?>
                                             <div class="patient-address-snippet"><?= h((string) $patient['complete_address']); ?></div>
                                         </td>
-                                        <td>
+                                        <td style="text-align: center;">
                                             <div style="font-weight:600;color:#2563eb;"><?= h((string) $patient['contact_number']); ?></div>
                                             <small style="color:#64748b;"><?= !empty($patient['email']) ? h((string) $patient['email']) : 'No email'; ?></small>
                                         </td>
