@@ -1387,8 +1387,8 @@ if (!function_exists('peso')) {
                         <table class="data-table patient-management-table-modern">
                             <thead>
                                 <tr>
-                                    <th>Patient Profile</th>
-                                    <th>Age / Gender</th>
+                                    <th style="text-align: center;">Patient Profile</th>
+                                    <th style="text-align: center;">Age / Gender</th>
                                     <th>Health Station &amp; Address</th>
                                     <th>Contact Information</th>
                                     <th>Last Visit</th>
@@ -1428,7 +1428,7 @@ if (!function_exists('peso')) {
                                                 </div>
                                             <?php endif; ?>
                                         </td>
-                                        <td>
+                                        <td style="text-align: center;">
                                             <div><?= h((string) $patient['age']); ?> yrs</div>
                                             <small style="color:#64748b;"><?= h((string) $patient['gender']); ?></small>
                                         </td>
