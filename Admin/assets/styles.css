@@ -1776,12 +1776,14 @@ button, input, select { font: inherit; }
   border-radius: 999px;
   transition: all 0.2s ease;
 }
-.user-status-indicator.active {
+.user-status-indicator.active,
+.user-status-indicator.online {
   background: #ecfdf5;
   border: 1px solid #a7f3d0;
   color: #047857;
 }
-.user-status-indicator.active .dot {
+.user-status-indicator.active .dot,
+.user-status-indicator.online .dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;

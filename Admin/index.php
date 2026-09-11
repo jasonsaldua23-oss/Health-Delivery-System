@@ -199,6 +199,8 @@ $patientStationFilter = trim((string) ($_GET['patient_station'] ?? ''));
 $patientGenderFilter = trim((string) ($_GET['patient_gender'] ?? ''));
 $selectedAdminVisitId = (int) ($_GET['visit'] ?? 0);
 $showUserModal = $page === 'users' && (($_GET['show_user_modal'] ?? '') === '1');
+$userActivePanel = trim((string) ($_GET['user_panel'] ?? ''));
+$userActiveStation = trim((string) ($_GET['user_station'] ?? ''));
 $serviceManagementStation = trim((string) ($_GET['station'] ?? ''));
 $adminFlash = (string) ($_SESSION['admin_flash'] ?? '');
 unset($_SESSION['admin_flash']);
@@ -319,14 +321,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'crea
             : 'Unable to create admin account. Please ensure all required fields are filled.';
     }
 
-    header('Location: index.php?page=users');
+    header('Location: index.php?page=users&user_panel=admin');
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'create_staff_account')) {
+    $assignedStationSlug = '';
     if (verify_csrf($_POST['csrf_token'] ?? null)) {
+        $assignedStationSlug = trim((string) ($_POST['station_slug'] ?? ''));
         $created = save_staff_account([
-            'station_slug' => trim((string) ($_POST['station_slug'] ?? '')),
+            'station_slug' => $assignedStationSlug,
             'staff_name' => trim((string) ($_POST['staff_name'] ?? '')),
             'email' => trim((string) ($_POST['email'] ?? '')),
             'password' => (string) ($_POST['password'] ?? ''),
@@ -336,11 +340,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'crea
             : 'Unable to create staff account. Please verify assigned station and credentials.';
     }
 
-    header('Location: index.php?page=users');
+    $redirectUrl = 'index.php?page=users';
+    if ($assignedStationSlug !== '') {
+        $redirectUrl .= '&user_panel=staff-list&user_station=' . urlencode($assignedStationSlug);
+    } else {
+        $redirectUrl .= '&user_panel=staff-stations';
+    }
+    header('Location: ' . $redirectUrl);
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'delete_user_account')) {
+    $redirectPanel = trim((string) ($_POST['user_panel_redirect'] ?? ''));
+    $redirectStation = trim((string) ($_POST['user_station_redirect'] ?? ''));
     if (verify_csrf($_POST['csrf_token'] ?? null)) {
         $role = trim((string) ($_POST['user_role'] ?? ''));
         $id = (int) ($_POST['user_id'] ?? 0);
@@ -360,7 +372,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'dele
         }
     }
 
-    header('Location: index.php?page=users');
+    $redirectUrl = 'index.php?page=users';
+    if ($redirectPanel !== '') {
+        $redirectUrl .= '&user_panel=' . urlencode($redirectPanel);
+        if ($redirectStation !== '') {
+            $redirectUrl .= '&user_station=' . urlencode($redirectStation);
+        }
+    }
+    header('Location: ' . $redirectUrl);
     exit;
 }
 
@@ -2808,10 +2827,8 @@ if (!function_exists('peso')) {
 
                 if (modal) modal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
-            }
             </script>
         <?php elseif ($page === 'users'): ?>
-            <?php
                 $healthStationList = array_values(array_filter($stations, static function(array $station): bool {
                     $slug = (string) ($station['slug'] ?? '');
                     $name = (string) ($station['name'] ?? '');
@@ -2828,6 +2845,18 @@ if (!function_exists('peso')) {
                     }
                     $staffByStation[$slug][] = $account;
                 }
+
+                $activeStationObject = null;
+                if ($userActiveStation !== '') {
+                    foreach ($healthStationList as $st) {
+                        if ($st['slug'] === $userActiveStation) {
+                            $activeStationObject = $st;
+                            break;
+                        }
+                    }
+                }
+                $activeStationTitle = $activeStationObject ? ($activeStationObject['name'] . ' Staff') : 'Staff Accounts';
+                $activeStationSubtitle = $activeStationObject ? ('Assigned personnel for ' . $activeStationObject['name']) : 'Staff assigned to this station';
             ?>
             <!-- Page Header -->
             <section class="page-header action-head user-page-head">
@@ -2844,7 +2873,7 @@ if (!function_exists('peso')) {
             </section>
 
             <!-- Main Selection Grid: Admin Accounts & Staff Accounts Tiles -->
-            <section class="user-selection-grid" id="userSelectionGrid">
+            <section class="user-selection-grid <?= $userActivePanel !== '' ? 'hidden' : ''; ?>" id="userSelectionGrid">
                 <article class="panel-card user-management-tile user-tile-admin" data-user-panel="admin">
                     <div class="user-tile-body">
                         <div class="user-tile-icon-box admin">
@@ -2887,7 +2916,7 @@ if (!function_exists('peso')) {
             </section>
 
             <!-- Panel 1: Admin Accounts Panel -->
-            <section class="panel-card user-panel hidden" data-panel="admin" id="adminUsersPanel">
+            <section class="panel-card user-panel <?= $userActivePanel === 'admin' ? '' : 'hidden'; ?>" data-panel="admin" id="adminUsersPanel">
                 <div class="user-panel-header">
                     <button type="button" class="link-button user-back-btn" data-back="selection">
                         <?= admin_icon('arrow-left'); ?>
@@ -2937,7 +2966,7 @@ if (!function_exists('peso')) {
                                 <div class="user-row-right">
                                     <?php $isAdminActive = is_user_active($account); ?>
                                     <span class="user-status-indicator <?= $isAdminActive ? 'active' : 'offline'; ?>">
-                                        <span class="dot"></span> <?= $isAdminActive ? 'Active' : 'Offline'; ?>
+                                        <span class="dot"></span> <?= $isAdminActive ? 'Online' : 'Offline'; ?>
                                     </span>
                                     <?php if (count($adminAccounts) > 1): ?>
                                         <form method="post" onsubmit="return confirm('Are you sure you want to remove administrator <?= h(addslashes($account['admin_name'])); ?>?');" style="margin:0;">
@@ -2945,6 +2974,7 @@ if (!function_exists('peso')) {
                                             <input type="hidden" name="action" value="delete_user_account">
                                             <input type="hidden" name="user_role" value="Admin">
                                             <input type="hidden" name="user_id" value="<?= (int) ($account['id'] ?? 0); ?>">
+                                            <input type="hidden" name="user_panel_redirect" value="admin">
                                             <button type="submit" class="user-delete-icon-btn" title="Delete Administrator">
                                                 <?= admin_icon('trash'); ?>
                                             </button>
@@ -2958,7 +2988,7 @@ if (!function_exists('peso')) {
             </section>
 
             <!-- Panel 2: Staff Health Stations Grid Panel -->
-            <section class="panel-card user-panel hidden" data-panel="staff-stations" id="staffStationsPanel">
+            <section class="panel-card user-panel <?= $userActivePanel === 'staff-stations' ? '' : 'hidden'; ?>" data-panel="staff-stations" id="staffStationsPanel">
                 <div class="user-panel-header">
                     <button type="button" class="link-button user-back-btn" data-back="selection">
                         <?= admin_icon('arrow-left'); ?>
@@ -2995,20 +3025,21 @@ if (!function_exists('peso')) {
             </section>
 
             <!-- Panel 3: Staff List for Specific Station Panel -->
-            <section class="panel-card user-panel hidden" data-panel="staff-list" id="staffListPanel">
+            <section class="panel-card user-panel <?= $userActivePanel === 'staff-list' ? '' : 'hidden'; ?>" data-panel="staff-list" id="staffListPanel">
                 <div class="user-panel-header">
                     <button type="button" class="link-button user-back-btn" data-back="stations">
                         <?= admin_icon('arrow-left'); ?>
                         <span>Back</span>
                     </button>
                     <div class="user-panel-title-wrap">
-                        <h2 id="staff-list-heading">Staff Accounts</h2>
-                        <p id="staff-list-subtitle" class="muted-text">Staff assigned to this station</p>
+                        <h2 id="staff-list-heading"><?= h($activeStationTitle); ?></h2>
+                        <p id="staff-list-subtitle" class="muted-text"><?= h($activeStationSubtitle); ?></p>
                     </div>
                 </div>
                 <div class="user-list-container" id="staff-list-container">
                     <?php foreach ($healthStationList as $station): ?>
-                        <div class="staff-list-grid hidden" data-staff-list-for="<?= h($station['slug']); ?>">
+                        <?php $isCurrentStationVisible = ($userActivePanel === 'staff-list' && $userActiveStation === $station['slug']); ?>
+                        <div class="staff-list-grid <?= $isCurrentStationVisible ? '' : 'hidden'; ?>" data-staff-list-for="<?= h($station['slug']); ?>">
                             <?php if (empty($staffByStation[$station['slug']])): ?>
                                 <div class="user-empty-state-box">
                                     <div class="empty-state-icon staff"><?= admin_icon('user'); ?></div>
@@ -3039,7 +3070,7 @@ if (!function_exists('peso')) {
                                                         </span>
                                                     </div>
                                                     <div class="user-row-meta-line">
-                                                        <span class="user-office-tag"><?= admin_icon('map'); ?> <?= h($account['station_name']); ?></span>
+                                                        <span class="user-office-tag"><?= admin_icon('map'); ?> <?= h($account['station_name'] ?? $station['name']); ?></span>
                                                         <span class="user-email-tag"><?= admin_icon('mail'); ?> <a href="mailto:<?= h($account['email']); ?>"><?= h($account['email']); ?></a></span>
                                                     </div>
                                                 </div>
@@ -3047,13 +3078,15 @@ if (!function_exists('peso')) {
                                             <div class="user-row-right">
                                                 <?php $isStaffActive = is_user_active($account); ?>
                                                 <span class="user-status-indicator <?= $isStaffActive ? 'active' : 'offline'; ?>">
-                                                    <span class="dot"></span> <?= $isStaffActive ? 'Active' : 'Offline'; ?>
+                                                    <span class="dot"></span> <?= $isStaffActive ? 'Online' : 'Offline'; ?>
                                                 </span>
                                                 <form method="post" onsubmit="return confirm('Are you sure you want to remove staff account <?= h(addslashes($account['staff_name'])); ?>?');" style="margin:0;">
                                                     <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
                                                     <input type="hidden" name="action" value="delete_user_account">
                                                     <input type="hidden" name="user_role" value="Staff">
                                                     <input type="hidden" name="user_id" value="<?= (int) ($account['id'] ?? 0); ?>">
+                                                    <input type="hidden" name="user_panel_redirect" value="staff-list">
+                                                    <input type="hidden" name="user_station_redirect" value="<?= h($station['slug']); ?>">
                                                     <button type="submit" class="user-delete-icon-btn" title="Delete Staff Account">
                                                         <?= admin_icon('trash'); ?>
                                                     </button>
@@ -3223,18 +3256,59 @@ if (!function_exists('peso')) {
                     const closeModalBtn = document.getElementById('closeUserModalBtn');
                     const cancelModalBtn = document.getElementById('cancelUserModalBtn');
 
-                    const showPanel = (panelName) => {
+                    const updateUserUrlState = (panelName, stationSlug) => {
+                        try {
+                            const url = new URL(window.location.href);
+                            if (panelName) {
+                                url.searchParams.set('user_panel', panelName);
+                                sessionStorage.setItem('admin_user_active_panel', panelName);
+                            } else {
+                                url.searchParams.delete('user_panel');
+                                sessionStorage.removeItem('admin_user_active_panel');
+                            }
+
+                            if (stationSlug) {
+                                url.searchParams.set('user_station', stationSlug);
+                                sessionStorage.setItem('admin_user_active_station', stationSlug);
+                            } else {
+                                url.searchParams.delete('user_station');
+                                sessionStorage.removeItem('admin_user_active_station');
+                            }
+                            window.history.replaceState({}, '', url.toString());
+                        } catch (err) {
+                            console.debug('User state URL sync error:', err);
+                        }
+                    };
+
+                    const showPanel = (panelName, stationSlug) => {
                         if (selectionGrid) selectionGrid.classList.add('hidden');
                         panels.forEach(panel => panel.classList.add('hidden'));
                         const target = document.querySelector(`[data-panel="${panelName}"]`);
                         if (target) {
                             target.classList.remove('hidden');
                         }
+
+                        if (panelName === 'staff-list' && stationSlug) {
+                            staffLists.forEach(list => {
+                                if (list.dataset.staffListFor === stationSlug) {
+                                    list.classList.remove('hidden');
+                                } else {
+                                    list.classList.add('hidden');
+                                }
+                            });
+                            const matchingCard = document.querySelector(`.user-station-card[data-station="${stationSlug}"]`);
+                            const stationName = matchingCard?.querySelector('h3')?.textContent || (stationSlug.charAt(0).toUpperCase() + stationSlug.slice(1));
+                            if (staffListHeading) staffListHeading.textContent = stationName.toLowerCase().includes('staff') ? stationName : (stationName + ' Staff');
+                            if (staffListSubtitle) staffListSubtitle.textContent = `Assigned personnel for ${stationName}`;
+                        }
+
+                        updateUserUrlState(panelName, stationSlug || null);
                     };
 
                     const resetSelection = () => {
                         panels.forEach(panel => panel.classList.add('hidden'));
                         if (selectionGrid) selectionGrid.classList.remove('hidden');
+                        updateUserUrlState(null, null);
                     };
 
                     selectionCards.forEach(card => {
@@ -3264,19 +3338,22 @@ if (!function_exists('peso')) {
                         card.addEventListener('click', () => {
                             const station = card.dataset.station;
                             if (!station) return;
-                            showPanel('staff-list');
-                            staffLists.forEach(list => {
-                                if (list.dataset.staffListFor === station) {
-                                    list.classList.remove('hidden');
-                                } else {
-                                    list.classList.add('hidden');
-                                }
-                            });
-                            const stationName = card.querySelector('h3')?.textContent || 'Staff Accounts';
-                            if (staffListHeading) staffListHeading.textContent = stationName + ' Staff';
-                            if (staffListSubtitle) staffListSubtitle.textContent = `Assigned personnel for ${stationName}`;
+                            showPanel('staff-list', station);
                         });
                     });
+
+                    // Restore state on load if stored in URL or sessionStorage
+                    const initialUrlParams = new URLSearchParams(window.location.search);
+                    let activePanel = initialUrlParams.get('user_panel') || sessionStorage.getItem('admin_user_active_panel');
+                    let activeStation = initialUrlParams.get('user_station') || sessionStorage.getItem('admin_user_active_station');
+
+                    if (activePanel === 'admin') {
+                        showPanel('admin');
+                    } else if (activePanel === 'staff-stations') {
+                        showPanel('staff-stations');
+                    } else if (activePanel === 'staff-list' && activeStation) {
+                        showPanel('staff-list', activeStation);
+                    }
 
                     const setRole = (role) => {
                         if (role === 'Admin') {
@@ -4500,6 +4577,22 @@ function toggleDualDateFilter(clickedType, paramName, event) {
                     });
                 }
             });
+
+            // Re-assert visibility of active station staff list in case of DOM replacement
+            const currentStaffListPanel = document.getElementById('staffListPanel');
+            if (currentStaffListPanel && !currentStaffListPanel.classList.contains('hidden')) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const activeStation = urlParams.get('user_station') || sessionStorage.getItem('admin_user_active_station');
+                if (activeStation) {
+                    document.querySelectorAll('[data-staff-list-for]').forEach(list => {
+                        if (list.dataset.staffListFor === activeStation) {
+                            list.classList.remove('hidden');
+                        } else {
+                            list.classList.add('hidden');
+                        }
+                    });
+                }
+            }
         } catch (err) {
             console.debug('Admin live sync notice:', err);
         } finally {
