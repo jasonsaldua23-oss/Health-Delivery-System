@@ -1309,6 +1309,13 @@ function db(): mysqli
         $connection->query("DELETE FROM appointment_status_notifications WHERE patient_id = 'HE6JH6'");
     } catch (Throwable $e) {}
 
+    // Auto-remove any events whose scheduled date has already passed (< today) or target month has passed
+    try {
+        $todayDate = date('Y-m-d');
+        $currMonth = date('Y-m');
+        $connection->query("DELETE FROM upcoming_events WHERE (event_date IS NOT NULL AND event_date != '' AND event_date < '{$todayDate}') OR (event_date IS NULL AND target_month IS NOT NULL AND target_month != '' AND target_month < '{$currMonth}')");
+    } catch (Throwable $e) {}
+
     return $connection;
 }
 
@@ -2771,29 +2778,52 @@ function is_vaccination_service(string $serviceSlug, string $serviceName = ''): 
         || stripos($name, 'immuniz') !== false;
 }
 
+function purge_expired_upcoming_events(?mysqli $conn = null): int
+{
+    try {
+        $connection = $conn ?? db();
+        $today = date('Y-m-d');
+        $currentMonth = date('Y-m');
+
+        $stmt = $connection->prepare(
+            'DELETE FROM upcoming_events 
+             WHERE (event_date IS NOT NULL AND event_date != "" AND event_date < ?)
+                OR (event_date IS NULL AND target_month IS NOT NULL AND target_month != "" AND target_month < ?)'
+        );
+        if ($stmt) {
+            $stmt->bind_param('ss', $today, $currentMonth);
+            $stmt->execute();
+            $affected = $stmt->affected_rows;
+            $stmt->close();
+            return max(0, $affected);
+        }
+    } catch (Throwable $e) {
+        // fail-safe
+    }
+    return 0;
+}
+
 function fetch_upcoming_events(array $filters = []): array
 {
+    purge_expired_upcoming_events();
+
+    $today = date('Y-m-d');
+    $currentMonth = date('Y-m');
+
     $sql = 'SELECT * FROM upcoming_events WHERE 1=1';
     $params = [];
     $types = '';
+
+    // Automatically exclude any events whose scheduled date or target month has already passed
+    $sql .= ' AND ((event_date IS NOT NULL AND event_date >= ?) OR (event_date IS NULL AND (target_month IS NULL OR target_month = "" OR target_month >= ?)))';
+    $params[] = $today;
+    $params[] = $currentMonth;
+    $types .= 'ss';
 
     if (isset($filters['status']) && $filters['status'] !== 'all' && $filters['status'] !== '') {
         $sql .= ' AND status = ?';
         $params[] = (string) $filters['status'];
         $types .= 's';
-    }
-
-    if (($filters['upcoming_only'] ?? true) === true) {
-        $today = date('Y-m-d');
-        if (($filters['status'] ?? '') === 'active') {
-            $sql .= ' AND event_date >= ?';
-            $params[] = $today;
-            $types .= 's';
-        } else {
-            $sql .= ' AND (event_date IS NULL OR event_date >= ?)';
-            $params[] = $today;
-            $types .= 's';
-        }
     }
 
     if (!empty($filters['station_slug'])) {

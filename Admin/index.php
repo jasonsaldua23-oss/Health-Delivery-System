@@ -465,7 +465,7 @@ if ($selectedAdminVisit !== null && $patientProfile !== null) {
 }
 $appointments = fetch_appointments(['station_slug' => $stationView, 'service_slug' => $programFilter, 'status' => $status, 'search' => $search, 'date' => $dateFilter]);
 $allStationAppointments = $stationView !== '' ? fetch_appointments(['station_slug' => $stationView, 'date' => $dateFilter]) : [];
-$allUpcomingEvents = fetch_upcoming_events(['upcoming_only' => false]);
+$allUpcomingEvents = fetch_upcoming_events();
 $countAllEvents = count($allUpcomingEvents);
 $countActiveEvents = count(array_filter($allUpcomingEvents, static fn(array $e): bool => (string) ($e['status'] ?? '') === 'active'));
 $countInactiveEvents = count(array_filter($allUpcomingEvents, static fn(array $e): bool => (string) ($e['status'] ?? '') === 'inactive'));
