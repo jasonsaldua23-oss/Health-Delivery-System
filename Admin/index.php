@@ -772,7 +772,7 @@ if (!function_exists('peso')) {
             <section class="dash-hero-card">
                 <div class="dash-hero-copy">
                     <span class="dash-hero-badge">Administration Control Panel</span>
-                    <h1>Welcome back, <?= h((string) ($_SESSION['admin_name'] ?? 'Admin User')); ?> 👋</h1>
+                    <h1>Welcome back, <?= h((string) ($_SESSION['admin_name'] ?? 'Admin User')); ?></h1>
                     <p>Live health center operations, appointment volumes, and program utilization across Bacolod City.</p>
                 </div>
                 <div class="dash-hero-actions">
@@ -815,11 +815,11 @@ if (!function_exists('peso')) {
                 <article class="dash-stat-card theme-indigo">
                     <div class="dash-stat-top">
                         <div class="dash-stat-icon"><?= admin_icon('shield'); ?></div>
-                        <span class="dash-stat-tag">Available Programs</span>
+                        <span class="dash-stat-tag">Availed Services</span>
                     </div>
                     <div class="dash-stat-body">
                         <h3><?= number_format($stats['active_services']); ?></h3>
-                        <p>Active Health Programs</p>
+                        <p>Availed Health Programs</p>
                     </div>
                     <div class="dash-stat-footer">
                         <span>Offered across all barangay stations</span>
