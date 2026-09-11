@@ -5913,13 +5913,13 @@ button, input, select { font: inherit; }
   position: relative;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 24px 0 14px;
-  margin-top: 10px;
+  padding: 170px 0 14px;
+  margin-top: 6px;
 }
 
 .brgy-chart-canvas {
   position: relative;
-  min-height: 250px;
+  min-height: 220px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -5928,10 +5928,10 @@ button, input, select { font: inherit; }
 
 .brgy-grid-lines {
   position: absolute;
-  top: 0;
   left: 0;
   right: 0;
   bottom: 46px;
+  height: 190px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -6182,6 +6182,9 @@ button, input, select { font: inherit; }
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: 140px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .brgy-hover-srv-item {

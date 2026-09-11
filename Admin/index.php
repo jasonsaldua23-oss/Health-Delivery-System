@@ -539,7 +539,7 @@ $demographics        = demographics_breakdown_data($reportFilters);
 $stationPerformance  = station_performance_data($reportFilters);
 $servicePerformance  = service_performance_data($reportFilters);
 $barangayCompletedStats = barangay_completed_analytics($reportFilters);
-$reportAppointmentsList = fetch_filtered_report_appointments($reportFilters, 50);
+$reportAppointmentsList = fetch_filtered_report_appointments($reportFilters, 5);
 $infoChangeLog       = patient_info_change_log(20);
 $activityLog         = fetch_activity_log(30, $reportFrom, $reportTo);
 $healthEventsSummary = health_events_summary();
@@ -3631,43 +3631,49 @@ if (!function_exists('peso')) {
                 </div>
             </section>
 
-            <!-- Charts Section (Monthly Trends & Program Demand Breakdown) -->
+            <!-- Top Grid: Station Performance & Program Demand Breakdown -->
             <section class="dash-charts-grid">
-                <article class="panel-card dash-chart-card">
+                <article class="panel-card dash-station-perf-card">
                     <div class="dash-card-head">
                         <div>
-                            <h3>Monthly Volume Trends</h3>
-                            <p>Appointment volume &amp; unique patient check-ins</p>
-                        </div>
-                        <div class="dash-chart-legend">
-                            <span class="legend-chip blue"><i class="dot"></i> Bookings</span>
-                            <span class="legend-chip green"><i class="dot"></i> Patients</span>
+                            <h3>Station Performance</h3>
+                            <p>Volume and completion metrics by barangay center</p>
                         </div>
                     </div>
-                    <?php if (count($monthlyTrends['months']) > 0): ?>
-                        <div class="report-monthly-bar-chart">
-                            <?php foreach ($monthlyTrends['months'] as $i => $month): ?>
-                                <?php
-                                    $apptH = (int) round(($monthlyTrends['appointments'][$i] / $maxAppts) * $maxBarHeight);
-                                    $patH  = (int) round(($monthlyTrends['patients'][$i] / $maxPatients) * $maxBarHeight);
-                                    $apptH = max(6, $apptH);
-                                    $patH  = max(6, $patH);
-                                ?>
-                                <div class="report-bar-col">
-                                    <div class="report-bar-pair">
-                                        <span class="bar appts" style="height: <?= $apptH; ?>px" title="<?= $monthlyTrends['appointments'][$i]; ?> Bookings">
-                                            <small><?= $monthlyTrends['appointments'][$i]; ?></small>
-                                        </span>
-                                        <span class="bar patients" style="height: <?= $patH; ?>px" title="<?= $monthlyTrends['patients'][$i]; ?> Patients">
-                                            <small><?= $monthlyTrends['patients'][$i]; ?></small>
-                                        </span>
-                                    </div>
-                                    <label><?= h($month); ?></label>
-                                </div>
-                            <?php endforeach; ?>
+                    <?php if (!empty($stationPerformance)): ?>
+                        <div class="table-scroll-wrapper">
+                            <table class="data-table report-perf-table">
+                                <thead>
+                                    <tr>
+                                        <th>Station</th>
+                                        <th>Completed</th>
+                                        <th>Cancelled</th>
+                                        <th>Pending</th>
+                                        <th>Total</th>
+                                        <th>Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($stationPerformance as $sp): ?>
+                                        <tr>
+                                            <td><strong><?= h($sp['station_name']); ?></strong></td>
+                                            <td class="text-green"><?= number_format($sp['completed']); ?></td>
+                                            <td class="text-red"><?= number_format($sp['cancelled']); ?></td>
+                                            <td class="text-muted"><?= number_format($sp['pending'] + $sp['serving'] + $sp['confirmed']); ?></td>
+                                            <td><strong><?= number_format($sp['total']); ?></strong></td>
+                                            <td>
+                                                <?php $rate = $sp['completion_rate']; ?>
+                                                <span class="rate-badge <?= $rate >= 70 ? 'high' : ($rate >= 40 ? 'med' : 'low'); ?>">
+                                                    <?= $rate; ?>%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
                     <?php else: ?>
-                        <div class="empty-state">No trend records found for this period.</div>
+                        <div class="empty-state">No station performance records for this filter.</div>
                     <?php endif; ?>
                 </article>
 
@@ -3713,7 +3719,7 @@ if (!function_exists('peso')) {
                 </article>
             </section>
 
-            <!-- Demographics & Station Performance Analytics -->
+            <!-- Bottom Grid: Demographics & Monthly Volume Trends Analytics -->
             <section class="dash-bottom-grid">
                 <article class="panel-card dash-demographics-card">
                     <div class="dash-card-head">
@@ -3764,45 +3770,41 @@ if (!function_exists('peso')) {
                     </div>
                 </article>
 
-                <article class="panel-card">
+                <article class="panel-card dash-chart-card">
                     <div class="dash-card-head">
                         <div>
-                            <h3>Station Performance</h3>
-                            <p>Volume and completion metrics by barangay center</p>
+                            <h3>Monthly Volume Trends</h3>
+                            <p>Appointment volume &amp; unique patient check-ins</p>
+                        </div>
+                        <div class="dash-chart-legend">
+                            <span class="legend-chip blue"><i class="dot"></i> Bookings</span>
+                            <span class="legend-chip green"><i class="dot"></i> Patients</span>
                         </div>
                     </div>
-                    <?php if (!empty($stationPerformance)): ?>
-                        <table class="data-table report-perf-table">
-                            <thead>
-                                <tr>
-                                    <th>Station</th>
-                                    <th>Completed</th>
-                                    <th>Cancelled</th>
-                                    <th>Pending</th>
-                                    <th>Total</th>
-                                    <th>Rate</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($stationPerformance as $sp): ?>
-                                    <tr>
-                                        <td><strong><?= h($sp['station_name']); ?></strong></td>
-                                        <td class="text-green"><?= number_format($sp['completed']); ?></td>
-                                        <td class="text-red"><?= number_format($sp['cancelled']); ?></td>
-                                        <td class="text-muted"><?= number_format($sp['pending'] + $sp['serving'] + $sp['confirmed']); ?></td>
-                                        <td><strong><?= number_format($sp['total']); ?></strong></td>
-                                        <td>
-                                            <?php $rate = $sp['completion_rate']; ?>
-                                            <span class="rate-badge <?= $rate >= 70 ? 'high' : ($rate >= 40 ? 'med' : 'low'); ?>">
-                                                <?= $rate; ?>%
-                                            </span>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                    <?php if (count($monthlyTrends['months']) > 0): ?>
+                        <div class="report-monthly-bar-chart">
+                            <?php foreach ($monthlyTrends['months'] as $i => $month): ?>
+                                <?php
+                                    $apptH = (int) round(($monthlyTrends['appointments'][$i] / $maxAppts) * $maxBarHeight);
+                                    $patH  = (int) round(($monthlyTrends['patients'][$i] / $maxPatients) * $maxBarHeight);
+                                    $apptH = max(6, $apptH);
+                                    $patH  = max(6, $patH);
+                                ?>
+                                <div class="report-bar-col">
+                                    <div class="report-bar-pair">
+                                        <span class="bar appts" style="height: <?= $apptH; ?>px" title="<?= $monthlyTrends['appointments'][$i]; ?> Bookings">
+                                            <small><?= $monthlyTrends['appointments'][$i]; ?></small>
+                                        </span>
+                                        <span class="bar patients" style="height: <?= $patH; ?>px" title="<?= $monthlyTrends['patients'][$i]; ?> Patients">
+                                            <small><?= $monthlyTrends['patients'][$i]; ?></small>
+                                        </span>
+                                    </div>
+                                    <label><?= h($month); ?></label>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
                     <?php else: ?>
-                        <div class="empty-state">No station performance records for this filter.</div>
+                        <div class="empty-state">No trend records found for this period.</div>
                     <?php endif; ?>
                 </article>
             </section>
@@ -3812,7 +3814,7 @@ if (!function_exists('peso')) {
                 <div class="dash-card-head">
                     <div>
                         <h3>Filtered Patient Visits &amp; Appointments</h3>
-                        <p>Showing <?= count($reportAppointmentsList); ?> records matching active filter criteria</p>
+                        <p>Showing <?= count($reportAppointmentsList); ?> latest records matching active filter criteria</p>
                     </div>
                 </div>
                 <?php if ($reportAppointmentsList === []): ?>

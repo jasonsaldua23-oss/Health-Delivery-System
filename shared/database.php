@@ -2455,7 +2455,7 @@ function fetch_patient_profile_by_patient_id(string $patientId): ?array
          FROM appointments
          WHERE UPPER(patient_id) = ?
            AND status <> "Cancelled"
-         ORDER BY preferred_date DESC, preferred_time DESC, created_at DESC'
+         ORDER BY preferred_date DESC, preferred_time DESC, created_at DESC, id DESC'
     );
     $stmt->bind_param('s', $patientId);
     $stmt->execute();
@@ -2482,12 +2482,35 @@ function fetch_patient_profile_by_patient_id(string $patientId): ?array
 
     $profile = $profileRow ?? ($visits[0] ?? []);
     $birthDate = (string) ($profile['birth_date'] ?? '');
+    
+    // Always get the photo from their latest appointment
     $photoPath = '';
     foreach ($visits as $visit) {
-        if (trim((string) ($visit['photo_path'] ?? '')) !== '') {
+        if (!empty($visit['photo_path']) && trim((string) $visit['photo_path']) !== '') {
             $photoPath = (string) $visit['photo_path'];
             break;
         }
+    }
+
+    // Fallback: check any latest appointment if all non-cancelled visits have no photo
+    if ($photoPath === '') {
+        try {
+            $stmtAll = db()->prepare(
+                'SELECT photo_path
+                 FROM appointments
+                 WHERE UPPER(patient_id) = ?
+                   AND photo_path IS NOT NULL
+                   AND photo_path <> ""
+                 ORDER BY preferred_date DESC, preferred_time DESC, created_at DESC, id DESC
+                 LIMIT 1'
+            );
+            $stmtAll->bind_param('s', $patientId);
+            $stmtAll->execute();
+            $fallbackRow = $stmtAll->get_result()->fetch_assoc();
+            if ($fallbackRow && !empty($fallbackRow['photo_path'])) {
+                $photoPath = (string) $fallbackRow['photo_path'];
+            }
+        } catch (Throwable $e) {}
     }
 
     return [
@@ -2672,7 +2695,7 @@ function fetch_unique_patients(string $search = '', array $filters = []): array
         $types .= 'sssssss';
     }
 
-    $sql .= ' ORDER BY updated_at DESC, preferred_date DESC, preferred_time DESC, created_at DESC';
+    $sql .= ' ORDER BY preferred_date DESC, preferred_time DESC, created_at DESC, id DESC';
 
     $stmt = db()->prepare($sql);
     if ($params !== []) {
