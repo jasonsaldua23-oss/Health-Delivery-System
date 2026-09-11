@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 // Support standard database URL formats (e.g. Railway, Render, Heroku, Supabase, PlanetScale)
 $dbUrl = $_ENV['DATABASE_URL'] ?? $_ENV['MYSQL_URL'] ?? getenv('DATABASE_URL') ?: getenv('MYSQL_URL');
-$parsedUrl = is_string($dbUrl) && $dbUrl !== '' ? parse_url($dbUrl) : false;
+$parsedUrl = (is_string($dbUrl) && $dbUrl !== '' && !str_starts_with($dbUrl, 'postgres')) ? parse_url($dbUrl) : false;
 
 $envHost = $parsedUrl['host'] ?? $_ENV['DB_HOST'] ?? $_ENV['MYSQLHOST'] ?? $_ENV['MYSQL_HOST'] ?? $_ENV['DATABASE_HOST'] ?? getenv('DB_HOST') ?: getenv('MYSQLHOST') ?: getenv('MYSQL_HOST') ?: getenv('DATABASE_HOST');
 $envPort = $parsedUrl['port'] ?? $_ENV['DB_PORT'] ?? $_ENV['MYSQLPORT'] ?? $_ENV['MYSQL_PORT'] ?? $_ENV['DATABASE_PORT'] ?? getenv('DB_PORT') ?: getenv('MYSQLPORT') ?: getenv('MYSQL_PORT') ?: getenv('DATABASE_PORT');
