@@ -2877,6 +2877,7 @@ if (!function_exists('peso')) {
 
                 if (modal) modal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
+            }
             </script>
         <?php elseif ($page === 'users'): ?>
             <?php
