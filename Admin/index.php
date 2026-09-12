@@ -3624,11 +3624,11 @@ if (!function_exists('peso')) {
                         <span class="dash-stat-tag">♀ <?= $demographics['gender']['female']['pct']; ?>% | ♂ <?= $demographics['gender']['male']['pct']; ?>%</span>
                     </div>
                     <div class="dash-stat-body">
-                        <h3><?= number_format($reportStats['total_patients']); ?></h3>
+                        <h3><?= number_format($reportStats['completed_count']); ?></h3>
                         <p>Patients Served</p>
                     </div>
                     <div class="dash-stat-footer">
-                        <span>Unique completed patients in period</span>
+                        <span>Completed appointments in period</span>
                     </div>
                 </article>
 
