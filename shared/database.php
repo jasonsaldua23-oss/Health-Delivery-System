@@ -3411,9 +3411,9 @@ function weekly_chart_data(): array
     $weekStart = new DateTimeImmutable('today');
     $dayOfWeek = (int) $weekStart->format('N');
     $weekStart = $weekStart->sub(new DateInterval('P' . ($dayOfWeek - 1) . 'D'));
-    $weekEnd = $weekStart->add(new DateInterval('P5D'));
+    $weekEnd = $weekStart->add(new DateInterval('P4D'));
 
-    $days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    $days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
     $dateKeys = [];
     foreach ($days as $index => $label) {
         $dateKeys[$weekStart->add(new DateInterval('P' . $index . 'D'))->format('Y-m-d')] = $label;
