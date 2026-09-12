@@ -1759,10 +1759,6 @@ if (!function_exists('peso')) {
                                                 <?= admin_icon('calendar'); ?>
                                                 <span><?= h(date('D, M j, Y', strtotime((string) $appointment['preferred_date']))); ?></span>
                                             </span>
-                                            <span class="appt-meta-chip">
-                                                <?= admin_icon('clock'); ?>
-                                                <span><?= h($appointment['preferred_time']); ?></span>
-                                            </span>
                                             <?php if (!empty($appointment['contact_number'])): ?>
                                                 <span class="appt-meta-chip phone">
                                                     <?= admin_icon('phone'); ?>
