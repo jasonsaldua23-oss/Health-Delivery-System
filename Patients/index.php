@@ -993,10 +993,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     </ul>
                 </div>
 
-                <div class="terms-checkbox-wrapper">
-                    <label class="terms-checkbox-label" for="termsAgreementCheckbox">
-                        <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreed" value="1">
-                        <span>I confirm that all confidential information and details provided are correct and true, and I agree to the <strong>Terms of Service</strong> and <strong>Privacy Policy</strong>.</span>
+                <div class="terms-checkbox-wrapper" style="margin-bottom: 22px; padding: 14px 16px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px;">
+                    <label class="terms-checkbox-label" for="termsAgreementCheckbox" style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer; text-align: left; margin: 0; width: 100%;">
+                        <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreed" value="1" style="margin-top: 3px; width: 18px; height: 18px; min-width: 18px; min-height: 18px; flex-shrink: 0; cursor: pointer; accent-color: #0d9488;">
+                        <span style="flex: 1; font-size: 0.88rem; line-height: 1.5; color: #334155; font-weight: 500;">I confirm that all confidential information and details provided are correct and true, and I agree to the <strong style="color: #0f172a; font-weight: 700;">Terms of Service</strong> and <strong style="color: #0f172a; font-weight: 700;">Privacy Policy</strong>.</span>
                     </label>
                 </div>
 

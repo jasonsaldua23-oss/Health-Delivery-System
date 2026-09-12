@@ -1610,6 +1610,82 @@ textarea { resize: vertical; min-height: 120px; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
+   PRIVACY & TERMS CONSENT MODAL
+   ══════════════════════════════════════════════════════════════════════ */
+.privacy-consent-content {
+    max-width: 540px;
+    width: 100%;
+}
+
+.privacy-notice-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 18px 20px;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    margin-bottom: 20px;
+}
+
+.terms-checkbox-wrapper {
+    margin-bottom: 22px;
+    padding: 14px 16px;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    transition: all 0.2s ease;
+}
+
+.terms-checkbox-wrapper:hover,
+.terms-checkbox-wrapper:focus-within {
+    background: #f0fdf4;
+    border-color: #86efac;
+}
+
+.terms-checkbox-label {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    cursor: pointer;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: #1e293b;
+    user-select: none;
+    margin: 0;
+    width: 100%;
+    text-align: left;
+}
+
+.terms-checkbox-label input[type="checkbox"],
+#termsAgreementCheckbox {
+    display: block;
+    appearance: auto;
+    -webkit-appearance: checkbox;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    margin: 3px 0 0 0;
+    cursor: pointer;
+    accent-color: #0d9488;
+    flex-shrink: 0;
+}
+
+.terms-checkbox-label span {
+    flex: 1;
+    color: #334155;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.terms-checkbox-label span strong {
+    color: #0f172a;
+    font-weight: 700;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
    MODERN UNIFIED TOAST & NOTIFICATION SYSTEM
    ══════════════════════════════════════════════════════════════════════ */
 .system-toast-container {
