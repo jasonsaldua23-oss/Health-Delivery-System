@@ -501,6 +501,10 @@ $activities = recent_activity();
 $weekly = weekly_chart_data();
 
 $now = new DateTimeImmutable('today');
+$currentQuarterMonth = (int) (floor(((int) $now->format('n') - 1) / 3) * 3 + 1);
+$quarterStart = new DateTimeImmutable($now->format('Y') . '-' . str_pad((string) $currentQuarterMonth, 2, '0', STR_PAD_LEFT) . '-01');
+$quarterEnd = $quarterStart->modify('+3 months -1 day');
+
 $dashDemandData = [
     'day' => service_performance_data([
         'report_from' => $now->format('Y-m-d'),
@@ -513,6 +517,14 @@ $dashDemandData = [
     'month' => service_performance_data([
         'report_from' => $now->format('Y-m-01'),
         'report_to'   => $now->format('Y-m-t'),
+    ]),
+    'quarter' => service_performance_data([
+        'report_from' => $quarterStart->format('Y-m-d'),
+        'report_to'   => $quarterEnd->format('Y-m-d'),
+    ]),
+    'year' => service_performance_data([
+        'report_from' => $now->format('Y-01-01'),
+        'report_to'   => $now->format('Y-12-31'),
     ]),
 ];
 
@@ -968,18 +980,20 @@ if (!function_exists('peso')) {
                                 <span class="dash-period-prefix">This:</span>
                                 <select id="dashDemandPeriodSelect" class="dash-period-select-control" onchange="switchDemandPeriod(this.value)">
                                     <option value="day">Day</option>
-                                    <option value="week" selected>Week</option>
+                                    <option value="week">Week</option>
                                     <option value="month">Month</option>
+                                    <option value="quarter" selected>Quarter</option>
+                                    <option value="year">Year</option>
                                 </select>
                             </label>
                         </div>
                     </div>
                     <div class="dash-service-bars">
-                        <?php foreach (['day', 'week', 'month'] as $pKey): ?>
+                        <?php foreach (['day', 'week', 'month', 'quarter', 'year'] as $pKey): ?>
                             <?php 
                                 $pServices = $dashDemandData[$pKey] ?? [];
                                 $totalDemand = array_sum(array_map(static fn(array $s): int => (int) $s['total'], $pServices)) ?: 1;
-                                $isDefault = $pKey === 'week';
+                                $isDefault = $pKey === 'quarter';
                             ?>
                             <div class="dash-demand-period-view" data-period="<?= $pKey; ?>" style="display: <?= $isDefault ? 'flex' : 'none'; ?>; flex-direction: column; gap: 14px;">
                                 <?php if (empty($pServices)): ?>
@@ -4639,7 +4653,7 @@ function toggleDualDateFilter(clickedType, paramName, event) {
 })();
 
 window.switchDemandPeriod = function(period) {
-    if (!period) period = 'week';
+    if (!period) period = 'quarter';
     sessionStorage.setItem('admin_demand_period', period);
     const select = document.getElementById('dashDemandPeriodSelect');
     if (select && select.value !== period) {

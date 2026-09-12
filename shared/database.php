@@ -3688,8 +3688,10 @@ function service_performance_data(array $filters = []): array
 {
     $builder = build_report_filter_sql($filters);
     $where = $builder['where'];
+    $serviceCatalog = service_catalog();
 
-    $sql = 'SELECT service_name, service_slug,
+    $sql = 'SELECT COALESCE(NULLIF(service_slug, \'\'), LOWER(REPLACE(service_name, \' \', \'-\'))) AS slug,
+                   MAX(service_name) AS raw_service_name,
                    SUM(status = \'Completed\')  AS completed,
                    SUM(status = \'Cancelled\')  AS cancelled,
                    SUM(status = \'Pending\')    AS pending,
@@ -3698,7 +3700,7 @@ function service_performance_data(array $filters = []): array
                    COUNT(*) AS total
             FROM appointments
             ' . $where . '
-            GROUP BY service_slug, service_name
+            GROUP BY COALESCE(NULLIF(service_slug, \'\'), LOWER(REPLACE(service_name, \' \', \'-\')))
             ORDER BY total DESC';
 
     $stmt = db()->prepare($sql);
@@ -3711,11 +3713,13 @@ function service_performance_data(array $filters = []): array
     $items = [];
     $totalOverall = 0;
     while ($row = $rows->fetch_assoc()) {
+        $slug = (string) $row['slug'];
+        $canonicalName = $serviceCatalog[$slug]['title'] ?? $row['raw_service_name'];
         $total = (int) $row['total'];
         $totalOverall += $total;
         $items[] = [
-            'service_name' => $row['service_name'],
-            'service_slug' => $row['service_slug'],
+            'service_name' => $canonicalName,
+            'service_slug' => $slug,
             'completed'    => (int) $row['completed'],
             'cancelled'    => (int) $row['cancelled'],
             'pending'      => (int) $row['pending'],
