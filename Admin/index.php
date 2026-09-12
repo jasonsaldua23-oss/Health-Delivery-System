@@ -499,14 +499,28 @@ $adminAccounts = fetch_admin_accounts();
 $staffAccounts = fetch_staff_accounts();
 $activities = recent_activity();
 $weekly = weekly_chart_data();
-$utilization = service_utilization_data();
+
+$now = new DateTimeImmutable('today');
+$dashDemandData = [
+    'day' => service_performance_data([
+        'report_from' => $now->format('Y-m-d'),
+        'report_to'   => $now->format('Y-m-d'),
+    ]),
+    'week' => service_performance_data([
+        'report_from' => $now->modify('monday this week')->format('Y-m-d'),
+        'report_to'   => $now->modify('sunday this week')->format('Y-m-d'),
+    ]),
+    'month' => service_performance_data([
+        'report_from' => $now->format('Y-m-01'),
+        'report_to'   => $now->format('Y-m-t'),
+    ]),
+];
 
 $reportPeriod = strtolower(trim((string) ($_GET['report_period'] ?? 'annually')));
 if (!in_array($reportPeriod, ['today', 'weekly', 'monthly', 'quarterly', 'annually'], true)) {
     $reportPeriod = 'annually';
 }
 
-$now = new DateTimeImmutable('today');
 switch ($reportPeriod) {
     case 'today':
         $reportFrom = $now->format('Y-m-d');
@@ -944,29 +958,61 @@ if (!function_exists('peso')) {
 
                 <!-- Service Utilization Card -->
                 <article class="panel-card dash-service-util-card">
-                    <div class="dash-card-head">
+                    <div class="dash-card-head" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
                         <div>
                             <h3>Program Demand Breakdown</h3>
                             <p>Most requested healthcare services across centers</p>
                         </div>
+                        <div class="dash-period-filter-wrap">
+                            <label for="dashDemandPeriodSelect" class="dash-demand-period-label">
+                                <span class="dash-period-prefix">This:</span>
+                                <select id="dashDemandPeriodSelect" class="dash-period-select-control" onchange="switchDemandPeriod(this.value)">
+                                    <option value="day">Day</option>
+                                    <option value="week" selected>Week</option>
+                                    <option value="month">Month</option>
+                                </select>
+                            </label>
+                        </div>
                     </div>
-                    <?php 
-                        $totalReqs = array_sum($utilization['values']) ?: 1;
-                    ?>
                     <div class="dash-service-bars">
-                        <?php foreach ($utilization['labels'] as $i => $label): ?>
+                        <?php foreach (['day', 'week', 'month'] as $pKey): ?>
                             <?php 
-                                $val = (int) ($utilization['values'][$i] ?? 0);
-                                $pct = round(($val / $totalReqs) * 100);
+                                $pServices = $dashDemandData[$pKey] ?? [];
+                                $totalDemand = array_sum(array_map(static fn(array $s): int => (int) $s['total'], $pServices)) ?: 1;
+                                $isDefault = $pKey === 'week';
                             ?>
-                            <div class="dash-util-row">
-                                <div class="dash-util-meta">
-                                    <span class="dash-util-title"><?= h($label); ?></span>
-                                    <span class="dash-util-count"><strong><?= $val; ?></strong> bookings (<?= $pct; ?>%)</span>
-                                </div>
-                                <div class="dash-util-track">
-                                    <div class="dash-util-fill" style="width: <?= max(4, $pct); ?>%;"></div>
-                                </div>
+                            <div class="dash-demand-period-view" data-period="<?= $pKey; ?>" style="display: <?= $isDefault ? 'flex' : 'none'; ?>; flex-direction: column; gap: 14px;">
+                                <?php if (empty($pServices)): ?>
+                                    <div class="empty-state" style="padding: 24px 16px; text-align: center; color: #94a3b8; font-size: 0.88rem;">
+                                        No service demand records for this <?= $pKey; ?>.
+                                    </div>
+                                <?php else: ?>
+                                    <?php foreach ($pServices as $srv): ?>
+                                        <?php 
+                                            $val = (int) $srv['total'];
+                                            $completedCount = (int) $srv['completed'];
+                                            $pct = round(($val / $totalDemand) * 100);
+                                            $srvMeta = $serviceCatalog[$srv['service_slug']] ?? null;
+                                            $srvColor = $srvMeta['color'] ?? 'mint';
+                                            $srvIcon = $srvMeta['icon'] ?? 'appointments';
+                                        ?>
+                                        <div class="dash-util-row">
+                                            <div class="dash-util-meta">
+                                                <span class="dash-util-title">
+                                                    <span class="srv-mini-icon <?= h($srvColor); ?>"><?= admin_icon($srvIcon); ?></span>
+                                                    <?= h($srv['service_name']); ?>
+                                                </span>
+                                                <span class="dash-util-count">
+                                                    <strong><?= $val; ?></strong> booking<?= $val === 1 ? '' : 's'; ?> (<?= $pct; ?>%)
+                                                    <span class="dash-util-completed-tag"><?= $completedCount; ?> completed</span>
+                                                </span>
+                                            </div>
+                                            <div class="dash-util-track">
+                                                <div class="dash-util-fill fill-<?= h($srvColor); ?>" data-width="<?= max(4, $pct); ?>%" style="width: <?= max(4, $pct); ?>%;"></div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -4591,6 +4637,32 @@ function toggleDualDateFilter(clickedType, paramName, event) {
         }
     }, 5000);
 })();
+
+window.switchDemandPeriod = function(period) {
+    if (!period) period = 'week';
+    sessionStorage.setItem('admin_demand_period', period);
+    const select = document.getElementById('dashDemandPeriodSelect');
+    if (select && select.value !== period) {
+        select.value = period;
+    }
+    const views = document.querySelectorAll('.dash-demand-period-view');
+    views.forEach(v => {
+        if (v.getAttribute('data-period') === period) {
+            v.style.display = 'flex';
+            v.style.flexDirection = 'column';
+            v.style.gap = '14px';
+        } else {
+            v.style.display = 'none';
+        }
+    });
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const savedPeriod = sessionStorage.getItem('admin_demand_period');
+    if (savedPeriod && document.getElementById('dashDemandPeriodSelect')) {
+        window.switchDemandPeriod(savedPeriod);
+    }
+});
 
 window.dismissAdminToast = function() {
     const toast = document.getElementById('adminFlashToast');
