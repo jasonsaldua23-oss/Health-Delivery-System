@@ -727,9 +727,9 @@ $selectedFollowUpAppointment = $selectedFollowUpRecordCode !== '' ? fetch_appoin
 $photoAppointment = $selectedPhotoAppointmentId > 0 ? fetch_appointment_by_id($selectedPhotoAppointmentId) : null;
 if (is_array($photoAppointment)) {
     $apptToday = (string) ($photoAppointment['preferred_date'] ?? '') === date('Y-m-d');
-    $apptServing = (string) ($photoAppointment['status'] ?? '') === 'Serving';
+    $apptOngoing = in_array((string) ($photoAppointment['status'] ?? ''), ['Serving', 'Confirmed'], true);
     $apptHasPhoto = !empty($photoAppointment['photo_path']);
-    if ((string) ($photoAppointment['station_slug'] ?? '') !== (string) $station['slug'] || !$apptToday || !$apptServing || $apptHasPhoto) {
+    if ((string) ($photoAppointment['station_slug'] ?? '') !== (string) $station['slug'] || !$apptToday || !$apptOngoing || $apptHasPhoto) {
         $photoAppointment = null;
     }
 }
@@ -3174,7 +3174,7 @@ for ($i = 0; $i < 6; $i++) {
                                         <?php if ($captureAppointment !== null): ?>
                                             <p>Patient: <strong><?= h(full_name($captureAppointment)); ?></strong> <a href="?page=image-capture<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $captureFilter !== '' ? '&capture_filter=' . h($captureFilter) : ''; ?>" style="margin-left:8px;color:#ef4444;font-weight:700;font-size:0.8rem;text-decoration:underline;">[✕ Deselect]</a></p>
                                         <?php else: ?>
-                                            <p>Live Portrait Studio • Capture Patient Attendance Portrait</p>
+                                            <p>Live Portrait Studio • Select a patient from the directory below</p>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -3191,31 +3191,7 @@ for ($i = 0; $i < 6; $i++) {
                                 <?php if ($captureAppointment !== null): ?>
                                     <input type="hidden" name="appointment_id" value="<?= h((string) $captureAppointment['id']); ?>">
                                 <?php else: ?>
-                                    <?php 
-                                    $studioSelectCandidates = array_values(array_filter($allCaptureCandidates, static fn(array $c): bool => empty($c['photo_path'])));
-                                    ?>
-                                    <?php if (!empty($studioSelectCandidates)): ?>
-                                        <div class="form-group-item" style="background:#eff6ff;padding:14px 18px;border-radius:14px;border:1.5px solid #bfdbfe;">
-                                            <label for="select_appointment_id" class="form-field-label" style="color:#1e40af;font-weight:700;">
-                                                <span>Select Patient Record to Attach Photo:</span>
-                                                <span class="required">*</span>
-                                            </label>
-                                            <select id="select_appointment_id" name="appointment_id" class="form-input-field" required style="background:#fff;margin-top:6px;" onchange="if(this.value){ window.location.href = '?page=image-capture<?= $programFilter !== '' ? '&program=' . urlencode($programFilter) : ''; ?>&appointment=' + this.value; }">
-                                                <option value="">-- Choose Patient Record from Directory --</option>
-                                                <?php foreach ($studioSelectCandidates as $c): ?>
-                                                    <option value="<?= $c['id']; ?>">
-                                                        <?= h(full_name($c)); ?> (#<?= h((string) ($c['appointment_code'] ?? $c['reference_code'])); ?>) - <?= h((string) $c['service_name']); ?> [<?= h((string) $c['status']); ?>]
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="form-group-item" style="background:#f8fafc;padding:14px 18px;border-radius:14px;border:1.5px dashed #cbd5e1;font-size:0.86rem;color:#64748b;">
-                                            <strong>ℹ️ Standalone Portrait Testing Mode</strong>
-                                            <p style="margin:4px 0 0;">You can test and capture webcam portraits anytime. Once patient appointments are scheduled, you can select and link photos directly.</p>
-                                            <input type="hidden" name="appointment_id" value="0">
-                                        </div>
-                                    <?php endif; ?>
+                                    <input type="hidden" name="appointment_id" value="0">
                                 <?php endif; ?>
 
                                 <!-- Live Webcam Viewfinder -->
@@ -3352,7 +3328,7 @@ for ($i = 0; $i < 6; $i++) {
                                     $isApptToday = (string) ($pat['preferred_date'] ?? '') === date('Y-m-d');
                                     $isCompletedToday = $patQueueStatus === 'Completed' && $isApptToday;
                                     $patHasPhotoVerifiedToday = $patHasPhoto && $isCompletedToday;
-                                    $canCapture = $isApptToday && $isServing;
+                                    $canCapture = $isApptToday && $isOngoing && !$patHasPhoto;
 
                                     $matchesCurrentFilter = false;
                                     if ($captureFilter === 'needs_photo' && !$patHasPhoto) {
@@ -3418,7 +3394,7 @@ for ($i = 0; $i < 6; $i++) {
                                                 <?php
                                                 $disabledReason = !$isApptToday 
                                                     ? 'Photo capture is only available on appointment date (' . date('M j, Y', strtotime((string) $pat['preferred_date'])) . ')' 
-                                                    : 'Photo capture is only available when patient is being served in queue management.';
+                                                    : 'Photo capture is available for ongoing queue patients (Confirmed or Serving).';
                                                 ?>
                                                 <button type="button" class="select-patient-btn is-disabled" disabled title="<?= h($disabledReason); ?>">
                                                     <span class="btn-icon-wrap"><?= staff_icon('camera'); ?></span>
@@ -5194,6 +5170,22 @@ for ($i = 0; $i < 6; $i++) {
             capturedConfirmPanel.style.display = 'block';
             capturedConfirmPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
+    }
+
+    const saveBtn = document.getElementById('savePhotoButton');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', (e) => {
+            const apptInput = document.querySelector('input[name="appointment_id"]');
+            if (!apptInput || !apptInput.value || apptInput.value === '0') {
+                e.preventDefault();
+                alert('Please select an ongoing patient from the directory below before saving the photo.');
+                const dirElem = document.querySelector('.capture-appointments-panel');
+                if (dirElem) {
+                    dirElem.scrollIntoView({ behavior: 'smooth' });
+                }
+                return false;
+            }
+        });
     }
 
     attachPlaceholderListeners();
