@@ -3394,7 +3394,7 @@ function delete_staff_account(int $id): bool
 function appointment_stats(): array
 {
     $patients = db()->query('SELECT COUNT(DISTINCT CONCAT(first_name, "|", COALESCE(middle_name, ""), "|", last_name, "|", contact_number)) AS total FROM appointments WHERE status = "Completed"')->fetch_assoc();
-    $today = db()->query('SELECT COUNT(*) AS total FROM appointments WHERE status IN ("Pending", "Confirmed", "Serving")')->fetch_assoc();
+    $today = db()->query('SELECT COUNT(*) AS total FROM appointments WHERE status IN ("Pending", "Confirmed", "Serving") AND preferred_date = CURDATE()')->fetch_assoc();
     $services = db()->query('SELECT COUNT(DISTINCT service_slug) AS total FROM appointments WHERE status <> "Cancelled"')->fetch_assoc();
     $bookings = db()->query('SELECT COUNT(*) AS total FROM appointments WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND status <> "Cancelled"')->fetch_assoc();
 

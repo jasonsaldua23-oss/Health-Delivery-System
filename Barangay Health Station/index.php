@@ -885,7 +885,7 @@ $completedCount = count(array_filter($allStationAppointments, static fn(array $i
 $completedTodayCount = count(array_filter($todayAppointments, static fn(array $item): bool => $item['status'] === 'Completed'));
 $kpiTodayTotal = count($todayAppointments);
 $kpiPendingCount = $pendingCount;
-$kpiServingCount = count(array_filter($allStationAppointments, static fn(array $item): bool => in_array((string) ($item['status'] ?? ''), ['Confirmed', 'Serving'], true)));
+$kpiServingCount = count(array_filter($todayAppointments, static fn(array $item): bool => in_array((string) ($item['status'] ?? ''), ['Confirmed', 'Serving'], true)));
 $kpiCompletedCount = $completedTodayCount;
 $nextEvent = $stationEvents[0] ?? null;
 $programs = $station['programs'];
