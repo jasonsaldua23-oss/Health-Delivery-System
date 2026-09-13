@@ -3932,16 +3932,18 @@ button { border: 0; cursor: pointer; }
 }
 
 .select-patient-btn.is-disabled,
-.select-patient-btn[disabled] {
-  background: #f1f5f9;
-  color: #94a3b8;
-  border: 1px solid #e2e8f0;
+.select-patient-btn[disabled],
+#btnStartCamera.is-disabled,
+#btnStartCamera[disabled] {
+  background: #64748b !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #475569 !important;
   font-weight: 600;
-  cursor: not-allowed;
-  pointer-events: none;
-  opacity: 0.65;
-  box-shadow: none;
-  transform: none;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  opacity: 0.55 !important;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 /* Modals and Cross-page Verification Badge Helpers */

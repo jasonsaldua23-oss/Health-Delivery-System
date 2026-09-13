@@ -3219,13 +3219,23 @@ for ($i = 0; $i < 6; $i++) {
                                         <!-- Standby Placeholder -->
                                         <div class="viewfinder-off-placeholder" id="cameraOffPlaceholder">
                                             <span class="cam-icon-big"><?= staff_icon('camera'); ?></span>
-                                            <p id="cameraOffMsg">Live Camera Standby • In-Person Station Capture</p>
-                                            <div class="cam-placeholder-actions">
-                                                <button type="button" class="primary-btn blue-btn" id="btnStartCamera">
-                                                    <?= staff_icon('camera'); ?>
-                                                    <span>Turn On Live Camera</span>
-                                                </button>
-                                            </div>
+                                            <?php if ($captureAppointment !== null): ?>
+                                                <p id="cameraOffMsg">Live Camera Standby • Ready to capture for <strong><?= h(full_name($captureAppointment)); ?></strong></p>
+                                                <div class="cam-placeholder-actions">
+                                                    <button type="button" class="primary-btn blue-btn" id="btnStartCamera" title="Turn on live camera">
+                                                        <?= staff_icon('camera'); ?>
+                                                        <span>Turn On Live Camera</span>
+                                                    </button>
+                                                </div>
+                                            <?php else: ?>
+                                                <p id="cameraOffMsg" style="color:#94a3b8;">Live Camera Standby • Please select a patient from the directory below first</p>
+                                                <div class="cam-placeholder-actions">
+                                                    <button type="button" class="primary-btn blue-btn is-disabled" id="btnStartCamera" disabled title="Please select a patient from the queue directory below first">
+                                                        <?= staff_icon('camera'); ?>
+                                                        <span>Turn On Live Camera</span>
+                                                    </button>
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
 
@@ -4911,25 +4921,47 @@ for ($i = 0; $i < 6; $i++) {
         }
     }
 
+    const hasSelectedPatient = <?= $captureAppointment !== null ? 'true' : 'false'; ?>;
+    const selectedPatientName = <?= $captureAppointment !== null ? json_encode(full_name($captureAppointment)) : '""'; ?>;
+
+    function escapeHtml(str) {
+        return (str || '').replace(/[&<>"']/g, function(m) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+        });
+    }
+
     function resetStandbyPlaceholder() {
         if (cameraOffPlaceholder) {
-            cameraOffPlaceholder.innerHTML = `
-                <span class="cam-icon-big"><?= staff_icon('camera'); ?></span>
-                <p id="cameraOffMsg">Live Camera Standby • In-Person Station Capture</p>
-                <div class="cam-placeholder-actions">
-                    <button type="button" class="primary-btn blue-btn" id="btnStartCamera">
-                        <?= staff_icon('camera'); ?>
-                        <span>Turn On Live Camera</span>
-                    </button>
-                </div>
-            `;
+            if (hasSelectedPatient) {
+                cameraOffPlaceholder.innerHTML = `
+                    <span class="cam-icon-big"><?= staff_icon('camera'); ?></span>
+                    <p id="cameraOffMsg">Live Camera Standby • Ready to capture for <strong>${escapeHtml(selectedPatientName)}</strong></p>
+                    <div class="cam-placeholder-actions">
+                        <button type="button" class="primary-btn blue-btn" id="btnStartCamera" title="Turn on live camera">
+                            <?= staff_icon('camera'); ?>
+                            <span>Turn On Live Camera</span>
+                        </button>
+                    </div>
+                `;
+            } else {
+                cameraOffPlaceholder.innerHTML = `
+                    <span class="cam-icon-big"><?= staff_icon('camera'); ?></span>
+                    <p id="cameraOffMsg" style="color:#94a3b8;">Live Camera Standby • Please select a patient from the directory below first</p>
+                    <div class="cam-placeholder-actions">
+                        <button type="button" class="primary-btn blue-btn is-disabled" id="btnStartCamera" disabled title="Please select a patient from the queue directory below first">
+                            <?= staff_icon('camera'); ?>
+                            <span>Turn On Live Camera</span>
+                        </button>
+                    </div>
+                `;
+            }
             attachPlaceholderListeners();
         }
     }
 
     function attachPlaceholderListeners() {
         const startBtn = document.getElementById('btnStartCamera');
-        if (startBtn) {
+        if (startBtn && !startBtn.disabled) {
             startBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 startCamera();
@@ -4986,6 +5018,15 @@ for ($i = 0; $i < 6; $i++) {
     }
 
     async function startCamera() {
+        if (!hasSelectedPatient) {
+            alert('Please select an ongoing patient from the directory below before turning on the camera.');
+            const dirElem = document.querySelector('.capture-appointments-panel');
+            if (dirElem) {
+                dirElem.scrollIntoView({ behavior: 'smooth' });
+            }
+            return;
+        }
+
         if (isStartingCamera) return;
         isStartingCamera = true;
 
