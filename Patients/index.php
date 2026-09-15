@@ -709,12 +709,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
 
                                 <div class="form-grid two-col" style="margin-top: 14px;">
                                     <label class="full-span">
-                                        <span>Relationship to Patient <em>*</em></span>
+                                        <span>Relationship to Recipient <em>*</em></span>
                                         <select data-required name="immunization_relationship" id="immunization_relationship" class="form-select-field">
                                             <option value="">-- Select Relationship --</option>
-                                            <option value="Self" <?= $formData['immunization_relationship'] === 'Self' ? 'selected' : ''; ?>>Self (I am the recipient)</option>
-                                            <option value="Parent" <?= $formData['immunization_relationship'] === 'Parent' ? 'selected' : ''; ?>>Parent (Booking for my child / infant)</option>
-                                            <option value="Guardian" <?= $formData['immunization_relationship'] === 'Guardian' ? 'selected' : ''; ?>>Guardian (Booking for my ward / infant)</option>
+                                            <option value="Self" <?= $formData['immunization_relationship'] === 'Self' ? 'selected' : ''; ?>>Self</option>
+                                            <option value="Parent" <?= $formData['immunization_relationship'] === 'Parent' ? 'selected' : ''; ?>>Parent</option>
+                                            <option value="Guardian" <?= $formData['immunization_relationship'] === 'Guardian' ? 'selected' : ''; ?>>Guardian</option>
                                         </select>
                                     </label>
                                 </div>
