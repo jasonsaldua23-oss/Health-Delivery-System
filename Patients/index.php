@@ -131,15 +131,17 @@ if (!function_exists('iconSvg')) {
     }
 }
 
-function fullName(array $appointment): string
-{
-    $parts = [
-        trim((string) ($appointment['first_name'] ?? '')),
-        trim((string) ($appointment['middle_name'] ?? '')),
-        trim((string) ($appointment['last_name'] ?? '')),
-    ];
+if (!function_exists('fullName')) {
+    function fullName(array $appointment): string
+    {
+        $parts = [
+            trim((string) ($appointment['first_name'] ?? '')),
+            trim((string) ($appointment['middle_name'] ?? '')),
+            trim((string) ($appointment['last_name'] ?? '')),
+        ];
 
-    return trim(implode(' ', array_filter($parts)));
+        return trim(implode(' ', array_filter($parts)));
+    }
 }
 
 $selectedSlug = isset($_GET['barangay']) ? strtolower(trim((string) $_GET['barangay'])) : '';
@@ -392,79 +394,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
     }
 
     if ($errors === []) {
-        $reference = create_reference_code();
-        upsert_patient_profile($formData + ['patient_id' => $patientId]);
+        try {
+            $reference = create_reference_code();
+            upsert_patient_profile($formData + ['patient_id' => $patientId]);
 
-        $recipientFirst = $formData['recipient_first_name'];
-        $recipientMiddle = $formData['recipient_middle_name'];
-        $recipientLast = $formData['recipient_last_name'];
-        $recipientBirth = $formData['recipient_birth_date'] !== '' ? $formData['recipient_birth_date'] : null;
+            $recipientFirst = $formData['recipient_first_name'];
+            $recipientMiddle = $formData['recipient_middle_name'];
+            $recipientLast = $formData['recipient_last_name'];
+            $recipientBirth = $formData['recipient_birth_date'] !== '' ? $formData['recipient_birth_date'] : null;
 
-        if ($selectedProgram['slug'] === 'immunization' && $formData['immunization_relationship'] === 'Self') {
-            $recipientFirst = $formData['first_name'];
-            $recipientMiddle = $formData['middle_name'];
-            $recipientLast = $formData['last_name'];
-            $recipientBirth = $formData['birth_date'];
+            if ($selectedProgram['slug'] === 'immunization' && $formData['immunization_relationship'] === 'Self') {
+                $recipientFirst = $formData['first_name'];
+                $recipientMiddle = $formData['middle_name'];
+                $recipientLast = $formData['last_name'];
+                $recipientBirth = $formData['birth_date'];
+            }
+
+            $dbConn = db();
+
+            // Ensure columns exist on database before inserting
+            if (!db_column_exists($dbConn, 'appointments', 'immunization_relationship') || !db_table_exists($dbConn, 'immunized_infants')) {
+                run_database_migrations($dbConn, false);
+            }
+
+            $stmt = $dbConn->prepare('INSERT INTO appointments (
+                reference_code, appointment_code, patient_id, 
+                station_slug, station_name, service_slug, service_name, 
+                first_name, middle_name, last_name, birth_date, gender, 
+                contact_number, email, complete_address, immunization_relationship, 
+                recipient_first_name, recipient_middle_name, recipient_last_name, recipient_birth_date,
+                preferred_date, preferred_time, notes, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending")');
+
+            $stmt->bind_param(
+                'sssssssssssssssssssssss',
+                $reference,
+                $appointmentCode,
+                $patientId,
+                $selectedStation['slug'],
+                $selectedStation['name'],
+                $selectedProgram['slug'],
+                $selectedProgram['title'],
+                $formData['first_name'],
+                $formData['middle_name'],
+                $formData['last_name'],
+                $formData['birth_date'],
+                $formData['gender'],
+                $formData['contact_number'],
+                $formData['email'],
+                $formData['complete_address'],
+                $formData['immunization_relationship'],
+                $recipientFirst,
+                $recipientMiddle,
+                $recipientLast,
+                $recipientBirth,
+                $formData['preferred_date'],
+                $formData['preferred_time'],
+                $formData['notes']
+            );
+            $stmt->execute();
+            $newApptId = (int) $dbConn->insert_id;
+
+            if ($selectedProgram['slug'] === 'immunization') {
+                save_immunized_infant([
+                    'appointment_id' => $newApptId,
+                    'appointment_code' => $appointmentCode,
+                    'patient_id' => $patientId,
+                    'first_name' => $recipientFirst !== '' ? $recipientFirst : $formData['first_name'],
+                    'middle_name' => $recipientMiddle !== '' ? $recipientMiddle : $formData['middle_name'],
+                    'last_name' => $recipientLast !== '' ? $recipientLast : $formData['last_name'],
+                    'birth_date' => $recipientBirth !== null ? $recipientBirth : $formData['birth_date'],
+                    'gender' => $formData['gender'],
+                    'relationship' => $formData['immunization_relationship'],
+                    'station_slug' => $selectedStation['slug'],
+                    'vaccine_type' => null,
+                ]);
+            }
+
+            log_activity('patient', $patientId, 'appointment_booked', 'appointment', $reference, '', 'Pending', $selectedStation['slug']);
+
+            header('Location: ?confirmation=' . urlencode($reference));
+            exit;
+        } catch (Throwable $e) {
+            error_log('Appointment booking failed: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            try {
+                run_database_migrations(db(), false);
+            } catch (Throwable $migErr) {}
+
+            $errors[] = 'An error occurred while saving your appointment (' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '). Please try again.';
         }
-
-        $stmt = db()->prepare('INSERT INTO appointments (
-            reference_code, appointment_code, patient_id, 
-            station_slug, station_name, service_slug, service_name, 
-            first_name, middle_name, last_name, birth_date, gender, 
-            contact_number, email, complete_address, immunization_relationship, 
-            recipient_first_name, recipient_middle_name, recipient_last_name, recipient_birth_date,
-            preferred_date, preferred_time, notes, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending")');
-
-        $stmt->bind_param(
-            'sssssssssssssssssssssss',
-            $reference,
-            $appointmentCode,
-            $patientId,
-            $selectedStation['slug'],
-            $selectedStation['name'],
-            $selectedProgram['slug'],
-            $selectedProgram['title'],
-            $formData['first_name'],
-            $formData['middle_name'],
-            $formData['last_name'],
-            $formData['birth_date'],
-            $formData['gender'],
-            $formData['contact_number'],
-            $formData['email'],
-            $formData['complete_address'],
-            $formData['immunization_relationship'],
-            $recipientFirst,
-            $recipientMiddle,
-            $recipientLast,
-            $recipientBirth,
-            $formData['preferred_date'],
-            $formData['preferred_time'],
-            $formData['notes']
-        );
-        $stmt->execute();
-        $newApptId = (int) db()->insert_id;
-
-        if ($selectedProgram['slug'] === 'immunization') {
-            save_immunized_infant([
-                'appointment_id' => $newApptId,
-                'appointment_code' => $appointmentCode,
-                'patient_id' => $patientId,
-                'first_name' => $recipientFirst !== '' ? $recipientFirst : $formData['first_name'],
-                'middle_name' => $recipientMiddle !== '' ? $recipientMiddle : $formData['middle_name'],
-                'last_name' => $recipientLast !== '' ? $recipientLast : $formData['last_name'],
-                'birth_date' => $recipientBirth !== null ? $recipientBirth : $formData['birth_date'],
-                'gender' => $formData['gender'],
-                'relationship' => $formData['immunization_relationship'],
-                'station_slug' => $selectedStation['slug'],
-                'vaccine_type' => null,
-            ]);
-        }
-
-        log_activity('patient', $patientId, 'appointment_booked', 'appointment', $reference, '', 'Pending', $selectedStation['slug']);
-
-        header('Location: ?confirmation=' . urlencode($reference));
-        exit;
     }
     }
 }

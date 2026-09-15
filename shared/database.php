@@ -510,22 +510,29 @@ function default_admin_password_hash(): string
     return '$2y$10$ZYSFCaxq0ETDZAMlMRHW.eVQFoKAEAIguPEBayApiG29bSUmxRM4W';
 }
 
+function db_table_exists(mysqli $connection, string $table): bool
+{
+    $cleanTable = str_replace(['`', "'", '"'], '', $table);
+    $safeTable = $connection->real_escape_string($cleanTable);
+    try {
+        $result = $connection->query("SHOW TABLES LIKE '{$safeTable}'");
+        return $result instanceof mysqli_result && $result->num_rows > 0;
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
 function db_column_exists(mysqli $connection, string $table, string $column): bool
 {
-    $safeTable = $connection->real_escape_string($table);
+    $cleanTable = str_replace(['`', "'", '"'], '', $table);
+    $safeTable = $connection->real_escape_string($cleanTable);
     $safeColumn = $connection->real_escape_string($column);
-    $databaseName = $connection->real_escape_string(DB_NAME);
-
-    $result = $connection->query(
-        "SELECT 1
-         FROM information_schema.COLUMNS
-         WHERE TABLE_SCHEMA = '{$databaseName}'
-           AND TABLE_NAME = '{$safeTable}'
-           AND COLUMN_NAME = '{$safeColumn}'
-         LIMIT 1"
-    );
-
-    return $result instanceof mysqli_result && $result->num_rows > 0;
+    try {
+        $result = $connection->query("SHOW COLUMNS FROM `{$safeTable}` LIKE '{$safeColumn}'");
+        return $result instanceof mysqli_result && $result->num_rows > 0;
+    } catch (Throwable $e) {
+        return false;
+    }
 }
 
 function create_admin_accounts_table(mysqli $connection, string $engine = 'InnoDB'): void
@@ -1032,153 +1039,219 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
 
     // Ensure columns
     if (!db_column_exists($connection, 'station_service_assignments', 'daily_capacity')) {
-        $connection->query('ALTER TABLE station_service_assignments ADD COLUMN daily_capacity INT UNSIGNED NOT NULL DEFAULT 200 AFTER sort_order');
-        $log[] = 'Added station_service_assignments.daily_capacity';
+        try {
+            $connection->query('ALTER TABLE station_service_assignments ADD COLUMN daily_capacity INT UNSIGNED NOT NULL DEFAULT 200 AFTER sort_order');
+            $log[] = 'Added station_service_assignments.daily_capacity';
+        } catch (Throwable $e) {}
     }
 
     if (!db_column_exists($connection, 'appointments', 'middle_name')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN middle_name VARCHAR(100) DEFAULT NULL AFTER first_name');
-        $log[] = 'Added appointments.middle_name';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN middle_name VARCHAR(100) DEFAULT NULL AFTER first_name');
+            $log[] = 'Added appointments.middle_name';
+        } catch (Throwable $e) {}
     }
 
     if (!db_column_exists($connection, 'appointments', 'appointment_code')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN appointment_code VARCHAR(10) DEFAULT NULL AFTER reference_code');
-        $log[] = 'Added appointments.appointment_code';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN appointment_code VARCHAR(10) DEFAULT NULL AFTER reference_code');
+            $log[] = 'Added appointments.appointment_code';
+        } catch (Throwable $e) {}
     }
 
     if (!db_column_exists($connection, 'appointments', 'body_temperature')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN body_temperature VARCHAR(30) DEFAULT NULL AFTER notes');
-        $log[] = 'Added appointments.body_temperature';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN body_temperature VARCHAR(30) DEFAULT NULL AFTER notes');
+            $log[] = 'Added appointments.body_temperature';
+        } catch (Throwable $e) {}
     }
 
     if (!db_column_exists($connection, 'appointments', 'pulse_rate')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN pulse_rate VARCHAR(30) DEFAULT NULL AFTER body_temperature');
-        $log[] = 'Added appointments.pulse_rate';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN pulse_rate VARCHAR(30) DEFAULT NULL AFTER body_temperature');
+            $log[] = 'Added appointments.pulse_rate';
+        } catch (Throwable $e) {}
     }
 
     if (!db_column_exists($connection, 'appointments', 'respiration_rate')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN respiration_rate VARCHAR(30) DEFAULT NULL AFTER pulse_rate');
-        $log[] = 'Added appointments.respiration_rate';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN respiration_rate VARCHAR(30) DEFAULT NULL AFTER pulse_rate');
+            $log[] = 'Added appointments.respiration_rate';
+        } catch (Throwable $e) {}
     }
 
     if (!db_column_exists($connection, 'appointments', 'blood_pressure')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN blood_pressure VARCHAR(30) DEFAULT NULL AFTER respiration_rate');
-        $log[] = 'Added appointments.blood_pressure';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN blood_pressure VARCHAR(30) DEFAULT NULL AFTER respiration_rate');
+            $log[] = 'Added appointments.blood_pressure';
+        } catch (Throwable $e) {}
     }
 
     if (!db_column_exists($connection, 'appointments', 'doctor_notes')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN doctor_notes TEXT DEFAULT NULL AFTER blood_pressure');
-        $log[] = 'Added appointments.doctor_notes';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN doctor_notes TEXT DEFAULT NULL AFTER blood_pressure');
+            $log[] = 'Added appointments.doctor_notes';
+        } catch (Throwable $e) {}
     }
 
     if (!db_column_exists($connection, 'appointments', 'immunization_relationship')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN immunization_relationship VARCHAR(100) DEFAULT NULL AFTER complete_address');
-        $log[] = 'Added appointments.immunization_relationship';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN immunization_relationship VARCHAR(100) DEFAULT NULL AFTER complete_address');
+            $log[] = 'Added appointments.immunization_relationship';
+        } catch (Throwable $e) {}
     }
 
     if (!db_column_exists($connection, 'appointments', 'recipient_first_name')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN recipient_first_name VARCHAR(100) DEFAULT NULL AFTER immunization_relationship');
-        $log[] = 'Added appointments.recipient_first_name';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN recipient_first_name VARCHAR(100) DEFAULT NULL AFTER immunization_relationship');
+            $log[] = 'Added appointments.recipient_first_name';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'appointments', 'recipient_middle_name')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN recipient_middle_name VARCHAR(100) DEFAULT NULL AFTER recipient_first_name');
-        $log[] = 'Added appointments.recipient_middle_name';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN recipient_middle_name VARCHAR(100) DEFAULT NULL AFTER recipient_first_name');
+            $log[] = 'Added appointments.recipient_middle_name';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'appointments', 'recipient_last_name')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN recipient_last_name VARCHAR(100) DEFAULT NULL AFTER recipient_middle_name');
-        $log[] = 'Added appointments.recipient_last_name';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN recipient_last_name VARCHAR(100) DEFAULT NULL AFTER recipient_middle_name');
+            $log[] = 'Added appointments.recipient_last_name';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'appointments', 'recipient_birth_date')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN recipient_birth_date DATE DEFAULT NULL AFTER recipient_last_name');
-        $log[] = 'Added appointments.recipient_birth_date';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN recipient_birth_date DATE DEFAULT NULL AFTER recipient_last_name');
+            $log[] = 'Added appointments.recipient_birth_date';
+        } catch (Throwable $e) {}
     }
 
     if (!db_column_exists($connection, 'appointments', 'follow_up_date')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN follow_up_date DATE DEFAULT NULL AFTER doctor_notes');
-        $log[] = 'Added appointments.follow_up_date';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN follow_up_date DATE DEFAULT NULL AFTER doctor_notes');
+            $log[] = 'Added appointments.follow_up_date';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'appointments', 'follow_up_time')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN follow_up_time VARCHAR(50) DEFAULT NULL AFTER follow_up_date');
-        $log[] = 'Added appointments.follow_up_time';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN follow_up_time VARCHAR(50) DEFAULT NULL AFTER follow_up_date');
+            $log[] = 'Added appointments.follow_up_time';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'appointments', 'follow_up_notes')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN follow_up_notes TEXT DEFAULT NULL AFTER follow_up_time');
-        $log[] = 'Added appointments.follow_up_notes';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN follow_up_notes TEXT DEFAULT NULL AFTER follow_up_time');
+            $log[] = 'Added appointments.follow_up_notes';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'appointments', 'follow_up_set_at')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN follow_up_set_at TIMESTAMP NULL DEFAULT NULL AFTER follow_up_notes');
-        $log[] = 'Added appointments.follow_up_set_at';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN follow_up_set_at TIMESTAMP NULL DEFAULT NULL AFTER follow_up_notes');
+            $log[] = 'Added appointments.follow_up_set_at';
+        } catch (Throwable $e) {}
     }
 
     if (!db_column_exists($connection, 'upcoming_events', 'end_time_label')) {
-        $connection->query('ALTER TABLE upcoming_events ADD COLUMN end_time_label VARCHAR(100) DEFAULT NULL AFTER time_label');
-        $log[] = 'Added upcoming_events.end_time_label';
+        try {
+            $connection->query('ALTER TABLE upcoming_events ADD COLUMN end_time_label VARCHAR(100) DEFAULT NULL AFTER time_label');
+            $log[] = 'Added upcoming_events.end_time_label';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'upcoming_events', 'target_month')) {
-        $connection->query('ALTER TABLE upcoming_events ADD COLUMN target_month VARCHAR(20) DEFAULT NULL AFTER description');
-        $log[] = 'Added upcoming_events.target_month';
+        try {
+            $connection->query('ALTER TABLE upcoming_events ADD COLUMN target_month VARCHAR(20) DEFAULT NULL AFTER description');
+            $log[] = 'Added upcoming_events.target_month';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'upcoming_events', 'status')) {
-        $connection->query('ALTER TABLE upcoming_events ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT "active" AFTER accent');
-        $log[] = 'Added upcoming_events.status';
+        try {
+            $connection->query('ALTER TABLE upcoming_events ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT "active" AFTER accent');
+            $log[] = 'Added upcoming_events.status';
+        } catch (Throwable $e) {}
     }
     try {
         $connection->query('ALTER TABLE upcoming_events MODIFY COLUMN event_date DATE NULL DEFAULT NULL');
     } catch (Throwable $e) {}
 
     if (!db_column_exists($connection, 'appointments', 'vaccine_type')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN vaccine_type VARCHAR(150) DEFAULT NULL AFTER blood_pressure');
-        $log[] = 'Added appointments.vaccine_type';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN vaccine_type VARCHAR(150) DEFAULT NULL AFTER blood_pressure');
+            $log[] = 'Added appointments.vaccine_type';
+        } catch (Throwable $e) {}
     }
 
     if (!db_column_exists($connection, 'appointments', 'reminder_sms_sent')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN reminder_sms_sent TINYINT(1) NOT NULL DEFAULT 0 AFTER doctor_notes');
-        $log[] = 'Added appointments.reminder_sms_sent';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN reminder_sms_sent TINYINT(1) NOT NULL DEFAULT 0 AFTER doctor_notes');
+            $log[] = 'Added appointments.reminder_sms_sent';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'appointments', 'reminder_sent_at')) {
-        $connection->query('ALTER TABLE appointments ADD COLUMN reminder_sent_at TIMESTAMP NULL DEFAULT NULL AFTER reminder_sms_sent');
-        $log[] = 'Added appointments.reminder_sent_at';
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN reminder_sent_at TIMESTAMP NULL DEFAULT NULL AFTER reminder_sms_sent');
+            $log[] = 'Added appointments.reminder_sent_at';
+        } catch (Throwable $e) {}
     }
 
     if (!db_column_exists($connection, 'staff_accounts', 'birth_date')) {
-        $connection->query('ALTER TABLE staff_accounts ADD COLUMN birth_date DATE DEFAULT NULL AFTER password_hash');
-        $log[] = 'Added staff_accounts.birth_date';
+        try {
+            $connection->query('ALTER TABLE staff_accounts ADD COLUMN birth_date DATE DEFAULT NULL AFTER password_hash');
+            $log[] = 'Added staff_accounts.birth_date';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'staff_accounts', 'gender')) {
-        $connection->query('ALTER TABLE staff_accounts ADD COLUMN gender VARCHAR(30) DEFAULT NULL AFTER birth_date');
-        $log[] = 'Added staff_accounts.gender';
+        try {
+            $connection->query('ALTER TABLE staff_accounts ADD COLUMN gender VARCHAR(30) DEFAULT NULL AFTER birth_date');
+            $log[] = 'Added staff_accounts.gender';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'staff_accounts', 'contact_number')) {
-        $connection->query('ALTER TABLE staff_accounts ADD COLUMN contact_number VARCHAR(30) DEFAULT NULL AFTER gender');
-        $log[] = 'Added staff_accounts.contact_number';
+        try {
+            $connection->query('ALTER TABLE staff_accounts ADD COLUMN contact_number VARCHAR(30) DEFAULT NULL AFTER gender');
+            $log[] = 'Added staff_accounts.contact_number';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'staff_accounts', 'home_address')) {
-        $connection->query('ALTER TABLE staff_accounts ADD COLUMN home_address VARCHAR(255) DEFAULT NULL AFTER contact_number');
-        $log[] = 'Added staff_accounts.home_address';
+        try {
+            $connection->query('ALTER TABLE staff_accounts ADD COLUMN home_address VARCHAR(255) DEFAULT NULL AFTER contact_number');
+            $log[] = 'Added staff_accounts.home_address';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'staff_accounts', 'emergency_contact')) {
-        $connection->query('ALTER TABLE staff_accounts ADD COLUMN emergency_contact VARCHAR(100) DEFAULT NULL AFTER home_address');
-        $log[] = 'Added staff_accounts.emergency_contact';
+        try {
+            $connection->query('ALTER TABLE staff_accounts ADD COLUMN emergency_contact VARCHAR(100) DEFAULT NULL AFTER home_address');
+            $log[] = 'Added staff_accounts.emergency_contact';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'staff_accounts', 'emergency_phone')) {
-        $connection->query('ALTER TABLE staff_accounts ADD COLUMN emergency_phone VARCHAR(30) DEFAULT NULL AFTER emergency_contact');
-        $log[] = 'Added staff_accounts.emergency_phone';
+        try {
+            $connection->query('ALTER TABLE staff_accounts ADD COLUMN emergency_phone VARCHAR(30) DEFAULT NULL AFTER emergency_contact');
+            $log[] = 'Added staff_accounts.emergency_phone';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'admin_accounts', 'last_active_at')) {
-        $connection->query('ALTER TABLE admin_accounts ADD COLUMN last_active_at TIMESTAMP NULL DEFAULT NULL AFTER password_hash');
-        $log[] = 'Added admin_accounts.last_active_at';
+        try {
+            $connection->query('ALTER TABLE admin_accounts ADD COLUMN last_active_at TIMESTAMP NULL DEFAULT NULL AFTER password_hash');
+            $log[] = 'Added admin_accounts.last_active_at';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'admin_accounts', 'is_logged_in')) {
-        $connection->query('ALTER TABLE admin_accounts ADD COLUMN is_logged_in TINYINT(1) NOT NULL DEFAULT 0 AFTER last_active_at');
-        $log[] = 'Added admin_accounts.is_logged_in';
+        try {
+            $connection->query('ALTER TABLE admin_accounts ADD COLUMN is_logged_in TINYINT(1) NOT NULL DEFAULT 0 AFTER last_active_at');
+            $log[] = 'Added admin_accounts.is_logged_in';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'staff_accounts', 'last_active_at')) {
-        $connection->query('ALTER TABLE staff_accounts ADD COLUMN last_active_at TIMESTAMP NULL DEFAULT NULL AFTER emergency_phone');
-        $log[] = 'Added staff_accounts.last_active_at';
+        try {
+            $connection->query('ALTER TABLE staff_accounts ADD COLUMN last_active_at TIMESTAMP NULL DEFAULT NULL AFTER emergency_phone');
+            $log[] = 'Added staff_accounts.last_active_at';
+        } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'staff_accounts', 'is_logged_in')) {
-        $connection->query('ALTER TABLE staff_accounts ADD COLUMN is_logged_in TINYINT(1) NOT NULL DEFAULT 0 AFTER last_active_at');
-        $log[] = 'Added staff_accounts.is_logged_in';
+        try {
+            $connection->query('ALTER TABLE staff_accounts ADD COLUMN is_logged_in TINYINT(1) NOT NULL DEFAULT 0 AFTER last_active_at');
+            $log[] = 'Added staff_accounts.is_logged_in';
+        } catch (Throwable $e) {}
     }
 
     try {
@@ -1336,7 +1409,13 @@ function db(): mysqli
 
     // Auto-check if core tables and latest columns exist. If missing, auto-migrate seamlessly on connection!
     try {
-        if (!db_column_exists($connection, 'admin_accounts', 'last_active_at')
+        if (!db_table_exists($connection, 'immunized_infants')
+            || !db_column_exists($connection, 'appointments', 'immunization_relationship')
+            || !db_column_exists($connection, 'appointments', 'recipient_first_name')
+            || !db_column_exists($connection, 'appointments', 'recipient_middle_name')
+            || !db_column_exists($connection, 'appointments', 'recipient_last_name')
+            || !db_column_exists($connection, 'appointments', 'recipient_birth_date')
+            || !db_column_exists($connection, 'admin_accounts', 'last_active_at')
             || !db_column_exists($connection, 'staff_accounts', 'last_active_at')
             || !db_column_exists($connection, 'upcoming_events', 'status') 
             || !db_column_exists($connection, 'appointments', 'vaccine_type') 
