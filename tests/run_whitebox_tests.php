@@ -1388,6 +1388,38 @@ recordTest(
     'Self recipient fallback verified'
 );
 
+// WB-079: appointment_recipient_details for Guardian relationship
+$mockApptGuardian = [
+    'service_slug' => 'immunization',
+    'service_name' => 'Immunization',
+    'first_name' => 'Clara',
+    'last_name' => 'Ramos',
+    'birth_date' => '1985-03-20',
+    'immunization_relationship' => 'Guardian',
+    'recipient_first_name' => 'Marco',
+    'recipient_middle_name' => 'Luis',
+    'recipient_last_name' => 'Ramos',
+    'recipient_birth_date' => date('Y-m-d', strtotime('-1 year')),
+    'vaccine_type' => 'MMR'
+];
+$detailsGuardian = mock_appointment_recipient_details($mockApptGuardian);
+$guardianPassed = ($detailsGuardian['is_self'] === false)
+    && ($detailsGuardian['recipient_name'] === 'Marco Luis Ramos')
+    && ($detailsGuardian['relationship'] === 'Guardian')
+    && ($detailsGuardian['vaccine_type'] === 'MMR')
+    && (str_contains($detailsGuardian['age_label'], 'yr'));
+
+recordTest(
+    'WB-079',
+    'appointment_recipient_details',
+    'Verify appointment_recipient_details resolves ward recipient, Guardian relationship, and vaccine for Guardian',
+    'Appt with relationship="Guardian", Recipient="Marco Luis Ramos", 1-year-old DOB, Vaccine="MMR"',
+    'is_self=false, recipient_name="Marco Luis Ramos", relationship="Guardian", vaccine_type="MMR", age in years',
+    'Returned expected ward infant details and Guardian relationship',
+    $guardianPassed,
+    'Guardian recipient resolution verified'
+);
+
 // Save outputs
 $summary = [
     'total' => count($results),

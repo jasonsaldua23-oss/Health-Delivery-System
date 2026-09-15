@@ -316,11 +316,12 @@ function downloadConfirmationImage() {
         recipientRel: downloadButton.dataset.recipientRel || '',
         recipientDob: downloadButton.dataset.recipientDob || '',
         recipientAge: downloadButton.dataset.recipientAge || '',
+        vaccineType: downloadButton.dataset.vaccineType || '',
     };
 
     const canvas = document.createElement('canvas');
     canvas.width = 1600;
-    canvas.height = details.isImmunization ? 1340 : 1200;
+    canvas.height = details.isImmunization ? 1380 : 1200;
     const ctx = canvas.getContext('2d');
 
     ctx.fillStyle = '#f5fbff';
@@ -349,7 +350,7 @@ function downloadConfirmationImage() {
     ctx.font = '700 30px Outfit';
     ctx.fillText(details.patientId || 'Pending', 1150, 405);
 
-    const cardHeight = details.isImmunization ? 550 : 410;
+    const cardHeight = details.isImmunization ? 600 : 410;
     roundedRect(ctx, 120, 470, 1360, cardHeight, 28, '#ffffff');
     ctx.strokeStyle = '#dbe7f3';
     ctx.lineWidth = 2;
@@ -378,6 +379,10 @@ function downloadConfirmationImage() {
 
     rows.push(['Email Address', details.email]);
     rows.push(['Registered Address', details.address]);
+
+    if (details.isImmunization) {
+        rows.push(['Type of Vaccine', details.vaccineType || 'Pending staff vitals encoding upon arrival']);
+    }
 
     let x = 170;
     let y = 610;
@@ -444,16 +449,16 @@ function toggleImmunizationRecipientFields() {
     if (!immRelSelect || !extraRecipientFields) return;
 
     const val = immRelSelect.value;
-    if (val === 'Parent' || val === 'Guardian') {
+    if (val && val !== 'Self') {
         extraRecipientFields.style.display = 'block';
-        if (recipientFirstInput) recipientFirstInput.setAttribute('data-required', '');
-        if (recipientLastInput) recipientLastInput.setAttribute('data-required', '');
-        if (recipientDobInput) recipientDobInput.setAttribute('data-required', '');
+        if (recipientFirstInput) { recipientFirstInput.setAttribute('data-required', ''); recipientFirstInput.required = true; }
+        if (recipientLastInput) { recipientLastInput.setAttribute('data-required', ''); recipientLastInput.required = true; }
+        if (recipientDobInput) { recipientDobInput.setAttribute('data-required', ''); recipientDobInput.required = true; }
     } else {
         extraRecipientFields.style.display = 'none';
-        if (recipientFirstInput) recipientFirstInput.removeAttribute('data-required');
-        if (recipientLastInput) recipientLastInput.removeAttribute('data-required');
-        if (recipientDobInput) recipientDobInput.removeAttribute('data-required');
+        if (recipientFirstInput) { recipientFirstInput.removeAttribute('data-required'); recipientFirstInput.required = false; }
+        if (recipientLastInput) { recipientLastInput.removeAttribute('data-required'); recipientLastInput.required = false; }
+        if (recipientDobInput) { recipientDobInput.removeAttribute('data-required'); recipientDobInput.required = false; }
     }
 }
 

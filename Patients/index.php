@@ -526,6 +526,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                         <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('heart'); ?></span><div><small>Relationship to Recipient</small><strong class="relationship-pill-tag"><?= h($recipientInfo['relationship']); ?></strong></div></div>
                         <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('calendar'); ?></span><div><small>Recipient Birthdate &amp; Age</small><strong><?= !empty($recipientInfo['recipient_birth_date']) ? h(date('F j, Y', strtotime($recipientInfo['recipient_birth_date']))) . ' (' . h($recipientInfo['recipient_age_label']) . ')' : 'Not specified'; ?></strong></div></div>
                         <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('shield'); ?></span><div><small>Booked By (Account Holder)</small><strong><?= h($recipientInfo['patient_full_name']); ?> (ID: #<?= h((string)($confirmedAppointment['patient_id'] ?? 'N/A')); ?>)</strong></div></div>
+                        <div class="detail-line full-span-line"><span class="inline-icon light-icon"><?= iconSvg('syringe'); ?></span><div><small>Type of Vaccine</small><strong style="color: <?= !empty($confirmedAppointment['vaccine_type']) ? '#065f46' : '#64748b'; ?>;"><?= !empty($confirmedAppointment['vaccine_type']) ? h((string) $confirmedAppointment['vaccine_type']) : 'Pending staff vitals encoding upon arrival'; ?></strong></div></div>
                     </div>
                 <?php endif; ?>
 
@@ -576,6 +577,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     data-recipient-rel="<?= h($recipientInfo['relationship']); ?>"
                     data-recipient-dob="<?= !empty($recipientInfo['recipient_birth_date']) ? h(date('F j, Y', strtotime($recipientInfo['recipient_birth_date']))) : ''; ?>"
                     data-recipient-age="<?= h($recipientInfo['recipient_age_label']); ?>"
+                    data-vaccine-type="<?= h((string) ($confirmedAppointment['vaccine_type'] ?? '')); ?>"
                 ><span class="inline-icon"><?= iconSvg('download'); ?></span> Download</button>
             </div>
         </div>
@@ -696,7 +698,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                         <label><span>Email Address</span><input type="email" name="email" value="<?= h($formData['email']); ?>" placeholder="juan.delacruz@email.com" class="form-readonly-input" readonly></label>
                         
                         <?php if ($selectedProgram['slug'] === 'immunization'): ?>
-                            <div class="full-span immunization-recipient-card" id="immunizationRecipientSection">
+                            <div class="full-span immunization-recipient-card" id="immunizationRecipientCard">
                                 <div class="recipient-section-head">
                                     <span class="recipient-badge-icon"><?= iconSvg('syringe'); ?></span>
                                     <div>
@@ -707,7 +709,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
 
                                 <div class="form-grid two-col" style="margin-top: 14px;">
                                     <label class="full-span">
-                                        <span>Relationship to Recipient <em>*</em></span>
+                                        <span>Relationship to Patient <em>*</em></span>
                                         <select data-required name="immunization_relationship" id="immunization_relationship" class="form-select-field">
                                             <option value="">-- Select Relationship --</option>
                                             <option value="Self" <?= $formData['immunization_relationship'] === 'Self' ? 'selected' : ''; ?>>Self (I am the recipient)</option>

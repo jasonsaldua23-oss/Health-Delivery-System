@@ -4992,8 +4992,15 @@ function openAppointmentSlipModal(appt) {
     const vaccineRow = document.getElementById('slipModalVaccineRow');
     const vaccineEl = document.getElementById('slipModalVaccine');
     if (vaccineRow && vaccineEl) {
-        if (appt.vaccine_type) {
+        if (isImmunization) {
+            vaccineEl.textContent = appt.vaccine_type ? appt.vaccine_type : 'Pending staff vitals encoding upon arrival';
+            vaccineEl.style.fontStyle = appt.vaccine_type ? 'normal' : 'italic';
+            vaccineEl.style.color = appt.vaccine_type ? '#14532d' : '#64748b';
+            vaccineRow.style.display = '';
+        } else if (appt.vaccine_type) {
             vaccineEl.textContent = appt.vaccine_type;
+            vaccineEl.style.fontStyle = 'normal';
+            vaccineEl.style.color = '#14532d';
             vaccineRow.style.display = '';
         } else {
             vaccineRow.style.display = 'none';
@@ -5136,7 +5143,9 @@ function downloadAppointmentSlipDirectly(appt) {
     rows.push(['Contact Number:', appt.contact_number || 'N/A']);
     rows.push(['Registered Address:', appt.complete_address || 'Bacolod City']);
 
-    if (appt.vaccine_type) {
+    if (isImmunization) {
+        rows.push(['Type of Vaccine:', appt.vaccine_type ? appt.vaccine_type : 'Pending staff vitals encoding']);
+    } else if (appt.vaccine_type) {
         rows.push(['Vaccine Administered:', appt.vaccine_type]);
     }
 

@@ -2050,6 +2050,37 @@ for ($i = 0; $i < 6; $i++) {
                                     <?php endif; ?>
                                 </div>
 
+                                <?php
+                                $vitRec = appointment_recipient_details($selectedVitalsAppointment);
+                                if ($vitRec['is_immunization']):
+                                ?>
+                                    <div class="immunization-recipient-card" style="margin-top: 14px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px 16px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                            <div style="display: flex; align-items: center; gap: 8px; color: #166534; font-weight: 700; font-size: 0.92rem;">
+                                                <?= staff_icon('syringe'); ?>
+                                                <span>Immunization Recipient Information</span>
+                                            </div>
+                                            <span style="background: #dcfce7; color: #166534; border: 1px solid #86efac; padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">
+                                                Relationship: <?= h($vitRec['relationship']); ?>
+                                            </span>
+                                        </div>
+                                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.88rem; color: #14532d;">
+                                            <div>
+                                                <small style="color: #15803d; font-size: 0.76rem; text-transform: uppercase; font-weight: 700; display: block;">Recipient Name</small>
+                                                <strong><?= h($vitRec['recipient_full_name']); ?></strong>
+                                            </div>
+                                            <div>
+                                                <small style="color: #15803d; font-size: 0.76rem; text-transform: uppercase; font-weight: 700; display: block;">Recipient Birthdate &amp; Age</small>
+                                                <strong><?= !empty($vitRec['recipient_birth_date']) ? h(date('F j, Y', strtotime($vitRec['recipient_birth_date']))) . ' (' . h($vitRec['recipient_age_label']) . ')' : 'N/A'; ?></strong>
+                                            </div>
+                                            <div>
+                                                <small style="color: #15803d; font-size: 0.76rem; text-transform: uppercase; font-weight: 700; display: block;">Booked By (Account Holder)</small>
+                                                <strong><?= h($vitRec['patient_full_name']); ?></strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
                                 <div class="account-section-divider">
                                     <?= staff_icon('pulse'); ?>
                                     <span>Vital Signs Measurement</span>
