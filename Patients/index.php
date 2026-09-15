@@ -506,6 +506,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
         .detail-icon { width: 38px !important; height: 38px !important; min-width: 38px !important; max-width: 38px !important; }
         .detail-icon svg { width: 18px !important; height: 18px !important; max-width: 18px !important; }
         .detail-line .inline-icon svg { width: 16px !important; height: 16px !important; max-width: 16px !important; }
+        .form-section-title { display: flex !important; align-items: center !important; gap: 12px !important; margin-top: 34px !important; margin-bottom: 20px !important; }
+        .form-section-title:first-of-type { margin-top: 0 !important; }
+        .account-info-banner + .form-section-title { margin-top: 8px !important; }
+        .form-section-title h2 { margin: 0 !important; font-size: 1.25rem !important; font-weight: 700 !important; }
     </style>
 </head>
 <body>

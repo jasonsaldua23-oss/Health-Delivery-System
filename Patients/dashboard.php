@@ -486,6 +486,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
         .meta-icon svg { width: 16px !important; height: 16px !important; max-width: 16px !important; max-height: 16px !important; }
         .appt-recipient-box svg { width: 14px !important; height: 14px !important; max-width: 14px !important; max-height: 14px !important; display: inline-block !important; }
         .btn-view-slip svg { width: 16px !important; height: 16px !important; max-width: 16px !important; max-height: 16px !important; }
+        .form-section-title { display: flex !important; align-items: center !important; gap: 12px !important; margin-top: 34px !important; margin-bottom: 20px !important; }
+        .form-section-title:first-of-type { margin-top: 0 !important; }
+        .form-section-title h2 { margin: 0 !important; font-size: 1.25rem !important; font-weight: 700 !important; }
 
         .dashboard-shell {
             min-height: 100vh;
