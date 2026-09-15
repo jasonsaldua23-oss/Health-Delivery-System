@@ -865,7 +865,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                             </div>
                             <div class="field-group">
                                 <label for="regBirthdate">Date of Birth</label>
-                                <input id="regBirthdate" name="birthdate" type="date" value="" required>
+                                <input id="regBirthdate" name="birthdate" type="date" value="" max="<?= date('Y-m-d', strtotime('-1 day')); ?>" min="1900-01-01" required>
                             </div>
                         </div>
 
@@ -1044,6 +1044,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const volunteerLoginForm = document.getElementById('volunteerLoginForm');
     const adminLoginForm = document.getElementById('adminLoginForm');
     const backButtons = document.querySelectorAll('.back-link, .text-action');
+
+    const regBirthdateInput = document.getElementById('regBirthdate');
+    if (regBirthdateInput) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yyyy = yesterday.getFullYear();
+        const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
+        const dd = String(yesterday.getDate()).padStart(2, '0');
+        regBirthdateInput.max = `${yyyy}-${mm}-${dd}`;
+        regBirthdateInput.min = '1900-01-01';
+    }
 
     function setActivePortal(portal) {
         document.querySelectorAll('.portal-card').forEach((button) => {
@@ -1394,6 +1405,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!birthdate) {
             window.showSystemToast?.('Please select your date of birth.', { type: 'error', theme: 'patient', title: 'Missing Information' });
+            document.getElementById('regBirthdate')?.focus();
+            return;
+        }
+
+        const birthDateObj = new Date(birthdate + 'T00:00:00');
+        const todayObj = new Date();
+        todayObj.setHours(0, 0, 0, 0);
+
+        if (isNaN(birthDateObj.getTime())) {
+            window.showSystemToast?.('Please enter a valid date of birth.', { type: 'error', theme: 'patient', title: 'Invalid Birthdate' });
+            document.getElementById('regBirthdate')?.focus();
+            return;
+        }
+
+        if (birthDateObj >= todayObj) {
+            window.showSystemToast?.('Date of birth cannot be today or a future date. Please select a valid birthdate.', { type: 'error', theme: 'patient', title: 'Invalid Birthdate' });
+            document.getElementById('regBirthdate')?.focus();
+            return;
+        }
+
+        const minBirthDateObj = new Date('1900-01-01T00:00:00');
+        if (birthDateObj < minBirthDateObj) {
+            window.showSystemToast?.('Please enter a valid date of birth.', { type: 'error', theme: 'patient', title: 'Invalid Birthdate' });
             document.getElementById('regBirthdate')?.focus();
             return;
         }

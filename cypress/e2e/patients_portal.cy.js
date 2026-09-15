@@ -17,6 +17,47 @@ describe('Patient Portal - End-to-End Test Cases', () => {
     cy.visit('/Patients/index.php');
   });
 
+  // Test birthdate validation (reject today and future dates)
+  it('Validates birthdate cannot be today or future date during registration', () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 5);
+    const futureStr = futureDate.toISOString().split('T')[0];
+
+    // Choose Patient Portal
+    cy.get('.portal-card[data-portal="patient"]').scrollIntoView().click({ force: true });
+    cy.get('#patientModal').should('be.visible');
+
+    // Select First-Time Patient
+    cy.get('.modal-choice-button.first-timer, .modal-choice-button.first-time-patient').first().click();
+    cy.get('#firstTimerForm, form[name="firstTimerForm"]').should('be.visible').within(() => {
+      cy.get('input[name="first_name"]').type('Test');
+      cy.get('input[name="last_name"]').type('User');
+      cy.get('input[name="birthdate"], input[name="birth_date"]').type(todayStr);
+      cy.get('input[name="gender"][value="Male"]').check({ force: true });
+      cy.get('input[name="phone"], input[name="contact_number"]').type('09123456789');
+      cy.get('select[name="barangay"]').select('Alijis');
+      cy.get('select[name="purok"]').select(1);
+      cy.get('input[name="street"]').type('Purok 1');
+      cy.get('input[name="email"]').type('testtoday@example.com');
+      cy.get('input[name="password"]').type('password123');
+      cy.get('button[type="submit"]').click();
+    });
+
+    // Verify privacy modal does NOT open and toast appears
+    cy.get('#privacyConsentModal').should('not.be.visible');
+    cy.get('.system-toast, .toast, body').should('contain.text', 'Date of birth cannot be today or a future date');
+
+    // Test future date
+    cy.get('#firstTimerForm, form[name="firstTimerForm"]').within(() => {
+      cy.get('input[name="birthdate"], input[name="birth_date"]').clear().type(futureStr);
+      cy.get('button[type="submit"]').click();
+    });
+
+    cy.get('#privacyConsentModal').should('not.be.visible');
+    cy.get('.system-toast, .toast, body').should('contain.text', 'Date of birth cannot be today or a future date');
+  });
+
   // Use Case 1 & 2: Client proceeds to landing page & Registration (TC-001 - TC-008)
   it('TC-001 to TC-008: Register a first-time patient and reach dashboard', () => {
     // Choose Patient Portal

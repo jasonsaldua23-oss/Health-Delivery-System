@@ -51,18 +51,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'upda
     $newPassword = $changePasswordActive ? trim((string) ($_POST['new_password'] ?? '')) : '';
     $confirmPassword = $changePasswordActive ? trim((string) ($_POST['confirm_password'] ?? '')) : '';
 
-    $passwordError = false;
-    if ($changePasswordActive && $newPassword !== '') {
-        if (strlen($newPassword) < 6) {
-            $updateMessage = 'New password must be at least 6 characters long.';
-            $passwordError = true;
-        } elseif ($newPassword !== $confirmPassword) {
-            $updateMessage = 'New password and confirmation password do not match.';
-            $passwordError = true;
+    $validationError = false;
+    if ($birthDate !== '') {
+        $bDate = DateTimeImmutable::createFromFormat('!Y-m-d', $birthDate);
+        $bErrors = DateTimeImmutable::getLastErrors();
+        $today = new DateTimeImmutable('today');
+        if (!$bDate || ($bErrors !== false && ($bErrors['warning_count'] > 0 || $bErrors['error_count'] > 0)) || $bDate->format('Y-m-d') !== $birthDate) {
+            $updateMessage = 'Please enter a valid birthdate (YYYY-MM-DD).';
+            $validationError = true;
+        } elseif ($bDate >= $today) {
+            $updateMessage = 'Date of birth cannot be today or a future date.';
+            $validationError = true;
+        } elseif ($bDate < new DateTimeImmutable('1900-01-01')) {
+            $updateMessage = 'Please enter a valid birthdate.';
+            $validationError = true;
         }
     }
 
-    if (!$passwordError) {
+    if ($changePasswordActive && $newPassword !== '') {
+        if (strlen($newPassword) < 6) {
+            $updateMessage = 'New password must be at least 6 characters long.';
+            $validationError = true;
+        } elseif ($newPassword !== $confirmPassword) {
+            $updateMessage = 'New password and confirmation password do not match.';
+            $validationError = true;
+        }
+    }
+
+    if (!$validationError) {
         if ($firstName !== '' && $lastName !== '' && $email !== '') {
             $patientBarangay = $newBarangay;
             $purok = $newPurok;
@@ -3872,7 +3888,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
             <div class="form-row-grid">
                 <div class="form-group-item">
                     <label for="accBirthDate">Birthdate <span class="required">*</span></label>
-                    <input type="date" id="accBirthDate" name="birth_date" class="form-input-field" value="<?= h($birthDate); ?>" required>
+                    <input type="date" id="accBirthDate" name="birth_date" class="form-input-field" value="<?= h($birthDate); ?>" max="<?= date('Y-m-d', strtotime('-1 day')); ?>" min="1900-01-01" required>
                 </div>
                 <div class="form-group-item">
                     <label for="accPhone">Contact Number <span class="required">*</span></label>

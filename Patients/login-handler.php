@@ -276,6 +276,31 @@ if ($action === 'register_patient') {
         exit;
     }
 
+    // Validate birthdate
+    if ($birthdate === '') {
+        echo json_encode(['success' => false, 'message' => 'Please select your date of birth.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    $bDate = DateTimeImmutable::createFromFormat('!Y-m-d', $birthdate);
+    $bErrors = DateTimeImmutable::getLastErrors();
+    if (!$bDate || ($bErrors !== false && ($bErrors['warning_count'] > 0 || $bErrors['error_count'] > 0)) || $bDate->format('Y-m-d') !== $birthdate) {
+        echo json_encode(['success' => false, 'message' => 'Please enter a valid date of birth (YYYY-MM-DD).'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    $today = new DateTimeImmutable('today');
+    if ($bDate >= $today) {
+        echo json_encode(['success' => false, 'message' => 'Date of birth cannot be today or a future date.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    $minDate = new DateTimeImmutable('1900-01-01');
+    if ($bDate < $minDate) {
+        echo json_encode(['success' => false, 'message' => 'Please enter a valid date of birth.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
     if ($firstName !== '' && $lastName !== '' && $email !== '' && strlen($password) >= 6) {
         // Validate email format
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -307,7 +332,7 @@ if ($action === 'register_patient') {
             'first_name' => $firstName,
             'middle_name' => $middleName,
             'last_name' => $lastName,
-            'birth_date' => $birthdate ?: '2000-01-01',
+            'birth_date' => $birthdate,
             'gender' => $gender,
             'contact_number' => $phone,
             'complete_address' => $completeAddress,
@@ -321,7 +346,7 @@ if ($action === 'register_patient') {
                 'first_name' => $firstName,
                 'middle_name' => $middleName,
                 'last_name' => $lastName,
-                'birth_date' => $birthdate ?: '2000-01-01',
+                'birth_date' => $birthdate,
                 'gender' => $gender,
                 'contact_number' => $phone,
                 'email' => $email,
