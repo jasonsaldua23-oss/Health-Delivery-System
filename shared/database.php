@@ -2518,6 +2518,7 @@ function render_dual_date_filter(string $paramName, string $currentValue, string
     ob_start();
     ?>
     <div class="dual-date-filter dual-date-filter-<?= h($theme); ?>" data-param="<?= h($paramName); ?>" data-today="<?= $todayData; ?>" data-upcoming="<?= $upcomingData; ?>">
+        <input type="hidden" name="<?= h($paramName); ?>" value="<?= h($current); ?>">
         <button type="button" class="dual-date-pill <?= $todayClass; ?>" onclick="toggleDualDateFilter('today', '<?= h($paramName); ?>', event)" title="Toggle appointments / queue for Today">
             <input type="checkbox" name="<?= h($paramName); ?>_today" value="1" <?= $todayChecked; ?> style="display:none;">
             <span class="dual-date-dot"></span>
@@ -2562,6 +2563,7 @@ function render_dual_status_filter(
     ob_start();
     ?>
     <div class="dual-date-filter dual-date-filter-<?= h($theme); ?>" data-param="<?= h($paramName); ?>" data-val1="<?= h($val1); ?>" data-val2="<?= h($val2); ?>" data-today="<?= $data1; ?>" data-upcoming="<?= $data2; ?>">
+        <input type="hidden" name="<?= h($paramName); ?>" value="<?= h($current); ?>">
         <button type="button" class="dual-date-pill <?= $class1; ?>" onclick="toggleDualStatusFilter('<?= h($val1); ?>', '<?= h($val2); ?>', '<?= h($paramName); ?>', event)" title="Toggle <?= h($label1); ?> records">
             <input type="checkbox" name="<?= h($paramName); ?>_<?= h($val1); ?>" value="1" <?= $checked1; ?> style="display:none;">
             <span class="dual-date-dot"></span>

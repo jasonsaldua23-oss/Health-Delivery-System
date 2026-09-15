@@ -4539,37 +4539,20 @@ function toggleDualDateFilter(clickedType, paramName, event) {
     let todayActive = container.getAttribute('data-today') === '1';
     let upcomingActive = container.getAttribute('data-upcoming') === '1';
 
+    let nextVal = 'today';
+
     if (clickedType === 'today') {
-        if (todayActive && upcomingActive) {
-            todayActive = false;
-        } else if (!todayActive && upcomingActive) {
-            todayActive = true;
-        } else if (todayActive && !upcomingActive) {
-            todayActive = false;
-            upcomingActive = true;
+        if (todayActive && !upcomingActive) {
+            nextVal = 'both';
         } else {
-            todayActive = true;
+            nextVal = 'today';
         }
     } else if (clickedType === 'upcoming') {
-        if (todayActive && upcomingActive) {
-            upcomingActive = false;
-        } else if (todayActive && !upcomingActive) {
-            upcomingActive = true;
-        } else if (!todayActive && upcomingActive) {
-            upcomingActive = false;
-            todayActive = true;
+        if (upcomingActive && !todayActive) {
+            nextVal = 'both';
         } else {
-            upcomingActive = true;
+            nextVal = 'upcoming';
         }
-    }
-
-    let nextVal = 'both';
-    if (todayActive && !upcomingActive) {
-        nextVal = 'today';
-    } else if (!todayActive && upcomingActive) {
-        nextVal = 'upcoming';
-    } else {
-        nextVal = 'both';
     }
 
     const form = container.closest('form');

@@ -5541,37 +5541,20 @@ function toggleDualDateFilter(clickedType, paramName, event) {
     let todayActive = container.getAttribute('data-today') === '1';
     let upcomingActive = container.getAttribute('data-upcoming') === '1';
 
+    let nextVal = 'today';
+
     if (clickedType === 'today') {
-        if (todayActive && upcomingActive) {
-            todayActive = false;
-        } else if (!todayActive && upcomingActive) {
-            todayActive = true;
-        } else if (todayActive && !upcomingActive) {
-            todayActive = false;
-            upcomingActive = true;
+        if (todayActive && !upcomingActive) {
+            nextVal = 'both';
         } else {
-            todayActive = true;
+            nextVal = 'today';
         }
     } else if (clickedType === 'upcoming') {
-        if (todayActive && upcomingActive) {
-            upcomingActive = false;
-        } else if (todayActive && !upcomingActive) {
-            upcomingActive = true;
-        } else if (!todayActive && upcomingActive) {
-            upcomingActive = false;
-            todayActive = true;
+        if (upcomingActive && !todayActive) {
+            nextVal = 'both';
         } else {
-            upcomingActive = true;
+            nextVal = 'upcoming';
         }
-    }
-
-    let nextVal = 'both';
-    if (todayActive && !upcomingActive) {
-        nextVal = 'today';
-    } else if (!todayActive && upcomingActive) {
-        nextVal = 'upcoming';
-    } else {
-        nextVal = 'both';
     }
 
     const form = container.closest('form');
@@ -5606,37 +5589,19 @@ function toggleDualStatusFilter(clickedVal, otherVal, paramName, event) {
     let active1 = container.getAttribute('data-today') === '1';
     let active2 = container.getAttribute('data-upcoming') === '1';
 
+    let nextVal = clickedVal;
     if (clickedVal === val1) {
-        if (active1 && active2) {
-            active1 = false;
-        } else if (!active1 && active2) {
-            active1 = true;
-        } else if (active1 && !active2) {
-            active1 = false;
-            active2 = true;
+        if (active1 && !active2) {
+            nextVal = 'both';
         } else {
-            active1 = true;
+            nextVal = val1;
         }
     } else if (clickedVal === val2) {
-        if (active1 && active2) {
-            active2 = false;
-        } else if (active1 && !active2) {
-            active2 = true;
-        } else if (!active1 && active2) {
-            active2 = false;
-            active1 = true;
+        if (active2 && !active1) {
+            nextVal = 'both';
         } else {
-            active2 = true;
+            nextVal = val2;
         }
-    }
-
-    let nextVal = 'both';
-    if (active1 && !active2) {
-        nextVal = val1;
-    } else if (!active1 && active2) {
-        nextVal = val2;
-    } else {
-        nextVal = 'both';
     }
 
     const form = container.closest('form');
@@ -5751,8 +5716,7 @@ window.dismissStaffToast = function() {
         }, 350);
     }
 };
-(function() {
-    const toast = document.getElementById('staffFlashToast');
+
 // Staff Mobile Navigation Drawer & Dashboard Stat Slideshow Logic
 (function() {
     const mobileToggle = document.getElementById('staffMobileNavToggle');
