@@ -26,6 +26,7 @@ const DB_TABLE_UPCOMING_EVENTS = 'upcoming_events';
 const DB_TABLE_ACTIVITY_LOG = 'activity_log';
 const DB_TABLE_UNATTENDED_APPOINTMENTS = 'unattended_appointments';
 const DB_TABLE_UNATTENDED_QUEUE = 'unattended_queue';
+const DB_TABLE_IMMUNIZED_INFANTS = 'immunized_infants';
 
 
 function contact_details(): array
@@ -619,6 +620,10 @@ function create_appointments_table(mysqli $connection, string $engine = 'InnoDB'
             email VARCHAR(150) DEFAULT NULL,
             complete_address VARCHAR(255) NOT NULL,
             immunization_relationship VARCHAR(100) DEFAULT NULL,
+            recipient_first_name VARCHAR(100) DEFAULT NULL,
+            recipient_middle_name VARCHAR(100) DEFAULT NULL,
+            recipient_last_name VARCHAR(100) DEFAULT NULL,
+            recipient_birth_date DATE DEFAULT NULL,
             preferred_date DATE NOT NULL,
             preferred_time VARCHAR(30) NOT NULL,
             notes TEXT DEFAULT NULL,
@@ -639,6 +644,33 @@ function create_appointments_table(mysqli $connection, string $engine = 'InnoDB'
             INDEX idx_status (status),
             INDEX idx_preferred_date (preferred_date),
             INDEX idx_reminder_due (preferred_date, reminder_sms_sent, status)
+        ) ENGINE=' . $engine . ' DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
+    );
+}
+
+function create_immunized_infants_table(mysqli $connection, string $engine = 'InnoDB'): void
+{
+    $connection->query(
+        'CREATE TABLE IF NOT EXISTS immunized_infants (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            appointment_id INT UNSIGNED DEFAULT NULL,
+            appointment_code VARCHAR(20) DEFAULT NULL,
+            patient_id VARCHAR(32) DEFAULT NULL,
+            first_name VARCHAR(100) NOT NULL,
+            middle_name VARCHAR(100) DEFAULT NULL,
+            last_name VARCHAR(100) NOT NULL,
+            birth_date DATE NOT NULL,
+            gender VARCHAR(30) DEFAULT NULL,
+            relationship VARCHAR(50) NOT NULL DEFAULT "Child",
+            station_slug VARCHAR(100) DEFAULT NULL,
+            vaccine_type VARCHAR(150) DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_appointment_id (appointment_id),
+            INDEX idx_appointment_code (appointment_code),
+            INDEX idx_patient_id (patient_id),
+            INDEX idx_station_slug (station_slug),
+            INDEX idx_recipient_name (last_name, first_name)
         ) ENGINE=' . $engine . ' DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
     );
 }
@@ -962,6 +994,11 @@ function ensure_unattended_queue_table(mysqli $connection): void
     ensure_table_is_usable($connection, DB_TABLE_UNATTENDED_QUEUE, 'create_unattended_queue_table');
 }
 
+function ensure_immunized_infants_table(mysqli $connection): void
+{
+    ensure_table_is_usable($connection, DB_TABLE_IMMUNIZED_INFANTS, 'create_immunized_infants_table');
+}
+
 function run_database_migrations(mysqli $connection, bool $verbose = false): array
 {
     $GLOBALS['health_db_bootstrapping'] = true;
@@ -982,6 +1019,7 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
     ensure_station_slot_limits_table($connection);
     ensure_unattended_appointments_table($connection);
     ensure_unattended_queue_table($connection);
+    ensure_immunized_infants_table($connection);
     $log[] = 'Core tables verified';
 
     // Purge sample test account Juan Dela Cruz across appointments, profiles, accounts, and history
@@ -1036,6 +1074,23 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
     if (!db_column_exists($connection, 'appointments', 'immunization_relationship')) {
         $connection->query('ALTER TABLE appointments ADD COLUMN immunization_relationship VARCHAR(100) DEFAULT NULL AFTER complete_address');
         $log[] = 'Added appointments.immunization_relationship';
+    }
+
+    if (!db_column_exists($connection, 'appointments', 'recipient_first_name')) {
+        $connection->query('ALTER TABLE appointments ADD COLUMN recipient_first_name VARCHAR(100) DEFAULT NULL AFTER immunization_relationship');
+        $log[] = 'Added appointments.recipient_first_name';
+    }
+    if (!db_column_exists($connection, 'appointments', 'recipient_middle_name')) {
+        $connection->query('ALTER TABLE appointments ADD COLUMN recipient_middle_name VARCHAR(100) DEFAULT NULL AFTER recipient_first_name');
+        $log[] = 'Added appointments.recipient_middle_name';
+    }
+    if (!db_column_exists($connection, 'appointments', 'recipient_last_name')) {
+        $connection->query('ALTER TABLE appointments ADD COLUMN recipient_last_name VARCHAR(100) DEFAULT NULL AFTER recipient_middle_name');
+        $log[] = 'Added appointments.recipient_last_name';
+    }
+    if (!db_column_exists($connection, 'appointments', 'recipient_birth_date')) {
+        $connection->query('ALTER TABLE appointments ADD COLUMN recipient_birth_date DATE DEFAULT NULL AFTER recipient_last_name');
+        $log[] = 'Added appointments.recipient_birth_date';
     }
 
     if (!db_column_exists($connection, 'appointments', 'follow_up_date')) {
@@ -2337,7 +2392,16 @@ function save_appointment_clinical_details(int $appointmentId, array $data, ?str
     );
     $stmt->bind_param('ssssssi', $bodyTemperature, $pulseRate, $respirationRate, $bloodPressure, $vaccineType, $doctorNotes, $appointmentId);
 
-    return $stmt->execute();
+    $ok = $stmt->execute();
+    if ($ok && $vaccineType !== '') {
+        try {
+            $uStmt = db()->prepare('UPDATE immunized_infants SET vaccine_type = ? WHERE appointment_id = ?');
+            $uStmt->bind_param('si', $vaccineType, $appointmentId);
+            $uStmt->execute();
+        } catch (Throwable $e) {}
+    }
+
+    return $ok;
 }
 
 function appointment_has_vitals(array $appointment): bool
@@ -2711,6 +2775,197 @@ function fetch_previous_immunization_relationship(string $patientId): ?string
     $result = $stmt->get_result()->fetch_assoc();
 
     return $result ? (string) $result['immunization_relationship'] : null;
+}
+
+/**
+ * Inserts or updates an entry in immunized_infants
+ */
+function save_immunized_infant(array $data): ?int
+{
+    $firstName = trim((string) ($data['first_name'] ?? $data['recipient_first_name'] ?? ''));
+    $middleName = trim((string) ($data['middle_name'] ?? $data['recipient_middle_name'] ?? ''));
+    $lastName = trim((string) ($data['last_name'] ?? $data['recipient_last_name'] ?? ''));
+    $birthDate = trim((string) ($data['birth_date'] ?? $data['recipient_birth_date'] ?? ''));
+    $relationship = trim((string) ($data['relationship'] ?? $data['immunization_relationship'] ?? ''));
+    $apptId = isset($data['appointment_id']) ? (int) $data['appointment_id'] : null;
+    $apptCode = trim((string) ($data['appointment_code'] ?? ''));
+    $patientId = trim((string) ($data['patient_id'] ?? ''));
+    $gender = trim((string) ($data['gender'] ?? ''));
+    $stationSlug = trim((string) ($data['station_slug'] ?? ''));
+    $vaccineType = trim((string) ($data['vaccine_type'] ?? ''));
+
+    if ($firstName === '' || $lastName === '' || $birthDate === '') {
+        return null;
+    }
+
+    try {
+        $db = db();
+        if ($apptId !== null && $apptId > 0) {
+            $stmt = $db->prepare('SELECT id FROM immunized_infants WHERE appointment_id = ? LIMIT 1');
+            $stmt->bind_param('i', $apptId);
+            $stmt->execute();
+            $existing = $stmt->get_result()->fetch_assoc();
+            if ($existing) {
+                $updateStmt = $db->prepare(
+                    'UPDATE immunized_infants SET 
+                        appointment_code = ?, patient_id = ?, first_name = ?, middle_name = ?, 
+                        last_name = ?, birth_date = ?, gender = ?, relationship = ?, 
+                        station_slug = ?, vaccine_type = ? 
+                     WHERE id = ?'
+                );
+                $existingId = (int) $existing['id'];
+                $updateStmt->bind_param('ssssssssssi', $apptCode, $patientId, $firstName, $middleName, $lastName, $birthDate, $gender, $relationship, $stationSlug, $vaccineType, $existingId);
+                $updateStmt->execute();
+                return $existingId;
+            }
+        } elseif ($apptCode !== '') {
+            $stmt = $db->prepare('SELECT id FROM immunized_infants WHERE appointment_code = ? LIMIT 1');
+            $stmt->bind_param('s', $apptCode);
+            $stmt->execute();
+            $existing = $stmt->get_result()->fetch_assoc();
+            if ($existing) {
+                $updateStmt = $db->prepare(
+                    'UPDATE immunized_infants SET 
+                        patient_id = ?, first_name = ?, middle_name = ?, 
+                        last_name = ?, birth_date = ?, gender = ?, relationship = ?, 
+                        station_slug = ?, vaccine_type = ? 
+                     WHERE id = ?'
+                );
+                $existingId = (int) $existing['id'];
+                $updateStmt->bind_param('sssssssssi', $patientId, $firstName, $middleName, $lastName, $birthDate, $gender, $relationship, $stationSlug, $vaccineType, $existingId);
+                $updateStmt->execute();
+                return $existingId;
+            }
+        }
+
+        $insertStmt = $db->prepare(
+            'INSERT INTO immunized_infants (
+                appointment_id, appointment_code, patient_id, 
+                first_name, middle_name, last_name, birth_date, 
+                gender, relationship, station_slug, vaccine_type
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $insertStmt->bind_param('issssssssss', $apptId, $apptCode, $patientId, $firstName, $middleName, $lastName, $birthDate, $gender, $relationship, $stationSlug, $vaccineType);
+        $insertStmt->execute();
+        return (int) $db->insert_id;
+    } catch (Throwable $e) {
+        error_log('Error saving immunized infant: ' . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Fetch immunized infant record by appointment ID or code
+ */
+function fetch_immunized_infant_by_appointment($appointmentIdOrCode): ?array
+{
+    try {
+        $db = db();
+        if (is_numeric($appointmentIdOrCode)) {
+            $stmt = $db->prepare('SELECT * FROM immunized_infants WHERE appointment_id = ? LIMIT 1');
+            $id = (int) $appointmentIdOrCode;
+            $stmt->bind_param('i', $id);
+        } else {
+            $stmt = $db->prepare('SELECT * FROM immunized_infants WHERE appointment_code = ? LIMIT 1');
+            $code = (string) $appointmentIdOrCode;
+            $stmt->bind_param('s', $code);
+        }
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc() ?: null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+/**
+ * Fetch all immunized infants associated with a patient ID
+ */
+function fetch_immunized_infants_by_patient_id(string $patientId): array
+{
+    try {
+        $stmt = db()->prepare('SELECT * FROM immunized_infants WHERE patient_id = ? ORDER BY created_at DESC');
+        $stmt->bind_param('s', $patientId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+/**
+ * Recipient full name helper
+ */
+function recipient_full_name(array $row): string
+{
+    $first = trim((string) ($row['recipient_first_name'] ?? $row['first_name'] ?? ''));
+    $middle = trim((string) ($row['recipient_middle_name'] ?? $row['middle_name'] ?? ''));
+    $last = trim((string) ($row['recipient_last_name'] ?? $row['last_name'] ?? ''));
+
+    $parts = array_filter([$first, $middle, $last]);
+    return trim(implode(' ', $parts));
+}
+
+/**
+ * Returns normalized details about recipient for immunization services
+ */
+function appointment_recipient_details(array $appt): array
+{
+    $serviceSlug = (string) ($appt['service_slug'] ?? '');
+    $serviceName = (string) ($appt['service_name'] ?? '');
+    $isImmunization = ($serviceSlug === 'immunization') || is_vaccination_service($serviceSlug, $serviceName);
+
+    $relationship = trim((string) ($appt['immunization_relationship'] ?? ''));
+    $hasExplicitRecipient = !empty($appt['recipient_first_name']) && !empty($appt['recipient_last_name']);
+
+    $isSelf = (strcasecmp($relationship, 'Self') === 0) || (!$hasExplicitRecipient && ($relationship === '' || strcasecmp($relationship, 'Self') === 0));
+
+    if ($isSelf) {
+        $recipientFirstName = (string) ($appt['first_name'] ?? '');
+        $recipientMiddleName = (string) ($appt['middle_name'] ?? '');
+        $recipientLastName = (string) ($appt['last_name'] ?? '');
+        $recipientBirthDate = (string) ($appt['birth_date'] ?? '');
+        $relationshipLabel = 'Self';
+    } else {
+        $recipientFirstName = (string) ($appt['recipient_first_name'] ?? $appt['first_name'] ?? '');
+        $recipientMiddleName = (string) ($appt['recipient_middle_name'] ?? $appt['middle_name'] ?? '');
+        $recipientLastName = (string) ($appt['recipient_last_name'] ?? $appt['last_name'] ?? '');
+        $recipientBirthDate = (string) ($appt['recipient_birth_date'] ?? $appt['birth_date'] ?? '');
+        $relationshipLabel = $relationship !== '' ? $relationship : 'Child';
+    }
+
+    $parts = array_filter([$recipientFirstName, $recipientMiddleName, $recipientLastName]);
+    $recipientFullName = trim(implode(' ', $parts));
+
+    // Calculate age
+    $ageLabel = 'Age unavailable';
+    if ($recipientBirthDate !== '' && $recipientBirthDate !== '0000-00-00') {
+        try {
+            $dob = new DateTimeImmutable($recipientBirthDate);
+            $today = new DateTimeImmutable('today');
+            $diff = $dob->diff($today);
+            if ($diff->y > 0) {
+                $ageLabel = $diff->y . ' yr' . ($diff->y > 1 ? 's' : '') . ' old';
+            } elseif ($diff->m > 0) {
+                $ageLabel = $diff->m . ' mo' . ($diff->m > 1 ? 's' : '') . ' old';
+            } else {
+                $ageLabel = $diff->d . ' day' . ($diff->d > 1 ? 's' : '') . ' old';
+            }
+        } catch (Throwable $e) {}
+    }
+
+    return [
+        'is_immunization' => $isImmunization,
+        'is_self' => $isSelf,
+        'relationship' => $relationshipLabel,
+        'recipient_first_name' => $recipientFirstName,
+        'recipient_middle_name' => $recipientMiddleName,
+        'recipient_last_name' => $recipientLastName,
+        'recipient_full_name' => $recipientFullName,
+        'recipient_birth_date' => $recipientBirthDate,
+        'recipient_age_label' => $ageLabel,
+        'patient_full_name' => full_name($appt),
+        'vaccine_type' => (string) ($appt['vaccine_type'] ?? ''),
+    ];
 }
 
 function update_appointment_status(int $appointmentId, string $newStatus, ?string $stationScope = null): bool
@@ -4261,6 +4516,10 @@ function schedule_appointment_follow_up(
         $email = (string) ($appointment['email'] ?? '');
         $completeAddress = (string) ($appointment['complete_address'] ?? '');
         $immRel = (string) ($appointment['immunization_relationship'] ?? '');
+        $recipientFirstName = (string) ($appointment['recipient_first_name'] ?? '');
+        $recipientMiddleName = (string) ($appointment['recipient_middle_name'] ?? '');
+        $recipientLastName = (string) ($appointment['recipient_last_name'] ?? '');
+        $recipientBirthDate = !empty($appointment['recipient_birth_date']) ? (string) $appointment['recipient_birth_date'] : null;
         $photoPath = (string) ($appointment['photo_path'] ?? '');
         $status = 'Confirmed';
 
@@ -4270,18 +4529,37 @@ function schedule_appointment_follow_up(
                 station_slug, station_name, service_slug, service_name, 
                 first_name, middle_name, last_name, birth_date, gender, 
                 contact_number, email, complete_address, immunization_relationship, 
+                recipient_first_name, recipient_middle_name, recipient_last_name, recipient_birth_date,
                 photo_path, preferred_date, preferred_time, notes, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $insertStmt->bind_param(
-            'sssssssssssssssssssss',
+            'sssssssssssssssssssssssss',
             $newRefCode, $newApptCode, $patientId,
             $stationSlug, $stationName, $serviceSlug, $serviceName,
             $firstName, $middleName, $lastName, $birthDate, $gender,
             $contactNumber, $email, $completeAddress, $immRel,
+            $recipientFirstName, $recipientMiddleName, $recipientLastName, $recipientBirthDate,
             $photoPath, $followUpDate, $timeVal, $followUpFullNotes, $status
         );
         $insertStmt->execute();
+        $newFollowUpApptId = (int) $connection->insert_id;
+
+        if ($serviceSlug === 'immunization' && $newFollowUpApptId > 0) {
+            save_immunized_infant([
+                'appointment_id' => $newFollowUpApptId,
+                'appointment_code' => $newApptCode,
+                'patient_id' => $patientId,
+                'first_name' => $recipientFirstName !== '' ? $recipientFirstName : $firstName,
+                'middle_name' => $recipientMiddleName !== '' ? $recipientMiddleName : $middleName,
+                'last_name' => $recipientLastName !== '' ? $recipientLastName : $lastName,
+                'birth_date' => $recipientBirthDate !== null ? $recipientBirthDate : $birthDate,
+                'gender' => $gender,
+                'relationship' => $immRel !== '' ? $immRel : 'Child',
+                'station_slug' => $stationSlug,
+                'vaccine_type' => (string) ($appointment['vaccine_type'] ?? ''),
+            ]);
+        }
     }
 
     // Create a patient status notification

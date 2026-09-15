@@ -133,6 +133,10 @@ CREATE TABLE IF NOT EXISTS appointments (
     email           VARCHAR(150) DEFAULT NULL,
     complete_address VARCHAR(255) NOT NULL,
     immunization_relationship VARCHAR(100) DEFAULT NULL,
+    recipient_first_name VARCHAR(100) DEFAULT NULL,
+    recipient_middle_name VARCHAR(100) DEFAULT NULL,
+    recipient_last_name VARCHAR(100) DEFAULT NULL,
+    recipient_birth_date DATE DEFAULT NULL,
 
     -- Appointment schedule
     preferred_date  DATE NOT NULL,
@@ -231,4 +235,26 @@ CREATE TABLE IF NOT EXISTS activity_log (
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     KEY idx_activity_log_created_at (created_at),
     KEY idx_activity_log_user_type (user_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS immunized_infants (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    appointment_id  INT UNSIGNED DEFAULT NULL,
+    appointment_code VARCHAR(20) DEFAULT NULL,
+    patient_id      VARCHAR(32) DEFAULT NULL,
+    first_name      VARCHAR(100) NOT NULL,
+    middle_name     VARCHAR(100) DEFAULT NULL,
+    last_name       VARCHAR(100) NOT NULL,
+    birth_date      DATE NOT NULL,
+    gender          VARCHAR(30) DEFAULT NULL,
+    relationship    VARCHAR(50) NOT NULL DEFAULT 'Child',
+    station_slug    VARCHAR(100) DEFAULT NULL,
+    vaccine_type    VARCHAR(150) DEFAULT NULL,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_immunized_infants_appointment (appointment_id),
+    KEY idx_immunized_infants_code (appointment_code),
+    KEY idx_immunized_infants_patient (patient_id),
+    KEY idx_immunized_infants_station (station_slug),
+    KEY idx_immunized_infants_recipient (last_name, first_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -208,7 +208,32 @@ if (!function_exists('render_patient_profile_body')) {
                         </div>
                     </div>
 
-                    <?php if (!empty($appt['vaccine_type']) || is_vaccination_service((string) ($appt['service_slug'] ?? ''), (string) ($appt['service_name'] ?? ''))): ?>
+                    <?php
+                    $rec = appointment_recipient_details($appt);
+                    if ($rec['is_immunization']):
+                    ?>
+                        <div class="profile-vaccine-badge-box" style="margin-top: 10px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px; padding: 10px 14px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                                <div style="display: flex; align-items: center; gap: 6px; color: #166534; font-size: 0.82rem; font-weight: 700; text-transform: uppercase;">
+                                    <?= staff_icon('syringe'); ?> <span>Immunization Recipient</span>
+                                </div>
+                                <span class="relationship-pill-tag" style="background:#dcfce7; color:#166534; border:1px solid #86efac; padding:2px 8px; border-radius:999px; font-size:0.78rem; font-weight:700;"><?= h($rec['relationship']); ?></span>
+                            </div>
+                            <div style="font-size: 0.88rem; color: #14532d; line-height: 1.45;">
+                                <div><strong>Recipient Name:</strong> <?= h($rec['recipient_full_name']); ?></div>
+                                <?php if (!empty($rec['recipient_birth_date'])): ?>
+                                    <div style="font-size: 0.82rem; color: #15803d; margin-top: 2px;">
+                                        <strong>Birthdate &amp; Age:</strong> <?= h(date('F j, Y', strtotime($rec['recipient_birth_date']))); ?> (<?= h($rec['recipient_age_label']); ?>)
+                                    </div>
+                                <?php endif; ?>
+                                <?php if (!empty($appt['vaccine_type'])): ?>
+                                    <div style="font-size: 0.85rem; color: #166534; margin-top: 4px;">
+                                        <strong>Vaccine Administered:</strong> <span style="font-weight:700; color:#14532d;"><?= h((string) $appt['vaccine_type']); ?></span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php elseif (!empty($appt['vaccine_type']) || is_vaccination_service((string) ($appt['service_slug'] ?? ''), (string) ($appt['service_name'] ?? ''))): ?>
                         <div class="profile-vaccine-badge-box" style="margin-top: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
                             <span style="color: #16a34a;"><?= staff_icon('syringe'); ?></span>
                             <span style="color: #166534; font-size: 0.84rem; font-weight: 600;">Type of Vaccine:</span>
@@ -1570,6 +1595,19 @@ for ($i = 0; $i < 6; $i++) {
                                                 <span><?= h($appointment['service_name']); ?></span>
                                             </span>
                                         </div>
+                                        <?php
+                                        $appRec = appointment_recipient_details($appointment);
+                                        if ($appRec['is_immunization']):
+                                        ?>
+                                            <div class="appt-recipient-line" style="margin: 4px 0; font-size: 0.82rem; color: #047857; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                <span style="font-weight: 700;"><?= staff_icon('syringe'); ?> Recipient:</span>
+                                                <strong style="color: #065f46;"><?= h($appRec['recipient_full_name']); ?></strong>
+                                                <span style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; padding: 1px 6px; border-radius: 4px; font-size: 0.74rem; font-weight: 700;"><?= h($appRec['relationship']); ?></span>
+                                                <?php if (!empty($appRec['recipient_birth_date'])): ?>
+                                                    <span style="color: #059669; font-size: 0.78rem;">(<?= h($appRec['recipient_age_label']); ?>)</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                         <div class="appt-meta-chips-row">
                                             <span class="appt-meta-chip">
                                                 <?= staff_icon('clock'); ?>
@@ -1817,6 +1855,19 @@ for ($i = 0; $i < 6; $i++) {
                                                         <span class="appt-code-badge">#<?= h($apptCode); ?></span>
                                                     <?php endif; ?>
                                                 </div>
+                                                <?php
+                                                $qRec = appointment_recipient_details($row);
+                                                if ($qRec['is_immunization']):
+                                                ?>
+                                                    <div class="queue-recipient-tag-line" style="margin: 2px 0 4px; font-size: 0.82rem; color: #047857; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                        <span style="font-weight: 700;"><?= staff_icon('syringe'); ?> Recipient:</span>
+                                                        <strong style="color: #065f46;"><?= h($qRec['recipient_full_name']); ?></strong>
+                                                        <span style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; padding: 1px 6px; border-radius: 4px; font-size: 0.74rem; font-weight: 700;"><?= h($qRec['relationship']); ?></span>
+                                                        <?php if (!empty($qRec['recipient_birth_date'])): ?>
+                                                            <span style="color: #059669; font-size: 0.78rem;">(<?= h($qRec['recipient_age_label']); ?>)</span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php endif; ?>
                                                 <div class="queue-pat-meta-row">
                                                     <span class="queue-meta-pill service">
                                                         <?= staff_icon('stethoscope'); ?>
@@ -2513,6 +2564,10 @@ for ($i = 0; $i < 6; $i++) {
                                 <!-- Patient Demographics Overview -->
                                 <div class="clinical-demographics-card">
                                     <div class="demo-item">
+                                        <label>Patient / Account Holder</label>
+                                        <span><?= h(full_name($selectedRemarksAppointment)); ?></span>
+                                    </div>
+                                    <div class="demo-item">
                                         <label>Age &amp; Gender</label>
                                         <span><?= h(age_label($selectedRemarksAppointment)); ?> • <?= h((string) ($selectedRemarksAppointment['gender'] ?? 'Not specified')); ?></span>
                                     </div>
@@ -2535,6 +2590,37 @@ for ($i = 0; $i < 6; $i++) {
                                         </div>
                                     <?php endif; ?>
                                 </div>
+
+                                <?php
+                                $remRec = appointment_recipient_details($selectedRemarksAppointment);
+                                if ($remRec['is_immunization']):
+                                ?>
+                                    <div class="immunization-recipient-card" style="margin-top: 14px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px 16px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                            <div style="display: flex; align-items: center; gap: 8px; color: #166534; font-weight: 700; font-size: 0.92rem;">
+                                                <?= staff_icon('syringe'); ?>
+                                                <span>Immunization Recipient Information</span>
+                                            </div>
+                                            <span style="background: #dcfce7; color: #166534; border: 1px solid #86efac; padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">
+                                                Relationship: <?= h($remRec['relationship']); ?>
+                                            </span>
+                                        </div>
+                                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.88rem; color: #14532d;">
+                                            <div>
+                                                <small style="color: #15803d; font-size: 0.76rem; text-transform: uppercase; font-weight: 700; display: block;">Recipient Name</small>
+                                                <strong><?= h($remRec['recipient_full_name']); ?></strong>
+                                            </div>
+                                            <div>
+                                                <small style="color: #15803d; font-size: 0.76rem; text-transform: uppercase; font-weight: 700; display: block;">Recipient Birthdate &amp; Age</small>
+                                                <strong><?= !empty($remRec['recipient_birth_date']) ? h(date('F j, Y', strtotime($remRec['recipient_birth_date']))) . ' (' . h($remRec['recipient_age_label']) . ')' : 'N/A'; ?></strong>
+                                            </div>
+                                            <div>
+                                                <small style="color: #15803d; font-size: 0.76rem; text-transform: uppercase; font-weight: 700; display: block;">Booked By</small>
+                                                <strong><?= h($remRec['patient_full_name']); ?> (Account)</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
 
                                 <div class="account-section-divider">
                                     <?= staff_icon('pulse'); ?>
@@ -2716,6 +2802,10 @@ for ($i = 0; $i < 6; $i++) {
                             <!-- Patient Info & Demographics Card -->
                             <div class="clinical-demographics-card">
                                 <div class="demo-item">
+                                    <label>Patient / Account Holder</label>
+                                    <span><?= h(full_name($selectedViewAppointment)); ?></span>
+                                </div>
+                                <div class="demo-item">
                                     <label>Age &amp; Gender</label>
                                     <span><?= h(age_label($selectedViewAppointment)); ?> • <?= h((string) ($selectedViewAppointment['gender'] ?? 'Not specified')); ?></span>
                                 </div>
@@ -2738,6 +2828,37 @@ for ($i = 0; $i < 6; $i++) {
                                     </div>
                                 <?php endif; ?>
                             </div>
+
+                            <?php
+                            $viewRec = appointment_recipient_details($selectedViewAppointment);
+                            if ($viewRec['is_immunization']):
+                            ?>
+                                <div class="immunization-recipient-card" style="margin-top: 14px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px 16px;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 8px; color: #166534; font-weight: 700; font-size: 0.92rem;">
+                                            <?= staff_icon('syringe'); ?>
+                                            <span>Immunization Recipient Information</span>
+                                        </div>
+                                        <span style="background: #dcfce7; color: #166534; border: 1px solid #86efac; padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">
+                                            Relationship: <?= h($viewRec['relationship']); ?>
+                                        </span>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.88rem; color: #14532d;">
+                                        <div>
+                                            <small style="color: #15803d; font-size: 0.76rem; text-transform: uppercase; font-weight: 700; display: block;">Recipient Name</small>
+                                            <strong><?= h($viewRec['recipient_full_name']); ?></strong>
+                                        </div>
+                                        <div>
+                                            <small style="color: #15803d; font-size: 0.76rem; text-transform: uppercase; font-weight: 700; display: block;">Recipient Birthdate &amp; Age</small>
+                                            <strong><?= !empty($viewRec['recipient_birth_date']) ? h(date('F j, Y', strtotime($viewRec['recipient_birth_date']))) . ' (' . h($viewRec['recipient_age_label']) . ')' : 'N/A'; ?></strong>
+                                        </div>
+                                        <div>
+                                            <small style="color: #15803d; font-size: 0.76rem; text-transform: uppercase; font-weight: 700; display: block;">Booked By</small>
+                                            <strong><?= h($viewRec['patient_full_name']); ?> (Account)</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
 
                             <div class="account-section-divider">
                                 <?= staff_icon('pulse'); ?>
@@ -4246,6 +4367,10 @@ for ($i = 0; $i < 6; $i++) {
                                     <!-- Patient Demographics Overview -->
                                     <div class="clinical-demographics-card">
                                         <div class="demo-item">
+                                            <label>Patient / Account Holder</label>
+                                            <span><?= h(full_name($selectedRemarksAppointment)); ?></span>
+                                        </div>
+                                        <div class="demo-item">
                                             <label>Age &amp; Gender</label>
                                             <span><?= h(age_label($selectedRemarksAppointment)); ?> • <?= h((string) ($selectedRemarksAppointment['gender'] ?? 'Not specified')); ?></span>
                                         </div>
@@ -4268,6 +4393,37 @@ for ($i = 0; $i < 6; $i++) {
                                             </div>
                                         <?php endif; ?>
                                     </div>
+
+                                    <?php
+                                    $remRec2 = appointment_recipient_details($selectedRemarksAppointment);
+                                    if ($remRec2['is_immunization']):
+                                    ?>
+                                        <div class="immunization-recipient-card" style="margin-top: 14px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px 16px;">
+                                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                                <div style="display: flex; align-items: center; gap: 8px; color: #166534; font-weight: 700; font-size: 0.92rem;">
+                                                    <?= staff_icon('syringe'); ?>
+                                                    <span>Immunization Recipient Information</span>
+                                                </div>
+                                                <span style="background: #dcfce7; color: #166534; border: 1px solid #86efac; padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">
+                                                    Relationship: <?= h($remRec2['relationship']); ?>
+                                                </span>
+                                            </div>
+                                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 0.88rem; color: #14532d;">
+                                                <div>
+                                                    <small style="color: #15803d; font-size: 0.76rem; text-transform: uppercase; font-weight: 700; display: block;">Recipient Name</small>
+                                                    <strong><?= h($remRec2['recipient_full_name']); ?></strong>
+                                                </div>
+                                                <div>
+                                                    <small style="color: #15803d; font-size: 0.76rem; text-transform: uppercase; font-weight: 700; display: block;">Recipient Birthdate &amp; Age</small>
+                                                    <strong><?= !empty($remRec2['recipient_birth_date']) ? h(date('F j, Y', strtotime($remRec2['recipient_birth_date']))) . ' (' . h($remRec2['recipient_age_label']) . ')' : 'N/A'; ?></strong>
+                                                </div>
+                                                <div>
+                                                    <small style="color: #15803d; font-size: 0.76rem; text-transform: uppercase; font-weight: 700; display: block;">Booked By</small>
+                                                    <strong><?= h($remRec2['patient_full_name']); ?> (Account)</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
 
                                     <div class="account-section-divider">
                                         <?= staff_icon('pulse'); ?>

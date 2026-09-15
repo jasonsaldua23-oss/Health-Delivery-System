@@ -583,12 +583,16 @@ if ($page === 'reports' && (($_GET['export'] ?? '') === 'csv')) {
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
     $output = fopen('php://output', 'w');
-    fputcsv($output, ['Appointment Code', 'Reference Code', 'Patient Name', 'Birth Date', 'Gender', 'Contact Number', 'Address', 'Barangay Health Center', 'Service', 'Date', 'Time', 'Status', 'Vaccine Type', 'Temperature', 'Pulse', 'Blood Pressure', 'Doctor Notes', 'Created At']);
+    fputcsv($output, ['Appointment Code', 'Reference Code', 'Patient / Account Holder', 'Recipient Name', 'Relationship to Recipient', 'Recipient Birth Date', 'Patient Birth Date', 'Gender', 'Contact Number', 'Address', 'Barangay Health Center', 'Service', 'Date', 'Time', 'Status', 'Vaccine Type', 'Temperature', 'Pulse', 'Blood Pressure', 'Doctor Notes', 'Created At']);
     foreach ($exportAppointments as $row) {
+        $expRec = appointment_recipient_details($row);
         fputcsv($output, [
             $row['appointment_code'] ?: $row['reference_code'],
             $row['reference_code'],
             full_name($row),
+            $expRec['is_immunization'] ? $expRec['recipient_full_name'] : full_name($row),
+            $expRec['is_immunization'] ? $expRec['relationship'] : 'Self',
+            $expRec['is_immunization'] ? ($expRec['recipient_birth_date'] ?? '') : '',
             $row['birth_date'],
             $row['gender'],
             $row['contact_number'],
@@ -1331,7 +1335,20 @@ if (!function_exists('peso')) {
                                                         <small style="display:block;color:#94a3b8;"><?= h((string) ($visit['preferred_time'] ?? '')); ?></small>
                                                     </td>
                                                     <td>
+                                                        <?php
+                                                        $vRec = appointment_recipient_details($visit);
+                                                        ?>
                                                         <span class="report-service-tag"><?= h((string) $visit['service_name']); ?></span>
+                                                        <?php if ($vRec['is_immunization']): ?>
+                                                            <div style="font-size: 0.78rem; color: #166534; margin-top: 3px; font-weight: 600;">
+                                                                Recipient: <strong style="color:#14532d;"><?= h($vRec['recipient_full_name']); ?></strong> (<?= h($vRec['relationship']); ?>)
+                                                            </div>
+                                                            <?php if (!empty($visit['vaccine_type'])): ?>
+                                                                <div style="font-size: 0.75rem; color: #1e40af; margin-top: 2px;">
+                                                                    💉 Vaccine: <strong><?= h((string) $visit['vaccine_type']); ?></strong>
+                                                                </div>
+                                                            <?php endif; ?>
+                                                        <?php endif; ?>
                                                     </td>
                                                     <td><?= h((string) $visit['station_name']); ?></td>
                                                     <td style="font-family:monospace;font-weight:700;color:#3b82f6;">
@@ -1357,6 +1374,7 @@ if (!function_exists('peso')) {
                     <?php 
                         $visitBirthDate = (string) ($selectedAdminVisit['birth_date'] ?? ''); 
                         $visitAge = $visitBirthDate !== '' ? (int) date_diff(new DateTimeImmutable($visitBirthDate), new DateTimeImmutable('today'))->y : 0;
+                        $admRec = appointment_recipient_details($selectedAdminVisit);
                     ?>
                     <section class="service-modal-overlay report-modal-backdrop" style="display:flex;" onclick="if(event.target===this)window.location.href='?page=patients&<?= $patientHistoryBaseQuery; ?>'">
                         <div class="service-modal-card clinical-modal-card-modern">
@@ -1393,6 +1411,38 @@ if (!function_exists('peso')) {
                                     </div>
                                 </div>
 
+                                <?php if ($admRec['is_immunization']): ?>
+                                    <!-- Immunization Recipient Details Section -->
+                                    <div class="clinical-vitals-section" style="margin-bottom: 20px;">
+                                        <h4 class="clinical-section-title" style="color: #1e40af; display: flex; align-items: center; justify-content: space-between;">
+                                            <span>Immunization Recipient &amp; Relationship</span>
+                                            <span style="background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; font-size: 0.8rem; font-weight: 700; padding: 2px 10px; border-radius: 999px;">
+                                                Relationship: <?= h($admRec['relationship']); ?>
+                                            </span>
+                                        </h4>
+                                        <div class="clinical-vitals-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+                                            <div class="vital-metric-card" style="background: #f8fafc;">
+                                                <span class="vital-label">Recipient Full Name</span>
+                                                <strong class="vital-value" style="font-size: 1.05rem;"><?= h($admRec['recipient_full_name']); ?></strong>
+                                            </div>
+                                            <div class="vital-metric-card" style="background: #f8fafc;">
+                                                <span class="vital-label">Recipient Birthdate &amp; Age</span>
+                                                <strong class="vital-value" style="font-size: 1.05rem;"><?= !empty($admRec['recipient_birth_date']) ? h(date('F j, Y', strtotime($admRec['recipient_birth_date']))) . ' (' . h($admRec['recipient_age_label']) . ')' : 'N/A'; ?></strong>
+                                            </div>
+                                            <div class="vital-metric-card" style="background: #f8fafc;">
+                                                <span class="vital-label">Booked By (Account Holder)</span>
+                                                <strong class="vital-value" style="font-size: 1.05rem;"><?= h($admRec['patient_full_name']); ?></strong>
+                                            </div>
+                                            <?php if (!empty($selectedAdminVisit['vaccine_type'])): ?>
+                                                <div class="vital-metric-card" style="background: #eff6ff; border: 1px solid #bfdbfe;">
+                                                    <span class="vital-label" style="color: #1e40af; font-weight: 700;">Type of Vaccine Administered</span>
+                                                    <strong class="vital-value" style="color: #1e3a8a; font-size: 1.05rem;"><?= h((string) $selectedAdminVisit['vaccine_type']); ?></strong>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
                                 <!-- Vital Signs Section -->
                                 <div class="clinical-vitals-section">
                                     <h4 class="clinical-section-title">Patient Vital Signs &amp; Triage</h4>
@@ -1413,7 +1463,7 @@ if (!function_exists('peso')) {
                                             <span class="vital-label">Blood Pressure</span>
                                             <strong class="vital-value"><?= !empty($selectedAdminVisit['blood_pressure']) ? h((string) $selectedAdminVisit['blood_pressure']) : '<em class="not-set">Not recorded</em>'; ?></strong>
                                         </div>
-                                        <?php if (!empty($selectedAdminVisit['vaccine_type'])): ?>
+                                        <?php if (!$admRec['is_immunization'] && !empty($selectedAdminVisit['vaccine_type'])): ?>
                                             <div class="vital-metric-card" style="grid-column: 1 / -1; background: #eff6ff; border: 1px solid #bfdbfe;">
                                                 <span class="vital-label" style="color: #1e40af; font-weight: 700;">Type of Vaccine Administered</span>
                                                 <strong class="vital-value" style="color: #1e3a8a; font-size: 1.05rem;"><?= h((string) $selectedAdminVisit['vaccine_type']); ?></strong>
@@ -1869,6 +1919,19 @@ if (!function_exists('peso')) {
                                                 <span><?= h($appointment['service_name']); ?></span>
                                             </span>
                                         </div>
+                                        <?php
+                                        $admAppRec = appointment_recipient_details($appointment);
+                                        if ($admAppRec['is_immunization']):
+                                        ?>
+                                            <div class="appt-recipient-line" style="margin: 4px 0; font-size: 0.82rem; color: #1e40af; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                <span style="font-weight: 700;">Recipient:</span>
+                                                <strong style="color: #1e3a8a;"><?= h($admAppRec['recipient_full_name']); ?></strong>
+                                                <span style="background: #dbeafe; border: 1px solid #bfdbfe; color: #1e40af; padding: 1px 6px; border-radius: 4px; font-size: 0.74rem; font-weight: 700;"><?= h($admAppRec['relationship']); ?></span>
+                                                <?php if (!empty($admAppRec['recipient_birth_date'])): ?>
+                                                    <span style="color: #3b82f6; font-size: 0.78rem;">(<?= h($admAppRec['recipient_age_label']); ?>)</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                         <div class="appt-meta-chips-row">
                                             <span class="appt-meta-chip">
                                                 <?= admin_icon('calendar'); ?>

@@ -3963,6 +3963,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                                     </div>
                                 </div>
 
+                                <?php
+                                $apptRec = appointment_recipient_details($appt);
+                                if ($apptRec['is_immunization']):
+                                ?>
+                                    <div class="appt-recipient-box" style="margin-top: 10px; background: #f0fdf4; border: 1.5px solid #a7f3d0; border-radius: 10px; padding: 10px 14px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                                            <span style="font-size: 0.78rem; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px;">
+                                                <?= iconSvg('syringe'); ?> Immunization Recipient
+                                            </span>
+                                            <span class="relationship-pill-tag"><?= h($apptRec['relationship']); ?></span>
+                                        </div>
+                                        <div style="font-size: 0.88rem; color: #065f46; line-height: 1.45;">
+                                            <div><strong>Recipient Name:</strong> <?= h($apptRec['recipient_full_name']); ?></div>
+                                            <?php if (!empty($apptRec['recipient_birth_date'])): ?>
+                                                <div style="font-size: 0.82rem; color: #047857; margin-top: 2px;">
+                                                    <strong>Birthdate &amp; Age:</strong> <?= h(date('F j, Y', strtotime($apptRec['recipient_birth_date']))); ?> (<?= h($apptRec['recipient_age_label']); ?>)
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if ($apptRec['relationship'] !== 'Self'): ?>
+                                                <div style="font-size: 0.8rem; color: #059669; margin-top: 2px;">
+                                                    <strong>Booked By (Account Holder):</strong> <?= h($apptRec['patient_full_name']); ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
                                 <?php if (!empty($appt['vaccine_type'])): ?>
                                     <div class="appt-vaccine-box" style="margin-top: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
                                         <span style="color: #16a34a; font-size: 1rem;">💉</span>
@@ -4912,6 +4939,56 @@ function openAppointmentSlipModal(appt) {
         statusEl.innerHTML = '<span class="val-col status-pill status-' + st.toLowerCase() + '">' + st + '</span>';
     }
 
+    // Recipient & Relationship Details (Immunization)
+    const isImmunization = (appt.service_name || '').toLowerCase().includes('immuniz') || (appt.service_slug || '').toLowerCase().includes('immuniz') || Boolean(appt.vaccine_type);
+    const recipientFirst = (appt.recipient_first_name || '').trim();
+    const recipientMiddle = (appt.recipient_middle_name || '').trim();
+    const recipientLast = (appt.recipient_last_name || '').trim();
+    const recipientDob = (appt.recipient_birth_date || '').trim();
+    const relationship = (appt.relationship || '').trim() || (isImmunization ? 'Self' : '');
+
+    let recipientFullName = [recipientFirst, recipientMiddle, recipientLast].filter(Boolean).join(' ');
+    if (!recipientFullName) {
+        recipientFullName = patientFullName;
+    }
+
+    const recNameRow = document.getElementById('slipModalRecipientNameRow');
+    const recNameEl = document.getElementById('slipModalRecipientName');
+    const relRow = document.getElementById('slipModalRelationshipRow');
+    const relEl = document.getElementById('slipModalRelationship');
+    const recDobRow = document.getElementById('slipModalRecipientDobRow');
+    const recDobEl = document.getElementById('slipModalRecipientDob');
+
+    if (isImmunization || recipientFirst !== '') {
+        if (recNameRow && recNameEl) {
+            recNameEl.textContent = recipientFullName;
+            recNameRow.style.display = '';
+        }
+        if (relRow && relEl) {
+            relEl.textContent = relationship || 'Self';
+            relRow.style.display = '';
+        }
+        if (recDobRow && recDobEl) {
+            if (recipientDob) {
+                let dobText = recipientDob;
+                try {
+                    const dbDate = new Date(recipientDob + 'T00:00:00');
+                    if (!isNaN(dbDate.getTime())) {
+                        dobText = dbDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                    }
+                } catch(e) {}
+                recDobEl.textContent = dobText;
+                recDobRow.style.display = '';
+            } else {
+                recDobRow.style.display = 'none';
+            }
+        }
+    } else {
+        if (recNameRow) recNameRow.style.display = 'none';
+        if (relRow) relRow.style.display = 'none';
+        if (recDobRow) recDobRow.style.display = 'none';
+    }
+
     const vaccineRow = document.getElementById('slipModalVaccineRow');
     const vaccineEl = document.getElementById('slipModalVaccine');
     if (vaccineRow && vaccineEl) {
@@ -4972,9 +5049,21 @@ function downloadAppointmentSlipDirectly(appt) {
         }
     } catch(e) {}
 
+    const isImmunization = (appt.service_name || '').toLowerCase().includes('immuniz') || (appt.service_slug || '').toLowerCase().includes('immuniz') || Boolean(appt.vaccine_type);
+    const recipientFirst = (appt.recipient_first_name || '').trim();
+    const recipientMiddle = (appt.recipient_middle_name || '').trim();
+    const recipientLast = (appt.recipient_last_name || '').trim();
+    const recipientDob = (appt.recipient_birth_date || '').trim();
+    const relationship = (appt.relationship || '').trim() || (isImmunization ? 'Self' : '');
+
+    let recipientFullName = [recipientFirst, recipientMiddle, recipientLast].filter(Boolean).join(' ');
+    if (!recipientFullName) {
+        recipientFullName = patientFullName;
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = 1400;
-    canvas.height = 1000;
+    canvas.height = isImmunization ? 1120 : 1000;
     const ctx = canvas.getContext('2d');
 
     // Background
@@ -5018,9 +5107,44 @@ function downloadAppointmentSlipDirectly(appt) {
     ctx.fillText('STATUS: ' + (appt.status || 'Pending').toUpperCase(), 1030, 133);
 
     // Main Details Card
+    const rows = [
+        ['Health Station:', appt.station_name || 'Barangay Health Station'],
+        ['Service:', appt.service_name || 'General Consultation'],
+        ['Appointment Date:', formattedDate],
+        ['Time Slot:', appt.preferred_time || 'Daily Slot'],
+    ];
+
+    if (isImmunization || recipientFirst !== '') {
+        rows.push(['Recipient Name:', recipientFullName]);
+        rows.push(['Relationship to Recipient:', relationship || 'Self']);
+        if (recipientDob) {
+            let dobText = recipientDob;
+            try {
+                const dbDate = new Date(recipientDob + 'T00:00:00');
+                if (!isNaN(dbDate.getTime())) {
+                    dobText = dbDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                }
+            } catch(e) {}
+            rows.push(['Recipient Birthdate:', dobText]);
+        }
+        rows.push(['Booked By (Account):', patientFullName]);
+    } else {
+        rows.push(['Patient Name:', patientFullName]);
+        rows.push(['Patient ID:', appt.patient_id || 'Registered Account']);
+    }
+
+    rows.push(['Contact Number:', appt.contact_number || 'N/A']);
+    rows.push(['Registered Address:', appt.complete_address || 'Bacolod City']);
+
+    if (appt.vaccine_type) {
+        rows.push(['Vaccine Administered:', appt.vaccine_type]);
+    }
+
+    const cardHeight = Math.max(480, (Math.ceil(rows.length / 2) * 65) + 100);
+
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.roundRect(80, 330, 1240, 480, [20, 20, 20, 20]);
+    ctx.roundRect(80, 330, 1240, cardHeight, [20, 20, 20, 20]);
     ctx.fill();
     ctx.strokeStyle = '#e2e8f0';
     ctx.lineWidth = 2;
@@ -5028,22 +5152,7 @@ function downloadAppointmentSlipDirectly(appt) {
 
     ctx.fillStyle = '#0f172a';
     ctx.font = '700 32px Outfit, sans-serif';
-    ctx.fillText('Appointment & Patient Information', 130, 400);
-
-    const rows = [
-        ['Health Station:', appt.station_name || 'Barangay Health Station'],
-        ['Service:', appt.service_name || 'General Consultation'],
-        ['Appointment Date:', formattedDate],
-        ['Time Slot:', appt.preferred_time || 'Daily Slot'],
-        ['Patient Name:', patientFullName],
-        ['Contact Number:', appt.contact_number || 'N/A'],
-        ['Patient ID:', appt.patient_id || 'Registered Account'],
-        ['Registered Address:', appt.complete_address || 'Bacolod City']
-    ];
-
-    if (appt.vaccine_type) {
-        rows.push(['Vaccine Administered:', appt.vaccine_type]);
-    }
+    ctx.fillText('Appointment & Recipient Information', 130, 400);
 
     let rowY = 460;
     rows.forEach((r, idx) => {
@@ -5056,7 +5165,7 @@ function downloadAppointmentSlipDirectly(appt) {
 
         ctx.fillStyle = '#0f172a';
         ctx.font = '700 22px Outfit, sans-serif';
-        ctx.fillText(r[1], colX + 220, rowY);
+        ctx.fillText(r[1], colX + 240, rowY);
 
         if (!isLeft) {
             rowY += 65;
@@ -5064,18 +5173,19 @@ function downloadAppointmentSlipDirectly(appt) {
     });
 
     // Footer notice box
+    const footerY = 350 + cardHeight + 20;
     ctx.fillStyle = '#f0fdf4';
     ctx.beginPath();
-    ctx.roundRect(80, 840, 1240, 100, [16, 16, 16, 16]);
+    ctx.roundRect(80, footerY, 1240, 95, [16, 16, 16, 16]);
     ctx.fill();
     ctx.strokeStyle = '#bbf7d0';
     ctx.stroke();
 
     ctx.fillStyle = '#047857';
     ctx.font = '700 20px Outfit, sans-serif';
-    ctx.fillText('📌 Important Reminder:', 120, 880);
+    ctx.fillText('📌 Important Reminder:', 120, footerY + 38);
     ctx.font = '400 18px Outfit, sans-serif';
-    ctx.fillText('Please arrive 10-15 minutes prior to your scheduled slot with a valid ID. Present this slip to the station desk.', 120, 912);
+    ctx.fillText('Please arrive 10-15 minutes prior to your scheduled slot with a valid ID. Present this slip to the station desk.', 120, footerY + 70);
 
     const link = document.createElement('a');
     link.download = `Appointment-Slip-${apptCode}.png`;
@@ -5124,8 +5234,20 @@ function downloadAppointmentSlipDirectly(appt) {
                         <td class="label-col">Service Slot</td>
                         <td class="val-col" id="slipModalSlot">-</td>
                     </tr>
+                    <tr id="slipModalRecipientNameRow" style="display:none; background: #f0fdf4;">
+                        <td class="label-col" style="color: #047857; font-weight: 700;">Recipient Name</td>
+                        <td class="val-col" id="slipModalRecipientName" style="color: #065f46; font-weight: 800;">-</td>
+                    </tr>
+                    <tr id="slipModalRelationshipRow" style="display:none; background: #f0fdf4;">
+                        <td class="label-col" style="color: #047857; font-weight: 700;">Relationship to Recipient</td>
+                        <td class="val-col" id="slipModalRelationship" style="color: #065f46; font-weight: 700;">-</td>
+                    </tr>
+                    <tr id="slipModalRecipientDobRow" style="display:none; background: #f0fdf4;">
+                        <td class="label-col" style="color: #047857; font-weight: 700;">Recipient Birthdate &amp; Age</td>
+                        <td class="val-col" id="slipModalRecipientDob" style="color: #065f46; font-weight: 700;">-</td>
+                    </tr>
                     <tr>
-                        <td class="label-col">Patient Name</td>
+                        <td class="label-col">Patient / Account Holder</td>
                         <td class="val-col" id="slipModalName">-</td>
                     </tr>
                     <tr>
@@ -5219,6 +5341,7 @@ function downloadAppointmentSlipDirectly(appt) {
                     $hColor = $serviceCatalog[$hServiceSlug]['color'] ?? 'mint';
                     $hIcon = $serviceCatalog[$hServiceSlug]['icon'] ?? 'calendar';
                     $hNotes = trim((string) ($hAppt['notes'] ?? ''));
+                    $hRec = appointment_recipient_details($hAppt);
                     ?>
                     <article class="history-item-card" data-status="completed">
                         <div class="history-item-head">
@@ -5254,6 +5377,23 @@ function downloadAppointmentSlipDirectly(appt) {
                                 <strong><?= h($hTime); ?></strong>
                             </div>
                         </div>
+
+                        <?php if ($hRec['is_immunization']): ?>
+                            <div class="appt-recipient-box" style="margin-bottom: 10px; background: #f0fdf4; border: 1.5px solid #a7f3d0; border-radius: 10px; padding: 10px 12px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                                    <span style="font-size: 0.78rem; font-weight: 700; color: #047857; text-transform: uppercase;">Recipient Details</span>
+                                    <span class="relationship-pill-tag"><?= h($hRec['relationship']); ?></span>
+                                </div>
+                                <div style="font-size: 0.86rem; color: #065f46; line-height: 1.4;">
+                                    <div><strong>Recipient Name:</strong> <?= h($hRec['recipient_full_name']); ?></div>
+                                    <?php if (!empty($hRec['recipient_birth_date'])): ?>
+                                        <div style="font-size: 0.8rem; color: #047857; margin-top: 2px;">
+                                            <strong>Birthdate &amp; Age:</strong> <?= h(date('F j, Y', strtotime($hRec['recipient_birth_date']))); ?> (<?= h($hRec['recipient_age_label']); ?>)
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
 
                         <?php if (!empty($hAppt['vaccine_type'])): ?>
                             <div class="appt-vaccine-box" style="margin-bottom: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">

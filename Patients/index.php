@@ -138,6 +138,10 @@ $formData = [
     'email' => '',
     'complete_address' => '',
     'immunization_relationship' => '',
+    'recipient_first_name' => '',
+    'recipient_middle_name' => '',
+    'recipient_last_name' => '',
+    'recipient_birth_date' => '',
     'preferred_date' => '',
     'preferred_time' => '',
     'notes' => '',
@@ -319,8 +323,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
         $errors[] = 'Contact number must follow the format 09XXXXXXXXX.';
     }
 
-    if ($selectedProgram['slug'] === 'immunization' && $formData['immunization_relationship'] === '') {
-        $errors[] = 'Please provide your relationship to the patient for immunization bookings.';
+    if ($selectedProgram['slug'] === 'immunization') {
+        $immRel = $formData['immunization_relationship'];
+        if ($immRel === '' || !in_array($immRel, ['Self', 'Parent', 'Guardian'], true)) {
+            $errors[] = 'Please select your relationship to the recipient (Self, Parent, or Guardian).';
+        } elseif ($immRel !== 'Self') {
+            if ($formData['recipient_first_name'] === '' || $formData['recipient_last_name'] === '' || $formData['recipient_birth_date'] === '') {
+                $errors[] = 'Please provide the recipient\'s First Name, Last Name, and Date of Birth.';
+            }
+        }
     }
 
     if (
@@ -359,9 +370,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
     if ($errors === []) {
         $reference = create_reference_code();
         upsert_patient_profile($formData + ['patient_id' => $patientId]);
-        $stmt = db()->prepare('INSERT INTO appointments (reference_code, appointment_code, patient_id, station_slug, station_name, service_slug, service_name, first_name, middle_name, last_name, birth_date, gender, contact_number, email, complete_address, immunization_relationship, preferred_date, preferred_time, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending")');
+
+        $recipientFirst = $formData['recipient_first_name'];
+        $recipientMiddle = $formData['recipient_middle_name'];
+        $recipientLast = $formData['recipient_last_name'];
+        $recipientBirth = $formData['recipient_birth_date'] !== '' ? $formData['recipient_birth_date'] : null;
+
+        if ($selectedProgram['slug'] === 'immunization' && $formData['immunization_relationship'] === 'Self') {
+            $recipientFirst = $formData['first_name'];
+            $recipientMiddle = $formData['middle_name'];
+            $recipientLast = $formData['last_name'];
+            $recipientBirth = $formData['birth_date'];
+        }
+
+        $stmt = db()->prepare('INSERT INTO appointments (
+            reference_code, appointment_code, patient_id, 
+            station_slug, station_name, service_slug, service_name, 
+            first_name, middle_name, last_name, birth_date, gender, 
+            contact_number, email, complete_address, immunization_relationship, 
+            recipient_first_name, recipient_middle_name, recipient_last_name, recipient_birth_date,
+            preferred_date, preferred_time, notes, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending")');
+
         $stmt->bind_param(
-            'sssssssssssssssssss',
+            'sssssssssssssssssssssss',
             $reference,
             $appointmentCode,
             $patientId,
@@ -378,11 +410,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
             $formData['email'],
             $formData['complete_address'],
             $formData['immunization_relationship'],
+            $recipientFirst,
+            $recipientMiddle,
+            $recipientLast,
+            $recipientBirth,
             $formData['preferred_date'],
             $formData['preferred_time'],
             $formData['notes']
         );
         $stmt->execute();
+        $newApptId = (int) db()->insert_id;
+
+        if ($selectedProgram['slug'] === 'immunization') {
+            save_immunized_infant([
+                'appointment_id' => $newApptId,
+                'appointment_code' => $appointmentCode,
+                'patient_id' => $patientId,
+                'first_name' => $recipientFirst !== '' ? $recipientFirst : $formData['first_name'],
+                'middle_name' => $recipientMiddle !== '' ? $recipientMiddle : $formData['middle_name'],
+                'last_name' => $recipientLast !== '' ? $recipientLast : $formData['last_name'],
+                'birth_date' => $recipientBirth !== null ? $recipientBirth : $formData['birth_date'],
+                'gender' => $formData['gender'],
+                'relationship' => $formData['immunization_relationship'],
+                'station_slug' => $selectedStation['slug'],
+                'vaccine_type' => null,
+            ]);
+        }
+
         log_activity('patient', $patientId, 'appointment_booked', 'appointment', $reference, '', 'Pending', $selectedStation['slug']);
 
         header('Location: ?confirmation=' . urlencode($reference));
@@ -445,8 +499,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     <span>Patient ID</span>
                     <strong><?= h((string) ($confirmedAppointment['patient_id'] ?? 'Pending')); ?></strong>
                 </div>
-            </section>
-
+            </section>            <?php 
+            $recipientInfo = appointment_recipient_details($confirmedAppointment);
+            $isImmuAppt = $recipientInfo['is_immunization'];
+            ?>
             <section class="confirmation-card">
                 <h2>Appointment Details</h2>
                 <div class="detail-grid two-col">
@@ -455,10 +511,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     <div class="detail-item"><span class="detail-icon violet"><?= iconSvg('calendar'); ?></span><div><small>Appointment Date</small><strong><?= h(date('l, F j, Y', strtotime((string) $confirmedAppointment['preferred_date']))); ?></strong></div></div>
                     <div class="detail-item"><span class="detail-icon gold"><?= iconSvg('clock'); ?></span><div><small>Service Slot</small><strong><?= h($confirmedAppointment['preferred_time']); ?></strong></div></div>
                 </div>
+
+                <?php if ($isImmuAppt): ?>
+                    <div class="divider"></div>
+                    <div class="immunization-slip-badge-header">
+                        <span class="badge-icon-syringe"><?= iconSvg('syringe'); ?></span>
+                        <div>
+                            <h2>Immunization Recipient Information</h2>
+                            <p>Vaccination recipient &amp; relationship details</p>
+                        </div>
+                    </div>
+                    <div class="detail-grid two-col recipient-details-box">
+                        <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('user'); ?></span><div><small>Recipient Name</small><strong><?= h($recipientInfo['recipient_full_name']); ?></strong></div></div>
+                        <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('heart'); ?></span><div><small>Relationship to Recipient</small><strong class="relationship-pill-tag"><?= h($recipientInfo['relationship']); ?></strong></div></div>
+                        <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('calendar'); ?></span><div><small>Recipient Birthdate &amp; Age</small><strong><?= !empty($recipientInfo['recipient_birth_date']) ? h(date('F j, Y', strtotime($recipientInfo['recipient_birth_date']))) . ' (' . h($recipientInfo['recipient_age_label']) . ')' : 'Not specified'; ?></strong></div></div>
+                        <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('shield'); ?></span><div><small>Booked By (Account Holder)</small><strong><?= h($recipientInfo['patient_full_name']); ?> (ID: #<?= h((string)($confirmedAppointment['patient_id'] ?? 'N/A')); ?>)</strong></div></div>
+                    </div>
+                <?php endif; ?>
+
                 <div class="divider"></div>
-                <h2>Patient Information</h2>
+                <h2>Primary Account &amp; Contact Details</h2>
                 <div class="detail-grid two-col patient-details">
-                    <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('user'); ?></span><div><small>Name</small><strong><?= h(fullName($confirmedAppointment)); ?></strong></div></div>
+                    <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('user'); ?></span><div><small>Account Holder Name</small><strong><?= h(fullName($confirmedAppointment)); ?></strong></div></div>
                     <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('phone'); ?></span><div><small>Contact Number</small><strong><?= h($confirmedAppointment['contact_number']); ?></strong></div></div>
                     <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('mail'); ?></span><div><small>Email</small><strong><?= h((string) ($confirmedAppointment['email'] ?: 'No email provided')); ?></strong></div></div>
                     <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('home'); ?></span><div><small>Address</small><strong><?= h($confirmedAppointment['complete_address']); ?></strong></div></div>
@@ -471,7 +545,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     <li>The health station will review your booking request and confirm availability.</li>
                     <li>You will receive a confirmation via SMS or call within 24 hours.</li>
                     <li>Please arrive 10-15 minutes before your scheduled appointment time.</li>
-                    <li>Bring a valid ID and any relevant medical records or documents.</li>
+                    <li>Bring a valid ID and any relevant medical records or immunization cards.</li>
                 </ol>
             </section>
 
@@ -497,6 +571,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     data-contact="<?= h($confirmedAppointment['contact_number']); ?>"
                     data-email="<?= h((string) ($confirmedAppointment['email'] ?: 'No email provided')); ?>"
                     data-address="<?= h($confirmedAppointment['complete_address']); ?>"
+                    data-is-immunization="<?= $isImmuAppt ? '1' : '0'; ?>"
+                    data-recipient-name="<?= h($recipientInfo['recipient_full_name']); ?>"
+                    data-recipient-rel="<?= h($recipientInfo['relationship']); ?>"
+                    data-recipient-dob="<?= !empty($recipientInfo['recipient_birth_date']) ? h(date('F j, Y', strtotime($recipientInfo['recipient_birth_date']))) : ''; ?>"
+                    data-recipient-age="<?= h($recipientInfo['recipient_age_label']); ?>"
                 ><span class="inline-icon"><?= iconSvg('download'); ?></span> Download</button>
             </div>
         </div>
@@ -518,17 +597,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 </div>
             </section>
             <section class="booking-card">
-                <?php foreach ($errors as $error): ?>
-                    <div class="photo-notice amber-box"><?= h($error); ?></div>
-                <?php endforeach; ?>
-                <?php if ($profileUpdateMessage === 'saved'): ?>
-                    <div class="photo-notice success-box">Your information has been updated.</div>
-                <?php elseif ($profileUpdateMessage === 'failed'): ?>
-                    <div class="photo-notice amber-box">Unable to update your information. Please check the required fields.</div>
+                <?php if ($errors !== []): ?>
+                    <div class="form-errors">
+                        <strong>Please resolve the following issues:</strong>
+                        <ul>
+                            <?php foreach ($errors as $error): ?>
+                                <li><?= h($error); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
                 <?php endif; ?>
-                <form class="booking-form" id="bookingForm" action="?barangay=<?= h($selectedStation['slug']); ?>&service=<?= h($selectedProgram['slug']); ?>" method="post">
-                    <?= csrf_field(); ?>
-                    <input type="hidden" name="action" id="bookingAction" value="book_appointment">
+                <form class="appointment-form" method="post" novalidate id="appointmentBookingForm">
+                    <input type="hidden" name="csrf_token" value="<?= h(csrf_token()); ?>">
+                    <input type="hidden" name="action" value="book_appointment">
                     <input type="hidden" name="patient_id_number" id="patient_id_number" value="<?= h($formData['patient_id_number']); ?>">
                     <!-- CALENDAR MOVED TO TOP: Schedule Availability -->
                     <div class="form-section-title"><span class="section-mini-icon"><?= iconSvg('calendar'); ?></span><h2>Schedule Availability</h2></div>
@@ -613,9 +694,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     <div class="form-grid two-col">
                         <label><span>Contact Number <em>*</em></span><input data-required type="text" name="contact_number" value="<?= h($formData['contact_number']); ?>" placeholder="09171234567" class="form-readonly-input" readonly><small>Format: 09XXXXXXXXX</small></label>
                         <label><span>Email Address</span><input type="email" name="email" value="<?= h($formData['email']); ?>" placeholder="juan.delacruz@email.com" class="form-readonly-input" readonly></label>
+                        
                         <?php if ($selectedProgram['slug'] === 'immunization'): ?>
-                            <label class="full-span"><span>Relationship to Patient <em>*</em></span><input data-required type="text" name="immunization_relationship" value="<?= h($formData['immunization_relationship']); ?>" placeholder="Parent, guardian, or self" class="capitalize-input"></label>
+                            <div class="full-span immunization-recipient-card" id="immunizationRecipientSection">
+                                <div class="recipient-section-head">
+                                    <span class="recipient-badge-icon"><?= iconSvg('syringe'); ?></span>
+                                    <div>
+                                        <strong>Immunization Recipient</strong>
+                                        <p>Specify who will receive the immunization vaccine.</p>
+                                    </div>
+                                </div>
+
+                                <div class="form-grid two-col" style="margin-top: 14px;">
+                                    <label class="full-span">
+                                        <span>Relationship to Recipient <em>*</em></span>
+                                        <select data-required name="immunization_relationship" id="immunization_relationship" class="form-select-field">
+                                            <option value="">-- Select Relationship --</option>
+                                            <option value="Self" <?= $formData['immunization_relationship'] === 'Self' ? 'selected' : ''; ?>>Self (I am the recipient)</option>
+                                            <option value="Parent" <?= $formData['immunization_relationship'] === 'Parent' ? 'selected' : ''; ?>>Parent (Booking for my child / infant)</option>
+                                            <option value="Guardian" <?= $formData['immunization_relationship'] === 'Guardian' ? 'selected' : ''; ?>>Guardian (Booking for my ward / infant)</option>
+                                        </select>
+                                    </label>
+                                </div>
+
+                                <div id="extraRecipientFields" class="extra-recipient-fields-wrap" style="<?= in_array($formData['immunization_relationship'], ['Parent', 'Guardian'], true) ? '' : 'display:none;'; ?>">
+                                    <div class="recipient-subheading">
+                                        <span class="subheading-icon"><?= iconSvg('baby'); ?></span>
+                                        <strong>Recipient Details (Infant / Child)</strong>
+                                    </div>
+                                    <div class="form-grid three-col-desktop">
+                                        <label>
+                                            <span>Recipient First Name <em>*</em></span>
+                                            <input type="text" name="recipient_first_name" id="recipient_first_name" value="<?= h($formData['recipient_first_name']); ?>" placeholder="First name" class="capitalize-input">
+                                        </label>
+                                        <label>
+                                            <span>Recipient Middle Name</span>
+                                            <input type="text" name="recipient_middle_name" id="recipient_middle_name" value="<?= h($formData['recipient_middle_name']); ?>" placeholder="Middle name (optional)" class="capitalize-input">
+                                        </label>
+                                        <label>
+                                            <span>Recipient Last Name <em>*</em></span>
+                                            <input type="text" name="recipient_last_name" id="recipient_last_name" value="<?= h($formData['recipient_last_name']); ?>" placeholder="Last name" class="capitalize-input">
+                                        </label>
+                                        <label class="full-span-desktop">
+                                            <span>Recipient Date of Birth <em>*</em></span>
+                                            <input type="date" name="recipient_birth_date" id="recipient_birth_date" value="<?= h($formData['recipient_birth_date']); ?>" max="<?= date('Y-m-d'); ?>">
+                                            <small>Please enter the infant/child's exact birthdate for vaccination scheduling.</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         <?php endif; ?>
+
                         <div class="full-span address-group">
                             <span class="address-label">Complete Address <em>*</em></span>
                             <?php

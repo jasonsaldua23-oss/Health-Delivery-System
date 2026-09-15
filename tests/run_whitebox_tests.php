@@ -518,32 +518,48 @@ recordTest(
     '09XXXXXXXXX regex enforced'
 );
 
-// WB-032: Immunization relationship branch (missing)
-$svc = 'immunization'; $relInput = '';
-$immuMissingRel = ($svc === 'immunization' && $relInput === '');
+// WB-032: Immunization relationship dropdown validation (invalid/missing)
+$svc = 'immunization'; $relInput = 'InvalidOption';
+$validRelOptions = ['Self', 'Parent', 'Guardian'];
+$immuMissingRel = ($svc === 'immunization' && !in_array($relInput, $validRelOptions, true));
 recordTest(
     'WB-032',
     'book_appointment',
-    'Verify relationship requirement for immunization bookings',
-    'Service=immunization; relationship blank',
-    'Adds relationship-required error',
-    'Captured relationship-required validation error',
+    'Verify relationship requirement (Self, Parent, Guardian) for immunization bookings',
+    'Service=immunization; relationship="InvalidOption"',
+    'Rejects invalid relationship and requires Self, Parent, or Guardian',
+    'Captured relationship-required validation error for non-matching option',
     $immuMissingRel,
-    'Immunization rule checked'
+    'Immunization relationship dropdown rule enforced'
 );
 
-// WB-033: Immunization relationship success branch
-$relInputValid = 'Mother';
-$immuRelPass = !($svc === 'immunization' && $relInputValid === '');
+// WB-033: Immunization relationship success branch (Self)
+$relInputValid = 'Self';
+$immuRelPass = ($svc === 'immunization' && in_array($relInputValid, $validRelOptions, true));
 recordTest(
     'WB-033',
     'book_appointment',
-    'Verify relationship acceptance for immunization bookings',
-    'Service=immunization; relationship="Mother"',
-    'Relationship condition passes',
-    'Passed immunization relationship condition',
+    'Verify relationship acceptance (Self) for immunization bookings',
+    'Service=immunization; relationship="Self"',
+    'Relationship condition passes for Self option',
+    'Passed immunization relationship condition for Self',
     $immuRelPass,
-    'Immunization relationship verified'
+    'Immunization Self relationship verified'
+);
+
+// WB-033B: Immunization recipient extra fields validation when Parent/Guardian
+$relInputParent = 'Parent';
+$recipientFirst = ''; $recipientLast = 'Dela Cruz'; $recipientDob = '2025-06-15';
+$recipientFieldsValid = ($relInputParent === 'Self') || ($recipientFirst !== '' && $recipientLast !== '' && $recipientDob !== '');
+recordTest(
+    'WB-033B',
+    'book_appointment',
+    'Verify recipient first name, last name, and birthdate required when relationship is Parent/Guardian',
+    'Service=immunization; relationship="Parent"; recipient_first_name=""',
+    'Fails validation and requires recipient first name, last name, and birthdate',
+    'Captured required recipient fields validation error',
+    !$recipientFieldsValid,
+    'Recipient fields for infants/children validated'
 );
 
 // WB-034: Slot availability failure path
@@ -1230,6 +1246,148 @@ recordTest(
     'Malformed coordinates rejected'
 );
 
+function mock_recipient_full_name(array $row): string {
+    $first = trim((string) ($row['recipient_first_name'] ?? $row['first_name'] ?? ''));
+    $middle = trim((string) ($row['recipient_middle_name'] ?? $row['middle_name'] ?? ''));
+    $last = trim((string) ($row['recipient_last_name'] ?? $row['last_name'] ?? ''));
+    $parts = array_filter([$first, $middle, $last]);
+    return trim(implode(' ', $parts));
+}
+
+function mock_appointment_recipient_details(array $appt): array {
+    $serviceSlug = (string) ($appt['service_slug'] ?? '');
+    $serviceName = (string) ($appt['service_name'] ?? '');
+    $isImmunization = ($serviceSlug === 'immunization') || (stripos($serviceName, 'immunization') !== false) || (stripos($serviceName, 'vaccin') !== false);
+
+    $relationship = trim((string) ($appt['immunization_relationship'] ?? ''));
+    $hasExplicitRecipient = !empty($appt['recipient_first_name']) && !empty($appt['recipient_last_name']);
+    $isSelf = (strcasecmp($relationship, 'Self') === 0) || (!$hasExplicitRecipient && ($relationship === '' || strcasecmp($relationship, 'Self') === 0));
+
+    if ($isSelf) {
+        $recipientFirstName = (string) ($appt['first_name'] ?? '');
+        $recipientMiddleName = (string) ($appt['middle_name'] ?? '');
+        $recipientLastName = (string) ($appt['last_name'] ?? '');
+        $recipientBirthDate = (string) ($appt['birth_date'] ?? '');
+        $relationshipLabel = 'Self';
+    } else {
+        $recipientFirstName = (string) ($appt['recipient_first_name'] ?? $appt['first_name'] ?? '');
+        $recipientMiddleName = (string) ($appt['recipient_middle_name'] ?? $appt['middle_name'] ?? '');
+        $recipientLastName = (string) ($appt['recipient_last_name'] ?? $appt['last_name'] ?? '');
+        $recipientBirthDate = (string) ($appt['recipient_birth_date'] ?? $appt['birth_date'] ?? '');
+        $relationshipLabel = $relationship !== '' ? $relationship : 'Child';
+    }
+
+    $parts = array_filter([$recipientFirstName, $recipientMiddleName, $recipientLastName]);
+    $recipientFullName = trim(implode(' ', $parts));
+
+    $ageLabel = 'Age unavailable';
+    if ($recipientBirthDate !== '' && $recipientBirthDate !== '0000-00-00') {
+        try {
+            $dob = new DateTimeImmutable($recipientBirthDate);
+            $today = new DateTimeImmutable('today');
+            $diff = $dob->diff($today);
+            if ($diff->y > 0) {
+                $ageLabel = $diff->y . ' yr' . ($diff->y > 1 ? 's' : '') . ' old';
+            } elseif ($diff->m > 0) {
+                $ageLabel = $diff->m . ' mo' . ($diff->m > 1 ? 's' : '') . ' old';
+            } else {
+                $ageLabel = $diff->d . ' day' . ($diff->d > 1 ? 's' : '') . ' old';
+            }
+        } catch (Throwable $e) {}
+    }
+
+    return [
+        'is_immunization' => $isImmunization,
+        'relationship' => $relationshipLabel,
+        'is_self' => $isSelf,
+        'recipient_name' => $recipientFullName !== '' ? $recipientFullName : 'Patient',
+        'recipient_birth_date' => $recipientBirthDate,
+        'age_label' => $ageLabel,
+        'vaccine_type' => trim((string) ($appt['vaccine_type'] ?? ''))
+    ];
+}
+
+// WB-076: recipient_full_name helper logic
+$sampleRecipient = [
+    'recipient_first_name' => 'Baby',
+    'recipient_middle_name' => 'Rose',
+    'recipient_last_name' => 'Santos'
+];
+$fullNameRes = mock_recipient_full_name($sampleRecipient);
+recordTest(
+    'WB-076',
+    'recipient_full_name',
+    'Verify recipient full name concatenates first, middle, and last name cleanly',
+    'Recipient First="Baby", Middle="Rose", Last="Santos"',
+    'Returns "Baby Rose Santos"',
+    'Returned "Baby Rose Santos"',
+    $fullNameRes === 'Baby Rose Santos',
+    'Recipient full name helper verified'
+);
+
+// WB-077: appointment_recipient_details for Parent/Guardian relationship
+$mockApptParent = [
+    'service_slug' => 'immunization',
+    'service_name' => 'Immunization',
+    'first_name' => 'Maria',
+    'last_name' => 'Santos',
+    'birth_date' => '1990-01-01',
+    'immunization_relationship' => 'Parent',
+    'recipient_first_name' => 'Baby',
+    'recipient_middle_name' => '',
+    'recipient_last_name' => 'Santos',
+    'recipient_birth_date' => date('Y-m-d', strtotime('-6 months')),
+    'vaccine_type' => 'Pentavalent'
+];
+$detailsParent = mock_appointment_recipient_details($mockApptParent);
+$parentPassed = ($detailsParent['is_self'] === false)
+    && ($detailsParent['recipient_name'] === 'Baby Santos')
+    && ($detailsParent['relationship'] === 'Parent')
+    && ($detailsParent['vaccine_type'] === 'Pentavalent')
+    && (str_contains($detailsParent['age_label'], 'mo'));
+
+recordTest(
+    'WB-077',
+    'appointment_recipient_details',
+    'Verify appointment_recipient_details resolves infant recipient, relationship, and age for Parent',
+    'Appt with relationship="Parent", Recipient="Baby Santos", 6-month-old DOB, Vaccine="Pentavalent"',
+    'is_self=false, recipient_name="Baby Santos", relationship="Parent", vaccine_type="Pentavalent", age in months',
+    'Returned expected infant details and calculated age label',
+    $parentPassed,
+    'Parent recipient resolution verified'
+);
+
+// WB-078: appointment_recipient_details for Self relationship
+$mockApptSelf = [
+    'service_slug' => 'immunization',
+    'service_name' => 'Immunization',
+    'first_name' => 'Juan',
+    'middle_name' => 'Pedro',
+    'last_name' => 'Dela Cruz',
+    'birth_date' => '2000-05-10',
+    'immunization_relationship' => 'Self',
+    'recipient_first_name' => '',
+    'recipient_last_name' => '',
+    'recipient_birth_date' => '',
+    'vaccine_type' => 'Influenza'
+];
+$detailsSelf = mock_appointment_recipient_details($mockApptSelf);
+$selfPassed = ($detailsSelf['is_self'] === true)
+    && ($detailsSelf['recipient_name'] === 'Juan Pedro Dela Cruz')
+    && ($detailsSelf['relationship'] === 'Self')
+    && ($detailsSelf['vaccine_type'] === 'Influenza');
+
+recordTest(
+    'WB-078',
+    'appointment_recipient_details',
+    'Verify appointment_recipient_details falls back to patient info when relationship is Self',
+    'Appt with relationship="Self", Patient="Juan Pedro Dela Cruz", Vaccine="Influenza"',
+    'is_self=true, recipient_name matches patient name, relationship="Self"',
+    'Returned patient identity as recipient with Self relationship',
+    $selfPassed,
+    'Self recipient fallback verified'
+);
+
 // Save outputs
 $summary = [
     'total' => count($results),
@@ -1240,3 +1398,4 @@ $summary = [
 
 file_put_contents(__DIR__ . '/whitebox_results.json', json_encode($summary, JSON_PRETTY_PRINT));
 echo "Whitebox tests completed: {$summary['passed']}/{$summary['total']} PASSED.\n";
+

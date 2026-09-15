@@ -1,6 +1,6 @@
 {
-    "total": 75,
-    "passed": 75,
+    "total": 79,
+    "passed": 79,
     "failed": 0,
     "results": [
         {
@@ -316,22 +316,32 @@
         {
             "id": "WB-032",
             "segment": "book_appointment",
-            "desc": "Verify relationship requirement for immunization bookings",
-            "inputs": "Service=immunization; relationship blank",
-            "expected": "Adds relationship-required error",
-            "actual": "Captured relationship-required validation error",
+            "desc": "Verify relationship requirement (Self, Parent, Guardian) for immunization bookings",
+            "inputs": "Service=immunization; relationship=\"InvalidOption\"",
+            "expected": "Rejects invalid relationship and requires Self, Parent, or Guardian",
+            "actual": "Captured relationship-required validation error for non-matching option",
             "result": "Pass",
-            "remarks": "Immunization rule checked"
+            "remarks": "Immunization relationship dropdown rule enforced"
         },
         {
             "id": "WB-033",
             "segment": "book_appointment",
-            "desc": "Verify relationship acceptance for immunization bookings",
-            "inputs": "Service=immunization; relationship=\"Mother\"",
-            "expected": "Relationship condition passes",
-            "actual": "Passed immunization relationship condition",
+            "desc": "Verify relationship acceptance (Self) for immunization bookings",
+            "inputs": "Service=immunization; relationship=\"Self\"",
+            "expected": "Relationship condition passes for Self option",
+            "actual": "Passed immunization relationship condition for Self",
             "result": "Pass",
-            "remarks": "Immunization relationship verified"
+            "remarks": "Immunization Self relationship verified"
+        },
+        {
+            "id": "WB-033B",
+            "segment": "book_appointment",
+            "desc": "Verify recipient first name, last name, and birthdate required when relationship is Parent\/Guardian",
+            "inputs": "Service=immunization; relationship=\"Parent\"; recipient_first_name=\"\"",
+            "expected": "Fails validation and requires recipient first name, last name, and birthdate",
+            "actual": "Captured required recipient fields validation error",
+            "result": "Pass",
+            "remarks": "Recipient fields for infants\/children validated"
         },
         {
             "id": "WB-034",
@@ -709,7 +719,7 @@
             "desc": "Verify patient ID generation format and algorithm",
             "inputs": "patient_id omitted",
             "expected": "Patient ID is generated from email\/time and uppercased substring",
-            "actual": "Generated 6-character uppercase alphanumeric ID: 4DF128",
+            "actual": "Generated 6-character uppercase alphanumeric ID: 32787C",
             "result": "Pass",
             "remarks": "6-character ID generated"
         },
@@ -752,6 +762,36 @@
             "actual": "Returned null rejecting malformed non-numeric coordinates",
             "result": "Pass",
             "remarks": "Malformed coordinates rejected"
+        },
+        {
+            "id": "WB-076",
+            "segment": "recipient_full_name",
+            "desc": "Verify recipient full name concatenates first, middle, and last name cleanly",
+            "inputs": "Recipient First=\"Baby\", Middle=\"Rose\", Last=\"Santos\"",
+            "expected": "Returns \"Baby Rose Santos\"",
+            "actual": "Returned \"Baby Rose Santos\"",
+            "result": "Pass",
+            "remarks": "Recipient full name helper verified"
+        },
+        {
+            "id": "WB-077",
+            "segment": "appointment_recipient_details",
+            "desc": "Verify appointment_recipient_details resolves infant recipient, relationship, and age for Parent",
+            "inputs": "Appt with relationship=\"Parent\", Recipient=\"Baby Santos\", 6-month-old DOB, Vaccine=\"Pentavalent\"",
+            "expected": "is_self=false, recipient_name=\"Baby Santos\", relationship=\"Parent\", vaccine_type=\"Pentavalent\", age in months",
+            "actual": "Returned expected infant details and calculated age label",
+            "result": "Pass",
+            "remarks": "Parent recipient resolution verified"
+        },
+        {
+            "id": "WB-078",
+            "segment": "appointment_recipient_details",
+            "desc": "Verify appointment_recipient_details falls back to patient info when relationship is Self",
+            "inputs": "Appt with relationship=\"Self\", Patient=\"Juan Pedro Dela Cruz\", Vaccine=\"Influenza\"",
+            "expected": "is_self=true, recipient_name matches patient name, relationship=\"Self\"",
+            "actual": "Returned patient identity as recipient with Self relationship",
+            "result": "Pass",
+            "remarks": "Self recipient fallback verified"
         }
     ]
 }

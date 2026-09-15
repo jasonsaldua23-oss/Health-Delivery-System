@@ -125,11 +125,19 @@ describe('Patient Portal - End-to-End Test Cases', () => {
     cy.screenshot('TC-018_to_TC-021_appointment_booking');
   });
 
-  // Use Case 6: Update Patient Profile (TC-022 - TC-026)
-  it('TC-022 to TC-026: Update patient profile and contact info', () => {
-    cy.visit('/Patients/dashboard.php');
-    cy.get('body').should('be.visible');
-    cy.get('.hero-nav-pill, button').contains(/Account/i).click({ force: true });
-    cy.screenshot('TC-022_to_TC-026_profile_settings');
+  // Use Case 7: Immunization Recipient Booking (Relationship to Recipient dropdown & infant fields)
+  it('TC-027: Immunization booking shows Relationship to Recipient dropdown and dynamic infant fields', () => {
+    cy.visit('/Patients/index.php?barangay=alijis&service=immunization');
+    cy.get('#immunizationRecipientCard').should('be.visible');
+    cy.get('#immunization_relationship').should('be.visible');
+    cy.get('#immunization_relationship').select('Parent');
+    cy.get('#extraRecipientFields').should('be.visible');
+    cy.get('#recipient_first_name').should('have.attr', 'required');
+    cy.get('#recipient_last_name').should('have.attr', 'required');
+    cy.get('#recipient_birth_date').should('have.attr', 'required');
+
+    cy.get('#immunization_relationship').select('Self');
+    cy.get('#extraRecipientFields').should('not.be.visible');
+    cy.screenshot('TC-027_immunization_recipient_dropdown');
   });
 });

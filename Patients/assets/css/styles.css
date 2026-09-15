@@ -2548,4 +2548,158 @@ textarea { resize: vertical; min-height: 120px; }
     }
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   IMMUNIZATION RECIPIENT & VACCINE STYLING (PATIENT PORTAL)
+   ══════════════════════════════════════════════════════════════════════ */
+.immunization-recipient-card {
+    background: #f0fdf4;
+    border: 1.5px solid #a7f3d0;
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin: 8px 0 12px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.05);
+    transition: all 0.25s ease;
+}
+
+.immunization-recipient-card:hover {
+    border-color: #6ee7b7;
+    box-shadow: 0 6px 18px rgba(16, 185, 129, 0.08);
+}
+
+.recipient-section-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #d1fae5;
+}
+
+.recipient-badge-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
+}
+
+.recipient-badge-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.recipient-section-head strong {
+    font-size: 1.02rem;
+    color: #065f46;
+    display: block;
+    line-height: 1.2;
+}
+
+.recipient-section-head small {
+    font-size: 0.82rem;
+    color: #047857;
+    display: block;
+    margin-top: 2px;
+}
+
+.extra-recipient-fields-wrap {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1.5px dashed #a7f3d0;
+    animation: fadeInRecipient 0.3s ease forwards;
+}
+
+@keyframes fadeInRecipient {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.recipient-subheading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: #065f46;
+}
+
+.recipient-subheading svg {
+    width: 16px;
+    height: 16px;
+    color: #10b981;
+}
+
+.recipient-subheading strong {
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
+.recipient-subheading small {
+    font-size: 0.8rem;
+    color: #047857;
+    margin-left: 4px;
+}
+
+.relationship-pill-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.vaccine-pill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f0fdf4;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+    padding: 3px 10px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.recipient-badge-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+
+.recipient-details-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-top: 10px;
+}
+
+.recipient-slip-row {
+    background: #f0fdf4;
+    border-left: 3px solid #10b981;
+}
+
+
 
