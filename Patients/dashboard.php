@@ -203,37 +203,64 @@ if ($selectedStation === null && !empty($stations)) {
 $servicesForBarangay = $selectedStation['programs'] ?? [];
 $userStationSlug = strtolower($stationSlug);
 
-// Load upcoming events ONLY for the registered barangay (Active / published only)
+// Load upcoming events (Patient's Barangay Station + Citywide Health Caravans & Programs)
 $dbUpcomingEvents = fetch_upcoming_events(['status' => 'active', 'upcoming_only' => true]);
+if (empty($dbUpcomingEvents)) {
+    $dbUpcomingEvents = default_upcoming_event_seed();
+}
+
 $upcomingEvents = array_map(
-    static function (array $event): array {
+    static function (array $event) use ($userStationSlug, $stations): array {
         $startTime = trim((string) ($event['time_label'] ?? ''));
         $endTime = trim((string) ($event['end_time_label'] ?? ''));
         $timeDisplay = $startTime;
         if ($endTime !== '' && $endTime !== $startTime && stripos($startTime, '-') === false) {
             $timeDisplay = $startTime . ' - ' . $endTime;
         }
+
+        $evSlug = strtolower(trim((string) ($event['station_slug'] ?? '')));
+        $stationTitle = $event['station_name'] ?? '';
+        if (empty($stationTitle)) {
+            if ($evSlug === 'city-health' || $evSlug === 'all' || $evSlug === 'citywide' || $evSlug === '') {
+                $stationTitle = 'Bacolod City Health Office (Citywide)';
+            } else {
+                $found = null;
+                foreach ($stations as $st) {
+                    if (strcasecmp((string) $st['slug'], $evSlug) === 0) {
+                        $found = $st;
+                        break;
+                    }
+                }
+                $stationTitle = $found ? ($found['name'] ?? ($found['barangay'] . ' Barangay Health Station')) : ucfirst($evSlug) . ' Barangay Health Station';
+            }
+        }
+
+        $isLocal = ($evSlug !== '' && $evSlug === $userStationSlug);
+        $isCitywide = in_array($evSlug, ['city-health', 'all', 'citywide', ''], true);
+
         return [
             'icon' => $event['icon'] ?? 'calendar',
             'title' => $event['title'],
-            'station' => $event['station_name'],
-            'barangay' => $event['station_slug'],
+            'station' => $stationTitle,
+            'barangay' => $evSlug,
             'description' => $event['description'],
             'date' => date('F j, Y', strtotime((string) $event['event_date'])),
+            'raw_date' => $event['event_date'],
             'time' => $timeDisplay,
-            'accent' => $event['accent'] ?? 'mint',
+            'accent' => $event['accent'] ?? ($isLocal ? 'mint' : ($isCitywide ? 'blue' : 'gold')),
+            'is_local' => $isLocal,
+            'is_citywide' => $isCitywide,
         ];
     },
-    array_values(array_filter(
-        $dbUpcomingEvents,
-        static function (array $event) use ($userStationSlug): bool {
-            $stationMatches = strtolower((string) ($event['station_slug'] ?? '')) === $userStationSlug;
-            $eventDate = trim((string) ($event['event_date'] ?? ''));
-            $today = date('Y-m-d');
-            return $stationMatches && $eventDate !== '' && $eventDate >= $today;
-        }
-    ))
+    $dbUpcomingEvents
 );
+
+// Sort: Local station events first, followed by earliest upcoming dates
+usort($upcomingEvents, static function (array $a, array $b): int {
+    if ($a['is_local'] && !$b['is_local']) return -1;
+    if (!$a['is_local'] && $b['is_local']) return 1;
+    return strtotime((string) $a['raw_date']) <=> strtotime((string) $b['raw_date']);
+});
 
 // Load Patient Notifications, Follow-ups, and Booked Appointments
 $patientEmailVal = (string) ($patientAccount['email'] ?? $_SESSION['patient_email'] ?? '');
@@ -4157,13 +4184,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                 </section>
             <?php endif; ?>
 
-            <!-- 1. UPCOMING EVENTS (Filtered strictly by the patient's registered barangay) -->
+            <!-- 1. UPCOMING EVENTS (Local Barangay Events + Citywide Health Caravans) -->
             <section class="dashboard-section-block" id="eventsSection">
                 <div class="section-title-wrap">
                     <div class="section-icon gold"><?= iconSvg('sparkle'); ?></div>
                     <div class="section-title-copy">
-                        <h2>Upcoming Events</h2>
-                        <p>Health programs and announcements for <?= h($patientBarangay); ?> Barangay Health Station.</p>
+                        <h2>Upcoming Health Events &amp; Programs</h2>
+                        <p>Health caravans, vaccination drives, and community health programs in Bacolod City.</p>
                     </div>
                 </div>
 
@@ -4175,6 +4202,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                                     <?= iconSvg($event['icon']); ?>
                                 </div>
                                 <div class="event-content">
+                                    <?php if ($event['is_local']): ?>
+                                        <div style="margin-bottom: 6px;">
+                                            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; font-weight: 700; background: #dcfce7; color: #15803d; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.3px;">
+                                                ⭐ Your Barangay Station
+                                            </span>
+                                        </div>
+                                    <?php elseif ($event['is_citywide']): ?>
+                                        <div style="margin-bottom: 6px;">
+                                            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; font-weight: 700; background: #eff6ff; color: #1d4ed8; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.3px;">
+                                                🏙️ Citywide Health Caravan
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
                                     <h3><?= h($event['title']); ?></h3>
                                     <div class="event-station"><?= h($event['station']); ?></div>
                                     <p><?= h($event['description']); ?></p>
@@ -4188,18 +4228,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                     </div>
                 <?php else: ?>
                     <div class="empty-state-box">
-                        <p>No upcoming events scheduled for <?= h($patientBarangay); ?> Barangay Health Station at this time.</p>
+                        <p>No upcoming events scheduled at this time.</p>
                     </div>
                 <?php endif; ?>
             </section>
 
-            <!-- 2. HEALTH STATION SERVICES (Placed Below Upcoming Events) -->
+            <!-- 2. HEALTH STATION SERVICES (Registered Station Services) -->
             <section class="dashboard-section-block" id="servicesSection">
                 <div class="section-title-wrap">
                     <div class="section-icon gold"><?= iconSvg('home'); ?></div>
                     <div class="section-title-copy">
-                        <h2><?= h($patientBarangay); ?> Barangay Health Station</h2>
-                        <p>Services offered at the barangay registered in your address.</p>
+                        <h2><?= h($patientBarangay); ?> Barangay Health Station Services</h2>
+                        <p>Available medical and health services at your assigned health station in Brgy. <?= h($patientBarangay); ?>.</p>
                     </div>
                 </div>
 
@@ -4210,8 +4250,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                                 $scheduleLabel = service_schedule_label($stationSlug, $service['slug']);
                             ?>
                             <a href="index.php?barangay=<?= h(strtolower($stationSlug)); ?>&service=<?= h($service['slug']); ?>" class="service-card">
-                                <div class="service-icon <?= h($service['color']); ?>">
-                                    <?= iconSvg($service['icon']); ?>
+                                <div class="service-card-top">
+                                    <div class="service-icon <?= h($service['color']); ?>">
+                                        <?= iconSvg($service['icon']); ?>
+                                    </div>
+                                    <span class="service-duration"><?= iconSvg('clock'); ?> <?= h($service['duration'] ?? '30 mins'); ?></span>
                                 </div>
                                 <h3><?= h($service['title']); ?></h3>
                                 <p><?= h($service['description']); ?></p>
@@ -4231,6 +4274,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                         <p>No services currently available for this barangay station.</p>
                     </div>
                 <?php endif; ?>
+
+                <!-- 3. EXPLORE ALL BARANGAY HEALTH STATIONS IN BACOLOD -->
+                <div class="all-stations-explore-block" style="margin-top: 52px; padding-top: 38px; border-top: 1.5px solid #e2e8f0;">
+                    <div class="section-title-wrap" style="margin-bottom: 24px;">
+                        <div class="section-icon mint" style="background:#e8fbf2; color:#059669;"><?= iconSvg('map'); ?></div>
+                        <div class="section-title-copy">
+                            <h2>All Barangay Health Stations in Bacolod City</h2>
+                            <p>Explore clinic locations, contact numbers, and available healthcare services across all 15 stations.</p>
+                        </div>
+                    </div>
+
+                    <div class="stations-grid">
+                        <?php foreach ($stations as $st): ?>
+                            <?php if ($st['slug'] === 'city-health') continue; ?>
+                            <?php $isUserStation = (strcasecmp((string)$st['barangay'], $patientBarangay) === 0); ?>
+                            <a class="station-card <?= $isUserStation ? 'highlighted-user-station' : ''; ?>" href="index.php?barangay=<?= h($st['slug']); ?>" style="<?= $isUserStation ? 'border: 2px solid #059669; box-shadow: 0 8px 24px rgba(5,150,105,0.12);' : ''; ?>">
+                                <div class="station-image" style="background-image: linear-gradient(180deg, rgba(11, 23, 38, 0.08), rgba(11, 23, 38, 0.55)), url('<?= h($st['image']); ?>');">
+                                    <span class="service-badge <?= h($st['color']); ?>"><?= $st['services']; ?> Services</span>
+                                    <?php if ($isUserStation): ?>
+                                        <span class="user-station-tag" style="position: absolute; bottom: 12px; left: 14px; background: #059669; color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">★ Your Station</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="station-body">
+                                    <h3><?= h($st['name']); ?></h3>
+                                    <p class="station-line"><span class="inline-icon"><?= iconSvg('map'); ?></span><?= h($st['location']); ?></p>
+                                    <p class="station-line"><span class="inline-icon"><?= iconSvg('phone'); ?></span><?= h($st['phone']); ?></p>
+                                    <p class="station-line"><span class="inline-icon"><?= iconSvg('clock'); ?></span><?= h($st['hours']); ?></p>
+                                </div>
+                                <div class="station-footer">
+                                    <span>View Station &amp; Services</span>
+                                    <span class="station-open-icon"><?= iconSvg('arrow'); ?></span>
+                                </div>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
             </section>
         </div>
     </div>

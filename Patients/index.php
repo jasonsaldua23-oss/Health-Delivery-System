@@ -40,29 +40,47 @@ $purokOptionsByBarangay = [
     'Villa Esperanza' => [],
     'Vista Alegre' => ['Katilingban','Kawayanan','Kabulakan','Kabutongan','Busay','Inday Oya','Noli Garcia','Kabuguason','Angela Gonzaga','Ff Gonzaga','Kalubihan','Star Apple','Kasantolan 1','Kasantolan 2','Progreso Village I Zone 1','Progreso Village I Zone 2','Progreso Village I Zone 3','Progreso Village I Zone 4','Progreso Village I Zone 5','Progreso Village II','Kapisan','Villa Otto','Villa Nena','Pablo Torre','Lopez'],
 ];
+$dbEvents = fetch_upcoming_events(['upcoming_only' => true, 'status' => 'active']);
+if (empty($dbEvents)) {
+    $dbEvents = default_upcoming_event_seed();
+}
+
 $events = array_map(
-    static function (array $event): array {
+    static function (array $event) use ($stations): array {
         $startTime = trim((string) ($event['time_label'] ?? ''));
         $endTime = trim((string) ($event['end_time_label'] ?? ''));
         $timeDisplay = $startTime;
         if ($endTime !== '' && $endTime !== $startTime && stripos($startTime, '-') === false) {
             $timeDisplay = $startTime . ' - ' . $endTime;
         }
+        $evSlug = strtolower(trim((string) ($event['station_slug'] ?? '')));
+        $stationTitle = $event['station_name'] ?? '';
+        if (empty($stationTitle)) {
+            if ($evSlug === 'city-health' || $evSlug === 'all') {
+                $stationTitle = 'Bacolod City Health Office';
+            } else {
+                $found = null;
+                foreach ($stations as $st) {
+                    if (strcasecmp((string) $st['slug'], $evSlug) === 0) {
+                        $found = $st;
+                        break;
+                    }
+                }
+                $stationTitle = $found ? ($found['name'] ?? ($found['barangay'] . ' Barangay Health Station')) : ucfirst($evSlug) . ' Barangay Health Station';
+            }
+        }
         return [
             'icon' => $event['icon'] ?? 'calendar',
             'title' => $event['title'],
-            'station' => $event['station_name'],
-            'barangay' => $event['station_slug'],
+            'station' => $stationTitle,
+            'barangay' => $event['station_slug'] ?? '',
             'description' => $event['description'],
             'date' => date('F j, Y', strtotime((string) $event['event_date'])),
             'time' => $timeDisplay,
             'accent' => $event['accent'] ?? 'mint',
         ];
     },
-    array_values(array_filter(
-        fetch_upcoming_events(['upcoming_only' => true, 'status' => 'active']),
-        static fn(array $event): bool => (string) ($event['station_slug'] ?? '') !== 'city-health'
-    ))
+    $dbEvents
 );
 
 function h(string $value): string
@@ -853,6 +871,129 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 </button>
             </div>
 
+        </div>
+    </section>
+
+    <!-- 1. FIND A HEALTH STATION SECTION -->
+    <section class="section" id="stations">
+        <div class="container">
+            <div class="section-heading left">
+                <div class="section-icon orange"><?= iconSvg('home'); ?></div>
+                <div>
+                    <h2>Find a Health Station</h2>
+                    <p>Browse Barangay Health Stations across Bacolod City to view available services and clinic schedules.</p>
+                </div>
+            </div>
+
+            <div class="station-tools">
+                <div class="search-wrap">
+                    <span class="inline-icon"><?= iconSvg('map'); ?></span>
+                    <input id="stationSearch" type="search" placeholder="Search by barangay name (e.g. Bata, Mansilingan, Taculing)..." aria-label="Search health stations">
+                </div>
+                <div class="barangay-chips">
+                    <button type="button" class="chip active" data-filter="all">All Stations (<?= count($publicStations); ?>)</button>
+                    <?php foreach ($barangayOptions as $option): ?>
+                        <button type="button" class="chip" data-filter="<?= h($option); ?>"><?= h($option); ?></button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <div class="stations-grid">
+                <?php foreach ($publicStations as $station): ?>
+                    <a class="station-card" href="?barangay=<?= h($station['slug']); ?>" data-name="<?= h(strtolower($station['name'] . ' ' . $station['barangay'])); ?>" data-barangay="<?= h($station['barangay']); ?>" id="<?= h($station['anchor']); ?>">
+                        <div class="station-image" style="background-image: linear-gradient(180deg, rgba(11, 23, 38, 0.08), rgba(11, 23, 38, 0.55)), url('<?= h($station['image']); ?>');">
+                            <span class="service-badge <?= h($station['color']); ?>"><?= $station['services']; ?> Services</span>
+                        </div>
+                        <div class="station-body">
+                            <h3><?= h($station['name']); ?></h3>
+                            <p class="station-line"><span class="inline-icon"><?= iconSvg('map'); ?></span><?= h($station['location']); ?></p>
+                            <p class="station-line"><span class="inline-icon"><?= iconSvg('phone'); ?></span><?= h($station['phone']); ?></p>
+                            <p class="station-line"><span class="inline-icon"><?= iconSvg('clock'); ?></span><?= h($station['hours']); ?></p>
+                        </div>
+                        <div class="station-footer">
+                            <span>View Services &amp; Schedules</span>
+                            <span class="station-open-icon"><?= iconSvg('arrow'); ?></span>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. COMPREHENSIVE AVAILABLE HEALTHCARE SERVICES -->
+    <section class="section services-section" id="services">
+        <div class="container">
+            <div class="section-heading left services-heading-block">
+                <div class="section-icon orange"><?= iconSvg('heart'); ?></div>
+                <div>
+                    <h2>Available Healthcare Services</h2>
+                    <p>Access free and subsidized community healthcare programs delivered directly in your barangay.</p>
+                </div>
+            </div>
+            <div class="services-grid">
+                <?php foreach ($serviceCatalog as $sSlug => $service): ?>
+                    <div class="service-card">
+                        <div class="service-card-top">
+                            <div class="service-icon <?= h($service['color']); ?>">
+                                <?= iconSvg($service['icon']); ?>
+                            </div>
+                            <span class="service-duration"><?= iconSvg('clock'); ?> <?= h($service['duration'] ?? '30 mins'); ?></span>
+                        </div>
+                        <h3><?= h($service['title']); ?></h3>
+                        <p><?= h($service['description']); ?></p>
+                        <div class="service-action">
+                            <button type="button" class="btn-book-service-card js-open-patient-portal" style="background: none; border: none; padding: 0; color: #00a66a; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                Book an appointment <span class="inline-icon"><?= iconSvg('arrow'); ?></span>
+                            </button>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. UPCOMING COMMUNITY HEALTH EVENTS -->
+    <section class="section" id="events">
+        <div class="container">
+            <div class="section-heading left">
+                <div class="section-icon orange"><?= iconSvg('sparkle'); ?></div>
+                <div>
+                    <h2>Upcoming Health Events &amp; Programs</h2>
+                    <p>Stay informed about vaccination drives, health caravans, and maternal seminars across Bacolod City.</p>
+                </div>
+            </div>
+            <div class="events-grid">
+                <?php foreach ($events as $event): ?>
+                    <article class="event-card <?= h($event['accent']); ?>">
+                        <div class="event-icon <?= h($event['accent']); ?>">
+                            <?= iconSvg($event['icon']); ?>
+                        </div>
+                        <div class="event-content">
+                            <h3><?= h($event['title']); ?></h3>
+                            <div class="event-station"><?= h($event['station']); ?></div>
+                            <p><?= h($event['description']); ?></p>
+                            <div class="event-meta">
+                                <span><span class="inline-icon"><?= iconSvg('calendar'); ?></span><?= h($event['date']); ?></span>
+                                <span><span class="inline-icon"><?= iconSvg('clock'); ?></span><?= h($event['time']); ?></span>
+                            </div>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. CALL TO ACTION SECTION -->
+    <section class="section" id="cta">
+        <div class="container">
+            <div class="cta-panel">
+                <h2>Ready to Access Barangay Healthcare?</h2>
+                <p>Create your free patient account today or log in to schedule appointments, track immunization schedules, and access community medical consultations.</p>
+                <button type="button" class="hero-button cta-button js-open-patient-portal">
+                    <span>Access Patient Portal</span>
+                    <span class="inline-icon"><?= iconSvg('arrow'); ?></span>
+                </button>
+            </div>
         </div>
     </section>
 
@@ -1756,6 +1897,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const isPassword = input.type === 'password';
             input.type = isPassword ? 'text' : 'password';
             this.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+        });
+    });
+
+    document.querySelectorAll('.js-open-patient-portal').forEach((btn) => {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            openPatientModal();
         });
     });
 
