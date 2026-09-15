@@ -2786,5 +2786,71 @@ select#immunization_relationship:focus {
     border-left: 3px solid #10b981;
 }
 
+/* Hard constraints for booking form icons & badges */
+.recipient-badge-icon,
+.badge-icon-syringe {
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+    max-width: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 7px !important;
+    flex-shrink: 0 !important;
+}
 
+.recipient-badge-icon svg,
+.badge-icon-syringe svg {
+    width: 14px !important;
+    height: 14px !important;
+    max-width: 14px !important;
+    max-height: 14px !important;
+    display: block !important;
+}
 
+.subheading-icon {
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    max-width: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+
+.subheading-icon svg,
+.recipient-subheading svg {
+    width: 14px !important;
+    height: 14px !important;
+    max-width: 14px !important;
+    max-height: 14px !important;
+    display: block !important;
+}
+
+.section-mini-icon {
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+    max-width: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    flex-shrink: 0 !important;
+}
+
+.section-mini-icon svg {
+    width: 14px !important;
+    height: 14px !important;
+    max-width: 14px !important;
+    max-height: 14px !important;
+    display: block !important;
+}
