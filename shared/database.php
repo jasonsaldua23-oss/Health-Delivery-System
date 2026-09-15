@@ -2815,16 +2815,40 @@ function fetch_immunized_infants_by_patient_id(string $patientId): array
 }
 
 /**
+ * Full name helper
+ */
+if (!function_exists('fullName')) {
+    function fullName(array $row): string
+    {
+        $first = trim((string) ($row['first_name'] ?? ''));
+        $middle = trim((string) ($row['middle_name'] ?? ''));
+        $last = trim((string) ($row['last_name'] ?? ''));
+
+        $parts = array_filter([$first, $middle, $last]);
+        return trim(implode(' ', $parts));
+    }
+}
+
+if (!function_exists('full_name')) {
+    function full_name(array $row): string
+    {
+        return fullName($row);
+    }
+}
+
+/**
  * Recipient full name helper
  */
-function recipient_full_name(array $row): string
-{
-    $first = trim((string) ($row['recipient_first_name'] ?? $row['first_name'] ?? ''));
-    $middle = trim((string) ($row['recipient_middle_name'] ?? $row['middle_name'] ?? ''));
-    $last = trim((string) ($row['recipient_last_name'] ?? $row['last_name'] ?? ''));
+if (!function_exists('recipient_full_name')) {
+    function recipient_full_name(array $row): string
+    {
+        $first = trim((string) ($row['recipient_first_name'] ?? $row['first_name'] ?? ''));
+        $middle = trim((string) ($row['recipient_middle_name'] ?? $row['middle_name'] ?? ''));
+        $last = trim((string) ($row['recipient_last_name'] ?? $row['last_name'] ?? ''));
 
-    $parts = array_filter([$first, $middle, $last]);
-    return trim(implode(' ', $parts));
+        $parts = array_filter([$first, $middle, $last]);
+        return trim(implode(' ', $parts));
+    }
 }
 
 /**
