@@ -7763,11 +7763,30 @@ button { border: 0; cursor: pointer; }
 }
 
 @media print {
+  @page {
+    size: auto;
+    margin: 8mm 10mm;
+  }
+  *,
+  *::before,
+  *::after {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
   .staff-topbar,
   .staff-sidebar,
   .no-print,
   .reports-filter-card,
-  .reports-hero-actions {
+  .reports-hero-actions,
+  .account-modal-backdrop,
+  .audit-modal-overlay,
+  .system-toast-container,
+  .toast-wrap,
+  .floating-action-btn,
+  .btn-print-slip,
+  .notif-close-btn,
+  .clinical-modal-cancel-btn,
+  .clinical-modal-save-btn {
     display: none !important;
   }
   .staff-shell {
@@ -7784,6 +7803,9 @@ button { border: 0; cursor: pointer; }
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     box-shadow: none !important;
+    border-radius: 12px !important;
+    padding: 18px 24px !important;
+    margin-bottom: 16px !important;
   }
   .reports-metric-card,
   .reports-section-panel,
@@ -7791,6 +7813,7 @@ button { border: 0; cursor: pointer; }
     box-shadow: none !important;
     border: 1px solid #cbd5e1 !important;
     break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
 

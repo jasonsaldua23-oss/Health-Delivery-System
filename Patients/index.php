@@ -467,10 +467,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
 
             <div class="confirmation-actions">
                 <a class="home-button" href="<?= $isLoggedIn ? ('dashboard.php?booked=' . urlencode((string) ($confirmedAppointment['appointment_code'] ?? $confirmedAppointment['reference_code']))) : 'index.php'; ?>"><?= $isLoggedIn ? 'Go to My Appointments on Dashboard' : 'Return to Home'; ?></a>
-                                <button
+                <button
+                    class="print-button"
+                    type="button"
+                    onclick="window.print()"
+                ><span class="inline-icon"><?= iconSvg('arrow'); ?></span> Print Slip</button>
+                <button
                     class="print-button"
                     id="downloadConfirmationButton"
                     type="button"
+                    style="background: #e2e8f0; color: #1e293b;"
                     data-reference="<?= h((string) ($confirmedAppointment['appointment_code'] ?? $confirmedAppointment['reference_code'])); ?>"
                     data-patient-id="<?= h((string) ($confirmedAppointment['patient_id'] ?? '')); ?>"
                     data-station="<?= h($confirmedAppointment['station_name']); ?>"
@@ -481,7 +487,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     data-contact="<?= h($confirmedAppointment['contact_number']); ?>"
                     data-email="<?= h((string) ($confirmedAppointment['email'] ?: 'No email provided')); ?>"
                     data-address="<?= h($confirmedAppointment['complete_address']); ?>"
-                >Download</button>
+                ><span class="inline-icon"><?= iconSvg('download'); ?></span> Download</button>
             </div>
         </div>
     </section>

@@ -3056,6 +3056,247 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                 font-size: 1.45rem;
             }
         }
+
+        /* ── PRINT MEDIA RULES (ENSURE EXACTLY 1 CLEAN SINGLE-PAGE COPY) ── */
+        @media print {
+            @page {
+                size: portrait;
+                margin: 8mm 12mm;
+            }
+
+            *,
+            *::before,
+            *::after {
+                box-shadow: none !important;
+                text-shadow: none !important;
+            }
+
+            html, body {
+                background: #ffffff !important;
+                color: #0f172a !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                min-height: 0 !important;
+                height: auto !important;
+                overflow: visible !important;
+                font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+                font-size: 13px !important;
+            }
+
+            /* Completely hide all dashboard layout elements, headers, footers, tabs, cards, sidebars, modals and notifications */
+            header.main-header,
+            nav,
+            .dashboard-shell,
+            .dashboard-hero,
+            .dashboard-hero-content,
+            .dashboard-main,
+            .dashboard-tabs,
+            .appointments-grid,
+            .patient-appt-card,
+            .portal-selector,
+            .system-toast-container,
+            .toast-success,
+            .photo-notice,
+            .no-print,
+            .modal-backdrop,
+            .account-modal-overlay:not(#appointmentSlipModal),
+            #accountModal,
+            #appointmentHistoryModal,
+            #securityModal,
+            #changePasswordModal,
+            #profileModal,
+            .notif-dropdown-popover,
+            .notif-bell-wrap,
+            .slip-modal-actions,
+            .notif-close-btn,
+            .btn-print-slip,
+            .modal-download-btn,
+            .modal-done-btn {
+                display: none !important;
+                visibility: hidden !important;
+                height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+            }
+
+            /* Unhide and format the Appointment Slip modal container */
+            #appointmentSlipModal {
+                display: block !important;
+                position: static !important;
+                inset: auto !important;
+                width: 100% !important;
+                max-width: 640px !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                background: transparent !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+
+            #appointmentSlipModal * {
+                visibility: visible !important;
+            }
+
+            #appointmentSlipModal .slip-modal-card {
+                display: block !important;
+                position: static !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                max-height: none !important;
+                overflow: visible !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                border: 2px solid #059669 !important;
+                border-radius: 16px !important;
+                background: #ffffff !important;
+                transform: none !important;
+                box-sizing: border-box !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+
+            #appointmentSlipModal .slip-modal-header {
+                background: #059669 !important;
+                color: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                border-top-left-radius: 14px !important;
+                border-top-right-radius: 14px !important;
+                padding: 16px 20px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+            }
+
+            #appointmentSlipModal .slip-modal-header h3 {
+                color: #ffffff !important;
+                font-size: 1.25rem !important;
+                font-weight: 800 !important;
+                margin: 0 !important;
+            }
+
+            #appointmentSlipModal .slip-modal-header p {
+                color: rgba(255, 255, 255, 0.95) !important;
+                font-size: 0.82rem !important;
+                margin: 2px 0 0 !important;
+            }
+
+            #appointmentSlipModal .slip-header-icon {
+                background: rgba(255, 255, 255, 0.25) !important;
+                color: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                width: 38px !important;
+                height: 38px !important;
+                border-radius: 10px !important;
+            }
+
+            #appointmentSlipModal .slip-modal-body {
+                padding: 18px 22px !important;
+            }
+
+            #appointmentSlipModal .slip-reference-hero {
+                background: #f0fdf4 !important;
+                border: 2px dashed #86efac !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                padding: 10px 16px !important;
+                margin-bottom: 14px !important;
+                border-radius: 12px !important;
+                text-align: center !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            #appointmentSlipModal .slip-reference-hero span {
+                color: #047857 !important;
+                font-size: 0.78rem !important;
+                font-weight: 700 !important;
+                text-transform: uppercase !important;
+                display: block !important;
+                margin-bottom: 2px !important;
+            }
+
+            #appointmentSlipModal .slip-reference-hero strong {
+                color: #065f46 !important;
+                font-size: 1.55rem !important;
+                font-weight: 800 !important;
+                font-family: monospace !important;
+                display: block !important;
+            }
+
+            #appointmentSlipModal .slip-details-table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                margin-bottom: 14px !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            #appointmentSlipModal .slip-details-table tr {
+                border-bottom: 1px solid #e2e8f0 !important;
+            }
+
+            #appointmentSlipModal .slip-details-table td {
+                padding: 7px 4px !important;
+                font-size: 0.88rem !important;
+                line-height: 1.3 !important;
+            }
+
+            #appointmentSlipModal .slip-details-table td.label-col {
+                color: #475569 !important;
+                font-weight: 600 !important;
+                width: 36% !important;
+            }
+
+            #appointmentSlipModal .slip-details-table td.val-col {
+                color: #0f172a !important;
+                font-weight: 700 !important;
+                text-align: right !important;
+            }
+
+            #appointmentSlipModal .val-col.status-pill {
+                display: inline-block !important;
+                padding: 2px 8px !important;
+                border-radius: 999px !important;
+                font-size: 0.78rem !important;
+                font-weight: 700 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                border: 1px solid currentColor !important;
+            }
+
+            #appointmentSlipModal .slip-instructions-box {
+                background: #f8fafc !important;
+                border: 1px solid #cbd5e1 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                padding: 10px 14px !important;
+                margin-bottom: 0 !important;
+                font-size: 0.8rem !important;
+                color: #475569 !important;
+                line-height: 1.4 !important;
+                border-radius: 10px !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            #appointmentSlipModal .slip-instructions-box strong {
+                color: #0f172a !important;
+                display: block !important;
+                margin-bottom: 2px !important;
+            }
+        }
     </style>
 </head>
 <body id="top">
@@ -4237,6 +4478,7 @@ function openAppointmentSlipModal(appt) {
     if (modal) {
         modal.classList.add('active');
         modal.classList.add('open');
+        document.body.classList.add('is-printing-slip');
         document.body.style.overflow = 'hidden';
     }
 }
@@ -4246,6 +4488,7 @@ function closeAppointmentSlipModal() {
     if (modal) {
         modal.classList.remove('active');
         modal.classList.remove('open');
+        document.body.classList.remove('is-printing-slip');
         const accountModal = document.getElementById('accountModal');
         const historyModal = document.getElementById('appointmentHistoryModal');
         const isAccountOpen = accountModal && (accountModal.classList.contains('active') || accountModal.classList.contains('open'));
@@ -4263,6 +4506,7 @@ function downloadModalSlip() {
 }
 
 function printModalSlip() {
+    document.body.classList.add('is-printing-slip');
     window.print();
 }
 
@@ -4461,7 +4705,7 @@ function downloadAppointmentSlipDirectly(appt) {
             </div>
 
             <div class="slip-modal-actions">
-                <button type="button" class="btn-print-slip" onclick="window.print()">
+                <button type="button" class="btn-print-slip" onclick="printModalSlip()">
                     <?= iconSvg('arrow'); ?>
                     <span>Print Slip</span>
                 </button>

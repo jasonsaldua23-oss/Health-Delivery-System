@@ -187,7 +187,7 @@
             "id": "WB-019",
             "segment": "appointment_slot_is_available",
             "desc": "Validate weekend Sunday rejection rule",
-            "inputs": "Valid future Sunday (2026-09-13) + valid time",
+            "inputs": "Valid future Sunday (2026-09-20) + valid time",
             "expected": "Returns false",
             "actual": "Returned false enforcing Sunday station closure",
             "result": "Pass",
@@ -709,7 +709,7 @@
             "desc": "Verify patient ID generation format and algorithm",
             "inputs": "patient_id omitted",
             "expected": "Patient ID is generated from email\/time and uppercased substring",
-            "actual": "Generated 6-character uppercase alphanumeric ID: F10A9B",
+            "actual": "Generated 6-character uppercase alphanumeric ID: 4DF128",
             "result": "Pass",
             "remarks": "6-character ID generated"
         },
