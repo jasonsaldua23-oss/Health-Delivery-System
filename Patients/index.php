@@ -874,128 +874,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
         </div>
     </section>
 
-    <!-- 1. FIND A HEALTH STATION SECTION -->
-    <section class="section" id="stations">
-        <div class="container">
-            <div class="section-heading left">
-                <div class="section-icon orange"><?= iconSvg('home'); ?></div>
-                <div>
-                    <h2>Find a Health Station</h2>
-                    <p>Browse Barangay Health Stations across Bacolod City to view available services and clinic schedules.</p>
-                </div>
-            </div>
-
-            <div class="station-tools">
-                <div class="search-wrap">
-                    <span class="inline-icon"><?= iconSvg('map'); ?></span>
-                    <input id="stationSearch" type="search" placeholder="Search by barangay name (e.g. Bata, Mansilingan, Taculing)..." aria-label="Search health stations">
-                </div>
-                <div class="barangay-chips">
-                    <button type="button" class="chip active" data-filter="all">All Stations (<?= count($publicStations); ?>)</button>
-                    <?php foreach ($barangayOptions as $option): ?>
-                        <button type="button" class="chip" data-filter="<?= h($option); ?>"><?= h($option); ?></button>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <div class="stations-grid">
-                <?php foreach ($publicStations as $station): ?>
-                    <a class="station-card" href="?barangay=<?= h($station['slug']); ?>" data-name="<?= h(strtolower($station['name'] . ' ' . $station['barangay'])); ?>" data-barangay="<?= h($station['barangay']); ?>" id="<?= h($station['anchor']); ?>">
-                        <div class="station-image" style="background-image: linear-gradient(180deg, rgba(11, 23, 38, 0.08), rgba(11, 23, 38, 0.55)), url('<?= h($station['image']); ?>');">
-                            <span class="service-badge <?= h($station['color']); ?>"><?= $station['services']; ?> Services</span>
-                        </div>
-                        <div class="station-body">
-                            <h3><?= h($station['name']); ?></h3>
-                            <p class="station-line"><span class="inline-icon"><?= iconSvg('map'); ?></span><?= h($station['location']); ?></p>
-                            <p class="station-line"><span class="inline-icon"><?= iconSvg('phone'); ?></span><?= h($station['phone']); ?></p>
-                            <p class="station-line"><span class="inline-icon"><?= iconSvg('clock'); ?></span><?= h($station['hours']); ?></p>
-                        </div>
-                        <div class="station-footer">
-                            <span>View Services &amp; Schedules</span>
-                            <span class="station-open-icon"><?= iconSvg('arrow'); ?></span>
-                        </div>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </section>
-
-    <!-- 2. COMPREHENSIVE AVAILABLE HEALTHCARE SERVICES -->
-    <section class="section services-section" id="services">
-        <div class="container">
-            <div class="section-heading left services-heading-block">
-                <div class="section-icon orange"><?= iconSvg('heart'); ?></div>
-                <div>
-                    <h2>Available Healthcare Services</h2>
-                    <p>Access free and subsidized community healthcare programs delivered directly in your barangay.</p>
-                </div>
-            </div>
-            <div class="services-grid">
-                <?php foreach ($serviceCatalog as $sSlug => $service): ?>
-                    <div class="service-card">
-                        <div class="service-card-top">
-                            <div class="service-icon <?= h($service['color']); ?>">
-                                <?= iconSvg($service['icon']); ?>
-                            </div>
-                            <span class="service-duration"><?= iconSvg('clock'); ?> <?= h($service['duration'] ?? '30 mins'); ?></span>
-                        </div>
-                        <h3><?= h($service['title']); ?></h3>
-                        <p><?= h($service['description']); ?></p>
-                        <div class="service-action">
-                            <button type="button" class="btn-book-service-card js-open-patient-portal" style="background: none; border: none; padding: 0; color: #00a66a; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                                Book an appointment <span class="inline-icon"><?= iconSvg('arrow'); ?></span>
-                            </button>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </section>
-
-    <!-- 3. UPCOMING COMMUNITY HEALTH EVENTS -->
-    <section class="section" id="events">
-        <div class="container">
-            <div class="section-heading left">
-                <div class="section-icon orange"><?= iconSvg('sparkle'); ?></div>
-                <div>
-                    <h2>Upcoming Health Events &amp; Programs</h2>
-                    <p>Stay informed about vaccination drives, health caravans, and maternal seminars across Bacolod City.</p>
-                </div>
-            </div>
-            <div class="events-grid">
-                <?php foreach ($events as $event): ?>
-                    <article class="event-card <?= h($event['accent']); ?>">
-                        <div class="event-icon <?= h($event['accent']); ?>">
-                            <?= iconSvg($event['icon']); ?>
-                        </div>
-                        <div class="event-content">
-                            <h3><?= h($event['title']); ?></h3>
-                            <div class="event-station"><?= h($event['station']); ?></div>
-                            <p><?= h($event['description']); ?></p>
-                            <div class="event-meta">
-                                <span><span class="inline-icon"><?= iconSvg('calendar'); ?></span><?= h($event['date']); ?></span>
-                                <span><span class="inline-icon"><?= iconSvg('clock'); ?></span><?= h($event['time']); ?></span>
-                            </div>
-                        </div>
-                    </article>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </section>
-
-    <!-- 4. CALL TO ACTION SECTION -->
-    <section class="section" id="cta">
-        <div class="container">
-            <div class="cta-panel">
-                <h2>Ready to Access Barangay Healthcare?</h2>
-                <p>Create your free patient account today or log in to schedule appointments, track immunization schedules, and access community medical consultations.</p>
-                <button type="button" class="hero-button cta-button js-open-patient-portal">
-                    <span>Access Patient Portal</span>
-                    <span class="inline-icon"><?= iconSvg('arrow'); ?></span>
-                </button>
-            </div>
-        </div>
-    </section>
 
     <!-- Volunteer Portal Modal -->
     <div id="volunteerModal" class="modal-overlay hidden">
@@ -1302,7 +1180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
     </div>
 </main>
 <?php endif; ?>
-<footer class="footer" id="footer"><div class="container footer-grid"><div><div class="brand footer-brand"><span class="brand-icon"><?= iconSvg('heart'); ?></span><span class="brand-copy"><strong>Bacolod Health Stations</strong></span></div><p>Providing quality healthcare services to the communities of Bacolod City.</p></div><div><h3>Contact Information</h3><ul class="footer-list"><li><span class="inline-icon"><?= iconSvg('phone'); ?></span><?= h($contact['phone']); ?></li><li><span class="inline-icon"><?= iconSvg('map'); ?></span><?= h($contact['address']); ?></li><li><span class="inline-icon"><?= iconSvg('clock'); ?></span><?= h($contact['hours']); ?></li></ul></div><div><h3>Quick Links</h3><ul class="footer-links"><li><a href="index.php#stations">Find a Health Station</a></li><li><a href="index.php">Back to Top</a></li><li><a href="index.php#cta">Get Started</a></li></ul></div></div><div class="container footer-bottom"><p>&copy; 2026 Bacolod Health Stations. All rights reserved.</p></div></footer>
+<footer class="footer" id="footer"><div class="container footer-grid"><div><div class="brand footer-brand"><span class="brand-icon"><?= iconSvg('heart'); ?></span><span class="brand-copy"><strong>Bacolod Health Stations</strong></span></div><p>Providing quality healthcare services to the communities of Bacolod City.</p></div><div><h3>Contact Information</h3><ul class="footer-list"><li><span class="inline-icon"><?= iconSvg('phone'); ?></span><?= h($contact['phone']); ?></li><li><span class="inline-icon"><?= iconSvg('map'); ?></span><?= h($contact['address']); ?></li><li><span class="inline-icon"><?= iconSvg('clock'); ?></span><?= h($contact['hours']); ?></li></ul></div><div><h3>Portals &amp; Navigation</h3><ul class="footer-links"><li><a href="#portalSelector">Choose Portal</a></li><li><a href="#top">Back to Top</a></li></ul></div></div><div class="container footer-bottom"><p>&copy; 2026 Bacolod Health Stations. All rights reserved.</p></div></footer>
 <script src="assets/js/app.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
