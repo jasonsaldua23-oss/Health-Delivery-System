@@ -480,12 +480,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
         .recipient-badge-icon svg, .badge-icon-syringe svg { width: 14px !important; height: 14px !important; max-width: 14px !important; max-height: 14px !important; display: block !important; }
         .subheading-icon { width: 18px !important; height: 18px !important; min-width: 18px !important; max-width: 18px !important; min-height: 18px !important; max-height: 18px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; flex-shrink: 0 !important; }
         .subheading-icon svg, .recipient-subheading svg { width: 14px !important; height: 14px !important; max-width: 14px !important; max-height: 14px !important; display: block !important; }
-        .section-mini-icon { width: 26px !important; height: 26px !important; min-width: 26px !important; max-width: 26px !important; min-height: 26px !important; max-height: 26px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; flex-shrink: 0 !important; }
-        .section-mini-icon svg { width: 14px !important; height: 14px !important; max-width: 14px !important; max-height: 14px !important; display: block !important; }
-        .inline-icon svg { width: 15px !important; height: 15px !important; max-width: 15px !important; max-height: 15px !important; }
-        .meta-icon svg { width: 15px !important; height: 15px !important; max-width: 15px !important; max-height: 15px !important; }
+        .section-mini-icon { width: 34px !important; height: 34px !important; min-width: 34px !important; max-width: 34px !important; min-height: 34px !important; max-height: 34px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; border-radius: 9px !important; flex-shrink: 0 !important; }
+        .section-mini-icon svg { width: 18px !important; height: 18px !important; max-width: 18px !important; max-height: 18px !important; display: block !important; }
+        .inline-icon svg { width: 18px !important; height: 18px !important; max-width: 18px !important; max-height: 18px !important; }
+        .meta-icon svg { width: 16px !important; height: 16px !important; max-width: 16px !important; max-height: 16px !important; }
         .appt-recipient-box svg { width: 14px !important; height: 14px !important; max-width: 14px !important; max-height: 14px !important; display: inline-block !important; }
-        .btn-view-slip svg { width: 14px !important; height: 14px !important; max-width: 14px !important; max-height: 14px !important; }
+        .btn-view-slip svg { width: 16px !important; height: 16px !important; max-width: 16px !important; max-height: 16px !important; }
 
         .dashboard-shell {
             min-height: 100vh;
