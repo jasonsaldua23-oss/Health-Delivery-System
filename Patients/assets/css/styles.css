@@ -27,8 +27,16 @@ button, input, select, textarea { font: inherit; }
 .nav-bar { justify-content: space-between; gap: 18px; min-height: 80px; }
 .simple-nav { flex-wrap: wrap; }
 .brand { gap: 14px; }
-.brand-icon { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 17px; background: var(--green); color: #fff; box-shadow: 0 10px 20px rgba(8, 178, 122, 0.25); }
-.brand-icon svg, .inline-icon svg, .event-icon svg, .info-icon svg, .service-icon svg, .section-mini-icon svg, .detail-icon svg, .confirmation-check svg, .detail-line svg, .photo-verified-card h3 svg { width: 24px; height: 24px; }
+.brand-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: var(--green); color: #fff; box-shadow: 0 8px 16px rgba(8, 178, 122, 0.2); }
+.brand-icon svg { width: 20px; height: 20px; }
+.event-icon svg, .info-icon svg, .service-icon svg, .photo-verified-card h3 svg { width: 20px; height: 20px; }
+.detail-icon { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; }
+.detail-icon svg { width: 16px; height: 16px; }
+.inline-icon svg { width: 15px; height: 15px; }
+.back-link .inline-icon svg { width: 14px !important; height: 14px !important; }
+.booking-meta .inline-icon svg { width: 15px !important; height: 15px !important; }
+.section-mini-icon { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: #e8fbf2; color: var(--green); flex-shrink: 0; }
+.section-mini-icon svg { width: 14px !important; height: 14px !important; }
 .brand-copy { display: flex; flex-direction: column; gap: 4px; }
 .brand-copy strong { font-size: 1rem; line-height: 1.1; }
 .brand-copy small, .contact-link, .camera-help, .event-content p, .section-heading p, .station-line, .footer p, .footer a, .footer li, .photo-verified-card p, .detail-item small, .detail-line small { color: var(--muted); }
@@ -44,12 +52,11 @@ button, input, select, textarea { font: inherit; }
 .section-heading.left { gap: 22px; }
 .section-heading.center { text-align: center; }
 .section-heading h2, .confirmation-card h2, .next-steps-card h2 { margin: 0 0 10px; font-size: clamp(2.2rem, 3vw, 3rem); line-height: 1.1; }
-.section-mini-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: #e8fbf2; color: var(--green); flex-shrink: 0; }
-.section-mini-icon svg { width: 18px !important; height: 18px !important; }
-.booking-meta .inline-icon svg { width: 16px !important; height: 16px !important; }
 .event-icon.blue, .info-icon.blue, .service-icon.blue, .detail-icon.blue { background: #eaf2ff; color: #215deb; }
 .event-icon.pink, .service-icon.pink { background: linear-gradient(180deg, #ff2f96 0%, #e40079 100%); }
+.detail-icon.mint { background: #e6f9f0; color: #0db273; }
 .detail-icon.violet { background: #f4ebff; color: #8b3dff; }
+.detail-icon.gold { background: #fef7e6; color: #f59e0b; }
 .service-icon.red { background: linear-gradient(180deg, #ff3131 0%, #ff0029 100%); }
 .service-icon.violet { background: linear-gradient(180deg, #9a41ff 0%, #7a18ff 100%); }
 .service-icon.cyan { background: linear-gradient(180deg, #12b4df 0%, #0c99c9 100%); }
@@ -184,9 +191,10 @@ textarea { resize: vertical; min-height: 120px; }
 .schedule-board { display: grid; grid-template-columns: 1.55fr 1fr; gap: 18px; padding: 18px; border: 1px solid #dce7f2; border-radius: 24px; background: #fdfefe; }
 .schedule-calendar-panel, .schedule-times-panel { padding: 12px; border-radius: 20px; background: #fff; }
 .schedule-month-bar { justify-content: space-between; gap: 14px; margin-bottom: 16px; }
-.schedule-month-bar strong { font-size: 1.08rem; }
-.month-nav { width: 42px; height: 42px; border: 1px solid #d6e1ec; border-radius: 14px; background: #fff; color: #41546f; cursor: pointer; display: grid; place-items: center; }
-.month-nav svg { width: 18px; height: 18px; }
+.schedule-month-bar strong { font-size: 1.05rem; }
+.month-nav { width: 36px; height: 36px; border: 1px solid #d6e1ec; border-radius: 10px; background: #fff; color: #41546f; cursor: pointer; display: grid; place-items: center; transition: all 0.2s ease; }
+.month-nav:hover { background: #f1f5f9; border-color: #cbd5e1; }
+.month-nav svg { width: 14px; height: 14px; }
 .month-nav-next svg { transform: rotate(180deg); }
 .month-nav:disabled { opacity: 0.45; cursor: not-allowed; }
 .calendar-weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
@@ -235,8 +243,8 @@ textarea { resize: vertical; min-height: 120px; }
 .home-button { background: #0db273; color: #fff; transition: 0.2s ease; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .primary-action.is-ready { background: #0db273; cursor: pointer; }
 .confirmation-hero { position: relative; }
-.confirmation-check { width: 96px; height: 96px; margin: 0 auto 28px; border-radius: 999px; background: #fff; color: #0a9967; box-shadow: 0 10px 24px rgba(7, 59, 45, 0.08); }
-.confirmation-check svg { width: 48px; height: 48px; }
+.confirmation-check { width: 56px; height: 56px; margin: 0 auto 18px; border-radius: 999px; background: #fff; color: #0a9967; display: grid; place-items: center; box-shadow: 0 8px 20px rgba(7, 59, 45, 0.08); }
+.confirmation-check svg { width: 28px; height: 28px; }
 .reference-box { display: inline-grid; gap: 10px; margin-top: 20px; padding: 22px 28px; border-radius: 20px; background: rgba(255,255,255,0.18); }
 .reference-box span { color: rgba(255,255,255,0.84); }
 .reference-box strong { font-size: 2rem; }
@@ -282,10 +290,12 @@ textarea { resize: vertical; min-height: 120px; }
     from { opacity: 0; transform: translateY(-16px) scale(0.96); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
-.detail-item, .detail-line { gap: 18px; }
-.detail-item strong, .detail-line strong { display: block; font-size: 1.05rem; margin-top: 4px; }
-.divider { height: 1px; background: #edf2f7; margin: 28px 0; }
-.light-icon { color: #96a3b8; }
+.detail-item, .detail-line { gap: 14px; }
+.detail-item strong, .detail-line strong { display: block; font-size: 1rem; margin-top: 2px; }
+.detail-line .inline-icon { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: #f1f5f9; color: #64748b; flex-shrink: 0; }
+.detail-line .inline-icon svg, .detail-line svg { width: 14px !important; height: 14px !important; }
+.divider { height: 1px; background: #edf2f7; margin: 24px 0; }
+.light-icon { color: #64748b; }
 .next-steps-card { border-color: #afcdfc; background: #edf5ff; }
 .next-steps-card ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 18px; }
 .next-steps-card li { display: flex; align-items: flex-start; gap: 14px; color: #22459b; }
@@ -825,33 +835,35 @@ textarea { resize: vertical; min-height: 120px; }
 
 .account-info-banner {
     display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 16px 20px;
-    border-radius: 16px;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    border-radius: 14px;
     background: #f0fdf4;
     border: 1.5px solid #bbf7d0;
     color: #166534;
-    margin-bottom: 26px;
+    margin-bottom: 24px;
 }
 
 .account-info-banner .inline-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: #16a34a;
+    display: inline-grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: #dcfce7;
+    color: #15803d;
     flex-shrink: 0;
-    margin-top: 2px;
 }
 
 .account-info-banner .inline-icon svg {
-    width: 20px;
-    height: 20px;
+    width: 14px;
+    height: 14px;
 }
 
 .account-info-banner strong {
     display: block;
-    font-size: 0.96rem;
+    font-size: 0.94rem;
     font-weight: 700;
     color: #15803d;
     margin-bottom: 2px;
@@ -859,9 +871,9 @@ textarea { resize: vertical; min-height: 120px; }
 
 .account-info-banner p {
     margin: 0;
-    font-size: 0.88rem;
+    font-size: 0.84rem;
     color: #166534;
-    line-height: 1.45;
+    line-height: 1.4;
 }
 
 .account-info-banner a {
@@ -2553,47 +2565,47 @@ textarea { resize: vertical; min-height: 120px; }
 .immunization-recipient-card {
     background: #f0fdf4;
     border: 1.5px solid #a7f3d0;
-    border-radius: 16px;
-    padding: 18px 20px;
+    border-radius: 14px;
+    padding: 16px 18px;
     margin: 8px 0 16px;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.05);
+    box-shadow: 0 3px 10px rgba(16, 185, 129, 0.04);
     transition: all 0.25s ease;
 }
 
 .immunization-recipient-card:hover {
     border-color: #6ee7b7;
-    box-shadow: 0 6px 18px rgba(16, 185, 129, 0.08);
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.07);
 }
 
 .recipient-section-head {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 14px;
-    padding-bottom: 12px;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
     border-bottom: 1px solid #d1fae5;
 }
 
 .recipient-badge-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
     background: linear-gradient(135deg, #10b981, #059669);
     color: #ffffff;
     display: inline-grid;
     place-items: center;
     flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
 }
 
 .recipient-badge-icon svg {
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
     display: block;
 }
 
 .recipient-section-head strong {
-    font-size: 1.02rem;
+    font-size: 0.96rem;
     color: #065f46;
     display: block;
     line-height: 1.2;
@@ -2601,8 +2613,8 @@ textarea { resize: vertical; min-height: 120px; }
 
 .recipient-section-head p,
 .recipient-section-head small {
-    margin: 3px 0 0 0;
-    font-size: 0.84rem;
+    margin: 2px 0 0 0;
+    font-size: 0.82rem;
     color: #047857;
     display: block;
     line-height: 1.3;
@@ -2620,7 +2632,7 @@ select#immunization_relationship {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23059669' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 14px center;
-    background-size: 16px;
+    background-size: 14px;
     border: 1.5px solid #cbd5e1;
     border-radius: 12px;
     appearance: none;
@@ -2665,14 +2677,14 @@ select#immunization_relationship:focus {
 .recipient-subheading {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: 7px;
+    margin-bottom: 10px;
     color: #065f46;
 }
 
 .subheading-icon {
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
     display: inline-grid;
     place-items: center;
     flex-shrink: 0;
@@ -2680,19 +2692,19 @@ select#immunization_relationship:focus {
 
 .subheading-icon svg,
 .recipient-subheading svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     color: #10b981;
     display: block;
 }
 
 .recipient-subheading strong {
-    font-size: 0.92rem;
+    font-size: 0.88rem;
     font-weight: 700;
 }
 
 .recipient-subheading small {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     color: #047857;
     margin-left: 4px;
 }
@@ -2700,24 +2712,25 @@ select#immunization_relationship:focus {
 .immunization-slip-badge-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin: 16px 0 12px;
+    gap: 10px;
+    margin: 14px 0 10px;
 }
 
 .badge-icon-syringe {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
     background: linear-gradient(135deg, #10b981, #059669);
     color: #ffffff;
     display: inline-grid;
     place-items: center;
     flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
 }
 
 .badge-icon-syringe svg {
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
     display: block;
 }
 
