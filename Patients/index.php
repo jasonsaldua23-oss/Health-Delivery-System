@@ -1192,11 +1192,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    const regPhoneInput = document.getElementById('regPhone');
-    regPhoneInput?.addEventListener('input', function() {
-        this.value = this.value.replace(/\D/g, '').slice(0, 11);
-    });
-
     const regBarangaySelect = document.getElementById('regBarangay');
     const regPurokSelect = document.getElementById('regPurok');
     const purokCatalog = <?= json_encode(bacolod_purok_catalog(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?: '{}'; ?>;
