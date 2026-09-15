@@ -727,10 +727,25 @@ if (!function_exists('peso')) {
     <link rel="stylesheet" href="assets/styles.css?v=<?= filemtime(__DIR__ . '/assets/styles.css'); ?>">
 </head>
 <body>
+<div class="admin-drawer-backdrop" id="adminDrawerBackdrop"></div>
 <div class="admin-shell">
-    <aside class="sidebar">
-        <div>
+    <aside class="sidebar" id="adminSidebar">
+        <div class="sidebar-drawer-header">
+            <div class="drawer-brand-mini">
+                <span class="brand-mark-mini"><span class="brand-mark" style="width:36px;height:36px;"><?= admin_icon('logo'); ?></span></span>
+                <div>
+                    <strong>Bacolod City Health</strong>
+                    <small>Admin Panel</small>
+                </div>
+            </div>
+            <button type="button" class="sidebar-drawer-close" id="adminSidebarCloseBtn" aria-label="Close navigation">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="sidebar-desktop-brand">
             <div class="sidebar-brand"><span class="brand-mark"><?= admin_icon('logo'); ?></span><div><strong>Bacolod City Health</strong><small>Admin Panel</small></div></div>
+        </div>
+        <div style="flex: 1;">
             <nav class="sidebar-nav">
                 <a class="<?= $page === 'dashboard' ? 'active' : ''; ?>" href="?page=dashboard"><?= admin_icon('dashboard'); ?>Dashboard</a>
                 <a class="<?= $page === 'patients' ? 'active' : ''; ?>" href="?page=patients"><?= admin_icon('patients'); ?>Patients</a>
@@ -742,10 +757,28 @@ if (!function_exists('peso')) {
                 <a class="<?= $page === 'reports' ? 'active' : ''; ?>" href="?page=reports"><?= admin_icon('reports'); ?>Reports</a>
             </nav>
         </div>
+        <div class="sidebar-drawer-signout">
+            <div class="sidebar-admin-badge">
+                <div class="badge-role-tag">Administrator</div>
+                <strong><?= h((string) ($_SESSION['admin_name'] ?? 'Admin User')); ?></strong>
+                <span><?= h((string) ($_SESSION['admin_email'] ?? ADMIN_LOGIN_EMAIL)); ?></span>
+            </div>
+            <form method="post" class="logout-form" style="margin: 0;">
+                <input type="hidden" name="action" value="logout">
+                <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                <button type="submit" class="sidebar-logout-btn">
+                    <?= admin_icon('logout'); ?>
+                    <span>Sign Out</span>
+                </button>
+            </form>
+        </div>
     </aside>
     <main class="main-content">
         <header class="admin-header">
             <div class="admin-header-left">
+                <button type="button" class="admin-mobile-nav-toggle" id="adminMobileNavToggle" aria-label="Toggle navigation menu">
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
                 <div class="admin-status-indicator">
                     <span class="live-pulse"></span>
                     <span class="live-text">City Health Network Online</span>
@@ -762,7 +795,7 @@ if (!function_exists('peso')) {
                         <span><?= h((string) ($_SESSION['admin_email'] ?? ADMIN_LOGIN_EMAIL)); ?></span>
                     </div>
                 </div>
-                <form method="post" class="logout-form">
+                <form method="post" class="logout-form admin-header-logout">
                     <input type="hidden" name="action" value="logout">
                     <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
                     <button type="submit" class="logout-button" title="Sign out of admin panel"><?= admin_icon('logout'); ?><span>Sign Out</span></button>
@@ -808,64 +841,72 @@ if (!function_exists('peso')) {
                 </div>
             </section>
 
-            <!-- Metrics / KPI Stat Grid -->
-            <section class="dash-stat-grid">
-                <article class="dash-stat-card theme-emerald">
-                    <div class="dash-stat-top">
-                        <div class="dash-stat-icon"><?= admin_icon('patients'); ?></div>
-                        <span class="dash-stat-tag">Completed Records</span>
-                    </div>
-                    <div class="dash-stat-body">
-                        <h3><?= number_format($stats['total_patients']); ?></h3>
-                        <p>Total Registered Patients</p>
-                    </div>
-                    <div class="dash-stat-footer">
-                        <span>Verified patient profiles on record</span>
-                    </div>
-                </article>
+            <!-- Metrics / KPI Stat Grid (Slideshow on mobile) -->
+            <div class="dash-stat-carousel-wrapper">
+                <section class="dash-stat-grid" id="adminStatCarousel">
+                    <article class="dash-stat-card theme-emerald">
+                        <div class="dash-stat-top">
+                            <div class="dash-stat-icon"><?= admin_icon('patients'); ?></div>
+                            <span class="dash-stat-tag">Completed Records</span>
+                        </div>
+                        <div class="dash-stat-body">
+                            <h3><?= number_format($stats['total_patients']); ?></h3>
+                            <p>Total Registered Patients</p>
+                        </div>
+                        <div class="dash-stat-footer">
+                            <span>Verified patient profiles on record</span>
+                        </div>
+                    </article>
 
-                <article class="dash-stat-card theme-blue">
-                    <div class="dash-stat-top">
-                        <div class="dash-stat-icon"><?= admin_icon('appointments'); ?></div>
-                        <span class="dash-stat-tag">Active Today</span>
-                    </div>
-                    <div class="dash-stat-body">
-                        <h3><?= number_format($stats['appointments_today']); ?></h3>
-                        <p>Today's Appointments</p>
-                    </div>
-                    <div class="dash-stat-footer">
-                        <span>Pending, confirmed & queue active</span>
-                    </div>
-                </article>
+                    <article class="dash-stat-card theme-blue">
+                        <div class="dash-stat-top">
+                            <div class="dash-stat-icon"><?= admin_icon('appointments'); ?></div>
+                            <span class="dash-stat-tag">Active Today</span>
+                        </div>
+                        <div class="dash-stat-body">
+                            <h3><?= number_format($stats['appointments_today']); ?></h3>
+                            <p>Today's Appointments</p>
+                        </div>
+                        <div class="dash-stat-footer">
+                            <span>Pending, confirmed & queue active</span>
+                        </div>
+                    </article>
 
-                <article class="dash-stat-card theme-indigo">
-                    <div class="dash-stat-top">
-                        <div class="dash-stat-icon"><?= admin_icon('shield'); ?></div>
-                        <span class="dash-stat-tag">Availed Services</span>
-                    </div>
-                    <div class="dash-stat-body">
-                        <h3><?= number_format($stats['active_services']); ?></h3>
-                        <p>Availed Health Programs</p>
-                    </div>
-                    <div class="dash-stat-footer">
-                        <span>Offered across all barangay stations</span>
-                    </div>
-                </article>
+                    <article class="dash-stat-card theme-indigo">
+                        <div class="dash-stat-top">
+                            <div class="dash-stat-icon"><?= admin_icon('shield'); ?></div>
+                            <span class="dash-stat-tag">Availed Services</span>
+                        </div>
+                        <div class="dash-stat-body">
+                            <h3><?= number_format($stats['active_services']); ?></h3>
+                            <p>Availed Health Programs</p>
+                        </div>
+                        <div class="dash-stat-footer">
+                            <span>Offered across all barangay stations</span>
+                        </div>
+                    </article>
 
-                <article class="dash-stat-card theme-amber">
-                    <div class="dash-stat-top">
-                        <div class="dash-stat-icon"><?= admin_icon('clock'); ?></div>
-                        <span class="dash-stat-tag">Past 7 Days</span>
-                    </div>
-                    <div class="dash-stat-body">
-                        <h3><?= number_format($stats['online_bookings']); ?></h3>
-                        <p>Online Bookings</p>
-                    </div>
-                    <div class="dash-stat-footer">
-                        <span>Recent patient portal submissions</span>
-                    </div>
-                </article>
-            </section>
+                    <article class="dash-stat-card theme-amber">
+                        <div class="dash-stat-top">
+                            <div class="dash-stat-icon"><?= admin_icon('clock'); ?></div>
+                            <span class="dash-stat-tag">Past 7 Days</span>
+                        </div>
+                        <div class="dash-stat-body">
+                            <h3><?= number_format($stats['online_bookings']); ?></h3>
+                            <p>Online Bookings</p>
+                        </div>
+                        <div class="dash-stat-footer">
+                            <span>Recent patient portal submissions</span>
+                        </div>
+                    </article>
+                </section>
+                <div class="dash-stat-dots" id="adminStatDots">
+                    <button type="button" class="stat-dot active" aria-label="Slide 1" data-index="0"></button>
+                    <button type="button" class="stat-dot" aria-label="Slide 2" data-index="1"></button>
+                    <button type="button" class="stat-dot" aria-label="Slide 3" data-index="2"></button>
+                    <button type="button" class="stat-dot" aria-label="Slide 4" data-index="3"></button>
+                </div>
+            </div>
 
             <!-- Charts Section (2 Columns) -->
             <section class="dash-charts-grid">
@@ -4694,6 +4735,57 @@ window.dismissAdminToast = function() {
         setTimeout(() => {
             window.dismissAdminToast();
         }, 5000);
+    }
+})();
+
+// Admin Mobile Navigation Drawer & Dashboard Stat Slideshow Logic
+(function() {
+    const mobileToggle = document.getElementById('adminMobileNavToggle');
+    const sidebar = document.getElementById('adminSidebar');
+    const backdrop = document.getElementById('adminDrawerBackdrop');
+    const closeBtn = document.getElementById('adminSidebarCloseBtn');
+
+    function openAdminDrawer() {
+        if (!sidebar || !backdrop) return;
+        backdrop.classList.add('active');
+        sidebar.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeAdminDrawer() {
+        if (!sidebar || !backdrop) return;
+        backdrop.classList.remove('active');
+        sidebar.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    mobileToggle?.addEventListener('click', openAdminDrawer);
+    closeBtn?.addEventListener('click', closeAdminDrawer);
+    backdrop?.addEventListener('click', closeAdminDrawer);
+
+    // Dashboard Carousel sync
+    const carousel = document.getElementById('adminStatCarousel');
+    const dotsContainer = document.getElementById('adminStatDots');
+    if (carousel && dotsContainer) {
+        const dots = dotsContainer.querySelectorAll('.stat-dot');
+        const cards = carousel.querySelectorAll('.dash-stat-card');
+
+        dots.forEach((dot, idx) => {
+            dot.addEventListener('click', () => {
+                if (cards[idx]) {
+                    cards[idx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            });
+        });
+
+        carousel.addEventListener('scroll', () => {
+            const scrollLeft = carousel.scrollLeft;
+            const cardWidth = cards[0] ? cards[0].offsetWidth + 14 : 1;
+            const activeIndex = Math.round(scrollLeft / cardWidth);
+            dots.forEach((d, i) => {
+                d.classList.toggle('active', i === activeIndex);
+            });
+        }, { passive: true });
     }
 })();
 </script>

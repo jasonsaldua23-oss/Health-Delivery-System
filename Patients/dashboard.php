@@ -285,6 +285,8 @@ function iconSvg(string $name): string
         'eye' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         'history' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 7v5l4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         'filter' => '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        'menu' => '<svg viewBox="0 0 24 24" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+        'logout' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="16 17 21 12 16 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="21" y1="12" x2="9" y2="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     ];
 
     return $icons[$name] ?? '';
@@ -3313,22 +3315,393 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                 margin-bottom: 2px !important;
             }
         }
+
+        /* Mobile Navigation Drawer Styles */
+        .mobile-menu-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            color: #0f172a;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+        }
+
+        .mobile-menu-toggle:hover {
+            background: #f1f5f9;
+            color: #0284c7;
+        }
+
+        .mobile-menu-toggle svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .nav-left-group {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .patient-drawer-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 99998;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .patient-drawer-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .patient-nav-drawer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: min(320px, 86vw);
+            background: #ffffff;
+            z-index: 99999;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 30px rgba(0, 0, 0, 0.15);
+            overflow-y: auto;
+        }
+
+        .patient-nav-drawer.open {
+            transform: translateX(0);
+        }
+
+        .patient-drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 22px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .drawer-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .drawer-brand .brand-icon {
+            display: grid;
+            place-items: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #10b981, #06b6d4);
+            color: #ffffff;
+        }
+
+        .drawer-brand .brand-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .drawer-brand .brand-text strong {
+            display: block;
+            font-size: 1.05rem;
+            color: #0f172a;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .drawer-brand .brand-text small {
+            display: block;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .drawer-close-btn {
+            display: grid;
+            place-items: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .drawer-close-btn:hover {
+            background: #fee2e2;
+            border-color: #fca5a5;
+            color: #ef4444;
+        }
+
+        .drawer-close-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .drawer-user-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 18px 22px;
+            background: #f8fafc;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .drawer-user-avatar {
+            display: grid;
+            place-items: center;
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            color: #ffffff;
+            font-size: 1.25rem;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+            flex-shrink: 0;
+        }
+
+        .drawer-user-info strong {
+            display: block;
+            font-size: 1rem;
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .drawer-user-info span {
+            display: block;
+            font-size: 0.82rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        .patient-drawer-nav {
+            flex: 1;
+            padding: 16px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .drawer-nav-link {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 13px 16px;
+            border-radius: 12px;
+            color: #334155;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none;
+            background: transparent;
+            border: none;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .drawer-nav-link:hover {
+            background: #f1f5f9;
+            color: #0284c7;
+        }
+
+        .drawer-link-icon {
+            display: grid;
+            place-items: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: #f8fafc;
+            color: #64748b;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+
+        .drawer-nav-link:hover .drawer-link-icon {
+            background: #e0f2fe;
+            color: #0284c7;
+        }
+
+        .drawer-link-icon svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .drawer-badge {
+            margin-left: auto;
+            padding: 3px 9px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            color: #334155;
+            font-size: 0.76rem;
+            font-weight: 700;
+        }
+
+        .drawer-badge.unread {
+            background: #ef4444;
+            color: #ffffff;
+        }
+
+        .patient-drawer-footer {
+            margin-top: auto;
+            padding: 18px 22px;
+            border-top: 1px solid #f1f5f9;
+            background: #fafafa;
+        }
+
+        .drawer-logout-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 13px 18px;
+            border-radius: 12px;
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+            font-size: 0.96rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .drawer-logout-btn:hover {
+            background: #fecaca;
+            color: #991b1b;
+            transform: translateY(-1px);
+        }
+
+        .drawer-logout-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        @media (max-width: 860px) {
+            .mobile-menu-toggle {
+                display: inline-flex;
+            }
+            .patient-drawer-backdrop {
+                display: block;
+            }
+            .dashboard-hero-actions .hero-nav-pill:not(#notifBellBtn) {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body id="top">
+
+<!-- Mobile Navigation Drawer Backdrop -->
+<div class="patient-drawer-backdrop" id="patientDrawerBackdrop"></div>
+
+<!-- Mobile Navigation Drawer -->
+<aside class="patient-nav-drawer" id="patientNavDrawer" aria-hidden="true">
+    <div class="patient-drawer-header">
+        <div class="drawer-brand">
+            <span class="brand-icon"><?= iconSvg('heart'); ?></span>
+            <div class="brand-text">
+                <strong>Bacolod Health</strong>
+                <small>Patient Portal</small>
+            </div>
+        </div>
+        <button type="button" class="drawer-close-btn" id="closePatientDrawerBtn" aria-label="Close navigation menu">
+            <?= iconSvg('x'); ?>
+        </button>
+    </div>
+
+    <div class="drawer-user-card">
+        <div class="drawer-user-avatar">
+            <?= strtoupper(substr($patientName ?: 'P', 0, 1)); ?>
+        </div>
+        <div class="drawer-user-info">
+            <strong><?= h($patientName); ?></strong>
+            <span>Brgy. <?= h($patientBarangay); ?>, Bacolod City</span>
+        </div>
+    </div>
+
+    <nav class="patient-drawer-nav">
+        <a href="#appointmentsSection" class="drawer-nav-link" data-drawer-link>
+            <span class="drawer-link-icon"><?= iconSvg('calendar'); ?></span>
+            <span>My Booked Appointments</span>
+            <?php if (count($patientAppointments) > 0): ?>
+                <span class="drawer-badge"><?= count($patientAppointments); ?></span>
+            <?php endif; ?>
+        </a>
+        <a href="#servicesSection" class="drawer-nav-link" data-drawer-link>
+            <span class="drawer-link-icon"><?= iconSvg('stethoscope'); ?></span>
+            <span>Health Services</span>
+        </a>
+        <a href="#eventsSection" class="drawer-nav-link" data-drawer-link>
+            <span class="drawer-link-icon"><?= iconSvg('sparkle'); ?></span>
+            <span>Upcoming Events</span>
+        </a>
+        <button type="button" class="drawer-nav-link" id="drawerNotifBtn">
+            <span class="drawer-link-icon"><?= iconSvg('bell'); ?></span>
+            <span>Notifications</span>
+            <?php if ($unreadNotifCount > 0): ?>
+                <span class="drawer-badge unread"><?= $unreadNotifCount; ?></span>
+            <?php endif; ?>
+        </button>
+        <button type="button" class="drawer-nav-link" id="drawerAccountBtn">
+            <span class="drawer-link-icon"><?= iconSvg('user'); ?></span>
+            <span>Account Settings</span>
+        </button>
+    </nav>
+
+    <div class="patient-drawer-footer">
+        <form method="post" class="drawer-logout-form" style="margin: 0;">
+            <?= csrf_field(); ?>
+            <input type="hidden" name="action" value="logout">
+            <button type="submit" class="drawer-logout-btn">
+                <?= iconSvg('logout'); ?>
+                <span>Sign Out</span>
+            </button>
+        </form>
+    </div>
+</aside>
+
 <header class="main-header">
     <div class="container nav-bar simple-nav">
-        <a class="brand" href="dashboard.php">
-            <span class="brand-icon"><?= iconSvg('heart'); ?></span>
-            <span class="brand-copy">
-                <strong>Bacolod Health Stations</strong>
-                <small>Your Community Health Partner</small>
-            </span>
-        </a>
-        <a class="contact-link" href="tel:<?= h($contact['phone']); ?>">
-            <span class="inline-icon"><?= iconSvg('phone'); ?></span>
-            <span><?= h($contact['phone']); ?></span>
-        </a>
+        <div class="nav-left-group">
+            <button type="button" class="mobile-menu-toggle" id="patientMenuToggle" aria-label="Open navigation menu">
+                <?= iconSvg('menu'); ?>
+            </button>
+            <a class="brand" href="dashboard.php">
+                <span class="brand-icon"><?= iconSvg('heart'); ?></span>
+                <span class="brand-copy">
+                    <strong>Bacolod Health Stations</strong>
+                    <small>Your Community Health Partner</small>
+                </span>
+            </a>
+        </div>
+        <div class="nav-right-group">
+            <a class="contact-link" href="tel:<?= h($contact['phone']); ?>">
+                <span class="inline-icon"><?= iconSvg('phone'); ?></span>
+                <span><?= h($contact['phone']); ?></span>
+            </a>
+        </div>
     </div>
 </header>
 
@@ -4076,6 +4449,51 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         });
+    });
+
+    // Patient Mobile Navigation Drawer
+    const patientMenuToggle = document.getElementById('patientMenuToggle');
+    const patientNavDrawer = document.getElementById('patientNavDrawer');
+    const patientDrawerBackdrop = document.getElementById('patientDrawerBackdrop');
+    const closePatientDrawerBtn = document.getElementById('closePatientDrawerBtn');
+    const drawerAccountBtn = document.getElementById('drawerAccountBtn');
+    const drawerNotifBtn = document.getElementById('drawerNotifBtn');
+
+    function openPatientDrawer() {
+        if (!patientNavDrawer || !patientDrawerBackdrop) return;
+        patientDrawerBackdrop.classList.add('active');
+        patientNavDrawer.classList.add('open');
+        patientNavDrawer.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closePatientDrawer() {
+        if (!patientNavDrawer || !patientDrawerBackdrop) return;
+        patientDrawerBackdrop.classList.remove('active');
+        patientNavDrawer.classList.remove('open');
+        patientNavDrawer.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    patientMenuToggle?.addEventListener('click', openPatientDrawer);
+    closePatientDrawerBtn?.addEventListener('click', closePatientDrawer);
+    patientDrawerBackdrop?.addEventListener('click', closePatientDrawer);
+
+    document.querySelectorAll('.patient-nav-drawer [data-drawer-link]').forEach(link => {
+        link.addEventListener('click', () => {
+            closePatientDrawer();
+        });
+    });
+
+    drawerAccountBtn?.addEventListener('click', () => {
+        closePatientDrawer();
+        openModal();
+    });
+
+    drawerNotifBtn?.addEventListener('click', () => {
+        closePatientDrawer();
+        const notifBtn = document.getElementById('notifBellBtn');
+        notifBtn?.click();
     });
 
     // Account Modal logic

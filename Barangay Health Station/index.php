@@ -1030,11 +1030,16 @@ for ($i = 0; $i < 6; $i++) {
 </head>
 <body>
 <header class="staff-topbar">
-    <div class="topbar-brand">
-        <span class="brand-mark brand-mark-teal"><?= staff_icon('logo'); ?></span>
-        <div class="brand-text">
-            <strong><?= h($station['name']); ?></strong>
-            <small>Operations Center</small>
+    <div class="topbar-left-group">
+        <button type="button" class="mobile-nav-toggle" id="staffMobileNavToggle" aria-label="Toggle navigation menu">
+            <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-brand">
+            <span class="brand-mark brand-mark-teal"><?= staff_icon('logo'); ?></span>
+            <div class="brand-text">
+                <strong><?= h($station['name']); ?></strong>
+                <small>Operations Center</small>
+            </div>
         </div>
     </div>
     
@@ -1068,8 +1073,22 @@ for ($i = 0; $i < 6; $i++) {
         </div>
     </div>
 </header>
+<div class="staff-drawer-backdrop" id="staffDrawerBackdrop"></div>
 <div class="staff-shell">
-    <aside class="staff-sidebar">
+    <aside class="staff-sidebar" id="staffSidebar">
+        <div class="sidebar-drawer-header">
+            <div class="drawer-brand-mini">
+                <span class="brand-mark-mini brand-mark-teal"><?= staff_icon('logo'); ?></span>
+                <div>
+                    <strong><?= h($station['name']); ?></strong>
+                    <small>Staff Panel</small>
+                </div>
+            </div>
+            <button type="button" class="sidebar-drawer-close" id="staffSidebarCloseBtn" aria-label="Close navigation">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
         <div>
             <nav class="sidebar-nav">
                 <a class="<?= $page === 'dashboard' ? 'active' : ''; ?>" href="?page=dashboard"><?= staff_icon('dashboard'); ?><span>Dashboard</span></a>
@@ -1091,6 +1110,16 @@ for ($i = 0; $i < 6; $i++) {
                 <?= staff_icon('user'); ?>
                 <span>Account Settings</span>
             </button>
+        </div>
+        <div class="sidebar-drawer-signout">
+            <form method="post" class="logout-form" style="margin: 0;">
+                <input type="hidden" name="action" value="logout">
+                <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                <button type="submit" class="sidebar-logout-btn">
+                    <?= staff_icon('logout'); ?>
+                    <span>Sign Out</span>
+                </button>
+            </form>
         </div>
     </aside>
 
@@ -1131,56 +1160,64 @@ for ($i = 0; $i < 6; $i++) {
                 </div>
             </section>
 
-            <!-- Dashboard Stat KPI Cards -->
-            <section class="dash-stat-grid">
-                <article class="dash-stat-card theme-teal">
-                    <div class="dash-stat-top">
-                        <div class="dash-stat-icon"><?= staff_icon('pulse'); ?></div>
-                        <span class="dash-stat-tag">Today</span>
-                    </div>
-                    <div class="dash-stat-body">
-                        <h3><?= number_format($kpiTodayTotal); ?></h3>
-                        <p>Total Bookings</p>
-                    </div>
-                    <div class="dash-stat-footer">Today's patient volume</div>
-                </article>
+            <!-- Dashboard Stat KPI Cards (Slideshow on mobile) -->
+            <div class="dash-stat-carousel-wrapper">
+                <section class="dash-stat-grid" id="staffStatCarousel">
+                    <article class="dash-stat-card theme-teal">
+                        <div class="dash-stat-top">
+                            <div class="dash-stat-icon"><?= staff_icon('pulse'); ?></div>
+                            <span class="dash-stat-tag">Today</span>
+                        </div>
+                        <div class="dash-stat-body">
+                            <h3><?= number_format($kpiTodayTotal); ?></h3>
+                            <p>Total Bookings</p>
+                        </div>
+                        <div class="dash-stat-footer">Today's patient volume</div>
+                    </article>
 
-                <article class="dash-stat-card theme-amber">
-                    <div class="dash-stat-top">
-                        <div class="dash-stat-icon"><?= staff_icon('clock'); ?></div>
-                        <span class="dash-stat-tag">Action Needed</span>
-                    </div>
-                    <div class="dash-stat-body">
-                        <h3><?= number_format($kpiPendingCount); ?></h3>
-                        <p>Pending Confirmations</p>
-                    </div>
-                    <div class="dash-stat-footer">Awaiting staff confirmation</div>
-                </article>
+                    <article class="dash-stat-card theme-amber">
+                        <div class="dash-stat-top">
+                            <div class="dash-stat-icon"><?= staff_icon('clock'); ?></div>
+                            <span class="dash-stat-tag">Action Needed</span>
+                        </div>
+                        <div class="dash-stat-body">
+                            <h3><?= number_format($kpiPendingCount); ?></h3>
+                            <p>Pending Confirmations</p>
+                        </div>
+                        <div class="dash-stat-footer">Awaiting staff confirmation</div>
+                    </article>
 
-                <article class="dash-stat-card theme-blue">
-                    <div class="dash-stat-top">
-                        <div class="dash-stat-icon"><?= staff_icon('users'); ?></div>
-                        <span class="dash-stat-tag">Live Queue</span>
-                    </div>
-                    <div class="dash-stat-body">
-                        <h3><?= number_format($kpiServingCount); ?></h3>
-                        <p>In Station Queue</p>
-                    </div>
-                    <div class="dash-stat-footer">Waiting or being served</div>
-                </article>
+                    <article class="dash-stat-card theme-blue">
+                        <div class="dash-stat-top">
+                            <div class="dash-stat-icon"><?= staff_icon('users'); ?></div>
+                            <span class="dash-stat-tag">Live Queue</span>
+                        </div>
+                        <div class="dash-stat-body">
+                            <h3><?= number_format($kpiServingCount); ?></h3>
+                            <p>In Station Queue</p>
+                        </div>
+                        <div class="dash-stat-footer">Waiting or being served</div>
+                    </article>
 
-                <article class="dash-stat-card theme-emerald">
-                    <div class="dash-stat-top">
-                        <div class="dash-stat-icon"><?= staff_icon('check'); ?></div>
-                        <span class="dash-stat-tag">Finished</span>
-                    </div>
-                    <div class="dash-stat-body">
-                        <h3><?= number_format($kpiCompletedCount); ?></h3>
-                        <p>Completed Today</p>
-                    </div>
-                    <div class="dash-stat-footer">Successful consultations</div>
-                </article>
-            </section>
+                    <article class="dash-stat-card theme-emerald">
+                        <div class="dash-stat-top">
+                            <div class="dash-stat-icon"><?= staff_icon('check'); ?></div>
+                            <span class="dash-stat-tag">Finished</span>
+                        </div>
+                        <div class="dash-stat-body">
+                            <h3><?= number_format($kpiCompletedCount); ?></h3>
+                            <p>Completed Today</p>
+                        </div>
+                        <div class="dash-stat-footer">Successful consultations</div>
+                    </article>
+                </section>
+                <div class="dash-stat-dots" id="staffStatDots">
+                    <button type="button" class="stat-dot active" aria-label="Slide 1" data-index="0"></button>
+                    <button type="button" class="stat-dot" aria-label="Slide 2" data-index="1"></button>
+                    <button type="button" class="stat-dot" aria-label="Slide 3" data-index="2"></button>
+                    <button type="button" class="stat-dot" aria-label="Slide 4" data-index="3"></button>
+                </div>
+            </div>
 
             <!-- Unattended Operations & Clinical Audit Section -->
             <section class="dash-audit-section">
@@ -5702,10 +5739,54 @@ window.dismissStaffToast = function() {
 };
 (function() {
     const toast = document.getElementById('staffFlashToast');
-    if (toast) {
-        setTimeout(() => {
-            window.dismissStaffToast();
-        }, 5000);
+// Staff Mobile Navigation Drawer & Dashboard Stat Slideshow Logic
+(function() {
+    const mobileToggle = document.getElementById('staffMobileNavToggle');
+    const sidebar = document.getElementById('staffSidebar');
+    const backdrop = document.getElementById('staffDrawerBackdrop');
+    const closeBtn = document.getElementById('staffSidebarCloseBtn');
+
+    function openStaffDrawer() {
+        if (!sidebar || !backdrop) return;
+        backdrop.classList.add('active');
+        sidebar.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeStaffDrawer() {
+        if (!sidebar || !backdrop) return;
+        backdrop.classList.remove('active');
+        sidebar.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    mobileToggle?.addEventListener('click', openStaffDrawer);
+    closeBtn?.addEventListener('click', closeStaffDrawer);
+    backdrop?.addEventListener('click', closeStaffDrawer);
+
+    // Dashboard Carousel sync
+    const carousel = document.getElementById('staffStatCarousel');
+    const dotsContainer = document.getElementById('staffStatDots');
+    if (carousel && dotsContainer) {
+        const dots = dotsContainer.querySelectorAll('.stat-dot');
+        const cards = carousel.querySelectorAll('.dash-stat-card');
+
+        dots.forEach((dot, idx) => {
+            dot.addEventListener('click', () => {
+                if (cards[idx]) {
+                    cards[idx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            });
+        });
+
+        carousel.addEventListener('scroll', () => {
+            const scrollLeft = carousel.scrollLeft;
+            const cardWidth = cards[0] ? cards[0].offsetWidth + 14 : 1;
+            const activeIndex = Math.round(scrollLeft / cardWidth);
+            dots.forEach((d, i) => {
+                d.classList.toggle('active', i === activeIndex);
+            });
+        }, { passive: true });
     }
 })();
 </script>

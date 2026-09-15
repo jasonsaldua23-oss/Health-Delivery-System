@@ -264,15 +264,9 @@ if ($action === 'register_patient') {
     $gender = trim((string) ($_POST['gender'] ?? ''));
     $phone = trim((string) ($_POST['phone'] ?? $_POST['contact_number'] ?? ''));
 
-    // Check if phone contains non-numeric characters
-    if (!ctype_digit($phone)) {
-        echo json_encode(['success' => false, 'message' => 'Please correct the contact number. Contact number must contain only numbers.'], JSON_THROW_ON_ERROR);
-        exit;
-    }
-
-    // Check if phone is exactly 11 digits
-    if (strlen($phone) !== 11) {
-        echo json_encode(['success' => false, 'message' => 'Please correct the contact number. Contact number must be exactly 11 digits (e.g. 09XXXXXXXXX).'], JSON_THROW_ON_ERROR);
+    // Validate contact number format (must be 11 digits starting with 09)
+    if (!preg_match('/^09\d{9}$/', $phone)) {
+        echo json_encode(['success' => false, 'message' => 'Please enter a valid 11-digit contact number starting with 09 (e.g. 09XXXXXXXXX).'], JSON_THROW_ON_ERROR);
         exit;
     }
 

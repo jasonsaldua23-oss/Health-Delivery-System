@@ -887,7 +887,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                             </div>
                             <div class="field-group">
                                 <label for="regPhone">Contact Number <em style="color:#ff4f4f;">*</em></label>
-                                <input id="regPhone" name="phone" type="tel" inputmode="numeric" pattern="[0-9]{11}" maxlength="11" value="" placeholder="09XXXXXXXXX" required>
+                                <input id="regPhone" name="phone" type="tel" inputmode="numeric" pattern="09[0-9]{9}" maxlength="11" value="" placeholder="09XXXXXXXXX" required>
+                                <small style="display:block;margin-top:4px;color:#64748b;font-size:0.8rem;">Format: 09XXXXXXXXX (11 digits)</small>
                             </div>
                         </div>
 
@@ -1055,6 +1056,11 @@ document.addEventListener('DOMContentLoaded', function () {
         regBirthdateInput.max = `${yyyy}-${mm}-${dd}`;
         regBirthdateInput.min = '1900-01-01';
     }
+
+    const regPhoneInput = document.getElementById('regPhone');
+    regPhoneInput?.addEventListener('input', function () {
+        this.value = this.value.replace(/\D/g, '').slice(0, 11);
+    });
 
     function setActivePortal(portal) {
         document.querySelectorAll('.portal-card').forEach((button) => {
@@ -1437,16 +1443,15 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Contact number must only contain digits
-        if (!/^\d+$/.test(phone)) {
-            window.showSystemToast?.('Please correct the contact number. Contact number must contain only numbers.', { type: 'error', theme: 'patient', title: 'Invalid Contact Number' });
+        // Contact number must start with 09 and be exactly 11 digits
+        if (!phone) {
+            window.showSystemToast?.('Please enter your contact number.', { type: 'error', theme: 'patient', title: 'Missing Information' });
             document.getElementById('regPhone')?.focus();
             return;
         }
 
-        // Contact number must be exactly 11 digits
-        if (phone.length !== 11) {
-            window.showSystemToast?.('Please correct the contact number. Contact number must be exactly 11 digits (e.g. 09XXXXXXXXX).', { type: 'error', theme: 'patient', title: 'Invalid Contact Number' });
+        if (!/^09\d{9}$/.test(phone)) {
+            window.showSystemToast?.('Please enter a valid 11-digit contact number starting with 09 (format: 09XXXXXXXXX).', { type: 'error', theme: 'patient', title: 'Invalid Contact Number' });
             document.getElementById('regPhone')?.focus();
             return;
         }
