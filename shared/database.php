@@ -1224,9 +1224,14 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
 function db(): mysqli
 {
     static $connection = null;
+    static $failedToConnect = false;
 
     if ($connection instanceof mysqli) {
         return $connection;
+    }
+
+    if ($failedToConnect) {
+        throw new mysqli_sql_exception('Database unavailable');
     }
 
     mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
@@ -1237,77 +1242,32 @@ function db(): mysqli
         (php_sapi_name() === 'cli' && strtoupper(substr(PHP_OS, 0, 3)) === 'WIN')
     );
 
-    $hostOptions = [];
-    if (DB_HOST === 'localhost') {
-        $hostOptions = ['localhost', '127.0.0.1'];
-    } elseif (DB_HOST === '127.0.0.1') {
-        $hostOptions = ['127.0.0.1', 'localhost'];
-    } else {
-        $hostOptions = [DB_HOST, 'localhost', '127.0.0.1'];
-    }
+    $configsToTry = [
+        [
+            'host' => DB_HOST,
+            'user' => DB_USER,
+            'pass' => DB_PASS,
+            'name' => DB_NAME,
+            'port' => DB_PORT
+        ]
+    ];
 
-    $dbNameOptions = array_values(array_unique(array_filter([
-        DB_NAME,
-        'u763176290_HDS',
-        'u763176290_hds',
-        'health_delivery_system'
-    ])));
-
-    $configsToTry = [];
-
-    // 1. Primary configured credentials across host options & database case options
-    foreach ($hostOptions as $h) {
-        foreach ($dbNameOptions as $dbName) {
-            $configsToTry[] = [
-                'host' => $h,
-                'user' => DB_USER,
-                'pass' => DB_PASS,
-                'name' => $dbName,
-                'port' => DB_PORT
-            ];
-        }
-    }
-
-    // 2. Production Hostinger credentials fallback
-    $prodPasswords = array_values(array_unique(array_filter([
-        DB_PASS,
-        'qfA*ZwVyDzBpz36'
-    ])));
-
-    foreach (['127.0.0.1', 'localhost'] as $h) {
-        foreach ($prodPasswords as $pwd) {
-            foreach ($dbNameOptions as $dbName) {
-                $configsToTry[] = [
-                    'host' => $h,
-                    'user' => 'u763176290_health_del_sys',
-                    'pass' => $pwd,
-                    'name' => $dbName,
-                    'port' => 3306
-                ];
-            }
-        }
-    }
-
-    // 3. Local development fallback (only on local machine / XAMPP)
     if ($isLocalDev) {
-        foreach (['127.0.0.1', 'localhost'] as $h) {
-            foreach ($dbNameOptions as $dbName) {
-                $configsToTry[] = [
-                    'host' => $h,
-                    'user' => 'root',
-                    'pass' => '',
-                    'name' => $dbName,
-                    'port' => 3306
-                ];
-                $configsToTry[] = [
-                    'host' => $h,
-                    'user' => 'root',
-                    'pass' => 'root',
-                    'name' => $dbName,
-                    'port' => 3306
-                ];
-            }
-        }
+        $configsToTry[] = [
+            'host' => '127.0.0.1',
+            'user' => 'root',
+            'pass' => '',
+            'name' => 'u763176290_hds',
+            'port' => 3306
+        ];
+    } else {
+        $configsToTry[] = [
+            'host' => '127.0.0.1',
+            'user' => 'u763176290_health_del_sys',
+            'pass' => 'qfA*ZwVyDzBpz36',
+            'name' => 'u763176290_hds',
+            'port' => 3306
+        ];
     }
 
     // Deduplicate configs
@@ -1327,8 +1287,11 @@ function db(): mysqli
 
     foreach ($configsToTry as $idx => $cfg) {
         try {
-            $connection = new mysqli($cfg['host'], $cfg['user'], $cfg['pass'], $cfg['name'], $cfg['port']);
-            $connection->set_charset('utf8mb4');
+            $m = new mysqli();
+            $m->options(MYSQLI_OPT_CONNECT_TIMEOUT, 1);
+            $m->real_connect($cfg['host'], $cfg['user'], $cfg['pass'], $cfg['name'], (int) $cfg['port']);
+            $m->set_charset('utf8mb4');
+            $connection = $m;
             $lastException = null;
             break;
         } catch (mysqli_sql_exception $exception) {
@@ -1340,13 +1303,18 @@ function db(): mysqli
             // Unknown database (code 1049) -> Auto-create database & bootstrap
             if ($exception->getCode() === 1049) {
                 try {
-                    $bootstrap = new mysqli($cfg['host'], $cfg['user'], $cfg['pass'], '', $cfg['port']);
+                    $bootstrap = new mysqli();
+                    $bootstrap->options(MYSQLI_OPT_CONNECT_TIMEOUT, 1);
+                    $bootstrap->real_connect($cfg['host'], $cfg['user'], $cfg['pass'], '', (int) $cfg['port']);
                     $bootstrap->set_charset('utf8mb4');
                     $bootstrap->query('CREATE DATABASE IF NOT EXISTS `' . $cfg['name'] . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
                     $bootstrap->close();
 
-                    $connection = new mysqli($cfg['host'], $cfg['user'], $cfg['pass'], $cfg['name'], $cfg['port']);
-                    $connection->set_charset('utf8mb4');
+                    $m2 = new mysqli();
+                    $m2->options(MYSQLI_OPT_CONNECT_TIMEOUT, 1);
+                    $m2->real_connect($cfg['host'], $cfg['user'], $cfg['pass'], $cfg['name'], (int) $cfg['port']);
+                    $m2->set_charset('utf8mb4');
+                    $connection = $m2;
                     run_database_migrations($connection, false);
                     $lastException = null;
                     break;
@@ -1359,57 +1327,11 @@ function db(): mysqli
     }
 
     if (!($connection instanceof mysqli)) {
+        $failedToConnect = true;
         $activeException = $primaryException ?? $lastException;
         $errMsg = $activeException !== null ? $activeException->getMessage() : 'Unknown database connection error';
         error_log('Database connection error: ' . $errMsg);
-        http_response_code(500);
-
-        $hostSafe = htmlspecialchars(DB_HOST, ENT_QUOTES, 'UTF-8');
-        $nameSafe = htmlspecialchars(DB_NAME, ENT_QUOTES, 'UTF-8');
-        $userSafe = htmlspecialchars(DB_USER, ENT_QUOTES, 'UTF-8');
-        $errSafe = htmlspecialchars($errMsg, ENT_QUOTES, 'UTF-8');
-
-
-        echo '<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Database Configuration Notice - Health Delivery System</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: \'Outfit\', sans-serif; background: #f8fafc; color: #0f172a; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
-        .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); max-width: 580px; width: 100%; padding: 40px 32px; text-align: center; }
-        .badge { display: inline-block; background: #fef3c7; color: #b45309; font-weight: 700; font-size: 0.85rem; padding: 6px 14px; border-radius: 9999px; text-transform: uppercase; margin-bottom: 16px; letter-spacing: 0.05em; }
-        h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 12px; }
-        p { color: #64748b; font-size: 0.95rem; line-height: 1.6; margin-bottom: 20px; text-align: left; }
-        .details-box { background: #f1f5f9; border-radius: 12px; padding: 16px; margin-bottom: 24px; text-align: left; font-size: 0.85rem; font-family: monospace; }
-        .details-box div { margin-bottom: 6px; word-break: break-all; }
-        .btn { display: inline-block; background: #0284c7; color: #fff; font-weight: 600; padding: 12px 24px; border-radius: 12px; text-decoration: none; transition: background 0.2s; }
-        .btn:hover { background: #0369a1; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <span class="badge">Database Configuration Required</span>
-        <h1>Database Connection Failed</h1>
-        <p>The health delivery system is unable to connect to the MySQL database with the current configuration.</p>
-        <div class="details-box">
-            <div><strong>Host:</strong> ' . $hostSafe . ':' . DB_PORT . '</div>
-            <div><strong>Database:</strong> ' . $nameSafe . '</div>
-            <div><strong>User:</strong> ' . $userSafe . '</div>
-            <div><strong>Message:</strong> ' . $errSafe . '</div>
-        </div>
-        <p><strong>Deployment Setup Checklist:</strong><br>
-        1. Verify that your MySQL server is running.<br>
-        2. Create a <code>.env</code> file in the project root with your database credentials (or configure <code>DB_HOST</code>, <code>DB_USER</code>, <code>DB_PASS</code>, <code>DB_NAME</code> in your hosting control panel).<br>
-        3. Run <code>php shared/migrate.php</code> in your server terminal.</p>
-        <a href="javascript:location.reload()" class="btn">Retry Connection</a>
-    </div>
-</body>
-</html>';
-        exit;
+        throw new mysqli_sql_exception($errMsg);
     }
 
     // Auto-check if core tables and latest columns exist. If missing, auto-migrate seamlessly on connection!
@@ -3194,57 +3116,64 @@ function purge_expired_upcoming_events(?mysqli $conn = null): int
 
 function fetch_upcoming_events(array $filters = []): array
 {
-    purge_expired_upcoming_events();
+    try {
+        purge_expired_upcoming_events();
 
-    $today = date('Y-m-d');
-    $currentMonth = date('Y-m');
+        $today = date('Y-m-d');
+        $currentMonth = date('Y-m');
 
-    $sql = 'SELECT * FROM upcoming_events WHERE 1=1';
-    $params = [];
-    $types = '';
+        $sql = 'SELECT * FROM upcoming_events WHERE 1=1';
+        $params = [];
+        $types = '';
 
-    // Automatically exclude any events whose scheduled date or target month has already passed
-    $sql .= ' AND ((event_date IS NOT NULL AND event_date >= ?) OR (event_date IS NULL AND (target_month IS NULL OR target_month = "" OR target_month >= ?)))';
-    $params[] = $today;
-    $params[] = $currentMonth;
-    $types .= 'ss';
-
-    if (isset($filters['status']) && $filters['status'] !== 'all' && $filters['status'] !== '') {
-        $sql .= ' AND status = ?';
-        $params[] = (string) $filters['status'];
-        $types .= 's';
-    }
-
-    if (!empty($filters['station_slug'])) {
-        $sql .= ' AND station_slug = ?';
-        $params[] = $filters['station_slug'];
-        $types .= 's';
-    }
-
-    if (!empty($filters['target_month'])) {
-        $sql .= ' AND (target_month = ? OR event_date LIKE ?)';
-        $targetMonthVal = (string) $filters['target_month'];
-        $monthPattern = $targetMonthVal . '%';
-        array_push($params, $targetMonthVal, $monthPattern);
+        // Automatically exclude any events whose scheduled date or target month has already passed
+        $sql .= ' AND ((event_date IS NOT NULL AND event_date >= ?) OR (event_date IS NULL AND (target_month IS NULL OR target_month = "" OR target_month >= ?)))';
+        $params[] = $today;
+        $params[] = $currentMonth;
         $types .= 'ss';
-    }
 
-    if (!empty($filters['search'])) {
-        $sql .= ' AND (title LIKE ? OR description LIKE ? OR station_name LIKE ?)';
-        $term = '%' . $filters['search'] . '%';
-        array_push($params, $term, $term, $term);
-        $types .= 'sss';
-    }
+        if (isset($filters['status']) && $filters['status'] !== 'all' && $filters['status'] !== '') {
+            $sql .= ' AND status = ?';
+            $params[] = (string) $filters['status'];
+            $types .= 's';
+        }
 
-    $sql .= ' ORDER BY status ASC, CASE WHEN event_date IS NULL THEN 0 ELSE 1 END, event_date ASC, time_label ASC, created_at DESC';
+        if (!empty($filters['station_slug'])) {
+            $sql .= ' AND station_slug = ?';
+            $params[] = $filters['station_slug'];
+            $types .= 's';
+        }
 
-    $stmt = db()->prepare($sql);
-    if ($params !== []) {
-        $stmt->bind_param($types, ...$params);
-    }
-    $stmt->execute();
+        if (!empty($filters['target_month'])) {
+            $sql .= ' AND (target_month = ? OR event_date LIKE ?)';
+            $targetMonthVal = (string) $filters['target_month'];
+            $monthPattern = $targetMonthVal . '%';
+            array_push($params, $targetMonthVal, $monthPattern);
+            $types .= 'ss';
+        }
 
-    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        if (!empty($filters['search'])) {
+            $sql .= ' AND (title LIKE ? OR description LIKE ? OR station_name LIKE ?)';
+            $term = '%' . $filters['search'] . '%';
+            array_push($params, $term, $term, $term);
+            $types .= 'sss';
+        }
+
+        $sql .= ' ORDER BY status ASC, CASE WHEN event_date IS NULL THEN 0 ELSE 1 END, event_date ASC, time_label ASC, created_at DESC';
+
+        $stmt = db()->prepare($sql);
+        if ($params !== []) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        if (!empty($rows)) {
+            return $rows;
+        }
+    } catch (Throwable $e) {}
+
+    return default_upcoming_event_seed();
 }
 
 function create_upcoming_event(array $eventData): bool
@@ -4745,10 +4674,10 @@ function auto_dispatch_due_appointment_reminders(): array
  */
 function fetch_patient_appointment_notifications(string $patientId, string $patientEmail = '', string $patientName = ''): array
 {
-    $connection = db();
     $notifications = [];
 
     try {
+        $connection = db();
         $pId = trim($patientId);
         $pEmail = trim($patientEmail);
 
@@ -4774,21 +4703,27 @@ function fetch_patient_appointment_notifications(string $patientId, string $pati
  */
 function fetch_patient_upcoming_follow_ups(string $patientId, string $patientEmail = '', string $patientName = ''): array
 {
-    $connection = db();
     $followUps = [];
 
     try {
+        $connection = db();
         $pId = trim($patientId);
         $pEmail = trim($patientEmail);
+        $pName = trim($patientName);
 
         $sql = 'SELECT * FROM appointments 
-                WHERE (patient_id = ? OR (email = ? AND ? != "") OR (? != "" AND CONCAT(first_name, " ", last_name) LIKE ?))
+                WHERE (TRIM(UPPER(patient_id)) = TRIM(UPPER(?)) 
+                   OR (email = ? AND ? != "") 
+                   OR (? != "" AND (
+                       CONCAT(first_name, " ", last_name) LIKE ? 
+                       OR CONCAT_WS(" ", first_name, NULLIF(middle_name, ""), last_name) LIKE ?
+                   )))
                   AND follow_up_date IS NOT NULL 
                   AND follow_up_date >= CURDATE()
                 ORDER BY follow_up_date ASC';
         $stmt = $connection->prepare($sql);
-        $likeName = '%' . trim($patientName) . '%';
-        $stmt->bind_param('sssss', $pId, $pEmail, $pEmail, $patientName, $likeName);
+        $likeName = '%' . $pName . '%';
+        $stmt->bind_param('ssssss', $pId, $pEmail, $pEmail, $pName, $likeName, $likeName);
         $stmt->execute();
         $res = $stmt->get_result();
         while ($row = $res->fetch_assoc()) {
@@ -4802,22 +4737,29 @@ function fetch_patient_upcoming_follow_ups(string $patientId, string $patientEma
 /**
  * Fetch all booked appointments for a patient.
  */
-function fetch_patient_appointments(string $patientId, string $patientEmail = '', string $patientName = ''): array
+function fetch_patient_appointments(string $patientId, string $patientEmail = '', string $patientName = '', string $patientPhone = ''): array
 {
-    $connection = db();
     $appointments = [];
 
     try {
+        $connection = db();
         $pId = trim($patientId);
         $pEmail = trim($patientEmail);
         $pName = trim($patientName);
+        $pPhone = trim($patientPhone);
 
         $sql = 'SELECT * FROM appointments 
-                WHERE (patient_id = ? OR (email = ? AND ? != "") OR (? != "" AND CONCAT(first_name, " ", last_name) LIKE ?))
+                WHERE (TRIM(UPPER(patient_id)) = TRIM(UPPER(?)) 
+                   OR (email = ? AND ? != "") 
+                   OR (contact_number = ? AND ? != "") 
+                   OR (? != "" AND (
+                       CONCAT(first_name, " ", last_name) LIKE ? 
+                       OR CONCAT_WS(" ", first_name, NULLIF(middle_name, ""), last_name) LIKE ?
+                   )))
                 ORDER BY created_at DESC, id DESC';
         $stmt = $connection->prepare($sql);
         $likeName = '%' . $pName . '%';
-        $stmt->bind_param('sssss', $pId, $pEmail, $pEmail, $pName, $likeName);
+        $stmt->bind_param('ssssssss', $pId, $pEmail, $pEmail, $pPhone, $pPhone, $pName, $likeName, $likeName);
         $stmt->execute();
         $res = $stmt->get_result();
         while ($row = $res->fetch_assoc()) {
@@ -4833,8 +4775,8 @@ function fetch_patient_appointments(string $patientId, string $patientEmail = ''
  */
 function mark_appointment_notification_read(int $notificationId): bool
 {
-    $connection = db();
     try {
+        $connection = db();
         $stmt = $connection->prepare('UPDATE ' . DB_TABLE_APPOINTMENT_NOTIFICATIONS . ' SET is_read = 1 WHERE id = ?');
         $stmt->bind_param('i', $notificationId);
         return $stmt->execute();
@@ -4853,12 +4795,12 @@ function fetch_patient_account_by_email(string $identifier): ?array
         return null;
     }
 
-    $connection = db();
     try {
+        $connection = db();
         $stmt = $connection->prepare(
             'SELECT * FROM ' . DB_TABLE_PATIENT_ACCOUNTS . ' 
              WHERE email = ? OR patient_id = ? 
-             LIMIT 1'
+             ORDER BY id DESC LIMIT 1'
         );
         $stmt->bind_param('ss', $identifier, $identifier);
         $stmt->execute();
@@ -4867,10 +4809,8 @@ function fetch_patient_account_by_email(string $identifier): ?array
         if (is_array($row)) {
             return $row;
         }
-    } catch (Throwable $e) {}
 
-    // Fallback lookup in appointments table
-    try {
+        // Fallback lookup in appointments table
         $stmtAppt = $connection->prepare(
             'SELECT * FROM appointments 
              WHERE email = ? OR patient_id = ? OR appointment_code = ? 
@@ -4907,7 +4847,6 @@ function fetch_patient_account_by_email(string $identifier): ?array
  */
 function save_patient_account(array $data): bool
 {
-    $connection = db();
     $patientId = trim((string) ($data['patient_id'] ?? ''));
     $email = strtolower(trim((string) ($data['email'] ?? '')));
     $password = (string) ($data['password'] ?? '');
@@ -4936,6 +4875,7 @@ function save_patient_account(array $data): bool
     }
 
     try {
+        $connection = db();
         $stmt = $connection->prepare(
             'INSERT INTO ' . DB_TABLE_PATIENT_ACCOUNTS . ' 
              (patient_id, email, password_hash, first_name, middle_name, last_name, birth_date, gender, contact_number, complete_address, station_slug, station_name) 

@@ -83,16 +83,19 @@ $events = array_map(
     $dbEvents
 );
 
-function h(string $value): string
-{
-    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+if (!function_exists('h')) {
+    function h(?string $value): string
+    {
+        return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+    }
 }
 
-function iconSvg(string $name): string
-{
-    $icons = [
-        'heart' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        'syringe' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 4 6 6M5 19l7.5-7.5m-3-3L17 16m-9 5-3 0 0-3 9-9 3 3-9 9Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+if (!function_exists('iconSvg')) {
+    function iconSvg(string $name): string
+    {
+        $icons = [
+            'heart' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'syringe' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 4 6 6M5 19l7.5-7.5m-3-3L17 16m-9 5-3 0 0-3 9-9 3 3-9 9Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         'community' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 2a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 19a5 5 0 0 1 10 0m3 0v-1a4 4 0 0 1 5 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         'baby' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 7.5c0-1.66 1.34-3 3-3 1.1 0 2.07.6 2.59 1.49M8.5 15a4.5 4.5 0 1 0 8.99 0A4.5 4.5 0 0 0 8.5 15Zm2-1h.01m4.98 0h.01M11 17c.35.48.91.8 1.5.8s1.15-.32 1.5-.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         'phone' => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 5.15 11.8 19.79 19.79 0 0 1 2.08 3.12 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -123,6 +126,7 @@ function iconSvg(string $name): string
     ];
 
     return $icons[$name] ?? '';
+}
 }
 
 function fullName(array $appointment): string
