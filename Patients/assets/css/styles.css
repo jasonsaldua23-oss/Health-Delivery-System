@@ -44,10 +44,9 @@ button, input, select, textarea { font: inherit; }
 .section-heading.left { gap: 22px; }
 .section-heading.center { text-align: center; }
 .section-heading h2, .confirmation-card h2, .next-steps-card h2 { margin: 0 0 10px; font-size: clamp(2.2rem, 3vw, 3rem); line-height: 1.1; }
-.section-icon, .event-icon, .info-icon, .service-icon, .section-mini-icon, .detail-icon, .confirmation-check { display: grid; place-items: center; width: 62px; height: 62px; border-radius: 20px; color: #fff; flex: 0 0 auto; }
-.section-mini-icon { width: 30px; height: 30px; border-radius: 10px; color: var(--green); }
-.section-icon.orange, .event-icon.gold, .service-icon.gold, .detail-icon.gold { background: var(--orange); }
-.event-icon.mint, .info-icon.mint, .service-icon.mint, .detail-icon.mint { background: #e8fbf2; color: var(--green); }
+.section-mini-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: #e8fbf2; color: var(--green); flex-shrink: 0; }
+.section-mini-icon svg { width: 18px !important; height: 18px !important; }
+.booking-meta .inline-icon svg { width: 16px !important; height: 16px !important; }
 .event-icon.blue, .info-icon.blue, .service-icon.blue, .detail-icon.blue { background: #eaf2ff; color: #215deb; }
 .event-icon.pink, .service-icon.pink { background: linear-gradient(180deg, #ff2f96 0%, #e40079 100%); }
 .detail-icon.violet { background: #f4ebff; color: #8b3dff; }
@@ -2556,7 +2555,7 @@ textarea { resize: vertical; min-height: 120px; }
     border: 1.5px solid #a7f3d0;
     border-radius: 16px;
     padding: 18px 20px;
-    margin: 8px 0 12px;
+    margin: 8px 0 16px;
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.05);
     transition: all 0.25s ease;
 }
@@ -2576,20 +2575,21 @@ textarea { resize: vertical; min-height: 120px; }
 }
 
 .recipient-badge-icon {
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
     border-radius: 10px;
     background: linear-gradient(135deg, #10b981, #059669);
     color: #ffffff;
-    display: grid;
+    display: inline-grid;
     place-items: center;
     flex-shrink: 0;
-    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
 }
 
 .recipient-badge-icon svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
+    display: block;
 }
 
 .recipient-section-head strong {
@@ -2599,17 +2599,19 @@ textarea { resize: vertical; min-height: 120px; }
     line-height: 1.2;
 }
 
+.recipient-section-head p,
 .recipient-section-head small {
-    font-size: 0.82rem;
+    margin: 3px 0 0 0;
+    font-size: 0.84rem;
     color: #047857;
     display: block;
-    margin-top: 2px;
+    line-height: 1.3;
 }
 
 .form-select-field,
 select#immunization_relationship {
     width: 100%;
-    height: 52px;
+    height: 48px;
     padding: 0 40px 0 16px;
     font-size: 0.95rem;
     font-weight: 600;
@@ -2618,9 +2620,9 @@ select#immunization_relationship {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23059669' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 14px center;
-    background-size: 18px;
+    background-size: 16px;
     border: 1.5px solid #cbd5e1;
-    border-radius: 14px;
+    border-radius: 12px;
     appearance: none;
     -webkit-appearance: none;
     cursor: pointer;
@@ -2668,10 +2670,20 @@ select#immunization_relationship:focus {
     color: #065f46;
 }
 
+.subheading-icon {
+    width: 22px;
+    height: 22px;
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.subheading-icon svg,
 .recipient-subheading svg {
     width: 16px;
     height: 16px;
     color: #10b981;
+    display: block;
 }
 
 .recipient-subheading strong {
@@ -2683,6 +2695,30 @@ select#immunization_relationship:focus {
     font-size: 0.8rem;
     color: #047857;
     margin-left: 4px;
+}
+
+.immunization-slip-badge-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0 12px;
+}
+
+.badge-icon-syringe {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.badge-icon-syringe svg {
+    width: 18px;
+    height: 18px;
+    display: block;
 }
 
 .relationship-pill-tag {

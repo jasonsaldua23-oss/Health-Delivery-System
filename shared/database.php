@@ -2159,22 +2159,24 @@ function fetch_station_service_availability(string $stationSlug, string $service
     $slots = appointment_time_slots();
     $occupied = [];
 
-    $stmt = db()->prepare(
-        'SELECT preferred_date, COUNT(*) AS total
-         FROM appointments
-         WHERE station_slug = ?
-           AND preferred_date BETWEEN ? AND ?
-           AND status <> "Cancelled"
-         GROUP BY preferred_date'
-    );
-    $start = $today->format('Y-m-d');
-    $end = $endDate->format('Y-m-d');
-    $stmt->bind_param('sss', $stationSlug, $start, $end);
-    $stmt->execute();
+    try {
+        $stmt = db()->prepare(
+            'SELECT preferred_date, COUNT(*) AS total
+             FROM appointments
+             WHERE station_slug = ?
+               AND preferred_date BETWEEN ? AND ?
+               AND status <> "Cancelled"
+             GROUP BY preferred_date'
+        );
+        $start = $today->format('Y-m-d');
+        $end = $endDate->format('Y-m-d');
+        $stmt->bind_param('sss', $stationSlug, $start, $end);
+        $stmt->execute();
 
-    foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
-        $occupied[(string) $row['preferred_date']] = (int) $row['total'];
-    }
+        foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+            $occupied[(string) $row['preferred_date']] = (int) $row['total'];
+        }
+    } catch (Throwable $e) {}
 
     $maxSlots = fetch_station_service_capacity($stationSlug, $serviceSlug);
 
@@ -2582,16 +2584,19 @@ function fetch_patient_profile_by_patient_id(string $patientId): ?array
         return null;
     }
 
-    $stmt = db()->prepare(
-        'SELECT *
-         FROM appointments
-         WHERE UPPER(patient_id) = ?
-           AND status <> "Cancelled"
-         ORDER BY preferred_date DESC, preferred_time DESC, created_at DESC, id DESC'
-    );
-    $stmt->bind_param('s', $patientId);
-    $stmt->execute();
-    $visits = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $visits = [];
+    try {
+        $stmt = db()->prepare(
+            'SELECT *
+             FROM appointments
+             WHERE UPPER(patient_id) = ?
+               AND status <> "Cancelled"
+             ORDER BY preferred_date DESC, preferred_time DESC, created_at DESC, id DESC'
+        );
+        $stmt->bind_param('s', $patientId);
+        $stmt->execute();
+        $visits = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    } catch (Throwable $e) {}
 
     $profileRow = fetch_patient_current_profile_row($patientId);
     if ($profileRow === null) {
