@@ -615,15 +615,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
         .services-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 26px;
+            gap: 24px;
+        }
+
+        @media (max-width: 992px) {
+            .services-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 640px) {
+            .services-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .service-card {
             background: #ffffff;
             border: 1.5px solid #edf2f7;
-            border-radius: 24px;
-            padding: 32px 28px 28px;
-            box-shadow: 0 4px 20px rgba(15, 34, 64, 0.04);
+            border-radius: 20px;
+            padding: 24px 24px 20px;
+            box-shadow: 0 4px 16px rgba(15, 34, 64, 0.04);
             display: flex;
             flex-direction: column;
             transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
@@ -633,27 +645,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
             color: inherit;
         }
 
-        /* Highlights appear ONLY on cursor hover */
         .service-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 16px 36px rgba(16, 185, 129, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
+            transform: translateY(-4px);
+            box-shadow: 0 16px 32px rgba(16, 185, 129, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
             border-color: #34d399;
         }
 
-        /* Neat Service Icons */
+        .service-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+
         .service-icon {
             display: grid;
             place-items: center;
-            width: 54px;
-            height: 54px;
-            border-radius: 16px;
-            margin-bottom: 22px;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            margin-bottom: 0;
             flex-shrink: 0;
             transition: transform 0.2s ease;
         }
 
         .service-card:hover .service-icon {
-            transform: scale(1.06);
+            transform: scale(1.08);
+        }
+
+        .service-arrow-pill {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: #f1f5f9;
+            color: #64748b;
+            display: grid;
+            place-items: center;
+            transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+
+        .service-arrow-pill svg {
+            width: 15px;
+            height: 15px;
+        }
+
+        .service-card:hover .service-arrow-pill {
+            background: #ecfdf5;
+            color: #059669;
+            transform: translateX(3px);
         }
 
         .service-icon.blue {
@@ -697,17 +736,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
         }
 
         .service-icon svg {
-            width: 26px;
-            height: 26px;
+            width: 24px;
+            height: 24px;
             display: block;
         }
 
         .service-card h3 {
-            margin: 0 0 10px;
-            font-size: 1.22rem;
+            margin: 0 0 8px;
+            font-size: 1.15rem;
             font-weight: 700;
-            color: #111827;
+            color: #0f172a;
             transition: color 0.2s ease;
+            letter-spacing: -0.01em;
         }
 
         .service-card:hover h3 {
@@ -715,62 +755,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
         }
 
         .service-card p {
-            margin: 0 0 24px;
-            font-size: 0.94rem;
+            margin: 0 0 18px;
+            font-size: 0.90rem;
             color: #64748b;
             line-height: 1.5;
-            min-height: 2.8em;
+            min-height: 2.7em;
         }
 
-        .service-schedule {
+        .service-card-footer {
+            margin-top: auto;
+            padding-top: 14px;
+            border-top: 1px solid #f1f5f9;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 10px;
-            padding: 12px 16px;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 14px;
-            background: #f8fafc;
-            color: #334155;
-            margin-bottom: 24px;
-            margin-top: auto;
-            transition: border-color 0.2s ease, background 0.2s ease;
         }
 
-        .service-card:hover .service-schedule {
-            border-color: #d1fae5;
-            background: #f0fdf4;
-        }
-
-        .service-schedule span {
-            width: 18px;
-            height: 18px;
-            color: #10b981;
-            display: grid;
-            place-items: center;
-            flex-shrink: 0;
-        }
-
-        .service-schedule strong {
-            font-size: 0.92rem;
-            font-weight: 600;
-            color: #334155;
-        }
-
-        .service-book-link {
-            color: #059669;
-            font-size: 0.96rem;
-            font-weight: 700;
-            text-decoration: none;
+        .service-schedule-tag {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            transition: color 0.2s ease, transform 0.2s ease;
-            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #475569;
+            background: #f8fafc;
+            padding: 5px 10px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         }
 
-        .service-book-link:hover {
+        .service-card:hover .service-schedule-tag {
+            background: #ecfdf5;
+            border-color: #a7f3d0;
+            color: #065f46;
+        }
+
+        .service-schedule-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #10b981;
+            flex-shrink: 0;
+        }
+
+        .service-book-action {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #059669;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+
+        .service-card:hover .service-book-action {
             color: #047857;
-            transform: translateX(3px);
+            transform: translateX(2px);
+        }
+
+        .service-book-action svg {
+            width: 14px;
+            height: 14px;
         }
 
         /* Events Grid */
@@ -4365,18 +4413,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                                     <div class="service-icon <?= h($service['color']); ?>">
                                         <?= iconSvg($service['icon']); ?>
                                     </div>
-                                    <span class="service-duration"><?= iconSvg('clock'); ?> <?= h($service['duration'] ?? '30 mins'); ?></span>
+                                    <span class="service-arrow-pill">
+                                        <?= iconSvg('arrow'); ?>
+                                    </span>
                                 </div>
                                 <h3><?= h($service['title']); ?></h3>
                                 <p><?= h($service['description']); ?></p>
-                                <div class="service-schedule">
-                                    <span><?= iconSvg('clock'); ?></span>
-                                    <strong><?= h($scheduleLabel); ?></strong>
+                                <div class="service-card-footer">
+                                    <div class="service-schedule-tag">
+                                        <span class="service-schedule-dot"></span>
+                                        <span><?= h($scheduleLabel); ?></span>
+                                    </div>
+                                    <span class="service-book-action">
+                                        Book
+                                        <?= iconSvg('arrow'); ?>
+                                    </span>
                                 </div>
-                                <span class="service-book-link">
-                                    Book appointment
-                                    <span class="inline-icon"><?= iconSvg('arrow'); ?></span>
-                                </span>
                             </a>
                         <?php endforeach; ?>
                     </div>
@@ -4385,42 +4437,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                         <p>No services currently available for this barangay station.</p>
                     </div>
                 <?php endif; ?>
-
-                <!-- 3. EXPLORE ALL BARANGAY HEALTH STATIONS IN BACOLOD -->
-                <div class="all-stations-explore-block" style="margin-top: 52px; padding-top: 38px; border-top: 1.5px solid #e2e8f0;">
-                    <div class="section-title-wrap" style="margin-bottom: 24px;">
-                        <div class="section-icon mint" style="background:#e8fbf2; color:#059669;"><?= iconSvg('map'); ?></div>
-                        <div class="section-title-copy">
-                            <h2>All Barangay Health Stations in Bacolod City</h2>
-                            <p>Explore clinic locations, contact numbers, and available healthcare services across all 15 stations.</p>
-                        </div>
-                    </div>
-
-                    <div class="stations-grid">
-                        <?php foreach ($stations as $st): ?>
-                            <?php if ($st['slug'] === 'city-health') continue; ?>
-                            <?php $isUserStation = (strcasecmp((string)$st['barangay'], $patientBarangay) === 0); ?>
-                            <a class="station-card <?= $isUserStation ? 'highlighted-user-station' : ''; ?>" href="index.php?barangay=<?= h($st['slug']); ?>" style="<?= $isUserStation ? 'border: 2px solid #059669; box-shadow: 0 8px 24px rgba(5,150,105,0.12);' : ''; ?>">
-                                <div class="station-image" style="background-image: linear-gradient(180deg, rgba(11, 23, 38, 0.08), rgba(11, 23, 38, 0.55)), url('<?= h($st['image']); ?>');">
-                                    <span class="service-badge <?= h($st['color']); ?>"><?= $st['services']; ?> Services</span>
-                                    <?php if ($isUserStation): ?>
-                                        <span class="user-station-tag" style="position: absolute; bottom: 12px; left: 14px; background: #059669; color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">★ Your Station</span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="station-body">
-                                    <h3><?= h($st['name']); ?></h3>
-                                    <p class="station-line"><span class="inline-icon"><?= iconSvg('map'); ?></span><?= h($st['location']); ?></p>
-                                    <p class="station-line"><span class="inline-icon"><?= iconSvg('phone'); ?></span><?= h($st['phone']); ?></p>
-                                    <p class="station-line"><span class="inline-icon"><?= iconSvg('clock'); ?></span><?= h($st['hours']); ?></p>
-                                </div>
-                                <div class="station-footer">
-                                    <span>View Station &amp; Services</span>
-                                    <span class="station-open-icon"><?= iconSvg('arrow'); ?></span>
-                                </div>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
             </section>
         </div>
     </div>
