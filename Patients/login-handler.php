@@ -295,87 +295,90 @@ if ($action === 'register_patient') {
         exit;
     }
 
-    if ($firstName !== '' && $lastName !== '' && $email !== '' && strlen($password) >= 6) {
-        // Validate email format
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            echo json_encode(['success' => false, 'message' => 'Please enter a valid email address.'], JSON_THROW_ON_ERROR);
-            exit;
-        }
+    if ($firstName === '' || $lastName === '' || $email === '' || $barangay === '' || $purok === '' || $gender === '') {
+        echo json_encode(['success' => false, 'message' => 'Please fill in all required fields.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
 
-        // Validate email domain spelling and prevent common typos (e.g. @pmail.com, @cmail.com, @gamil.com)
-        $typoError = check_email_misspelling($email);
-        if ($typoError !== null) {
-            echo json_encode(['success' => false, 'message' => $typoError], JSON_THROW_ON_ERROR);
-            exit;
-        }
+    if (strlen($password) < 6) {
+        echo json_encode(['success' => false, 'message' => 'Password must be at least 6 characters long.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
 
-        // Check if account already exists
-        $existing = fetch_patient_account_by_email($email);
-        if ($existing !== null) {
-            echo json_encode(['success' => false, 'message' => 'An account with this email address already exists. Please log in.'], JSON_THROW_ON_ERROR);
-            exit;
-        }
+    // Validate email format
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['success' => false, 'message' => 'Please enter a valid email address.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
 
-        $completeAddress = format_patient_complete_address($purok, $barangay, $street);
-        $patientId = strtoupper(substr(md5($email . microtime(true)), 0, 6));
+    // Validate email domain spelling and prevent common typos (e.g. @pmail.com, @cmail.com, @gamil.com)
+    $typoError = check_email_misspelling($email);
+    if ($typoError !== null) {
+        echo json_encode(['success' => false, 'message' => $typoError], JSON_THROW_ON_ERROR);
+        exit;
+    }
 
-        save_patient_account([
+    // Check if account already exists
+    $existing = fetch_patient_account_by_email($email);
+    if ($existing !== null) {
+        echo json_encode(['success' => false, 'message' => 'An account with this email address already exists. Please log in.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    $completeAddress = format_patient_complete_address($purok, $barangay, $street);
+    $patientId = strtoupper(substr(md5($email . microtime(true)), 0, 6));
+
+    save_patient_account([
+        'patient_id' => $patientId,
+        'email' => $email,
+        'password' => $password,
+        'first_name' => $firstName,
+        'middle_name' => $middleName,
+        'last_name' => $lastName,
+        'birth_date' => $birthdate,
+        'gender' => $gender,
+        'contact_number' => $phone,
+        'complete_address' => $completeAddress,
+        'station_slug' => strtolower(str_replace([' ', '-'], '', $barangay)),
+        'station_name' => $barangay !== '' ? ($barangay . ' Barangay Health Station') : '',
+    ]);
+
+    try {
+        upsert_patient_profile([
             'patient_id' => $patientId,
-            'email' => $email,
-            'password' => $password,
             'first_name' => $firstName,
             'middle_name' => $middleName,
             'last_name' => $lastName,
             'birth_date' => $birthdate,
             'gender' => $gender,
             'contact_number' => $phone,
+            'email' => $email,
             'complete_address' => $completeAddress,
-            'station_slug' => strtolower(str_replace([' ', '-'], '', $barangay)),
-            'station_name' => $barangay !== '' ? ($barangay . ' Barangay Health Station') : '',
         ]);
-
-        try {
-            upsert_patient_profile([
-                'patient_id' => $patientId,
-                'first_name' => $firstName,
-                'middle_name' => $middleName,
-                'last_name' => $lastName,
-                'birth_date' => $birthdate,
-                'gender' => $gender,
-                'contact_number' => $phone,
-                'email' => $email,
-                'complete_address' => $completeAddress,
-            ]);
-        } catch (Throwable $e) {
-            error_log('Error saving patient profile: ' . $e->getMessage());
-        }
-
-        session_regenerate_id(true);
-        $_SESSION['patient_id'] = $patientId;
-        $_SESSION['patient_email'] = $email;
-        $_SESSION['patient_name'] = trim($firstName . ' ' . $lastName);
-        $_SESSION['patient_first_name'] = $firstName;
-        $_SESSION['patient_middle_name'] = $middleName;
-        $_SESSION['patient_last_name'] = $lastName;
-        $_SESSION['patient_barangay'] = $barangay;
-        $_SESSION['patient_birth_date'] = $birthdate;
-        $_SESSION['patient_gender'] = $gender;
-        $_SESSION['patient_contact_number'] = $phone;
-        $_SESSION['patient_purok'] = $purok;
-        $_SESSION['patient_street'] = $street;
-        $_SESSION['patient_complete_address'] = $completeAddress;
-
-        echo json_encode([
-            'success' => true,
-            'message' => 'Account created successfully! Welcome to Bacolod Health Centers.',
-            'redirect' => 'dashboard.php'
-        ], JSON_THROW_ON_ERROR);
-    } else {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Please fill in all required fields (password must be at least 6 characters).'
-        ], JSON_THROW_ON_ERROR);
+    } catch (Throwable $e) {
+        error_log('Error saving patient profile: ' . $e->getMessage());
     }
+
+    session_regenerate_id(true);
+    $_SESSION['patient_id'] = $patientId;
+    $_SESSION['patient_email'] = $email;
+    $_SESSION['patient_name'] = trim($firstName . ' ' . $lastName);
+    $_SESSION['patient_first_name'] = $firstName;
+    $_SESSION['patient_middle_name'] = $middleName;
+    $_SESSION['patient_last_name'] = $lastName;
+    $_SESSION['patient_barangay'] = $barangay;
+    $_SESSION['patient_birth_date'] = $birthdate;
+    $_SESSION['patient_gender'] = $gender;
+    $_SESSION['patient_contact_number'] = $phone;
+    $_SESSION['patient_purok'] = $purok;
+    $_SESSION['patient_street'] = $street;
+    $_SESSION['patient_complete_address'] = $completeAddress;
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Account created successfully! Welcome to Bacolod Health Centers.',
+        'redirect' => 'dashboard.php'
+    ], JSON_THROW_ON_ERROR);
     exit;
 }
 

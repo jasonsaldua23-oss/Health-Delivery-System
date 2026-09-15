@@ -935,8 +935,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                         </div>
 
                         <div class="field-group full-width">
-                            <label for="regStreet">Street / House No.</label>
-                            <input id="regStreet" name="street" type="text" value="" placeholder="" required>
+                            <label for="regStreet">Street / House No. <span style="font-weight: normal; color: #64748b; font-size: 0.85rem;">(Optional)</span></label>
+                            <input id="regStreet" name="street" type="text" value="" placeholder="e.g. Block 4 Lot 12, Main Street (Optional)">
                         </div>
 
                         <button type="submit" class="auth-submit-btn">Create Account</button>
@@ -1487,13 +1487,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (!street) {
-            window.showSystemToast?.('Please enter your street / house number.', { type: 'error', theme: 'patient', title: 'Missing Information' });
-            document.getElementById('regStreet')?.focus();
-            return;
-        }
-
-        // All inputs are valid -> pop Confidentiality & Data Privacy Consent Modal
+        // All inputs are valid (street/house no. is optional) -> pop Confidentiality & Data Privacy Consent Modal
         openPrivacyModal();
     });
 
