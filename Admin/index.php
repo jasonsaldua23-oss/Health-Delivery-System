@@ -182,9 +182,9 @@ if ($dateFilter === '') {
     $dateFilter = 'both';
 }
 $programFilter = trim((string) ($_GET['program'] ?? ''));
-$queueDateFilter = trim((string) ($_GET['queue_date'] ?? 'today'));
+$queueDateFilter = trim((string) ($_GET['queue_date'] ?? 'both'));
 if ($queueDateFilter === '') {
-    $queueDateFilter = 'today';
+    $queueDateFilter = 'both';
 }
 $eventStationFilter = trim((string) ($_GET['event_station'] ?? ''));
 $eventStatusFilter = trim((string) ($_GET['event_status'] ?? 'all'));
@@ -4539,17 +4539,25 @@ function toggleDualDateFilter(clickedType, paramName, event) {
     let todayActive = container.getAttribute('data-today') === '1';
     let upcomingActive = container.getAttribute('data-upcoming') === '1';
 
-    let nextVal = 'today';
+    let nextVal = 'both';
 
     if (clickedType === 'today') {
-        if (todayActive && !upcomingActive) {
+        if (todayActive && upcomingActive) {
+            nextVal = 'upcoming';
+        } else if (!todayActive && upcomingActive) {
             nextVal = 'both';
+        } else if (todayActive && !upcomingActive) {
+            nextVal = 'upcoming';
         } else {
             nextVal = 'today';
         }
     } else if (clickedType === 'upcoming') {
-        if (upcomingActive && !todayActive) {
+        if (todayActive && upcomingActive) {
+            nextVal = 'today';
+        } else if (todayActive && !upcomingActive) {
             nextVal = 'both';
+        } else if (!todayActive && upcomingActive) {
+            nextVal = 'today';
         } else {
             nextVal = 'upcoming';
         }

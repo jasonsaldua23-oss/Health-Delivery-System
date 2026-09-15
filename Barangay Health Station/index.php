@@ -640,9 +640,9 @@ if ($dateFilter === '') {
     $dateFilter = 'both';
 }
 $appointmentSearch = trim((string) ($_GET['search'] ?? ''));
-$queueDate = trim((string) ($_GET['queue_date'] ?? 'today'));
+$queueDate = trim((string) ($_GET['queue_date'] ?? 'both'));
 if ($queueDate === '') {
-    $queueDate = 'today';
+    $queueDate = 'both';
 }
 $patientSearch = trim((string) ($_GET['patient_search'] ?? ''));
 $captureFilter = trim((string) ($_GET['capture_filter'] ?? ''));
@@ -1895,7 +1895,7 @@ for ($i = 0; $i < 6; $i++) {
                                                         <?php endif; ?>
 
                                                         <?php if (!$rowHasVitals): ?>
-                                                            <a href="?page=queue<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $queueDate !== '' && $queueDate !== 'today' ? '&queue_date=' . h($queueDate) : ''; ?>&encode_vitals=<?= h((string) $apptCode); ?>" class="queue-vitals-btn" title="Encode vital signs">
+                                                            <a href="?page=queue<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $queueDate !== '' ? '&queue_date=' . h($queueDate) : ''; ?>&encode_vitals=<?= h((string) $apptCode); ?>" class="queue-vitals-btn" title="Encode vital signs">
                                                                 <?= staff_icon('edit'); ?>
                                                                 <span>Encode Vitals</span>
                                                             </a>
@@ -1924,7 +1924,7 @@ for ($i = 0; $i < 6; $i++) {
             <!-- Encode Vital Signs Modal (Queue Management) -->
             <?php if ($selectedVitalsAppointment !== null): ?>
                 <?php
-                $vitalsReturnUrl = '?page=queue' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($queueDate !== '' && $queueDate !== 'today' ? '&queue_date=' . urlencode($queueDate) : '');
+                $vitalsReturnUrl = '?page=queue' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($queueDate !== '' ? '&queue_date=' . urlencode($queueDate) : '');
                 ?>
                 <section class="account-modal-backdrop" id="vitalsModalBackdrop">
                     <div class="account-modal-card clinical-dialog-card" role="dialog" aria-modal="true">
@@ -5541,17 +5541,25 @@ function toggleDualDateFilter(clickedType, paramName, event) {
     let todayActive = container.getAttribute('data-today') === '1';
     let upcomingActive = container.getAttribute('data-upcoming') === '1';
 
-    let nextVal = 'today';
+    let nextVal = 'both';
 
     if (clickedType === 'today') {
-        if (todayActive && !upcomingActive) {
+        if (todayActive && upcomingActive) {
+            nextVal = 'upcoming';
+        } else if (!todayActive && upcomingActive) {
             nextVal = 'both';
+        } else if (todayActive && !upcomingActive) {
+            nextVal = 'upcoming';
         } else {
             nextVal = 'today';
         }
     } else if (clickedType === 'upcoming') {
-        if (upcomingActive && !todayActive) {
+        if (todayActive && upcomingActive) {
+            nextVal = 'today';
+        } else if (todayActive && !upcomingActive) {
             nextVal = 'both';
+        } else if (!todayActive && upcomingActive) {
+            nextVal = 'today';
         } else {
             nextVal = 'upcoming';
         }
@@ -5589,16 +5597,24 @@ function toggleDualStatusFilter(clickedVal, otherVal, paramName, event) {
     let active1 = container.getAttribute('data-today') === '1';
     let active2 = container.getAttribute('data-upcoming') === '1';
 
-    let nextVal = clickedVal;
+    let nextVal = 'both';
     if (clickedVal === val1) {
-        if (active1 && !active2) {
+        if (active1 && active2) {
+            nextVal = val2;
+        } else if (!active1 && active2) {
             nextVal = 'both';
+        } else if (active1 && !active2) {
+            nextVal = val2;
         } else {
             nextVal = val1;
         }
     } else if (clickedVal === val2) {
-        if (active2 && !active1) {
+        if (active1 && active2) {
+            nextVal = val1;
+        } else if (active1 && !active2) {
             nextVal = 'both';
+        } else if (!active1 && active2) {
+            nextVal = val1;
         } else {
             nextVal = val2;
         }

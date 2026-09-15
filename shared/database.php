@@ -2500,7 +2500,7 @@ function render_dual_date_filter(string $paramName, string $currentValue, string
 {
     $current = strtolower(trim($currentValue));
     if ($current === '') {
-        $current = ($paramName === 'queue_date' ? 'today' : 'both');
+        $current = 'both';
     }
 
     $isTodayActive = in_array($current, ['today', 'both', 'all'], true);
