@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Offline - Bacolod Health Delivery System</title>
+    <meta name="theme-color" content="#0d766e">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            text-align: center;
+        }
+        .offline-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 24px;
+            padding: 36px 28px;
+            max-width: 440px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .offline-icon-wrap {
+            width: 80px;
+            height: 80px;
+            border-radius: 24px;
+            background: #fef3c7;
+            color: #d97706;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .offline-icon-wrap svg {
+            width: 42px;
+            height: 42px;
+        }
+        h1 {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 0.94rem;
+            color: #64748b;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+        .btn-retry {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px 20px;
+            background: #0d9488;
+            color: #ffffff;
+            font-size: 1rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+        }
+        .btn-retry:hover {
+            background: #0f766e;
+            transform: translateY(-1px);
+        }
+        .emergency-box {
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
+            width: 100%;
+            text-align: left;
+        }
+        .emergency-box h3 {
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #0d9488;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .hotline-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .hotline-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 10px 14px;
+            border-radius: 12px;
+            text-decoration: none;
+            color: #0f172a;
+            font-size: 0.88rem;
+            font-weight: 600;
+            transition: background 0.15s ease;
+        }
+        .hotline-item:hover {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            color: #15803d;
+        }
+        .hotline-item span {
+            color: #64748b;
+            font-size: 0.78rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-card">
+        <div class="offline-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                <line x1="12" y1="20" x2="12.01" y2="20"></line>
+            </svg>
+        </div>
+        <h1>You are Offline</h1>
+        <p>It looks like your internet connection is unavailable. Please check your mobile data or Wi-Fi to continue using the Health Delivery System.</p>
+        
+        <button type="button" class="btn-retry" onclick="window.location.reload();">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <span>Retry Connection</span>
+        </button>
+
+        <div class="emergency-box">
+            <h3>Emergency Health Contacts</h3>
+            <ul class="hotline-list">
+                <li>
+                    <a href="tel:09669612345" class="hotline-item">
+                        <div>
+                            <div>City Health Office</div>
+                            <span>Bacolod Emergency Line</span>
+                        </div>
+                        <strong>0966 961 2345</strong>
+                    </a>
+                </li>
+                <li>
+                    <a href="tel:911" class="hotline-item">
+                        <div>
+                            <div>National Emergency</div>
+                            <span>Direct Assistance</span>
+                        </div>
+                        <strong>911</strong>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('online', () => {
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>

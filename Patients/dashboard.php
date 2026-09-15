@@ -320,8 +320,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>My Dashboard - Bacolod Health Stations</title>
+    <!-- PWA & Mobile App Capabilities -->
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0d766e">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="BHS Health">
+    <link rel="icon" type="image/svg+xml" href="../assets/icons/favicon.svg">
+    <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
+    <link rel="stylesheet" href="../shared/pwa-install.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -3668,6 +3678,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
             <span class="drawer-link-icon"><?= iconSvg('user'); ?></span>
             <span>Account Settings</span>
         </button>
+        <button type="button" class="pwa-drawer-install-btn" data-pwa-install>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Install Mobile App</span>
+        </button>
     </nav>
 
     <div class="patient-drawer-footer">
@@ -5280,5 +5294,6 @@ function downloadAppointmentSlipDirectly(appt) {
         </div>
     </div>
 </div>
+<script src="../shared/pwa-install.js" defer></script>
 </body>
 </html>
