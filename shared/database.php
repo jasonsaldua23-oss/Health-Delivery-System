@@ -3005,7 +3005,7 @@ function update_appointment_status(int $appointmentId, string $newStatus, ?strin
         return false;
     }
 
-    if ($stationScope !== null && $appointment['station_slug'] !== $stationScope) {
+    if ($stationScope !== null && $stationScope !== '' && strcasecmp(trim((string)$appointment['station_slug']), trim((string)$stationScope)) !== 0) {
         return false;
     }
 
@@ -3028,9 +3028,34 @@ function update_appointment_status(int $appointmentId, string $newStatus, ?strin
 
     if ($result) {
         $patientName = trim(($appointment['first_name'] ?? '') . ' ' . ($appointment['last_name'] ?? ''));
-        $phone = $appointment['contact_number'] ?? '';
+        if ($patientName === '') {
+            $patientName = 'Patient';
+        }
+
+        $phone = trim((string) ($appointment['contact_number'] ?? ''));
+
+        // Fallback: If contact_number is empty in appointment, look up in patient_profiles
+        if ($phone === '' && !empty($appointment['patient_id'])) {
+            try {
+                $pStmt = db()->prepare('SELECT contact_number FROM patient_profiles WHERE UPPER(patient_id) = UPPER(?) LIMIT 1');
+                if ($pStmt) {
+                    $pIdParam = (string) $appointment['patient_id'];
+                    $pStmt->bind_param('s', $pIdParam);
+                    $pStmt->execute();
+                    $pRow = $pStmt->get_result()->fetch_assoc();
+                    if (!empty($pRow['contact_number'])) {
+                        $phone = trim((string) $pRow['contact_number']);
+                    }
+                }
+            } catch (Throwable $e) {}
+        }
 
         if (!empty($phone)) {
+            $serviceName = !empty($appointment['service_name']) ? (string)$appointment['service_name'] : 'Appointment';
+            $stationName = !empty($appointment['station_name']) ? (string)$appointment['station_name'] : 'Barangay Health Station';
+            $dateFormatted = !empty($appointment['preferred_date']) ? date('M j, Y', strtotime((string)$appointment['preferred_date'])) : '';
+            $timeFormatted = !empty($appointment['preferred_time']) ? ' at ' . (string)$appointment['preferred_time'] : '';
+
             if ($newStatus === 'Confirmed') {
                 $message = "Health Delivery System: Hello {$patientName}, your appointment on "
                     . ($appointment['preferred_date'] ?? '')
@@ -3047,6 +3072,29 @@ function update_appointment_status(int $appointmentId, string $newStatus, ?strin
                 sendBrevoSMS($phone, $message, $appointmentId);
             }
         }
+
+        // Record patient in-app notification
+        try {
+            $refCode = (string) ($appointment['appointment_code'] ?? $appointment['reference_code'] ?? '');
+            $pId = (string) ($appointment['patient_id'] ?? '');
+            $serviceName = !empty($appointment['service_name']) ? (string)$appointment['service_name'] : 'Appointment';
+            $dateFormatted = !empty($appointment['preferred_date']) ? date('F j, Y', strtotime((string)$appointment['preferred_date'])) : '';
+            $timeFormatted = !empty($appointment['preferred_time']) ? ' (' . (string)$appointment['preferred_time'] . ')' : '';
+
+            $notifMsg = match ($newStatus) {
+                'Confirmed' => "Appointment Confirmed: Your appointment for {$serviceName} on {$dateFormatted}{$timeFormatted} has been confirmed.",
+                'Serving' => "Queue Update: You are now being served for {$serviceName}.",
+                'Completed' => "Appointment Completed: Your consultation for {$serviceName} has been completed and recorded.",
+                'Cancelled' => "Appointment Cancelled: Your appointment request for {$serviceName} on {$dateFormatted} was cancelled.",
+                default => "Your appointment status was updated to {$newStatus}.",
+            };
+
+            $nStmt = db()->prepare('INSERT INTO ' . DB_TABLE_APPOINTMENT_NOTIFICATIONS . ' (appointment_id, reference_code, patient_id, status, message, is_read) VALUES (?, ?, ?, ?, ?, 0)');
+            if ($nStmt) {
+                $nStmt->bind_param('issss', $appointmentId, $refCode, $pId, $newStatus, $notifMsg);
+                $nStmt->execute();
+            }
+        } catch (Throwable $e) {}
 
         $stationSlug = (string)($appointment['station_slug'] ?? '');
 
@@ -3247,8 +3295,8 @@ function fetch_upcoming_events(array $filters = []): array
         }
 
         if (!empty($filters['station_slug'])) {
-            $sql .= ' AND station_slug = ?';
-            $params[] = $filters['station_slug'];
+            $sql .= ' AND LOWER(station_slug) = LOWER(?)';
+            $params[] = (string) $filters['station_slug'];
             $types .= 's';
         }
 

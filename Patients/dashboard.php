@@ -234,18 +234,33 @@ if (empty($servicesForBarangay) && !empty($stationSlug)) {
 
 $userStationSlug = strtolower($stationSlug);
 
-// Load upcoming events (Patient's Barangay Station + Citywide Health Caravans & Programs)
+// Load upcoming events strictly for the Patient's assigned Barangay Health Station
 try {
-    $dbUpcomingEvents = fetch_upcoming_events(['status' => 'active', 'upcoming_only' => true]);
+    $dbUpcomingEvents = fetch_upcoming_events([
+        'status' => 'active',
+        'upcoming_only' => true,
+        'station_slug' => $userStationSlug,
+    ]);
 } catch (Throwable $e) {
     $dbUpcomingEvents = [];
 }
+
 if (empty($dbUpcomingEvents)) {
-    $dbUpcomingEvents = default_upcoming_event_seed();
+    // Filter fallback seed events strictly by user station slug
+    $seedEvents = default_upcoming_event_seed();
+    $dbUpcomingEvents = array_values(array_filter($seedEvents, static function (array $ev) use ($userStationSlug): bool {
+        return strcasecmp((string) ($ev['station_slug'] ?? ''), $userStationSlug) === 0;
+    }));
+} else {
+    // Ensure strict station slug match
+    $dbUpcomingEvents = array_values(array_filter($dbUpcomingEvents, static function (array $ev) use ($userStationSlug): bool {
+        $evSlug = strtolower(trim((string) ($ev['station_slug'] ?? '')));
+        return $evSlug === $userStationSlug;
+    }));
 }
 
 $upcomingEvents = array_map(
-    static function (array $event) use ($userStationSlug, $stations): array {
+    static function (array $event) use ($userStationSlug, $selectedStation, $patientBarangay): array {
         $startTime = trim((string) ($event['time_label'] ?? '8:00 AM'));
         $endTime = trim((string) ($event['end_time_label'] ?? '12:00 PM'));
         $timeDisplay = $startTime;
@@ -256,22 +271,8 @@ $upcomingEvents = array_map(
         $evSlug = strtolower(trim((string) ($event['station_slug'] ?? '')));
         $stationTitle = $event['station_name'] ?? '';
         if (empty($stationTitle)) {
-            if ($evSlug === 'city-health' || $evSlug === 'all' || $evSlug === 'citywide' || $evSlug === '') {
-                $stationTitle = 'Bacolod City Health Office (Citywide)';
-            } else {
-                $found = null;
-                foreach ($stations as $st) {
-                    if (strcasecmp((string) $st['slug'], $evSlug) === 0) {
-                        $found = $st;
-                        break;
-                    }
-                }
-                $stationTitle = $found ? ($found['name'] ?? ($found['barangay'] . ' Barangay Health Station')) : ucfirst($evSlug) . ' Barangay Health Station';
-            }
+            $stationTitle = $selectedStation['name'] ?? ($patientBarangay . ' Barangay Health Station');
         }
-
-        $isLocal = ($evSlug !== '' && $evSlug === $userStationSlug);
-        $isCitywide = in_array($evSlug, ['city-health', 'all', 'citywide', ''], true);
 
         return [
             'icon' => $event['icon'] ?? 'calendar',
@@ -282,42 +283,16 @@ $upcomingEvents = array_map(
             'date' => date('F j, Y', strtotime((string) $event['event_date'])),
             'raw_date' => $event['event_date'],
             'time' => $timeDisplay,
-            'accent' => $event['accent'] ?? ($isLocal ? 'mint' : ($isCitywide ? 'blue' : 'gold')),
-            'is_local' => $isLocal,
-            'is_citywide' => $isCitywide,
+            'accent' => $event['accent'] ?? 'mint',
+            'is_local' => true,
+            'is_citywide' => false,
         ];
     },
     $dbUpcomingEvents
 );
 
-// Guarantee that there is at least one local event for the patient's station
-$hasLocal = false;
-foreach ($upcomingEvents as $ev) {
-    if (!empty($ev['is_local'])) {
-        $hasLocal = true;
-        break;
-    }
-}
-if (!$hasLocal && $selectedStation !== null) {
-    array_unshift($upcomingEvents, [
-        'icon' => 'syringe',
-        'title' => 'Routine Immunization & Child Wellness Caravan',
-        'station' => $selectedStation['name'] ?? ($patientBarangay . ' Barangay Health Station'),
-        'barangay' => $userStationSlug,
-        'description' => 'Free routine immunizations, pediatric consultations, and growth monitoring for families in Brgy. ' . $patientBarangay . '.',
-        'date' => date('F j, Y', strtotime('+5 days')),
-        'raw_date' => date('Y-m-d', strtotime('+5 days')),
-        'time' => '8:30 AM - 12:00 PM',
-        'accent' => 'mint',
-        'is_local' => true,
-        'is_citywide' => false,
-    ]);
-}
-
-// Sort: Local station events first, followed by earliest upcoming dates
+// Sort: Earliest upcoming dates first
 usort($upcomingEvents, static function (array $a, array $b): int {
-    if ($a['is_local'] && !$b['is_local']) return -1;
-    if (!$a['is_local'] && $b['is_local']) return 1;
     return strtotime((string) $a['raw_date']) <=> strtotime((string) $b['raw_date']);
 });
 
@@ -4358,13 +4333,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                 </section>
             <?php endif; ?>
 
-            <!-- 1. UPCOMING EVENTS (Local Barangay Events + Citywide Health Caravans) -->
+            <!-- 1. UPCOMING EVENTS (Local Barangay Events) -->
             <section class="dashboard-section-block" id="eventsSection">
                 <div class="section-title-wrap">
                     <div class="section-icon gold"><?= iconSvg('sparkle'); ?></div>
                     <div class="section-title-copy">
                         <h2>Upcoming Health Events &amp; Programs</h2>
-                        <p>Health caravans, vaccination drives, and community health programs in Bacolod City.</p>
+                        <p>Health caravans, vaccination drives, and community health programs for <?= h($patientBarangay); ?> Barangay Health Station.</p>
                     </div>
                 </div>
 
@@ -4376,19 +4351,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                                     <?= iconSvg($event['icon']); ?>
                                 </div>
                                 <div class="event-content">
-                                    <?php if ($event['is_local']): ?>
-                                        <div style="margin-bottom: 6px;">
-                                            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; font-weight: 700; background: #dcfce7; color: #15803d; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.3px;">
-                                                ⭐ Your Barangay Station
-                                            </span>
-                                        </div>
-                                    <?php elseif ($event['is_citywide']): ?>
-                                        <div style="margin-bottom: 6px;">
-                                            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; font-weight: 700; background: #eff6ff; color: #1d4ed8; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.3px;">
-                                                🏙️ Citywide Health Caravan
-                                            </span>
-                                        </div>
-                                    <?php endif; ?>
+                                    <div style="margin-bottom: 6px;">
+                                        <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; font-weight: 700; background: #dcfce7; color: #15803d; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.3px;">
+                                            ⭐ <?= h($patientBarangay); ?> Barangay Health Station
+                                        </span>
+                                    </div>
                                     <h3><?= h($event['title']); ?></h3>
                                     <div class="event-station"><?= h($event['station']); ?></div>
                                     <p><?= h($event['description']); ?></p>
@@ -4402,7 +4369,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                     </div>
                 <?php else: ?>
                     <div class="empty-state-box">
-                        <p>No upcoming events scheduled at this time.</p>
+                        <p>No upcoming events scheduled for <?= h($patientBarangay); ?> Barangay Health Station at this time.</p>
                     </div>
                 <?php endif; ?>
             </section>

@@ -7,6 +7,42 @@ declare(strict_types=1);
  * Dynamically resolves environment variables from .env, PaaS URLs, or server environment with fallback defaults.
  */
 
+// Ensure environment variables from .env are loaded if not yet populated
+if (empty($_ENV['BREVO_API_KEY']) && empty(getenv('BREVO_API_KEY'))) {
+    $envCandidates = [
+        dirname(__DIR__) . '/.env',
+        dirname(__DIR__) . '/.env.production',
+        dirname(__DIR__) . '/.env.example',
+    ];
+    foreach ($envCandidates as $cand) {
+        if (file_exists($cand) && is_readable($cand)) {
+            $lines = file($cand, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            if ($lines !== false) {
+                foreach ($lines as $line) {
+                    $line = trim($line);
+                    if ($line === '' || str_starts_with($line, '#')) {
+                        continue;
+                    }
+                    $parts = explode('=', $line, 2);
+                    if (count($parts) === 2) {
+                        $key = trim($parts[0]);
+                        $val = trim($parts[1]);
+                        if (preg_match('/^"([\s\S]*)"$/', $val, $m) || preg_match("/^'([\s\S]*)'$/", $val, $m)) {
+                            $val = $m[1];
+                        }
+                        if (!isset($_ENV[$key])) {
+                            $_ENV[$key] = $val;
+                            $_SERVER[$key] = $val;
+                            putenv("{$key}={$val}");
+                        }
+                    }
+                }
+            }
+            break;
+        }
+    }
+}
+
 // Support standard database URL formats (e.g. Railway, Render, Heroku, Supabase, PlanetScale)
 $dbUrl = $_ENV['DATABASE_URL'] ?? $_ENV['MYSQL_URL'] ?? getenv('DATABASE_URL') ?: getenv('MYSQL_URL');
 $parsedUrl = (is_string($dbUrl) && $dbUrl !== '' && !str_starts_with($dbUrl, 'postgres')) ? parse_url($dbUrl) : false;
