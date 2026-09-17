@@ -2944,7 +2944,7 @@ function appointment_recipient_details(array $appt): array
     $serviceName = (string) ($appt['service_name'] ?? '');
     $isImmunization = ($serviceSlug === 'immunization') || is_vaccination_service($serviceSlug, $serviceName);
 
-    $relationship = trim((string) ($appt['immunization_relationship'] ?? ''));
+    $relationship = trim((string) ($appt['immunization_relationship'] ?? $appt['relationship'] ?? ''));
     $hasExplicitRecipient = !empty($appt['recipient_first_name']) && !empty($appt['recipient_last_name']);
 
     $isSelf = (strcasecmp($relationship, 'Self') === 0) || (!$hasExplicitRecipient && ($relationship === '' || strcasecmp($relationship, 'Self') === 0));

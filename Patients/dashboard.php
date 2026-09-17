@@ -4184,11 +4184,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                             </div>
 
                             <div class="appt-card-footer">
-                                <button type="button" class="btn-view-slip" data-appt="<?= htmlspecialchars(json_encode($appt), ENT_QUOTES, 'UTF-8'); ?>" onclick="openAppointmentSlipFromElement(this)">
+                                <?php $apptSlipPayload = array_merge($appt, $apptRec); ?>
+                                <button type="button" class="btn-view-slip" data-appt="<?= htmlspecialchars(json_encode($apptSlipPayload), ENT_QUOTES, 'UTF-8'); ?>" onclick="openAppointmentSlipFromElement(this)">
                                     <?= iconSvg('eye'); ?>
                                     <span>View Slip</span>
                                 </button>
-                                <button type="button" class="btn-quick-download" data-appt="<?= htmlspecialchars(json_encode($appt), ENT_QUOTES, 'UTF-8'); ?>" onclick="downloadAppointmentSlipFromElement(this)">
+                                <button type="button" class="btn-quick-download" data-appt="<?= htmlspecialchars(json_encode($apptSlipPayload), ENT_QUOTES, 'UTF-8'); ?>" onclick="downloadAppointmentSlipFromElement(this)">
                                     <?= iconSvg('download'); ?>
                                     <span>Download</span>
                                 </button>
@@ -5066,6 +5067,36 @@ function filterHistoryModal(statusFilter, clickedTab) {
 /* ── APPOINTMENT SLIP MODAL & DOWNLOAD JS ── */
 let currentModalApptData = null;
 
+function calculateAgeLabel(birthDateStr) {
+    if (!birthDateStr || birthDateStr === '0000-00-00') return '';
+    try {
+        const birthDate = new Date(birthDateStr + 'T00:00:00');
+        if (isNaN(birthDate.getTime())) return '';
+        const today = new Date();
+        let years = today.getFullYear() - birthDate.getFullYear();
+        let months = today.getMonth() - birthDate.getMonth();
+        let days = today.getDate() - birthDate.getDate();
+        if (days < 0) {
+            months--;
+        }
+        if (months < 0) {
+            years--;
+            months += 12;
+        }
+        if (years > 0) {
+            return `${years} yr${years > 1 ? 's' : ''} old`;
+        } else if (months > 0) {
+            return `${months} mo${months > 1 ? 's' : ''} old`;
+        } else {
+            const diffTime = Math.max(0, today.getTime() - birthDate.getTime());
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            return `${diffDays} day${diffDays !== 1 ? 's' : ''} old`;
+        }
+    } catch(e) {
+        return '';
+    }
+}
+
 function openAppointmentSlipFromElement(el) {
     if (!el) return;
     try {
@@ -5128,14 +5159,20 @@ function openAppointmentSlipModal(appt) {
     }
 
     // Recipient & Relationship Details (Immunization)
-    const isImmunization = (appt.service_name || '').toLowerCase().includes('immuniz') || (appt.service_slug || '').toLowerCase().includes('immuniz') || Boolean(appt.vaccine_type);
+    const isImmunization = (appt.service_name || '').toLowerCase().includes('immuniz') || (appt.service_slug || '').toLowerCase().includes('immuniz') || Boolean(appt.vaccine_type) || Boolean(appt.is_immunization);
     const recipientFirst = (appt.recipient_first_name || '').trim();
     const recipientMiddle = (appt.recipient_middle_name || '').trim();
     const recipientLast = (appt.recipient_last_name || '').trim();
     const recipientDob = (appt.recipient_birth_date || '').trim();
-    const relationship = (appt.relationship || '').trim() || (isImmunization ? 'Self' : '');
+    const rawRel = (appt.immunization_relationship || appt.relationship || appt.recipient_relationship || appt.recipient_rel || '').trim();
+    const hasExplicitRecipient = Boolean(recipientFirst && recipientLast);
 
-    let recipientFullName = [recipientFirst, recipientMiddle, recipientLast].filter(Boolean).join(' ');
+    let relationship = rawRel;
+    if (!relationship) {
+        relationship = isImmunization ? (hasExplicitRecipient ? 'Child' : 'Self') : '';
+    }
+
+    let recipientFullName = (appt.recipient_full_name || '').trim() || [recipientFirst, recipientMiddle, recipientLast].filter(Boolean).join(' ');
     if (!recipientFullName) {
         recipientFullName = patientFullName;
     }
@@ -5157,7 +5194,7 @@ function openAppointmentSlipModal(appt) {
             relRow.style.display = '';
         }
         if (recDobRow && recDobEl) {
-            if (recipientDob) {
+            if (recipientDob && recipientDob !== '0000-00-00') {
                 let dobText = recipientDob;
                 try {
                     const dbDate = new Date(recipientDob + 'T00:00:00');
@@ -5165,7 +5202,8 @@ function openAppointmentSlipModal(appt) {
                         dobText = dbDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
                     }
                 } catch(e) {}
-                recDobEl.textContent = dobText;
+                const ageLabel = appt.recipient_age_label || calculateAgeLabel(recipientDob);
+                recDobEl.textContent = dobText + (ageLabel && ageLabel !== 'Age unavailable' ? ` (${ageLabel})` : '');
                 recDobRow.style.display = '';
             } else {
                 recDobRow.style.display = 'none';
@@ -5244,14 +5282,20 @@ function downloadAppointmentSlipDirectly(appt) {
         }
     } catch(e) {}
 
-    const isImmunization = (appt.service_name || '').toLowerCase().includes('immuniz') || (appt.service_slug || '').toLowerCase().includes('immuniz') || Boolean(appt.vaccine_type);
+    const isImmunization = (appt.service_name || '').toLowerCase().includes('immuniz') || (appt.service_slug || '').toLowerCase().includes('immuniz') || Boolean(appt.vaccine_type) || Boolean(appt.is_immunization);
     const recipientFirst = (appt.recipient_first_name || '').trim();
     const recipientMiddle = (appt.recipient_middle_name || '').trim();
     const recipientLast = (appt.recipient_last_name || '').trim();
     const recipientDob = (appt.recipient_birth_date || '').trim();
-    const relationship = (appt.relationship || '').trim() || (isImmunization ? 'Self' : '');
+    const rawRel = (appt.immunization_relationship || appt.relationship || appt.recipient_relationship || appt.recipient_rel || '').trim();
+    const hasExplicitRecipient = Boolean(recipientFirst && recipientLast);
 
-    let recipientFullName = [recipientFirst, recipientMiddle, recipientLast].filter(Boolean).join(' ');
+    let relationship = rawRel;
+    if (!relationship) {
+        relationship = isImmunization ? (hasExplicitRecipient ? 'Child' : 'Self') : '';
+    }
+
+    let recipientFullName = (appt.recipient_full_name || '').trim() || [recipientFirst, recipientMiddle, recipientLast].filter(Boolean).join(' ');
     if (!recipientFullName) {
         recipientFullName = patientFullName;
     }
@@ -5312,7 +5356,7 @@ function downloadAppointmentSlipDirectly(appt) {
     if (isImmunization || recipientFirst !== '') {
         rows.push(['Recipient Name:', recipientFullName]);
         rows.push(['Relationship to Recipient:', relationship || 'Self']);
-        if (recipientDob) {
+        if (recipientDob && recipientDob !== '0000-00-00') {
             let dobText = recipientDob;
             try {
                 const dbDate = new Date(recipientDob + 'T00:00:00');
@@ -5320,7 +5364,8 @@ function downloadAppointmentSlipDirectly(appt) {
                     dobText = dbDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
                 }
             } catch(e) {}
-            rows.push(['Recipient Birthdate:', dobText]);
+            const ageLabel = appt.recipient_age_label || calculateAgeLabel(recipientDob);
+            rows.push(['Recipient Birthdate & Age:', dobText + (ageLabel && ageLabel !== 'Age unavailable' ? ` (${ageLabel})` : '')]);
         }
         rows.push(['Booked By (Account):', patientFullName]);
     } else {
@@ -5609,11 +5654,12 @@ function downloadAppointmentSlipDirectly(appt) {
                         <?php endif; ?>
 
                         <div class="history-item-footer">
-                            <button type="button" class="btn-view-slip" style="padding: 7px 14px; font-size: 0.82rem;" data-appt="<?= htmlspecialchars(json_encode($hAppt), ENT_QUOTES, 'UTF-8'); ?>" onclick="openAppointmentSlipFromElement(this)">
+                            <?php $hApptSlipPayload = array_merge($hAppt, $hRec); ?>
+                            <button type="button" class="btn-view-slip" style="padding: 7px 14px; font-size: 0.82rem;" data-appt="<?= htmlspecialchars(json_encode($hApptSlipPayload), ENT_QUOTES, 'UTF-8'); ?>" onclick="openAppointmentSlipFromElement(this)">
                                 <?= iconSvg('eye'); ?>
                                 <span>View Slip</span>
                             </button>
-                            <button type="button" class="btn-quick-download" style="padding: 7px 14px; font-size: 0.82rem;" data-appt="<?= htmlspecialchars(json_encode($hAppt), ENT_QUOTES, 'UTF-8'); ?>" onclick="downloadAppointmentSlipFromElement(this)">
+                            <button type="button" class="btn-quick-download" style="padding: 7px 14px; font-size: 0.82rem;" data-appt="<?= htmlspecialchars(json_encode($hApptSlipPayload), ENT_QUOTES, 'UTF-8'); ?>" onclick="downloadAppointmentSlipFromElement(this)">
                                 <?= iconSvg('download'); ?>
                                 <span>Download</span>
                             </button>
