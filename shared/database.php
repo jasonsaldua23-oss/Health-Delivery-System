@@ -5093,6 +5093,78 @@ function mark_appointment_notification_read(int $notificationId): bool
 }
 
 /**
+ * Clear/delete all notifications for a patient.
+ */
+function clear_patient_appointment_notifications(string $patientId, string $patientEmail = '', string $patientName = ''): bool
+{
+    try {
+        $connection = db();
+        $pId = trim($patientId);
+        $pEmail = trim($patientEmail);
+
+        if ($pId === '' && $pEmail === '') {
+            return false;
+        }
+
+        $sql = 'DELETE n FROM ' . DB_TABLE_APPOINTMENT_NOTIFICATIONS . ' n
+                LEFT JOIN appointments a ON a.id = n.appointment_id
+                WHERE n.patient_id = ? OR (n.patient_id = ? AND ? != "") OR a.patient_id = ? OR (a.email = ? AND ? != "")';
+        $stmt = $connection->prepare($sql);
+        $stmt->bind_param('ssssss', $pId, $pEmail, $pEmail, $pId, $pEmail, $pEmail);
+        return $stmt->execute();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+/**
+ * Filter notifications for the patient dashboard dropdown bubble:
+ * - Shows all unread notifications.
+ * - Once marked read (or if unread count < limit), shows up to $limit recent notifications in total.
+ */
+function filter_patient_notifications_for_bubble(array $notifications, int $limit = 5): array
+{
+    if (empty($notifications)) {
+        return [];
+    }
+
+    $sortHelper = static function (array $a, array $b): int {
+        $idA = (int) ($a['id'] ?? 0);
+        $idB = (int) ($b['id'] ?? 0);
+        if ($idA !== 0 && $idB !== 0 && $idA !== $idB) {
+            return $idB <=> $idA;
+        }
+        return strtotime((string) ($b['created_at'] ?? 'now')) <=> strtotime((string) ($a['created_at'] ?? 'now'));
+    };
+
+    $unread = [];
+    $read = [];
+
+    foreach ($notifications as $notif) {
+        if ((int) ($notif['is_read'] ?? 0) === 0) {
+            $unread[] = $notif;
+        } else {
+            $read[] = $notif;
+        }
+    }
+
+    usort($unread, $sortHelper);
+    usort($read, $sortHelper);
+
+    if (count($unread) >= $limit) {
+        return $unread;
+    }
+
+    $remaining = $limit - count($unread);
+    $recentRead = array_slice($read, 0, $remaining);
+
+    $combined = array_merge($unread, $recentRead);
+    usort($combined, $sortHelper);
+
+    return $combined;
+}
+
+/**
  * Fetch patient account record by email or patient ID with fallback.
  */
 function fetch_patient_account_by_email(string $identifier): ?array

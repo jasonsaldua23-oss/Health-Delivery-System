@@ -300,6 +300,7 @@ usort($upcomingEvents, static function (array $a, array $b): int {
 $patientEmailVal = (string) ($patientAccount['email'] ?? $_SESSION['patient_email'] ?? '');
 $patientNotifications = fetch_patient_appointment_notifications($patientId, $patientEmailVal, $patientName);
 $unreadNotifCount = count(array_filter($patientNotifications, static fn(array $n): bool => (int) ($n['is_read'] ?? 0) === 0));
+$displayedNotifications = filter_patient_notifications_for_bubble($patientNotifications, 5);
 $upcomingFollowUps = fetch_patient_upcoming_follow_ups($patientId, $patientEmailVal, $patientName);
 $patientAppointments = fetch_patient_appointments($patientId, $patientEmailVal, $patientName, $contactNumber);
 
@@ -406,13 +407,57 @@ if (!function_exists('iconSvg')) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'mark_notif_read')) {
+    $success = false;
     if (verify_csrf($_POST['csrf_token'] ?? null)) {
         $notifId = (int) ($_POST['notification_id'] ?? 0);
         if ($notifId > 0) {
-            mark_appointment_notification_read($notifId);
+            $success = mark_appointment_notification_read($notifId);
         }
     }
-    header('Location: dashboard.php');
+
+    $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+        || (isset($_POST['ajax']) && $_POST['ajax'] === '1');
+
+    if ($isAjax) {
+        $patientNotifications = fetch_patient_appointment_notifications($patientId, $patientEmailVal, $patientName);
+        $unreadNotifCount = count(array_filter($patientNotifications, static fn(array $n): bool => (int) ($n['is_read'] ?? 0) === 0));
+        $displayedNotifications = filter_patient_notifications_for_bubble($patientNotifications, 5);
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => $success,
+            'unread_count' => $unreadNotifCount,
+            'total_count' => count($patientNotifications),
+            'displayed_count' => count($displayedNotifications)
+        ]);
+        exit;
+    }
+
+    header('Location: dashboard.php?notif_open=1');
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'clear_all_notifs')) {
+    $success = false;
+    if (verify_csrf($_POST['csrf_token'] ?? null)) {
+        $success = clear_patient_appointment_notifications($patientId, $patientEmailVal, $patientName);
+    }
+
+    $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+        || (isset($_POST['ajax']) && $_POST['ajax'] === '1');
+
+    if ($isAjax) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => $success,
+            'unread_count' => 0,
+            'total_count' => 0,
+            'displayed_count' => 0
+        ]);
+        exit;
+    }
+
+    header('Location: dashboard.php?notif_open=1');
     exit;
 }
 
@@ -985,7 +1030,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 16px 20px;
+            padding: 14px 18px;
             border-bottom: 1.5px solid #f1f5f9;
             background: #f8fafc;
         }
@@ -997,7 +1042,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
         }
 
         .notif-popover-title strong {
-            font-size: 1.05rem;
+            font-size: 1.02rem;
             font-weight: 800;
             color: #0f172a;
         }
@@ -1013,14 +1058,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
             font-weight: 700;
         }
 
+        .notif-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .notif-clear-btn {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            font-size: 0.74rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .notif-clear-btn:hover {
+            background: #fee2e2;
+            border-color: #fca5a5;
+            color: #dc2626;
+        }
+
         .notif-close-btn {
             background: transparent;
             border: none;
             color: #94a3b8;
             font-size: 1.1rem;
             cursor: pointer;
-            padding: 4px;
+            padding: 4px 6px;
             border-radius: 6px;
+            line-height: 1;
+            transition: all 0.15s ease;
         }
         .notif-close-btn:hover {
             color: #0f172a;
@@ -3925,26 +3999,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                     </button>
 
                     <!-- Notification Popover Dropdown -->
-                    <div class="notif-dropdown-popover" id="notifDropdownPopover">
+                    <div class="notif-dropdown-popover <?= (isset($_GET['notif_open']) && $_GET['notif_open'] === '1') ? 'open' : ''; ?>" id="notifDropdownPopover">
                         <div class="notif-popover-header">
                             <div class="notif-popover-title">
                                 <strong>Notifications</strong>
                                 <?php if ($unreadNotifCount > 0): ?>
-                                    <span class="unread-chip"><?= $unreadNotifCount; ?> unread</span>
+                                    <span class="unread-chip" id="notifUnreadChip"><?= $unreadNotifCount; ?> unread</span>
                                 <?php endif; ?>
                             </div>
-                            <button type="button" class="notif-close-btn" id="closeNotifPopoverBtn">✕</button>
+                            <div class="notif-header-actions">
+                                <?php if (!empty($patientNotifications)): ?>
+                                    <button type="button" class="notif-clear-btn" id="clearNotifsBtn" title="Clear all notifications">Clear Notifications</button>
+                                <?php endif; ?>
+                                <button type="button" class="notif-close-btn" id="closeNotifPopoverBtn" aria-label="Close notifications">✕</button>
+                            </div>
                         </div>
-                        <div class="notif-popover-list">
-                            <?php if (empty($patientNotifications)): ?>
-                                <div class="notif-empty-state">
+                        <div class="notif-popover-list" id="notifPopoverList">
+                            <?php if (empty($displayedNotifications)): ?>
+                                <div class="notif-empty-state" id="notifEmptyState">
                                     <div class="notif-empty-icon"><?= iconSvg('check-circle'); ?></div>
                                     <p>You have no notifications at this time.</p>
                                 </div>
                             <?php else: ?>
-                                <?php foreach ($patientNotifications as $notif): ?>
+                                <?php foreach ($displayedNotifications as $notif): ?>
                                     <?php $isFollowUp = ($notif['status'] ?? '') === 'Follow-up'; ?>
-                                    <div class="notif-item-card <?= (int) ($notif['is_read'] ?? 0) === 0 ? 'is-unread' : ''; ?> <?= $isFollowUp ? 'is-followup' : ''; ?>">
+                                    <div class="notif-item-card <?= (int) ($notif['is_read'] ?? 0) === 0 ? 'is-unread' : ''; ?> <?= $isFollowUp ? 'is-followup' : ''; ?>" data-notif-id="<?= (int) $notif['id']; ?>">
                                         <div class="notif-item-icon">
                                             <?= $isFollowUp ? iconSvg('calendar') : iconSvg('check-circle'); ?>
                                         </div>
@@ -3957,7 +4036,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                                             </div>
                                             <p class="notif-item-msg"><?= h((string) $notif['message']); ?></p>
                                             <?php if ((int) ($notif['is_read'] ?? 0) === 0): ?>
-                                                <form method="post" style="margin-top: 6px;">
+                                                <form method="post" class="mark-notif-form" style="margin-top: 6px;">
                                                     <?= csrf_field(); ?>
                                                     <input type="hidden" name="action" value="mark_notif_read">
                                                     <input type="hidden" name="notification_id" value="<?= (int) $notif['id']; ?>">
@@ -4918,10 +4997,96 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     <?php endif; ?>
 
-    // Notification Bell Popover Toggle
-    const notifBellBtn = document.getElementById('notifBellBtn');
-    const notifDropdownPopover = document.getElementById('notifDropdownPopover');
-    const closeNotifPopoverBtn = document.getElementById('closeNotifPopoverBtn');
+    // Keep popover open if notif_open URL param is present
+    if (window.location.search.includes('notif_open=1')) {
+        const popover = document.getElementById('notifDropdownPopover');
+        if (popover) popover.classList.add('open');
+    }
+
+    // Helper: In-place Notification Sync (preserves open popover)
+    async function syncNotificationsInPlace() {
+        try {
+            const res = await fetch(window.location.href, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!res.ok) return;
+            const html = await res.text();
+            const parser = new DOMParser();
+            const newDoc = parser.parseFromString(html, 'text/html');
+
+            const popover = document.getElementById('notifDropdownPopover');
+            const wasOpen = popover && popover.classList.contains('open');
+
+            const currentList = document.getElementById('notifPopoverList');
+            const newList = newDoc.getElementById('notifPopoverList');
+            if (currentList && newList) {
+                currentList.innerHTML = newList.innerHTML;
+            }
+
+            const currentBellBtn = document.getElementById('notifBellBtn');
+            const newBellBtn = newDoc.getElementById('notifBellBtn');
+            if (currentBellBtn && newBellBtn) {
+                currentBellBtn.innerHTML = newBellBtn.innerHTML;
+                currentBellBtn.className = newBellBtn.className;
+            }
+
+            const currentTitle = document.querySelector('.notif-popover-title');
+            const newTitle = newDoc.querySelector('.notif-popover-title');
+            if (currentTitle && newTitle) {
+                currentTitle.innerHTML = newTitle.innerHTML;
+            }
+
+            const currentActions = document.querySelector('.notif-header-actions');
+            const newActions = newDoc.querySelector('.notif-header-actions');
+            if (currentActions && newActions) {
+                currentActions.innerHTML = newActions.innerHTML;
+            }
+
+            if (wasOpen && popover) {
+                popover.classList.add('open');
+            }
+        } catch (e) {
+            console.debug('Notification sync error:', e);
+        }
+    }
+
+    // Helper: Update notification badges and unread counters immediately
+    function updateNotificationBadgesAndCounts(unreadCount) {
+        const bellBtn = document.getElementById('notifBellBtn');
+        const unreadChip = document.getElementById('notifUnreadChip');
+        const popoverTitle = document.querySelector('.notif-popover-title');
+
+        if (unreadCount <= 0) {
+            if (bellBtn) {
+                bellBtn.classList.remove('has-unread');
+                const badge = bellBtn.querySelector('.notif-badge-count');
+                if (badge) badge.remove();
+            }
+            if (unreadChip) {
+                unreadChip.remove();
+            }
+        } else {
+            if (bellBtn) {
+                bellBtn.classList.add('has-unread');
+                let badge = bellBtn.querySelector('.notif-badge-count');
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'notif-badge-count';
+                    bellBtn.appendChild(badge);
+                }
+                badge.textContent = unreadCount;
+            }
+            if (unreadChip) {
+                unreadChip.textContent = unreadCount + ' unread';
+            } else if (popoverTitle) {
+                const chip = document.createElement('span');
+                chip.className = 'unread-chip';
+                chip.id = 'notifUnreadChip';
+                chip.textContent = unreadCount + ' unread';
+                popoverTitle.appendChild(chip);
+            }
+        }
+    }
 
     // Notification Popover Interaction (Delegated for Dynamic DOM Updates)
     document.addEventListener('click', function (e) {
@@ -4943,6 +5108,92 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!popover.contains(e.target)) {
                 popover.classList.remove('open');
             }
+        }
+    });
+
+    // Mark as Read via AJAX without closing popover
+    document.addEventListener('submit', async function (e) {
+        const markForm = e.target.closest('.mark-notif-form');
+        if (!markForm) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const notifCard = markForm.closest('.notif-item-card');
+        const formData = new FormData(markForm);
+        formData.append('ajax', '1');
+
+        // Immediate visual feedback
+        if (notifCard) {
+            notifCard.classList.remove('is-unread');
+            markForm.remove();
+        }
+
+        try {
+            const response = await fetch('dashboard.php', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (typeof data.unread_count === 'number') {
+                    updateNotificationBadgesAndCounts(data.unread_count);
+                }
+                // Refresh list in place to enforce 5-notification limit rule without closing popover
+                await syncNotificationsInPlace();
+            }
+        } catch (err) {
+            console.error('Failed to mark notification read:', err);
+        }
+    });
+
+    // Clear All Notifications via AJAX
+    document.addEventListener('click', async function (e) {
+        const clearBtn = e.target.closest('#clearNotifsBtn');
+        if (!clearBtn) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const csrfInput = document.querySelector('input[name="csrf_token"]');
+        const csrfToken = csrfInput ? csrfInput.value : '';
+        const formData = new FormData();
+        formData.append('action', 'clear_all_notifs');
+        formData.append('csrf_token', csrfToken);
+        formData.append('ajax', '1');
+
+        // Immediate UI feedback
+        const list = document.getElementById('notifPopoverList');
+        if (list) {
+            list.innerHTML = `
+                <div class="notif-empty-state" id="notifEmptyState">
+                    <div class="notif-empty-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" style="width:24px;height:24px;max-width:24px;max-height:24px;display:inline-block;vertical-align:middle;" aria-hidden="true"><path d="M9 12l2 2 4-4m7-1a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <p>You have no notifications at this time.</p>
+                </div>
+            `;
+        }
+        clearBtn.style.display = 'none';
+        const unreadChip = document.getElementById('notifUnreadChip');
+        if (unreadChip) unreadChip.remove();
+        const bellBtn = document.getElementById('notifBellBtn');
+        if (bellBtn) {
+            bellBtn.classList.remove('has-unread');
+            const badge = bellBtn.querySelector('.notif-badge-count');
+            if (badge) badge.remove();
+        }
+
+        try {
+            await fetch('dashboard.php', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+        } catch (err) {
+            console.error('Failed to clear notifications:', err);
         }
     });
 
