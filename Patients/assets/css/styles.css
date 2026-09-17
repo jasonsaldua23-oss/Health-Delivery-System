@@ -2510,6 +2510,13 @@ textarea { resize: vertical; min-height: 120px; }
         border-bottom: 1px solid #e2e8f0 !important;
     }
 
+    #appointmentSlipModal tr[style*="display: none"],
+    #appointmentSlipModal tr[style*="display:none"],
+    #appointmentSlipModal tr.slip-row-hidden {
+        display: none !important;
+        visibility: hidden !important;
+    }
+
     #appointmentSlipModal .slip-details-table td {
         padding: 7px 4px !important;
         font-size: 0.88rem !important;

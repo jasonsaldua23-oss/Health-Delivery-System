@@ -358,14 +358,14 @@ function downloadConfirmationImage() {
 
     ctx.fillStyle = '#0f2240';
     ctx.font = '700 48px Outfit';
-    ctx.fillText('Appointment & Recipient Information', 170, 545);
+    ctx.fillText(details.isImmunization ? 'Appointment & Recipient Information' : 'Appointment Details', 170, 545);
 
     const rows = [
         ['Health Station', details.station],
         ['Service', details.service],
         ['Appointment Date', details.date],
         ['Service Slot', details.time],
-        ['Primary Account Name', details.name],
+        [details.isImmunization ? 'Primary Account Name' : 'Patient Name', details.name],
         ['Contact Number', details.contact],
     ];
 

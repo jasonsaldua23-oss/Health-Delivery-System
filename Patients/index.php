@@ -595,9 +595,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 <?php endif; ?>
 
                 <div class="divider"></div>
-                <h2>Primary Account &amp; Contact Details</h2>
+                <h2><?= $isImmuAppt ? 'Primary Account &amp; Contact Details' : 'Patient &amp; Contact Details'; ?></h2>
                 <div class="detail-grid two-col patient-details">
-                    <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('user'); ?></span><div><small>Account Holder Name</small><strong><?= h(fullName($confirmedAppointment)); ?></strong></div></div>
+                    <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('user'); ?></span><div><small><?= $isImmuAppt ? 'Account Holder Name' : 'Patient Name'; ?></small><strong><?= h(fullName($confirmedAppointment)); ?></strong></div></div>
                     <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('phone'); ?></span><div><small>Contact Number</small><strong><?= h($confirmedAppointment['contact_number']); ?></strong></div></div>
                     <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('mail'); ?></span><div><small>Email</small><strong><?= h((string) ($confirmedAppointment['email'] ?: 'No email provided')); ?></strong></div></div>
                     <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('home'); ?></span><div><small>Address</small><strong><?= h($confirmedAppointment['complete_address']); ?></strong></div></div>

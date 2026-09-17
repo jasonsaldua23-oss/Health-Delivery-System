@@ -3451,6 +3451,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                 border-bottom: 1px solid #e2e8f0 !important;
             }
 
+            #appointmentSlipModal tr[style*="display: none"],
+            #appointmentSlipModal tr[style*="display:none"],
+            #appointmentSlipModal tr.slip-row-hidden {
+                display: none !important;
+                visibility: hidden !important;
+            }
+
             #appointmentSlipModal .slip-details-table td {
                 padding: 7px 4px !important;
                 font-size: 0.88rem !important;
@@ -5118,6 +5125,24 @@ function downloadAppointmentSlipFromElement(el) {
     }
 }
 
+function isAppointmentImmunization(appt) {
+    if (!appt) return false;
+    if (appt.is_immunization === true || appt.is_immunization === 1 || appt.is_immunization === '1' || appt.is_immunization === 'true') {
+        return true;
+    }
+    const serviceSlug = (appt.service_slug || '').toLowerCase().trim();
+    const serviceName = (appt.service_name || '').toLowerCase().trim();
+    return serviceSlug === 'immunization'
+        || serviceSlug === 'vaccination'
+        || serviceSlug === 'flu'
+        || serviceSlug === 'covid-vaccine'
+        || serviceSlug === 'vaccine'
+        || serviceSlug.includes('immuniz')
+        || serviceSlug.includes('vaccin')
+        || serviceName.includes('immuniz')
+        || serviceName.includes('vaccin');
+}
+
 function openAppointmentSlipModal(appt) {
     if (!appt) return;
     currentModalApptData = appt;
@@ -5128,6 +5153,7 @@ function openAppointmentSlipModal(appt) {
     const serviceEl = document.getElementById('slipModalService');
     const dateEl = document.getElementById('slipModalDate');
     const slotEl = document.getElementById('slipModalSlot');
+    const nameLabelEl = document.getElementById('slipModalNameLabel');
     const nameEl = document.getElementById('slipModalName');
     const contactEl = document.getElementById('slipModalContact');
     const addressEl = document.getElementById('slipModalAddress');
@@ -5157,24 +5183,7 @@ function openAppointmentSlipModal(appt) {
         statusEl.innerHTML = '<span class="val-col status-pill status-' + st.toLowerCase() + '">' + st + '</span>';
     }
 
-    // Recipient & Relationship Details (Immunization)
-    const isImmunization = (appt.service_name || '').toLowerCase().includes('immuniz') || (appt.service_slug || '').toLowerCase().includes('immuniz') || Boolean(appt.vaccine_type) || Boolean(appt.is_immunization);
-    const recipientFirst = (appt.recipient_first_name || '').trim();
-    const recipientMiddle = (appt.recipient_middle_name || '').trim();
-    const recipientLast = (appt.recipient_last_name || '').trim();
-    const recipientDob = (appt.recipient_birth_date || '').trim();
-    const rawRel = (appt.immunization_relationship || appt.relationship || appt.recipient_relationship || appt.recipient_rel || '').trim();
-    const hasExplicitRecipient = Boolean(recipientFirst && recipientLast);
-
-    let relationship = rawRel;
-    if (!relationship) {
-        relationship = isImmunization ? (hasExplicitRecipient ? 'Child' : 'Self') : '';
-    }
-
-    let recipientFullName = (appt.recipient_full_name || '').trim() || [recipientFirst, recipientMiddle, recipientLast].filter(Boolean).join(' ');
-    if (!recipientFullName) {
-        recipientFullName = patientFullName;
-    }
+    const isImmunization = isAppointmentImmunization(appt);
 
     const recNameRow = document.getElementById('slipModalRecipientNameRow');
     const recNameEl = document.getElementById('slipModalRecipientName');
@@ -5182,15 +5191,36 @@ function openAppointmentSlipModal(appt) {
     const relEl = document.getElementById('slipModalRelationship');
     const recDobRow = document.getElementById('slipModalRecipientDobRow');
     const recDobEl = document.getElementById('slipModalRecipientDob');
+    const vaccineRow = document.getElementById('slipModalVaccineRow');
+    const vaccineEl = document.getElementById('slipModalVaccine');
 
-    if (isImmunization || recipientFirst !== '') {
+    if (isImmunization) {
+        const recipientFirst = (appt.recipient_first_name || '').trim();
+        const recipientMiddle = (appt.recipient_middle_name || '').trim();
+        const recipientLast = (appt.recipient_last_name || '').trim();
+        const recipientDob = (appt.recipient_birth_date || '').trim();
+        const rawRel = (appt.immunization_relationship || appt.relationship || appt.recipient_relationship || appt.recipient_rel || '').trim();
+        const hasExplicitRecipient = Boolean(recipientFirst && recipientLast);
+
+        let relationship = rawRel;
+        if (!relationship) {
+            relationship = hasExplicitRecipient ? 'Child' : 'Self';
+        }
+
+        let recipientFullName = (appt.recipient_full_name || '').trim() || [recipientFirst, recipientMiddle, recipientLast].filter(Boolean).join(' ');
+        if (!recipientFullName) {
+            recipientFullName = patientFullName;
+        }
+
         if (recNameRow && recNameEl) {
             recNameEl.textContent = recipientFullName;
             recNameRow.style.display = '';
+            recNameRow.classList.remove('slip-row-hidden');
         }
         if (relRow && relEl) {
             relEl.textContent = relationship || 'Self';
             relRow.style.display = '';
+            relRow.classList.remove('slip-row-hidden');
         }
         if (recDobRow && recDobEl) {
             if (recipientDob && recipientDob !== '0000-00-00') {
@@ -5204,31 +5234,31 @@ function openAppointmentSlipModal(appt) {
                 const ageLabel = appt.recipient_age_label || calculateAgeLabel(recipientDob);
                 recDobEl.textContent = dobText + (ageLabel && ageLabel !== 'Age unavailable' ? ` (${ageLabel})` : '');
                 recDobRow.style.display = '';
+                recDobRow.classList.remove('slip-row-hidden');
             } else {
                 recDobRow.style.display = 'none';
+                recDobRow.classList.add('slip-row-hidden');
             }
         }
-    } else {
-        if (recNameRow) recNameRow.style.display = 'none';
-        if (relRow) relRow.style.display = 'none';
-        if (recDobRow) recDobRow.style.display = 'none';
-    }
+        if (nameLabelEl) {
+            nameLabelEl.textContent = 'Booked By (Account Holder)';
+        }
 
-    const vaccineRow = document.getElementById('slipModalVaccineRow');
-    const vaccineEl = document.getElementById('slipModalVaccine');
-    if (vaccineRow && vaccineEl) {
-        if (isImmunization) {
+        if (vaccineRow && vaccineEl) {
             vaccineEl.textContent = appt.vaccine_type ? appt.vaccine_type : 'Pending staff vitals encoding upon arrival';
             vaccineEl.style.fontStyle = appt.vaccine_type ? 'normal' : 'italic';
             vaccineEl.style.color = appt.vaccine_type ? '#14532d' : '#64748b';
             vaccineRow.style.display = '';
-        } else if (appt.vaccine_type) {
-            vaccineEl.textContent = appt.vaccine_type;
-            vaccineEl.style.fontStyle = 'normal';
-            vaccineEl.style.color = '#14532d';
-            vaccineRow.style.display = '';
-        } else {
-            vaccineRow.style.display = 'none';
+            vaccineRow.classList.remove('slip-row-hidden');
+        }
+    } else {
+        // NON-IMMUNIZATION: Strictly hide all recipient & vaccine rows, set standard patient label
+        if (recNameRow) { recNameRow.style.display = 'none'; recNameRow.classList.add('slip-row-hidden'); }
+        if (relRow) { relRow.style.display = 'none'; relRow.classList.add('slip-row-hidden'); }
+        if (recDobRow) { recDobRow.style.display = 'none'; recDobRow.classList.add('slip-row-hidden'); }
+        if (vaccineRow) { vaccineRow.style.display = 'none'; vaccineRow.classList.add('slip-row-hidden'); }
+        if (nameLabelEl) {
+            nameLabelEl.textContent = 'Patient Name';
         }
     }
 
@@ -5281,27 +5311,11 @@ function downloadAppointmentSlipDirectly(appt) {
         }
     } catch(e) {}
 
-    const isImmunization = (appt.service_name || '').toLowerCase().includes('immuniz') || (appt.service_slug || '').toLowerCase().includes('immuniz') || Boolean(appt.vaccine_type) || Boolean(appt.is_immunization);
-    const recipientFirst = (appt.recipient_first_name || '').trim();
-    const recipientMiddle = (appt.recipient_middle_name || '').trim();
-    const recipientLast = (appt.recipient_last_name || '').trim();
-    const recipientDob = (appt.recipient_birth_date || '').trim();
-    const rawRel = (appt.immunization_relationship || appt.relationship || appt.recipient_relationship || appt.recipient_rel || '').trim();
-    const hasExplicitRecipient = Boolean(recipientFirst && recipientLast);
-
-    let relationship = rawRel;
-    if (!relationship) {
-        relationship = isImmunization ? (hasExplicitRecipient ? 'Child' : 'Self') : '';
-    }
-
-    let recipientFullName = (appt.recipient_full_name || '').trim() || [recipientFirst, recipientMiddle, recipientLast].filter(Boolean).join(' ');
-    if (!recipientFullName) {
-        recipientFullName = patientFullName;
-    }
+    const isImmunization = isAppointmentImmunization(appt);
 
     const canvas = document.createElement('canvas');
     canvas.width = 1400;
-    canvas.height = isImmunization ? 1120 : 1000;
+    canvas.height = isImmunization ? 1120 : 980;
     const ctx = canvas.getContext('2d');
 
     // Background
@@ -5352,7 +5366,24 @@ function downloadAppointmentSlipDirectly(appt) {
         ['Time Slot:', appt.preferred_time || 'Daily Slot'],
     ];
 
-    if (isImmunization || recipientFirst !== '') {
+    if (isImmunization) {
+        const recipientFirst = (appt.recipient_first_name || '').trim();
+        const recipientMiddle = (appt.recipient_middle_name || '').trim();
+        const recipientLast = (appt.recipient_last_name || '').trim();
+        const recipientDob = (appt.recipient_birth_date || '').trim();
+        const rawRel = (appt.immunization_relationship || appt.relationship || appt.recipient_relationship || appt.recipient_rel || '').trim();
+        const hasExplicitRecipient = Boolean(recipientFirst && recipientLast);
+
+        let relationship = rawRel;
+        if (!relationship) {
+            relationship = hasExplicitRecipient ? 'Child' : 'Self';
+        }
+
+        let recipientFullName = (appt.recipient_full_name || '').trim() || [recipientFirst, recipientMiddle, recipientLast].filter(Boolean).join(' ');
+        if (!recipientFullName) {
+            recipientFullName = patientFullName;
+        }
+
         rows.push(['Recipient Name:', recipientFullName]);
         rows.push(['Relationship to Recipient:', relationship || 'Self']);
         if (recipientDob && recipientDob !== '0000-00-00') {
@@ -5369,19 +5400,17 @@ function downloadAppointmentSlipDirectly(appt) {
         rows.push(['Booked By (Account):', patientFullName]);
     } else {
         rows.push(['Patient Name:', patientFullName]);
-        rows.push(['Patient ID:', appt.patient_id || 'Registered Account']);
+        rows.push(['Patient ID:', appt.patient_id ? `#${appt.patient_id}` : 'Registered Account']);
     }
 
     rows.push(['Contact Number:', appt.contact_number || 'N/A']);
     rows.push(['Registered Address:', appt.complete_address || 'Bacolod City']);
 
     if (isImmunization) {
-        rows.push(['Type of Vaccine:', appt.vaccine_type ? appt.vaccine_type : 'Pending staff vitals encoding']);
-    } else if (appt.vaccine_type) {
-        rows.push(['Vaccine Administered:', appt.vaccine_type]);
+        rows.push(['Type of Vaccine:', appt.vaccine_type ? appt.vaccine_type : 'Pending staff vitals encoding upon arrival']);
     }
 
-    const cardHeight = Math.max(480, (Math.ceil(rows.length / 2) * 65) + 100);
+    const cardHeight = Math.max(420, (Math.ceil(rows.length / 2) * 65) + 100);
 
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
@@ -5393,7 +5422,7 @@ function downloadAppointmentSlipDirectly(appt) {
 
     ctx.fillStyle = '#0f172a';
     ctx.font = '700 32px Outfit, sans-serif';
-    ctx.fillText('Appointment & Recipient Information', 130, 400);
+    ctx.fillText(isImmunization ? 'Appointment & Recipient Information' : 'Appointment Details', 130, 400);
 
     let rowY = 460;
     rows.forEach((r, idx) => {
@@ -5488,7 +5517,7 @@ function downloadAppointmentSlipDirectly(appt) {
                         <td class="val-col" id="slipModalRecipientDob" style="color: #065f46; font-weight: 700;">-</td>
                     </tr>
                     <tr>
-                        <td class="label-col">Patient / Account Holder</td>
+                        <td class="label-col" id="slipModalNameLabel">Patient Name</td>
                         <td class="val-col" id="slipModalName">-</td>
                     </tr>
                     <tr>
