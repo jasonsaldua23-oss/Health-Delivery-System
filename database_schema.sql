@@ -205,6 +205,19 @@ CREATE TABLE IF NOT EXISTS station_open_hours (
     KEY idx_station_open_hours_station (station_slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS station_service_schedules (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    station_slug    VARCHAR(100) NOT NULL,
+    service_slug    VARCHAR(100) NOT NULL,
+    days_json       TEXT NOT NULL,
+    schedule_label  VARCHAR(255) NOT NULL,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_station_service_schedules (station_slug, service_slug),
+    KEY idx_station_service_schedules_station (station_slug),
+    KEY idx_station_service_schedules_service (service_slug)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ----------------------------------------------------------------------------
 -- 5. EVENTS AND AUDIT LOGS
 -- ----------------------------------------------------------------------------

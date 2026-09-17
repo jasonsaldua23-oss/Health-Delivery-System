@@ -413,6 +413,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'update_station_service_schedule')) {
+    if (verify_csrf($_POST['csrf_token'] ?? null)) {
+        $stationSlug = trim((string) ($_POST['station_slug'] ?? ''));
+        $serviceSlug = trim((string) ($_POST['service_slug'] ?? ''));
+        $days = is_array($_POST['days'] ?? null) ? $_POST['days'] : [];
+        $customLabel = trim((string) ($_POST['custom_label'] ?? ''));
+
+        if ($stationSlug !== '' && $serviceSlug !== '') {
+            $dayNumbers = array_map('intval', $days);
+            $updated = save_station_service_schedule($stationSlug, $serviceSlug, $dayNumbers, $customLabel);
+            $_SESSION['admin_flash'] = $updated
+                ? 'Service schedule updated successfully.'
+                : 'Unable to update service schedule.';
+            if ($updated) {
+                log_activity('admin', (string) ($adminAccount['email'] ?? 'admin'), 'service_schedule_updated', 'service', $serviceSlug, '', '', $stationSlug);
+            }
+        }
+    }
+
+    header('Location: index.php?page=services&station=' . urlencode((string) ($_POST['station_slug'] ?? '')));
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'create_health_facility')) {
     if (verify_csrf($_POST['csrf_token'] ?? null)) {
         $barangay = trim((string) ($_POST['barangay'] ?? ''));
@@ -2336,9 +2359,10 @@ if (!function_exists('peso')) {
                     <div class="action-head-copy">
                         <a class="back-admin" href="?page=services"><?= admin_icon('arrow-left'); ?>Back to All Health Centers</a>
                         <h1><?= h($selectedServiceStation['name']); ?></h1>
-                        <p>Manage assigned clinical services and customize maximum booking slot capacities for this health center</p>
+                        <p>Manage assigned clinical services, service schedules, and customize maximum booking slot capacities for this health center</p>
                     </div>
                     <div class="header-actions">
+                        <button type="button" class="blue-btn" onclick="openManageScheduleModal()"><?= admin_icon('calendar'); ?>Manage Schedule</button>
                         <button type="button" class="green-btn" onclick="document.getElementById('addServiceModal').style.display='grid'"><?= admin_icon('plus'); ?>Add Service</button>
                         <button type="button" class="blue-btn" id="removeServiceBtn" style="display:none;" onclick="removeSelectedService()"><?= admin_icon('x'); ?>Remove Service</button>
                     </div>
@@ -2347,6 +2371,16 @@ if (!function_exists('peso')) {
                 $stationDailyCapacity = fetch_station_daily_capacity((string) $selectedServiceStation['slug']); 
                 $serviceSelection = fetch_station_service_selection((string) $selectedServiceStation['slug']);
                 $assignedServices = array_filter($serviceSelection, static fn(array $s): bool => !empty($s['assigned']));
+                $stationSchedulesData = [];
+                foreach ($assignedServices as $srv) {
+                    $srvSlug = (string) $srv['slug'];
+                    $sched = fetch_station_service_schedule((string) $selectedServiceStation['slug'], $srvSlug);
+                    $stationSchedulesData[$srvSlug] = [
+                        'title' => (string) $srv['title'],
+                        'days' => $sched !== null && isset($sched['days']) ? array_map('intval', array_keys($sched['days'])) : [1, 2, 3, 4, 5],
+                        'label' => $sched['label'] ?? service_schedule_label((string) $selectedServiceStation['slug'], $srvSlug),
+                    ];
+                }
                 ?>
 
                 <div class="service-station-hero-card">
@@ -2401,8 +2435,8 @@ if (!function_exists('peso')) {
                                 <h3><?= h((string) $service['title']); ?></h3>
                                 <p><?= h((string) $service['description']); ?></p>
                                 <div class="service-card-footer-clean">
-                                    <span class="service-duration-pill">
-                                        <?= admin_icon('clock'); ?> <?= h((string) ($service['duration'] ?? '30 mins')); ?>
+                                    <span class="service-schedule-pill" style="cursor:pointer;" onclick="openManageScheduleModal('<?= h((string) $service['slug']); ?>')" title="Click to manage service schedule">
+                                        <?= admin_icon('calendar'); ?> <?= h(service_schedule_label($selectedServiceStation['slug'], $service['slug'])); ?>
                                     </span>
                                     <span class="service-active-pill">
                                         ● Active
@@ -2441,6 +2475,92 @@ if (!function_exists('peso')) {
                             <div class="modal-actions">
                                 <button type="button" class="blue-btn" onclick="document.getElementById('addServiceModal').style.display='none'">Cancel</button>
                                 <button type="submit" class="green-btn"><?= admin_icon('check'); ?>Add Selected Services</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Manage Station Service Schedule Modal -->
+                <div id="manageScheduleModal" style="display:none;" class="service-modal-overlay">
+                    <div class="service-modal-card schedule-modal-card">
+                        <div class="modal-head">
+                            <div class="modal-head-title-wrap">
+                                <h2>Manage Service Schedule</h2>
+                                <p>Configure operating days and availability for services at <?= h($selectedServiceStation['name']); ?></p>
+                            </div>
+                            <button type="button" class="modal-close-btn" onclick="document.getElementById('manageScheduleModal').style.display='none'">×</button>
+                        </div>
+                        <form method="post" class="service-modal-form" id="stationScheduleForm">
+                            <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                            <input type="hidden" name="action" value="update_station_service_schedule">
+                            <input type="hidden" name="station_slug" value="<?= h((string) $selectedServiceStation['slug']); ?>">
+
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label style="font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">Select Service</label>
+                                <select name="service_slug" id="scheduleServiceSelect" onchange="onScheduleServiceChange(this.value)" style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.92rem; background: #fff; color: #0f172a;" required>
+                                    <?php foreach ($assignedServices as $srv): ?>
+                                        <option value="<?= h((string) $srv['slug']); ?>"><?= h((string) $srv['title']); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <div style="margin-bottom: 14px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <label style="font-weight: 600; color: #1e293b; margin: 0;">Available Days of the Week</label>
+                                    <span style="font-size: 0.78rem; color: #64748b;">Select which days this service is open</span>
+                                </div>
+                                <div class="schedule-days-grid">
+                                    <?php 
+                                    $dayOptions = [
+                                        1 => ['name' => 'Monday', 'short' => 'Mon'],
+                                        2 => ['name' => 'Tuesday', 'short' => 'Tue'],
+                                        3 => ['name' => 'Wednesday', 'short' => 'Wed'],
+                                        4 => ['name' => 'Thursday', 'short' => 'Thu'],
+                                        5 => ['name' => 'Friday', 'short' => 'Fri'],
+                                        6 => ['name' => 'Saturday', 'short' => 'Sat'],
+                                    ];
+                                    ?>
+                                    <?php foreach ($dayOptions as $dayNum => $dayData): ?>
+                                        <label class="schedule-day-checkbox-label">
+                                            <input type="checkbox" name="days[]" value="<?= $dayNum; ?>" class="schedule-day-cb" id="schedule_day_<?= $dayNum; ?>" onchange="updateSchedulePreview()">
+                                            <div class="day-box">
+                                                <strong><?= $dayData['short']; ?></strong>
+                                                <small><?= $dayData['name']; ?></small>
+                                            </div>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+
+                            <!-- Quick preset buttons -->
+                            <div style="margin-bottom: 16px;">
+                                <label style="font-size: 0.8rem; font-weight: 600; color: #64748b; display: block; margin-bottom: 6px;">Quick Presets</label>
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                    <button type="button" class="blue-btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="applySchedulePreset([1,2,3,4,5])">Mon – Fri (Standard)</button>
+                                    <button type="button" class="blue-btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="applySchedulePreset([1,2,3,4,5,6])">Mon – Sat (Full Week)</button>
+                                    <button type="button" class="blue-btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="applySchedulePreset([1,3,5])">Mon / Wed / Fri</button>
+                                    <button type="button" class="blue-btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="applySchedulePreset([2,4])">Tue / Thu</button>
+                                    <button type="button" class="blue-btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="applySchedulePreset([3])">Wednesday Only</button>
+                                    <button type="button" class="blue-btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="applySchedulePreset([])">Clear All</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label style="font-weight: 600; color: #1e293b; margin-bottom: 4px; display: block;">Custom Schedule Note / Label (Optional)</label>
+                                <input type="text" name="custom_label" id="scheduleCustomLabelInput" placeholder="Auto-generated based on checked days above" oninput="updateSchedulePreview()" style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.88rem;">
+                                <small style="display: block; margin-top: 4px; color: #64748b; font-size: 0.78rem;">Leave blank to automatically format based on checked days above, or enter custom details (e.g. "Every Wednesday 8:00 AM - 12:00 PM").</small>
+                            </div>
+
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
+                                <span style="font-size: 0.82rem; color: #64748b; font-weight: 500;">Live Booking Availability Preview:</span>
+                                <span id="scheduleLivePreviewBadge" class="service-schedule-pill" style="font-size: 0.82rem;">
+                                    <?= admin_icon('calendar'); ?> <span id="scheduleLivePreviewText">Monday - Friday</span>
+                                </span>
+                            </div>
+
+                            <div class="modal-actions">
+                                <button type="button" class="blue-btn" onclick="document.getElementById('manageScheduleModal').style.display='none'">Cancel</button>
+                                <button type="submit" class="green-btn"><?= admin_icon('check'); ?>Save Service Schedule</button>
                             </div>
                         </form>
                     </div>
@@ -2575,6 +2695,102 @@ if (!function_exists('peso')) {
             </div>
 
             <script>
+            const stationServicesScheduleMap = <?= json_encode($stationSchedulesData ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+
+            function openManageScheduleModal(serviceSlug) {
+                const modal = document.getElementById('manageScheduleModal');
+                if (!modal) return;
+                const select = document.getElementById('scheduleServiceSelect');
+                if (select) {
+                    if (serviceSlug && Array.from(select.options).some(opt => opt.value === serviceSlug)) {
+                        select.value = serviceSlug;
+                    } else if (select.options.length > 0 && !select.value) {
+                        select.value = select.options[0].value;
+                    }
+                    onScheduleServiceChange(select.value);
+                }
+                modal.style.display = 'grid';
+            }
+
+            function onScheduleServiceChange(serviceSlug) {
+                const data = stationServicesScheduleMap[serviceSlug] || { days: [1, 2, 3, 4, 5], label: 'Monday - Friday' };
+                const checkedDays = Array.isArray(data.days) ? data.days : [];
+                
+                for (let d = 1; d <= 6; d++) {
+                    const cb = document.getElementById('schedule_day_' + d);
+                    if (cb) {
+                        cb.checked = checkedDays.includes(d);
+                    }
+                }
+                
+                const customInput = document.getElementById('scheduleCustomLabelInput');
+                if (customInput) {
+                    const standardLabel = formatDaysClient(checkedDays);
+                    if (data.label && data.label !== standardLabel) {
+                        customInput.value = data.label;
+                    } else {
+                        customInput.value = '';
+                    }
+                }
+                updateSchedulePreview();
+            }
+
+            function applySchedulePreset(days) {
+                for (let d = 1; d <= 6; d++) {
+                    const cb = document.getElementById('schedule_day_' + d);
+                    if (cb) {
+                        cb.checked = days.includes(d);
+                    }
+                }
+                const customInput = document.getElementById('scheduleCustomLabelInput');
+                if (customInput) {
+                    customInput.value = '';
+                }
+                updateSchedulePreview();
+            }
+
+            function formatDaysClient(days) {
+                if (!days || days.length === 0) return 'Closed (No days selected)';
+                const dayNames = { 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
+                const sorted = [...days].sort((a, b) => a - b);
+                
+                const count = sorted.length;
+                const joined = sorted.join(',');
+                if (count === 5 && joined === '1,2,3,4,5') return 'Monday - Friday';
+                if (count === 6 && joined === '1,2,3,4,5,6') return 'Monday - Saturday';
+                if (count === 3 && joined === '1,3,5') return 'Every Monday, Wednesday, and Friday';
+                if (count === 2 && joined === '2,4') return 'Every Tuesday and Thursday';
+                if (count === 2 && joined === '1,5') return 'Every Monday and Friday';
+                if (count === 1) return 'Every ' + dayNames[sorted[0]];
+
+                const names = sorted.map(d => dayNames[d]);
+                if (count === 2) return 'Every ' + names[0] + ' and ' + names[1];
+                const last = names.pop();
+                return 'Every ' + names.join(', ') + ', and ' + last;
+            }
+
+            function updateSchedulePreview() {
+                const customInput = document.getElementById('scheduleCustomLabelInput');
+                const previewText = document.getElementById('scheduleLivePreviewText');
+                const checkedDays = [];
+                for (let d = 1; d <= 6; d++) {
+                    const cb = document.getElementById('schedule_day_' + d);
+                    if (cb && cb.checked) {
+                        checkedDays.push(d);
+                    }
+                }
+                
+                let label = '';
+                if (customInput && customInput.value.trim()) {
+                    label = customInput.value.trim();
+                } else {
+                    label = formatDaysClient(checkedDays);
+                }
+                if (previewText) {
+                    previewText.textContent = label;
+                }
+            }
+
             function openAddFacilityModal() {
                 document.getElementById('addFacilityModal').style.display = 'grid';
             }

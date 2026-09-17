@@ -4168,7 +4168,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
 
                                 <?php if (!empty($appt['vaccine_type'])): ?>
                                     <div class="appt-vaccine-box" style="margin-top: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
-                                        <span style="color: #16a34a; font-size: 1rem;">💉</span>
                                         <div style="font-size: 0.85rem;">
                                             <span style="color: #166534; font-weight: 600;">Type of Vaccine:</span>
                                             <strong style="color: #14532d;"><?= h((string) $appt['vaccine_type']); ?></strong>
@@ -4354,7 +4353,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                                 <div class="event-content">
                                     <div style="margin-bottom: 6px;">
                                         <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; font-weight: 700; background: #dcfce7; color: #15803d; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.3px;">
-                                            ⭐ <?= h($patientBarangay); ?> Barangay Health Station
+                                            <?= h($patientBarangay); ?> Barangay Health Station
                                         </span>
                                     </div>
                                     <h3><?= h($event['title']); ?></h3>
@@ -5639,7 +5638,6 @@ function downloadAppointmentSlipDirectly(appt) {
 
                         <?php if (!empty($hAppt['vaccine_type'])): ?>
                             <div class="appt-vaccine-box" style="margin-bottom: 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
-                                <span style="color: #16a34a; font-size: 1rem;">💉</span>
                                 <div style="font-size: 0.85rem;">
                                     <span style="color: #166534; font-weight: 600;">Type of Vaccine:</span>
                                     <strong style="color: #14532d;"><?= h((string) $hAppt['vaccine_type']); ?></strong>

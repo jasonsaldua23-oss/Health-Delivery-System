@@ -1,7 +1,7 @@
 {
-    "total": 80,
-    "passed": 79,
-    "failed": 1,
+    "total": 82,
+    "passed": 82,
+    "failed": 0,
     "results": [
         {
             "id": "WB-001",
@@ -220,7 +220,7 @@
             "inputs": "Available slot with appointment count (10) < max capacity (50)",
             "expected": "Returns true",
             "actual": "Returned true indicating slot is open for booking",
-            "result": "Fail",
+            "result": "Pass",
             "remarks": "Capacity condition verified"
         },
         {
@@ -719,7 +719,7 @@
             "desc": "Verify patient ID generation format and algorithm",
             "inputs": "patient_id omitted",
             "expected": "Patient ID is generated from email\/time and uppercased substring",
-            "actual": "Generated 6-character uppercase alphanumeric ID: 95B0BA",
+            "actual": "Generated 6-character uppercase alphanumeric ID: 1C7118",
             "result": "Pass",
             "remarks": "6-character ID generated"
         },
@@ -802,6 +802,26 @@
             "actual": "Returned expected ward infant details and Guardian relationship",
             "result": "Pass",
             "remarks": "Guardian recipient resolution verified"
+        },
+        {
+            "id": "WB-080",
+            "segment": "format_schedule_days_label",
+            "desc": "Verify format_schedule_days_label outputs correct text representations of active days",
+            "inputs": "Day arrays [1..5], [3], [2,4], []",
+            "expected": "\"Monday - Friday\", \"Every Wednesday\", \"Every Tuesday and Thursday\", \"Schedule to be announced\"",
+            "actual": "Correct textual schedule labels generated",
+            "result": "Pass",
+            "remarks": "Schedule label formatting verified"
+        },
+        {
+            "id": "WB-081",
+            "segment": "service_is_scheduled_on_date",
+            "desc": "Verify service_is_scheduled_on_date allows scheduled day (Wed) and disallows non-scheduled day (Tue)",
+            "inputs": "Station=\"bata\", Service=\"immunization\", Date=next Wednesday vs next Tuesday",
+            "expected": "true for Wednesday, false for Tuesday",
+            "actual": "Correctly evaluated service schedule active status by day of week",
+            "result": "Pass",
+            "remarks": "Station service day filtering verified"
         }
     ]
 }

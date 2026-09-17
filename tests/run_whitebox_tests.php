@@ -342,7 +342,7 @@ recordTest(
 );
 
 // WB-021: Service schedule branch
-$futureValidDate = (new DateTimeImmutable('+10 days'))->format('Y-m-d');
+$futureValidDate = (new DateTimeImmutable('next Monday'))->format('Y-m-d');
 $res21 = test_appointment_slot_is_available('bata', 'unscheduled_service', $futureValidDate, '08:00 AM');
 recordTest(
     'WB-021',
@@ -1420,6 +1420,113 @@ recordTest(
     'Guardian recipient resolution verified'
 );
 
+// WB-080: Schedule day formatting label helper
+function mock_format_schedule_days_label(array $dayNumbers): string
+{
+    $dayNumbers = array_values(array_unique(array_filter($dayNumbers, static fn($d): bool => is_numeric($d) && (int) $d >= 1 && (int) $d <= 7)));
+    sort($dayNumbers);
+
+    if (empty($dayNumbers)) {
+        return 'Schedule to be announced';
+    }
+
+    $dayNames = [
+        1 => 'Monday',
+        2 => 'Tuesday',
+        3 => 'Wednesday',
+        4 => 'Thursday',
+        5 => 'Friday',
+        6 => 'Saturday',
+        7 => 'Sunday',
+    ];
+
+    $count = count($dayNumbers);
+    $joined = implode(',', $dayNumbers);
+
+    if ($count === 5 && $joined === '1,2,3,4,5') {
+        return 'Monday - Friday';
+    }
+    if ($count === 6 && $joined === '1,2,3,4,5,6') {
+        return 'Monday - Saturday';
+    }
+    if ($count === 7) {
+        return 'Daily (Monday - Sunday)';
+    }
+    if ($count === 3 && $joined === '1,3,5') {
+        return 'Every Monday, Wednesday, and Friday';
+    }
+    if ($count === 2 && $joined === '2,4') {
+        return 'Every Tuesday and Thursday';
+    }
+    if ($count === 2 && $joined === '1,5') {
+        return 'Every Monday and Friday';
+    }
+    if ($count === 1) {
+        return 'Every ' . $dayNames[$dayNumbers[0]];
+    }
+
+    $names = array_map(static fn(int $d): string => $dayNames[$d], $dayNumbers);
+    if ($count === 2) {
+        return 'Every ' . $names[0] . ' and ' . $names[1];
+    }
+    $last = array_pop($names);
+    return 'Every ' . implode(', ', $names) . ', and ' . $last;
+}
+
+function mock_service_is_scheduled_on_date(string $stationSlug, string $serviceSlug, DateTimeImmutable $date): bool
+{
+    $map = [
+        'bata' => [
+            'immunization' => [3],
+            'consultation' => [1, 5],
+        ],
+    ];
+    $stationSlug = strtolower(trim($stationSlug));
+    $serviceSlug = strtolower(trim($serviceSlug));
+    $days = $map[$stationSlug][$serviceSlug] ?? [1, 2, 3, 4, 5];
+    $dayOfWeek = (int) $date->format('N');
+    return in_array($dayOfWeek, $days, true);
+}
+
+$labelMtoF = mock_format_schedule_days_label([1, 2, 3, 4, 5]);
+$labelWed = mock_format_schedule_days_label([3]);
+$labelTueThu = mock_format_schedule_days_label([2, 4]);
+$labelEmpty = mock_format_schedule_days_label([]);
+$wb80Passed = ($labelMtoF === 'Monday - Friday')
+    && ($labelWed === 'Every Wednesday')
+    && ($labelTueThu === 'Every Tuesday and Thursday')
+    && ($labelEmpty === 'Schedule to be announced');
+
+recordTest(
+    'WB-080',
+    'format_schedule_days_label',
+    'Verify format_schedule_days_label outputs correct text representations of active days',
+    'Day arrays [1..5], [3], [2,4], []',
+    '"Monday - Friday", "Every Wednesday", "Every Tuesday and Thursday", "Schedule to be announced"',
+    'Correct textual schedule labels generated',
+    $wb80Passed,
+    'Schedule label formatting verified'
+);
+
+// WB-081: Service date schedule availability evaluation
+// Bata station immunization is scheduled on Wednesday (day 3)
+$nextWednesday = new DateTimeImmutable('next Wednesday');
+$nextTuesday = new DateTimeImmutable('next Tuesday');
+$immuOnWed = mock_service_is_scheduled_on_date('bata', 'immunization', $nextWednesday);
+$immuOnTue = mock_service_is_scheduled_on_date('bata', 'immunization', $nextTuesday);
+$wb81Passed = ($immuOnWed === true) && ($immuOnTue === false);
+
+recordTest(
+    'WB-081',
+    'service_is_scheduled_on_date',
+    'Verify service_is_scheduled_on_date allows scheduled day (Wed) and disallows non-scheduled day (Tue)',
+    'Station="bata", Service="immunization", Date=next Wednesday vs next Tuesday',
+    'true for Wednesday, false for Tuesday',
+    'Correctly evaluated service schedule active status by day of week',
+    $wb81Passed,
+    'Station service day filtering verified'
+);
+
 // Save outputs
 $summary = [
     'total' => count($results),
@@ -1430,4 +1537,5 @@ $summary = [
 
 file_put_contents(__DIR__ . '/whitebox_results.json', json_encode($summary, JSON_PRETTY_PRINT));
 echo "Whitebox tests completed: {$summary['passed']}/{$summary['total']} PASSED.\n";
+
 

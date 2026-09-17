@@ -284,11 +284,138 @@ function station_service_schedule_map(): array
     ];
 }
 
+function format_schedule_days_label(array $dayNumbers): string
+{
+    $dayNumbers = array_values(array_unique(array_filter($dayNumbers, static fn($d): bool => is_numeric($d) && (int) $d >= 1 && (int) $d <= 7)));
+    sort($dayNumbers);
+
+    if (empty($dayNumbers)) {
+        return 'Schedule to be announced';
+    }
+
+    $dayNames = [
+        1 => 'Monday',
+        2 => 'Tuesday',
+        3 => 'Wednesday',
+        4 => 'Thursday',
+        5 => 'Friday',
+        6 => 'Saturday',
+        7 => 'Sunday',
+    ];
+
+    $count = count($dayNumbers);
+    $joined = implode(',', $dayNumbers);
+
+    if ($count === 5 && $joined === '1,2,3,4,5') {
+        return 'Monday - Friday';
+    }
+    if ($count === 6 && $joined === '1,2,3,4,5,6') {
+        return 'Monday - Saturday';
+    }
+    if ($count === 7) {
+        return 'Daily (Monday - Sunday)';
+    }
+    if ($count === 3 && $joined === '1,3,5') {
+        return 'Every Monday, Wednesday, and Friday';
+    }
+    if ($count === 2 && $joined === '2,4') {
+        return 'Every Tuesday and Thursday';
+    }
+    if ($count === 2 && $joined === '1,5') {
+        return 'Every Monday and Friday';
+    }
+    if ($count === 1) {
+        return 'Every ' . $dayNames[$dayNumbers[0]];
+    }
+
+    $names = array_map(static fn(int $d): string => $dayNames[$d], $dayNumbers);
+    if ($count === 2) {
+        return 'Every ' . $names[0] . ' and ' . $names[1];
+    }
+    $last = array_pop($names);
+    return 'Every ' . implode(', ', $names) . ', and ' . $last;
+}
+
+function fetch_station_service_schedule(string $stationSlug, string $serviceSlug): ?array
+{
+    $stationSlug = strtolower(trim($stationSlug));
+    $serviceSlug = strtolower(trim($serviceSlug));
+
+    if (empty($GLOBALS['health_db_bootstrapping'])) {
+        try {
+            $stmt = db()->prepare('SELECT days_json, schedule_label FROM station_service_schedules WHERE station_slug = ? AND service_slug = ? LIMIT 1');
+            $stmt->bind_param('ss', $stationSlug, $serviceSlug);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+            if ($row) {
+                $rawDays = json_decode((string) ($row['days_json'] ?? '[]'), true);
+                $daysMap = [];
+                if (is_array($rawDays)) {
+                    foreach ($rawDays as $dNum) {
+                        $dInt = (int) $dNum;
+                        if ($dInt >= 1 && $dInt <= 7) {
+                            $daysMap[$dInt] = ['Whole day'];
+                        }
+                    }
+                }
+                return [
+                    'label' => (string) ($row['schedule_label'] ?: format_schedule_days_label($rawDays ?: [])),
+                    'days' => $daysMap,
+                ];
+            }
+        } catch (Throwable $e) {}
+    }
+
+    $scheduleMap = station_service_schedule_map();
+    if (isset($scheduleMap[$stationSlug][$serviceSlug])) {
+        return $scheduleMap[$stationSlug][$serviceSlug];
+    }
+
+    return null;
+}
+
+function save_station_service_schedule(string $stationSlug, string $serviceSlug, array $dayNumbers, string $customLabel = ''): bool
+{
+    $stationSlug = strtolower(trim($stationSlug));
+    $serviceSlug = strtolower(trim($serviceSlug));
+
+    if ($stationSlug === '' || $serviceSlug === '') {
+        return false;
+    }
+
+    $cleanDays = array_values(array_unique(array_filter($dayNumbers, static fn($d): bool => is_numeric($d) && (int) $d >= 1 && (int) $d <= 7)));
+    sort($cleanDays);
+
+    $label = trim($customLabel);
+    if ($label === '') {
+        $label = format_schedule_days_label($cleanDays);
+    }
+
+    $daysJson = json_encode($cleanDays);
+
+    try {
+        $db = db();
+        if (!db_table_exists($db, 'station_service_schedules')) {
+            create_station_service_schedules_table($db);
+        }
+
+        $stmt = $db->prepare(
+            'INSERT INTO station_service_schedules (station_slug, service_slug, days_json, schedule_label)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE 
+                days_json = VALUES(days_json), 
+                schedule_label = VALUES(schedule_label)'
+        );
+        $stmt->bind_param('ssss', $stationSlug, $serviceSlug, $daysJson, $label);
+        return $stmt->execute();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
 function station_service_schedule(string $stationSlug, string $serviceSlug): ?array
 {
-    $scheduleMap = station_service_schedule_map();
-
-    return $scheduleMap[$stationSlug][$serviceSlug] ?? null;
+    return fetch_station_service_schedule($stationSlug, $serviceSlug);
 }
 
 function service_schedule_label(string $stationSlug, string $serviceSlug): string
@@ -1006,6 +1133,29 @@ function ensure_immunized_infants_table(mysqli $connection): void
     ensure_table_is_usable($connection, DB_TABLE_IMMUNIZED_INFANTS, 'create_immunized_infants_table');
 }
 
+function create_station_service_schedules_table(mysqli $connection, string $engine = 'InnoDB'): void
+{
+    $connection->query(
+        'CREATE TABLE IF NOT EXISTS station_service_schedules (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            station_slug VARCHAR(100) NOT NULL,
+            service_slug VARCHAR(100) NOT NULL,
+            days_json TEXT NOT NULL,
+            schedule_label VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_station_service (station_slug, service_slug),
+            INDEX idx_sched_station (station_slug),
+            INDEX idx_sched_service (service_slug)
+        ) ENGINE=' . $engine . ' DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
+    );
+}
+
+function ensure_station_service_schedules_table(mysqli $connection): void
+{
+    ensure_table_is_usable($connection, 'station_service_schedules', 'create_station_service_schedules_table');
+}
+
 function run_database_migrations(mysqli $connection, bool $verbose = false): array
 {
     $GLOBALS['health_db_bootstrapping'] = true;
@@ -1027,6 +1177,7 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
     ensure_unattended_appointments_table($connection);
     ensure_unattended_queue_table($connection);
     ensure_immunized_infants_table($connection);
+    ensure_station_service_schedules_table($connection);
     $log[] = 'Core tables verified';
 
     // Purge sample test account Juan Dela Cruz across appointments, profiles, accounts, and history
