@@ -582,6 +582,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
         if (!empty($postData['pulse']) && empty($postData['pulse_rate'])) {
             $postData['pulse_rate'] = $postData['pulse'];
         }
+        if (!empty($postData['vaccine_type_select'])) {
+            if ($postData['vaccine_type_select'] === 'Others') {
+                $postData['vaccine_type'] = trim((string) ($postData['vaccine_type_other'] ?? '')) ?: 'Others';
+            } else {
+                $postData['vaccine_type'] = trim((string) $postData['vaccine_type_select']);
+            }
+        }
         if (save_appointment_clinical_details($appointmentId, $postData, (string) $station['slug'])) {
             if (($_POST['action'] ?? '') === 'save_vitals') {
                 $_SESSION['staff_flash'] = 'Vital signs recorded successfully.';
@@ -601,6 +608,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
         header('Location: ' . $returnUrl);
     } else {
         header('Location: index.php?page=patients');
+    }
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'save_infant_profile')) {
+    if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
+        $data = [
+            'id' => !empty($_POST['infant_id']) ? (int) $_POST['infant_id'] : null,
+            'patient_id' => trim((string) ($_POST['patient_id'] ?? '')),
+            'first_name' => trim((string) ($_POST['first_name'] ?? '')),
+            'middle_name' => trim((string) ($_POST['middle_name'] ?? '')),
+            'last_name' => trim((string) ($_POST['last_name'] ?? '')),
+            'birth_date' => trim((string) ($_POST['birth_date'] ?? '')),
+            'gender' => trim((string) ($_POST['gender'] ?? '')),
+            'mother_name' => trim((string) ($_POST['mother_name'] ?? '')),
+            'father_name' => trim((string) ($_POST['father_name'] ?? '')),
+            'station_slug' => (string) ($station['slug'] ?? ''),
+            'notes' => trim((string) ($_POST['notes'] ?? '')),
+        ];
+
+        $savedId = save_or_update_infant_profile($data);
+        if ($savedId) {
+            $_SESSION['staff_flash'] = 'Infant profile updated successfully!';
+            $_SESSION['staff_flash_type'] = 'success';
+            log_activity('staff', (string) ($staffAccount['email'] ?? ''), 'infant_profile_updated', 'infant', (string) $savedId, '', '', (string) ($station['slug'] ?? ''));
+        } else {
+            $_SESSION['staff_flash'] = 'Unable to save infant profile details.';
+            $_SESSION['staff_flash_type'] = 'error';
+        }
+    }
+
+    $returnUrl = trim((string) ($_POST['return_url'] ?? ''));
+    if ($returnUrl !== '') {
+        header('Location: ' . $returnUrl);
+    } else {
+        header('Location: index.php?page=patients&view=profiles');
     }
     exit;
 }
@@ -2127,15 +2170,60 @@ for ($i = 0; $i < 6; $i++) {
                                 </div>
 
                                 <?php if (is_vaccination_service((string) ($selectedVitalsAppointment['service_slug'] ?? ''), (string) ($selectedVitalsAppointment['service_name'] ?? ''))): ?>
-                                    <div class="form-group-item full-width" style="margin-top: 18px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 14px; padding: 16px 18px;">
-                                        <label for="queue_vaccine_type" class="form-field-label" style="color: #166534; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                                            <span style="display:inline-flex;color:#16a34a;"><?= staff_icon('syringe'); ?></span>
-                                            <span>Type of Vaccine</span>
-                                            <span class="required" style="color: #dc2626;">*</span>
-                                        </label>
-                                        <input type="text" id="queue_vaccine_type" name="vaccine_type" value="<?= h((string) ($selectedVitalsAppointment['vaccine_type'] ?? '')); ?>" placeholder="e.g. Pentavalent, PCV, MMR, Influenza, COVID-19, Hepatitis B..." required class="form-input-field" style="border-color: #86efac; background: #ffffff; font-size: 0.95rem;">
-                                        <small style="display: block; margin-top: 6px; color: #15803d; font-size: 0.82rem;">Encode the specific brand, antigen, or formulation administered during this vaccination visit.</small>
-                                    </div>
+                                    <?php
+                                    $vitRec = appointment_recipient_details($selectedVitalsAppointment);
+                                    $isNonSelf = $vitRec['is_immunization'] && !in_array(strtolower($vitRec['relationship']), ['myself', 'self', 'me'], true);
+                                    ?>
+                                    <?php if ($isNonSelf): ?>
+                                        <!-- Non-Self / Infant Immunization: Standard 9-option Select Dropdown with dynamic Others input -->
+                                        <div class="form-group-item full-width" style="margin-top: 18px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 14px; padding: 16px 18px;">
+                                            <label for="queue_vaccine_select" class="form-field-label" style="color: #166534; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                                                <span style="display:inline-flex;color:#16a34a;"><?= staff_icon('syringe'); ?></span>
+                                                <span>Type of Vaccine (Infant / Child Schedule)</span>
+                                                <span class="required" style="color: #dc2626;">*</span>
+                                            </label>
+                                            <?php
+                                            $standardVaccines = [
+                                                'BCG',
+                                                'Hepatitis B',
+                                                'Pentavalent (DTP-HepB-Hib)',
+                                                'OPV (Oral Polio Vaccine)',
+                                                'PCV (Pneumococcal Conjugate Vaccine)',
+                                                'IPV (Inactivated Polio Vaccine)',
+                                                'Measles-Rubella (MR) or AMV-1',
+                                                'MMR (Measles, Mumps, Rubella)',
+                                                'Others'
+                                            ];
+                                            $curVaccine = (string) ($selectedVitalsAppointment['vaccine_type'] ?? '');
+                                            $isStandard = in_array($curVaccine, array_slice($standardVaccines, 0, 8), true);
+                                            $isCustom = $curVaccine !== '' && !$isStandard;
+                                            $selectedVal = $isCustom ? 'Others' : ($curVaccine ?: '');
+                                            ?>
+                                            <select id="queue_vaccine_select" name="vaccine_type_select" required class="form-input-field" style="border-color: #86efac; background: #ffffff; font-size: 0.95rem;" onchange="handleStaffVaccineSelectChange(this)">
+                                                <option value="">-- Select Standard Vaccine Type --</option>
+                                                <?php foreach ($standardVaccines as $vac): ?>
+                                                    <option value="<?= h($vac); ?>" <?= ($selectedVal === $vac) ? 'selected' : ''; ?>><?= h($vac); ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+
+                                            <div id="queue_vaccine_other_wrap" style="margin-top: 10px; display: <?= $selectedVal === 'Others' ? 'block' : 'none'; ?>;">
+                                                <label for="queue_vaccine_other" class="form-field-label" style="color: #166534; font-size: 0.85rem; font-weight: 600;">Specify Other Vaccine Type:</label>
+                                                <input type="text" id="queue_vaccine_other" name="vaccine_type_other" value="<?= $isCustom ? h($curVaccine) : ''; ?>" placeholder="Enter custom vaccine antigen or brand..." class="form-input-field" style="border-color: #86efac; background: #ffffff; font-size: 0.92rem;">
+                                            </div>
+                                            <small style="display: block; margin-top: 6px; color: #15803d; font-size: 0.82rem;">Select from standard DOH national immunization program vaccines, or choose Others to specify.</small>
+                                        </div>
+                                    <?php else: ?>
+                                        <!-- Self Immunization: Standard Text Input -->
+                                        <div class="form-group-item full-width" style="margin-top: 18px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 14px; padding: 16px 18px;">
+                                            <label for="queue_vaccine_type" class="form-field-label" style="color: #166534; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                                                <span style="display:inline-flex;color:#16a34a;"><?= staff_icon('syringe'); ?></span>
+                                                <span>Type of Vaccine</span>
+                                                <span class="required" style="color: #dc2626;">*</span>
+                                            </label>
+                                            <input type="text" id="queue_vaccine_type" name="vaccine_type" value="<?= h((string) ($selectedVitalsAppointment['vaccine_type'] ?? '')); ?>" placeholder="e.g. Influenza, COVID-19 Booster, Pneumococcal, Tetanus Toxoid..." required class="form-input-field" style="border-color: #86efac; background: #ffffff; font-size: 0.95rem;">
+                                            <small style="display: block; margin-top: 6px; color: #15803d; font-size: 0.82rem;">Encode the specific brand, antigen, or formulation administered during this adult visit.</small>
+                                        </div>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </div>
 
@@ -2270,6 +2358,9 @@ for ($i = 0; $i < 6; $i++) {
                                 $patHasPhoto = !empty($prof['photo_path']);
                                 $latestAppt = $prof['latest_appointment'];
                                 $profUrl = '?page=patients&view=profiles' . ($patientSearch !== '' ? '&patient_search=' . urlencode($patientSearch) : '') . '&patient_profile=' . urlencode($prof['key']);
+                                $patientIdStr = (string) ($prof['patient_id'] ?? '');
+                                $hasInfantBookings = patient_has_infant_bookings($patientIdStr, $patientStationRecords);
+                                $infantSubProfiles = $hasInfantBookings ? fetch_infant_sub_profiles_by_patient_id($patientIdStr, $patientStationRecords) : [];
                                 ?>
                                 <article class="modern-patient-record-card patient-profile-card is-completed" id="profileCard_<?= h($prof['key']); ?>">
                                     <div class="pat-card-left">
@@ -2306,12 +2397,52 @@ for ($i = 0; $i < 6; $i++) {
                                             <?php endif; ?>
                                         </div>
                                     </div>
-                                    <div class="pat-card-right">
+                                    <div class="pat-card-right" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                        <?php if ($hasInfantBookings): ?>
+                                            <button type="button" class="patient-infant-toggle-btn" onclick="togglePatientInfantsTray('<?= h($prof['key']); ?>')" title="View Registered Infant Sub-Profiles (<?= count($infantSubProfiles); ?>)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 9px 14px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.28); transition: transform 0.15s, background 0.15s;">
+                                                <?= staff_icon('baby'); ?>
+                                                <span>Infants (<?= count($infantSubProfiles); ?>)</span>
+                                            </button>
+                                        <?php endif; ?>
                                         <a class="view-medical-file-btn patient-profile-open-btn" href="<?= h($profUrl); ?>" onclick="return window.openPatientProfileModal(event, '<?= h($prof['key']); ?>');" title="View Patient Profile and Appointment History" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; border: none; padding: 9px 18px; border-radius: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);">
                                             <?= staff_icon('history'); ?>
                                             <span>View Profile &amp; History</span>
                                         </a>
                                     </div>
+
+                                    <?php if ($hasInfantBookings && !empty($infantSubProfiles)): ?>
+                                        <div id="infantsTray_<?= h($prof['key']); ?>" class="patient-infants-tray" style="display: none; width: 100%; margin-top: 14px; padding-top: 14px; border-top: 1px dashed #cbd5e1;">
+                                            <div style="font-size: 0.85rem; font-weight: 700; color: #0369a1; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                                                <div style="display: flex; align-items: center; gap: 6px;">
+                                                    <?= staff_icon('baby'); ?> <span>Registered Infant / Child Sub-Profiles (<?= count($infantSubProfiles); ?>)</span>
+                                                </div>
+                                                <span style="font-size: 0.75rem; color: #64748b;">Click an infant card to view &amp; edit profile</span>
+                                            </div>
+                                            <div class="infant-subprofiles-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
+                                                <?php foreach ($infantSubProfiles as $infant): ?>
+                                                    <div class="infant-subprofile-card" onclick="openStaffInfantModal(<?= htmlspecialchars(json_encode($infant), ENT_QUOTES, 'UTF-8'); ?>)" style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 12px; padding: 12px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;">
+                                                        <div class="infant-mini-avatar" style="width: 44px; height: 44px; border-radius: 50%; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; overflow: hidden; border: 2px solid #38bdf8;">
+                                                            <?php if (!empty($infant['latest_photo'])): ?>
+                                                                <img src="../Patients/<?= h($infant['latest_photo']); ?>" alt="Infant Photo" style="width:100%; height:100%; object-fit:cover;">
+                                                            <?php else: ?>
+                                                                <?= staff_icon('baby'); ?>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <div style="flex: 1; min-width: 0;">
+                                                            <div style="font-weight: 700; color: #0f172a; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?= h($infant['full_name']); ?></div>
+                                                            <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">
+                                                                <?= h($infant['age_label']); ?> • <?= h($infant['gender'] ?: 'Infant'); ?>
+                                                            </div>
+                                                            <div style="font-size: 0.76rem; color: #0284c7; font-weight: 600; margin-top: 3px;">
+                                                                <?= count($infant['appointments']); ?> <?= count($infant['appointments']) === 1 ? 'Vaccination' : 'Vaccinations'; ?> Recorded
+                                                            </div>
+                                                        </div>
+                                                        <span style="color: #0284c7; font-size: 1.1rem; font-weight: 700;">&rarr;</span>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
 
                                     <!-- Hidden template for instant client-side modal popup without page reload -->
                                     <div id="patientProfileContent_<?= h($prof['key']); ?>" style="display: none;">
@@ -3128,6 +3259,35 @@ for ($i = 0; $i < 6; $i++) {
                         </a>
                     </div>
 
+                </div>
+            </section>
+
+            <!-- Dedicated Infant Sub-Profile & Immunization History Modal Dialog (Staff Panel) -->
+            <section class="account-modal-backdrop hidden" id="staffInfantModalBackdrop" style="display:none; align-items:center; justify-content:center;">
+                <div class="account-modal-card clinical-dialog-card infant-modal-card" role="dialog" aria-modal="true" style="margin: auto; max-width: 860px; width: min(100%, 860px); max-height: 90vh; overflow-y: auto; background: #ffffff; border-radius: 20px; box-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.35);">
+                    <div class="account-modal-header infant-modal-header" style="background: linear-gradient(135deg, #0369a1, #0284c7); color: #ffffff; padding: 20px 24px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                        <div class="account-modal-title-group" style="display: flex; align-items: center; gap: 14px;">
+                            <span class="account-modal-icon" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                                <?= staff_icon('baby'); ?>
+                            </span>
+                            <div>
+                                <h2 style="color: #ffffff; font-size: 1.25rem; margin: 0; font-weight: 700;" id="staffInfantModalTitle">Infant Profile &amp; Immunization Record</h2>
+                                <p style="color: rgba(255, 255, 255, 0.85); font-size: 0.85rem; margin-top: 2px; margin-bottom: 0;">Barangay Health Station &bull; Pediatric Immunization File</p>
+                            </div>
+                        </div>
+                        <button type="button" class="account-modal-close" onclick="closeStaffInfantModal()" aria-label="Close modal" style="color: #ffffff; opacity: 0.85; font-size: 1.6rem; background: none; border: none; cursor: pointer; line-height: 1;">&times;</button>
+                    </div>
+
+                    <div class="account-modal-body" id="staffInfantModalBody" style="padding: 24px;">
+                        <!-- Content dynamically injected by openStaffInfantModal() -->
+                    </div>
+
+                    <div class="account-modal-footer" style="padding: 16px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; background: #fafafa; border-radius: 0 0 20px 20px;">
+                        <button type="button" class="primary-btn" onclick="closeStaffInfantModal()" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; padding: 10px 24px; border-radius: 12px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25);">
+                            <?= staff_icon('check'); ?>
+                            <span>Close Infant Record</span>
+                        </button>
+                    </div>
                 </div>
             </section>
         <?php elseif ($page === 'image-capture'): ?>
@@ -5649,9 +5809,216 @@ window.closePatientProfileModal = function(e, returnUrl) {
     return false;
 };
 
+window.handleStaffVaccineSelectChange = function(selectElem) {
+    if (!selectElem) return;
+    const otherWrap = document.getElementById('queue_vaccine_other_wrap');
+    const otherInput = document.getElementById('queue_vaccine_other');
+    if (otherWrap) {
+        if (selectElem.value === 'Others') {
+            otherWrap.style.display = 'block';
+            if (otherInput) otherInput.focus();
+        } else {
+            otherWrap.style.display = 'none';
+        }
+    }
+};
+
+window.togglePatientInfantsTray = function(profKey) {
+    const tray = document.getElementById('infantsTray_' + profKey);
+    if (tray) {
+        const isHidden = tray.style.display === 'none' || tray.style.display === '';
+        tray.style.display = isHidden ? 'block' : 'none';
+        if (isHidden) {
+            tray.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+};
+
+function staffEscapeHtml(str) {
+    return (str || '').toString().replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+    });
+}
+
+window.openStaffInfantModal = function(infant) {
+    if (!infant) return;
+    const modal = document.getElementById('staffInfantModalBackdrop');
+    const body = document.getElementById('staffInfantModalBody');
+    if (!modal || !body) return;
+
+    const curUrl = window.location.href;
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '<?= h($csrf); ?>';
+    
+    let photoHtml = '';
+    if (infant.latest_photo) {
+        photoHtml = `<img src="../Patients/${staffEscapeHtml(infant.latest_photo)}" alt="Infant Photo" style="width: 100%; height: 100%; object-fit: cover;">`;
+    } else {
+        photoHtml = `<?= staff_icon('baby'); ?>`;
+    }
+
+    // Vaccine dose badges HTML
+    let dosesHtml = '';
+    const vaccineKeys = Object.keys(infant.vaccine_doses || {});
+    if (vaccineKeys.length > 0) {
+        dosesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">';
+        vaccineKeys.forEach(vName => {
+            const count = infant.vaccine_doses[vName];
+            dosesHtml += `<div style="background: #e0f2fe; border: 1.5px solid #7dd3fc; color: #0369a1; padding: 6px 14px; border-radius: 10px; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                <?= staff_icon('syringe'); ?>
+                <span>${staffEscapeHtml(vName)}</span>
+                <span style="background: #0284c7; color: #ffffff; padding: 2px 7px; border-radius: 999px; font-size: 0.75rem; margin-left: 4px;">${count} ${count === 1 ? 'Dose' : 'Doses'}</span>
+            </div>`;
+        });
+        dosesHtml += '</div>';
+    } else {
+        dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 6px 0 0 0;">No immunization doses recorded yet.</p>';
+    }
+
+    // Timeline rows HTML
+    let timelineHtml = '';
+    if (infant.appointments && infant.appointments.length > 0) {
+        timelineHtml = '<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">';
+        infant.appointments.forEach((appt, idx) => {
+            const apptCode = appt.appointment_code || appt.reference_code || ('#' + (idx + 1));
+            const apptDate = appt.preferred_date ? new Date(appt.preferred_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
+            const vacType = appt.vaccine_type || 'Immunization Consultation';
+            
+            timelineHtml += `
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="background: #dbeafe; color: #1d4ed8; font-weight: 700; font-size: 0.8rem; padding: 2px 8px; border-radius: 6px;">#${staffEscapeHtml(apptCode)}</span>
+                        <strong style="color: #0f172a; font-size: 0.92rem;">${staffEscapeHtml(vacType)}</strong>
+                    </div>
+                    <span style="font-size: 0.82rem; color: #64748b; font-weight: 600;">📅 ${staffEscapeHtml(apptDate)} &bull; ${staffEscapeHtml(appt.preferred_time || 'Regular Hours')}</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; font-size: 0.8rem; color: #475569; background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                    <div><strong>Temp:</strong> ${staffEscapeHtml(appt.body_temperature || 'N/A')} °C</div>
+                    <div><strong>PR:</strong> ${staffEscapeHtml(appt.pulse_rate || 'N/A')} bpm</div>
+                    <div><strong>RR:</strong> ${staffEscapeHtml(appt.respiration_rate || 'N/A')} cpm</div>
+                    <div><strong>BP:</strong> ${staffEscapeHtml(appt.blood_pressure || 'N/A')}</div>
+                </div>
+
+                ${appt.doctor_notes ? `<div style="font-size: 0.82rem; color: #334155; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px 12px; border-radius: 8px;">
+                    <strong>Doctor's Notes:</strong> ${staffEscapeHtml(appt.doctor_notes)}
+                </div>` : ''}
+
+                ${appt.photo_path ? `<div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                    <img src="../Patients/${staffEscapeHtml(appt.photo_path)}" alt="Visit Photo" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid #cbd5e1;">
+                    <span style="font-size: 0.78rem; color: #64748b;">Visit Verification Photo Captured</span>
+                </div>` : ''}
+            </div>`;
+        });
+        timelineHtml += '</div>';
+    } else {
+        timelineHtml = '<p style="color: #64748b; font-size: 0.85rem; margin-top: 8px;">No consultation history on record.</p>';
+    }
+
+    body.innerHTML = `
+    <!-- Header Demographic Card -->
+    <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1.5px solid #bae6fd; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 18px; margin-bottom: 22px; flex-wrap: wrap;">
+        <div style="width: 72px; height: 72px; border-radius: 50%; background: #ffffff; border: 3px solid #38bdf8; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; color: #0284c7; font-size: 1.6rem; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2);">
+            ${photoHtml}
+        </div>
+        <div style="flex: 1; min-width: 220px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #0c4a6e;">${staffEscapeHtml(infant.full_name)}</h3>
+                <span style="background: #0284c7; color: #ffffff; font-size: 0.75rem; font-weight: 700; padding: 2px 9px; border-radius: 999px;">Infant Record</span>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 0.84rem; color: #0369a1; flex-wrap: wrap;">
+                <span><strong>Age:</strong> ${staffEscapeHtml(infant.age_label)}</span>
+                <span>&bull;</span>
+                <span><strong>Birthdate:</strong> ${infant.birth_date ? new Date(infant.birth_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</span>
+                <span>&bull;</span>
+                <span><strong>Gender:</strong> ${staffEscapeHtml(infant.gender || 'Not specified')}</span>
+            </div>
+            <div style="margin-top: 6px; font-size: 0.82rem; color: #075985;">
+                <strong>Registered Parent / Guardian:</strong> ${staffEscapeHtml(infant.parent_name || 'Account Holder')} (ID: #${staffEscapeHtml(infant.patient_id)})
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 1: Types of Vaccines Taken & Dose Counts -->
+    <div style="margin-bottom: 24px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <span style="color: #0284c7;"><?= staff_icon('syringe'); ?></span>
+            <span>Types of Vaccines Taken &amp; Dose Summary</span>
+        </div>
+        <p style="font-size: 0.82rem; color: #64748b; margin: 3px 0 0 0;">Summary of all completed antigens and number of doses administered to this infant.</p>
+        ${dosesHtml}
+    </div>
+
+    <!-- Section 2: Editable Infant Information Form (Mother, Father, Notes) -->
+    <div style="margin-bottom: 24px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+            <span style="color: #0284c7;"><?= staff_icon('edit'); ?></span>
+            <span>Edit Infant Information &amp; Parental Metadata</span>
+        </div>
+
+        <form method="post" action="?page=patients&view=profiles" id="staffInfantEditForm">
+            <input type="hidden" name="action" value="save_infant_profile">
+            <input type="hidden" name="csrf_token" value="${csrfToken}">
+            <input type="hidden" name="return_url" value="${staffEscapeHtml(curUrl)}">
+            <input type="hidden" name="infant_id" value="${infant.id ? staffEscapeHtml(String(infant.id)) : ''}">
+            <input type="hidden" name="patient_id" value="${staffEscapeHtml(infant.patient_id || '')}">
+            <input type="hidden" name="first_name" value="${staffEscapeHtml(infant.first_name || '')}">
+            <input type="hidden" name="middle_name" value="${staffEscapeHtml(infant.middle_name || '')}">
+            <input type="hidden" name="last_name" value="${staffEscapeHtml(infant.last_name || '')}">
+            <input type="hidden" name="birth_date" value="${staffEscapeHtml(infant.birth_date || '')}">
+            <input type="hidden" name="gender" value="${staffEscapeHtml(infant.gender || '')}">
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                <div>
+                    <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Mother's Full Name:</label>
+                    <input type="text" name="mother_name" value="${staffEscapeHtml(infant.mother_name || '')}" placeholder="e.g. Maria Santos" class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Father's Full Name:</label>
+                    <input type="text" name="father_name" value="${staffEscapeHtml(infant.father_name || '')}" placeholder="e.g. Juan Santos" class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem;">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Staff Notes / Pediatric Remarks:</label>
+                <textarea name="notes" rows="2" placeholder="Enter any notes, pediatric remarks, or allergies..." class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; resize: vertical;">${staffEscapeHtml(infant.notes || '')}</textarea>
+            </div>
+
+            <button type="submit" class="primary-btn blue-btn" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 9px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                <?= staff_icon('check'); ?>
+                <span>Save Infant Profile Details</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Section 3: Immunization & Consultation History Timeline -->
+    <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <span style="color: #0284c7;"><?= staff_icon('history'); ?></span>
+            <span>Immunization &amp; Consultation Appointments (${infant.appointments ? infant.appointments.length : 0})</span>
+        </div>
+        <p style="font-size: 0.82rem; color: #64748b; margin: 3px 0 0 0;">Chronological history of all immunization appointments booked for this infant.</p>
+        ${timelineHtml}
+    </div>
+    `;
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeStaffInfantModal = function() {
+    const modal = document.getElementById('staffInfantModalBackdrop');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+};
+
 // Preserve scroll position when opening records or modals across the station
 document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.report-record-btn, .remarks-btn, .view-medical-file-btn, .set-followup-btn, .queue-vitals-btn, .appt-action-btn, .queue-call-btn, .queue-done-btn, .confirm-save-btn, .select-patient-btn, .photo-req, .patient-profile-open-btn');
+    const btn = e.target.closest('.report-record-btn, .remarks-btn, .view-medical-file-btn, .set-followup-btn, .queue-vitals-btn, .appt-action-btn, .queue-call-btn, .queue-done-btn, .confirm-save-btn, .select-patient-btn, .photo-req, .patient-profile-open-btn, .patient-infant-toggle-btn');
     if (btn) {
         sessionStorage.setItem('station_scroll_pos', window.scrollY);
         if (btn.classList.contains('select-patient-btn') && !btn.classList.contains('is-disabled') && !btn.classList.contains('is-active-badge') && !btn.classList.contains('is-completed-badge')) {
@@ -5661,6 +6028,8 @@ document.addEventListener('click', function(e) {
     if (e.target && e.target.classList && e.target.classList.contains('account-modal-backdrop')) {
         if (e.target.id === 'patientProfileModalBackdrop') {
             window.closePatientProfileModal(e);
+        } else if (e.target.id === 'staffInfantModalBackdrop') {
+            window.closeStaffInfantModal();
         } else if (e.target.id === 'clinicalModalBackdrop' || e.target.id === 'viewClinicalModalBackdrop' || e.target.id === 'followUpModalBackdrop' || e.target.id === 'vitalsModalBackdrop') {
             window.closeClinicalModal(e);
         }
@@ -5677,6 +6046,11 @@ document.addEventListener('submit', function(e) {
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
+        const staffInfantModal = document.getElementById('staffInfantModalBackdrop');
+        if (staffInfantModal && (staffInfantModal.style.display !== 'none' && !staffInfantModal.classList.contains('hidden'))) {
+            window.closeStaffInfantModal();
+            return;
+        }
         const profileModal = document.getElementById('patientProfileModalBackdrop');
         if (profileModal && (profileModal.classList.contains('is-active-modal') || profileModal.style.display !== 'none')) {
             window.closePatientProfileModal(e);

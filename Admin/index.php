@@ -1634,6 +1634,10 @@ if (!function_exists('peso')) {
                                             <div><?= !empty($patient['last_visit']) ? h(date('M j, Y', strtotime((string) $patient['last_visit']))) : 'N/A'; ?></div>
                                         </td>
                                         <td>
+                                            <?php
+                                            $isParent = patient_has_infant_bookings((string) $patient['patient_id']);
+                                            $adminInfants = $isParent ? fetch_infant_sub_profiles_by_patient_id((string) $patient['patient_id']) : [];
+                                            ?>
                                             <div class="patient-table-action-btns">
                                                 <a class="patient-action-btn view" href="?page=patients&patient=<?= h((string) $patient['patient_id']); ?>" title="View Complete Patient Profile">
                                                     <?= admin_icon('eye'); ?>
@@ -1641,6 +1645,19 @@ if (!function_exists('peso')) {
                                                 <a class="patient-action-btn history" href="?page=patients&service_history=<?= h((string) $patient['patient_id']); ?>" title="View Completed Service History">
                                                     <?= admin_icon('history'); ?>
                                                 </a>
+                                                <?php if ($isParent): ?>
+                                                    <button type="button" class="patient-action-btn infant is-active" onclick="openAdminInfantViewer(<?= htmlspecialchars(json_encode([
+                                                        'patient_name' => full_name($patient),
+                                                        'patient_id' => (string) $patient['patient_id'],
+                                                        'infants' => $adminInfants,
+                                                    ]), ENT_QUOTES, 'UTF-8'); ?>)" title="View Registered Infant Sub-Profiles (<?= count($adminInfants); ?>)">
+                                                        <?= admin_icon('baby'); ?>
+                                                    </button>
+                                                <?php else: ?>
+                                                    <button type="button" class="patient-action-btn infant is-disabled" disabled title="Not a parent or guardian">
+                                                        <?= admin_icon('baby'); ?>
+                                                    </button>
+                                                <?php endif; ?>
                                                 <?php if ($hasNotification): ?>
                                                     <a class="patient-action-btn audit" href="?page=patients&patient_history=<?= h((string) $patient['patient_id']); ?>" title="View Profile Update History">
                                                         <?= admin_icon('clock'); ?>
@@ -1760,6 +1777,34 @@ if (!function_exists('peso')) {
                     </div>
                 </section>
             <?php endif; ?>
+
+            <!-- Admin Infant Sub-Profiles Viewer Modal (Purple Theme) -->
+            <section class="service-modal-overlay report-modal-backdrop" id="adminInfantModal" style="display:none;" onclick="if(event.target===this)closeAdminInfantModal()">
+                <div class="service-modal-card clinical-modal-card-modern" style="max-width: 780px; width: 100%; border-radius: 20px; overflow: hidden; background: #ffffff;">
+                    <div class="report-modal-header" style="background: linear-gradient(135deg, #6d28d9, #7c3aed); color: #ffffff; padding: 18px 24px;">
+                        <div class="report-modal-header-left" style="display: flex; align-items: center; gap: 12px;">
+                            <div class="report-modal-icon-badge" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                                <?= admin_icon('baby'); ?>
+                            </div>
+                            <div>
+                                <h2 style="color: #ffffff; font-size: 1.2rem; margin: 0; font-weight: 700;" id="adminInfantModalTitle">Infant Sub-Profile &amp; Immunization Record</h2>
+                                <p style="color: rgba(255, 255, 255, 0.85); font-size: 0.82rem; margin: 2px 0 0 0;">City Health Admin &bull; Read-Only Pediatric Medical History</p>
+                            </div>
+                        </div>
+                        <button type="button" class="modal-close-btn report-modal-close" onclick="closeAdminInfantModal()" aria-label="Close modal" style="color: #ffffff; opacity: 0.85; font-size: 1.6rem; background: none; border: none; cursor: pointer; line-height: 1;">&times;</button>
+                    </div>
+
+                    <div class="report-modal-body" id="adminInfantModalBody" style="padding: 22px 26px; max-height: calc(85vh - 120px); overflow-y: auto;">
+                        <!-- Content dynamically rendered via openAdminInfantViewer() and renderAdminSelectedInfant() -->
+                    </div>
+
+                    <div class="report-modal-footer" style="padding: 14px 24px; background: #fafafa; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end;">
+                        <button type="button" class="report-btn-primary" onclick="closeAdminInfantModal()" style="background: linear-gradient(135deg, #6d28d9, #7c3aed); border: none; color: #ffffff; padding: 9px 22px; border-radius: 10px; font-weight: 700; cursor: pointer;">
+                            Close Record
+                        </button>
+                    </div>
+                </div>
+            </section>
         <?php elseif ($page === 'appointments' && $stationView !== ''): ?>
             <?php $station = $stationLookup[$stationView] ?? null; ?>
             <?php $adminCanConfirmHere = $stationView === 'city-health'; ?>
@@ -5072,6 +5117,203 @@ window.dismissAdminToast = function() {
         }, { passive: true });
     }
 })();
+
+// Admin Infant Sub-Profiles Viewer Logic
+let currentAdminInfantData = null;
+let currentAdminSelectedInfantIndex = 0;
+
+function adminEscapeHtml(str) {
+    return (str || '').toString().replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+    });
+}
+
+window.openAdminInfantViewer = function(data) {
+    if (!data || !data.infants || data.infants.length === 0) return;
+    currentAdminInfantData = data;
+    currentAdminSelectedInfantIndex = 0;
+    
+    const modal = document.getElementById('adminInfantModal');
+    if (!modal) return;
+    
+    window.renderAdminSelectedInfant(0);
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+};
+
+window.renderAdminSelectedInfant = function(index) {
+    if (!currentAdminInfantData || !currentAdminInfantData.infants || !currentAdminInfantData.infants[index]) return;
+    currentAdminSelectedInfantIndex = index;
+    const infant = currentAdminInfantData.infants[index];
+    const totalInfants = currentAdminInfantData.infants.length;
+    const body = document.getElementById('adminInfantModalBody');
+    if (!body) return;
+
+    // Multiple infants switcher if count > 1
+    let switcherHtml = '';
+    if (totalInfants > 1) {
+        switcherHtml = '<div style="display: flex; gap: 8px; margin-bottom: 18px; overflow-x: auto; padding-bottom: 4px;">';
+        currentAdminInfantData.infants.forEach((inf, i) => {
+            const isSel = i === index;
+            switcherHtml += `
+            <button type="button" onclick="renderAdminSelectedInfant(${i})" style="padding: 8px 16px; border-radius: 10px; font-size: 0.84rem; font-weight: 700; cursor: pointer; border: 1.5px solid ${isSel ? '#7c3aed' : '#e2e8f0'}; background: ${isSel ? '#f5f3ff' : '#ffffff'}; color: ${isSel ? '#6d28d9' : '#64748b'}; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;">
+                <span>👶 ${adminEscapeHtml(inf.full_name)}</span>
+            </button>`;
+        });
+        switcherHtml += '</div>';
+    }
+
+    let photoHtml = '';
+    if (infant.latest_photo) {
+        photoHtml = `<img src="../Patients/${adminEscapeHtml(infant.latest_photo)}" alt="Infant Photo" style="width: 100%; height: 100%; object-fit: cover;">`;
+    } else {
+        photoHtml = `<?= admin_icon('baby'); ?>`;
+    }
+
+    // Vaccines and dose counts
+    let dosesHtml = '';
+    const vaccineKeys = Object.keys(infant.vaccine_doses || {});
+    if (vaccineKeys.length > 0) {
+        dosesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">';
+        vaccineKeys.forEach(vName => {
+            const count = infant.vaccine_doses[vName];
+            dosesHtml += `<div style="background: #f5f3ff; border: 1.5px solid #ddd6fe; color: #6d28d9; padding: 6px 14px; border-radius: 10px; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                <?= admin_icon('syringe'); ?>
+                <span>${adminEscapeHtml(vName)}</span>
+                <span style="background: #7c3aed; color: #ffffff; padding: 2px 7px; border-radius: 999px; font-size: 0.75rem; margin-left: 4px;">${count} ${count === 1 ? 'Dose' : 'Doses'}</span>
+            </div>`;
+        });
+        dosesHtml += '</div>';
+    } else {
+        dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 6px 0 0 0;">No immunization doses recorded yet.</p>';
+    }
+
+    // Timeline appointments
+    let timelineHtml = '';
+    if (infant.appointments && infant.appointments.length > 0) {
+        timelineHtml = '<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">';
+        infant.appointments.forEach((appt, idx) => {
+            const apptCode = appt.appointment_code || appt.reference_code || ('#' + (idx + 1));
+            const apptDate = appt.preferred_date ? new Date(appt.preferred_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
+            const vacType = appt.vaccine_type || 'Immunization Consultation';
+            
+            timelineHtml += `
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="background: #ede9fe; color: #6d28d9; font-weight: 700; font-size: 0.8rem; padding: 2px 8px; border-radius: 6px;">#${adminEscapeHtml(apptCode)}</span>
+                        <strong style="color: #0f172a; font-size: 0.92rem;">${adminEscapeHtml(vacType)}</strong>
+                    </div>
+                    <span style="font-size: 0.82rem; color: #64748b; font-weight: 600;">📅 ${adminEscapeHtml(apptDate)} &bull; ${adminEscapeHtml(appt.preferred_time || 'Regular Hours')}</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; font-size: 0.8rem; color: #475569; background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                    <div><strong>Temp:</strong> ${adminEscapeHtml(appt.body_temperature || 'N/A')} °C</div>
+                    <div><strong>PR:</strong> ${adminEscapeHtml(appt.pulse_rate || 'N/A')} bpm</div>
+                    <div><strong>RR:</strong> ${adminEscapeHtml(appt.respiration_rate || 'N/A')} cpm</div>
+                    <div><strong>BP:</strong> ${adminEscapeHtml(appt.blood_pressure || 'N/A')}</div>
+                </div>
+
+                ${appt.doctor_notes ? `<div style="font-size: 0.82rem; color: #334155; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px 12px; border-radius: 8px;">
+                    <strong>Doctor's Clinical Notes:</strong> ${adminEscapeHtml(appt.doctor_notes)}
+                </div>` : ''}
+
+                ${appt.photo_path ? `<div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                    <img src="../Patients/${adminEscapeHtml(appt.photo_path)}" alt="Visit Photo" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid #cbd5e1;">
+                    <span style="font-size: 0.78rem; color: #64748b;">Consultation Verification Photo Recorded</span>
+                </div>` : ''}
+            </div>`;
+        });
+        timelineHtml += '</div>';
+    } else {
+        timelineHtml = '<p style="color: #64748b; font-size: 0.85rem; margin-top: 8px;">No consultation history on record.</p>';
+    }
+
+    body.innerHTML = `
+    ${switcherHtml}
+    <!-- Demographic Card -->
+    <div style="background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%); border: 1.5px solid #ddd6fe; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 18px; margin-bottom: 20px; flex-wrap: wrap;">
+        <div style="width: 72px; height: 72px; border-radius: 50%; background: #ffffff; border: 3px solid #a855f7; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; color: #7c3aed; font-size: 1.6rem; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);">
+            ${photoHtml}
+        </div>
+        <div style="flex: 1; min-width: 220px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #4c1d95;">${adminEscapeHtml(infant.full_name)}</h3>
+                <span style="background: #7c3aed; color: #ffffff; font-size: 0.75rem; font-weight: 700; padding: 2px 9px; border-radius: 999px;">Pediatric Record</span>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 0.84rem; color: #6d28d9; flex-wrap: wrap;">
+                <span><strong>Age:</strong> ${adminEscapeHtml(infant.age_label)}</span>
+                <span>&bull;</span>
+                <span><strong>Birthdate:</strong> ${infant.birth_date ? new Date(infant.birth_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</span>
+                <span>&bull;</span>
+                <span><strong>Gender:</strong> ${adminEscapeHtml(infant.gender || 'Not specified')}</span>
+            </div>
+            <div style="margin-top: 6px; font-size: 0.82rem; color: #581c87;">
+                <strong>Registered Parent / Guardian:</strong> ${adminEscapeHtml(currentAdminInfantData.patient_name)} (ID: #${adminEscapeHtml(currentAdminInfantData.patient_id)})
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 1: Types of Vaccines Taken & Dose Counts -->
+    <div style="margin-bottom: 20px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <span style="color: #7c3aed;"><?= admin_icon('syringe'); ?></span>
+            <span>Types of Vaccines Taken &amp; Dose Summary</span>
+        </div>
+        <p style="font-size: 0.82rem; color: #64748b; margin: 3px 0 0 0;">Summary of all completed antigens and number of doses administered to this infant.</p>
+        ${dosesHtml}
+    </div>
+
+    <!-- Section 2: Parental Information (Read-Only) -->
+    <div style="margin-bottom: 20px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <span style="color: #7c3aed;"><?= admin_icon('user'); ?></span>
+            <span>Parental Information (Read-Only)</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Mother's Name:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.mother_name || 'None recorded')}</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Father's Name:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.father_name || 'None recorded')}</strong>
+            </div>
+        </div>
+        ${infant.notes ? `<div style="margin-top: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
+            <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Pediatric Notes &amp; Remarks:</span>
+            <p style="margin: 3px 0 0 0; font-size: 0.88rem; color: #334155;">${adminEscapeHtml(infant.notes)}</p>
+        </div>` : ''}
+    </div>
+
+    <!-- Section 3: Immunization & Consultation History Timeline -->
+    <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <span style="color: #7c3aed;"><?= admin_icon('history'); ?></span>
+            <span>Immunization &amp; Consultation Appointments (${infant.appointments ? infant.appointments.length : 0})</span>
+        </div>
+        <p style="font-size: 0.82rem; color: #64748b; margin: 3px 0 0 0;">Chronological history of all immunization appointments booked for this infant.</p>
+        ${timelineHtml}
+    </div>
+    `;
+};
+
+window.closeAdminInfantModal = function() {
+    const modal = document.getElementById('adminInfantModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+};
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const adminInfantModal = document.getElementById('adminInfantModal');
+        if (adminInfantModal && adminInfantModal.style.display !== 'none') {
+            window.closeAdminInfantModal();
+        }
+    }
+});
 </script>
 <script src="../shared/pwa-install.js" defer></script>
 </body>

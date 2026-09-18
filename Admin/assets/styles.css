@@ -5472,6 +5472,28 @@ button, input, select { font: inherit; }
   box-shadow: 0 4px 10px rgba(220, 38, 38, 0.28);
 }
 
+.patient-action-btn.infant {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border-color: #ddd6fe;
+}
+
+.patient-action-btn.infant.is-active:hover {
+  background: #7c3aed;
+  color: #ffffff;
+  border-color: #7c3aed;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(124, 58, 237, 0.28);
+}
+
+.patient-action-btn.infant.is-disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .patient-directory-footer {
   padding: 14px 24px;
   background: #fafafa;

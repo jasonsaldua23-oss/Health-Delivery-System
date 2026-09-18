@@ -179,6 +179,48 @@ CREATE TABLE IF NOT EXISTS appointment_status_notifications (
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS infant_profiles (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    patient_id      VARCHAR(32) NOT NULL,
+    first_name      VARCHAR(100) NOT NULL,
+    middle_name     VARCHAR(100) DEFAULT NULL,
+    last_name       VARCHAR(100) NOT NULL,
+    birth_date      DATE NOT NULL,
+    gender          VARCHAR(30) DEFAULT NULL,
+    relationship    VARCHAR(50) NOT NULL DEFAULT 'Child',
+    mother_name     VARCHAR(150) DEFAULT NULL,
+    father_name     VARCHAR(150) DEFAULT NULL,
+    guardian_name   VARCHAR(150) DEFAULT NULL,
+    custom_notes    TEXT DEFAULT NULL,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_infant_profiles_patient (patient_id),
+    KEY idx_infant_profiles_name (last_name, first_name),
+    KEY idx_infant_profiles_dob (birth_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS immunized_infants (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    appointment_id  INT UNSIGNED DEFAULT NULL,
+    appointment_code VARCHAR(20) DEFAULT NULL,
+    patient_id      VARCHAR(32) DEFAULT NULL,
+    first_name      VARCHAR(100) NOT NULL,
+    middle_name     VARCHAR(100) DEFAULT NULL,
+    last_name       VARCHAR(100) NOT NULL,
+    birth_date      DATE NOT NULL,
+    gender          VARCHAR(30) DEFAULT NULL,
+    relationship    VARCHAR(50) NOT NULL DEFAULT 'Child',
+    station_slug    VARCHAR(100) DEFAULT NULL,
+    vaccine_type    VARCHAR(150) DEFAULT NULL,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_immunized_infants_appt (appointment_id),
+    KEY idx_immunized_infants_code (appointment_code),
+    KEY idx_immunized_infants_patient (patient_id),
+    KEY idx_immunized_infants_station (station_slug),
+    KEY idx_immunized_infants_recipient (last_name, first_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ----------------------------------------------------------------------------
 -- 4. STATION CONFIGURATION
 -- ----------------------------------------------------------------------------

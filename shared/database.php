@@ -28,6 +28,7 @@ const DB_TABLE_ACTIVITY_LOG = 'activity_log';
 const DB_TABLE_UNATTENDED_APPOINTMENTS = 'unattended_appointments';
 const DB_TABLE_UNATTENDED_QUEUE = 'unattended_queue';
 const DB_TABLE_IMMUNIZED_INFANTS = 'immunized_infants';
+const DB_TABLE_INFANT_PROFILES = 'infant_profiles';
 const DB_TABLE_PASSWORD_RESET_OTPS = 'password_reset_otps';
 
 
@@ -784,6 +785,31 @@ function create_appointments_table(mysqli $connection, string $engine = 'InnoDB'
     );
 }
 
+function create_infant_profiles_table(mysqli $connection, string $engine = 'InnoDB'): void
+{
+    $connection->query(
+        'CREATE TABLE IF NOT EXISTS infant_profiles (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            patient_id VARCHAR(32) NOT NULL,
+            first_name VARCHAR(100) NOT NULL,
+            middle_name VARCHAR(100) DEFAULT NULL,
+            last_name VARCHAR(100) NOT NULL,
+            birth_date DATE NOT NULL,
+            gender VARCHAR(30) DEFAULT NULL,
+            relationship VARCHAR(50) NOT NULL DEFAULT "Child",
+            mother_name VARCHAR(150) DEFAULT NULL,
+            father_name VARCHAR(150) DEFAULT NULL,
+            guardian_name VARCHAR(150) DEFAULT NULL,
+            custom_notes TEXT DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_infant_patient (patient_id),
+            INDEX idx_infant_name (last_name, first_name),
+            INDEX idx_infant_dob (birth_date)
+        ) ENGINE=' . $engine . ' DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
+    );
+}
+
 function create_immunized_infants_table(mysqli $connection, string $engine = 'InnoDB'): void
 {
     $connection->query(
@@ -1130,6 +1156,11 @@ function ensure_unattended_queue_table(mysqli $connection): void
     ensure_table_is_usable($connection, DB_TABLE_UNATTENDED_QUEUE, 'create_unattended_queue_table');
 }
 
+function ensure_infant_profiles_table(mysqli $connection): void
+{
+    ensure_table_is_usable($connection, DB_TABLE_INFANT_PROFILES, 'create_infant_profiles_table');
+}
+
 function ensure_immunized_infants_table(mysqli $connection): void
 {
     ensure_table_is_usable($connection, DB_TABLE_IMMUNIZED_INFANTS, 'create_immunized_infants_table');
@@ -1203,6 +1234,7 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
     ensure_unattended_appointments_table($connection);
     ensure_unattended_queue_table($connection);
     ensure_immunized_infants_table($connection);
+    ensure_infant_profiles_table($connection);
     ensure_station_service_schedules_table($connection);
     ensure_password_reset_otps_table($connection);
     $log[] = 'Core tables verified';
@@ -3055,6 +3087,408 @@ function fetch_immunized_infant_by_appointment($appointmentIdOrCode): ?array
             $code = (string) $appointmentIdOrCode;
             $stmt->bind_param('s', $code);
         }
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc() ?: null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+/**
+ * Check if a patient has any recorded infant/dependent immunization bookings
+ */
+function patient_has_infant_bookings(string $patientId, array $stationAppointments = []): bool
+{
+    $patientId = trim($patientId);
+    if ($patientId === '') {
+        return false;
+    }
+
+    if (!empty($stationAppointments)) {
+        foreach ($stationAppointments as $appt) {
+            $pId = trim((string) ($appt['patient_id'] ?? ''));
+            if ($pId !== '' && strcasecmp($pId, $patientId) === 0) {
+                $isImm = is_vaccination_service((string) ($appt['service_slug'] ?? ''), (string) ($appt['service_name'] ?? ''));
+                $recDetails = appointment_recipient_details($appt);
+                if ($isImm && !$recDetails['is_self']) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    try {
+        $db = db();
+        ensure_infant_profiles_table($db);
+        ensure_immunized_infants_table($db);
+
+        $stmt = $db->prepare("SELECT id FROM appointments WHERE patient_id = ? AND (service_slug LIKE '%immuniz%' OR service_slug LIKE '%vaccin%' OR service_name LIKE '%immuniz%' OR service_name LIKE '%vaccin%') AND (recipient_first_name IS NOT NULL AND recipient_first_name != '' AND LOWER(immunization_relationship) != 'self') LIMIT 1");
+        $stmt->bind_param('s', $patientId);
+        $stmt->execute();
+        if ($stmt->get_result()->fetch_assoc()) {
+            return true;
+        }
+
+        $stmt2 = $db->prepare("SELECT id FROM immunized_infants WHERE patient_id = ? AND LOWER(relationship) != 'self' LIMIT 1");
+        $stmt2->bind_param('s', $patientId);
+        $stmt2->execute();
+        if ($stmt2->get_result()->fetch_assoc()) {
+            return true;
+        }
+
+        $stmt3 = $db->prepare("SELECT id FROM infant_profiles WHERE patient_id = ? LIMIT 1");
+        $stmt3->bind_param('s', $patientId);
+        $stmt3->execute();
+        if ($stmt3->get_result()->fetch_assoc()) {
+            return true;
+        }
+    } catch (Throwable $e) {
+        error_log('Error checking patient infant bookings: ' . $e->getMessage());
+    }
+
+    return false;
+}
+
+/**
+ * Fetch detailed infant sub-profiles for a given parent/guardian patient ID
+ */
+function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stationAppointments = []): array
+{
+    $patientId = trim($patientId);
+    if ($patientId === '') {
+        return [];
+    }
+
+    $infants = [];
+    try {
+        $db = db();
+        ensure_infant_profiles_table($db);
+        ensure_immunized_infants_table($db);
+
+        $parentProfile = fetch_patient_profile_by_patient_id($patientId);
+        $parentName = $parentProfile ? fullName($parentProfile) : '';
+        $parentGender = $parentProfile['gender'] ?? '';
+
+        $appts = [];
+        $stmt = $db->prepare("SELECT * FROM appointments WHERE patient_id = ? AND (service_slug LIKE '%immuniz%' OR service_slug LIKE '%vaccin%' OR service_name LIKE '%immuniz%' OR service_name LIKE '%vaccin%') ORDER BY preferred_date DESC, id DESC");
+        $stmt->bind_param('s', $patientId);
+        $stmt->execute();
+        $appts = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        if (!empty($stationAppointments)) {
+            $existingIds = array_column($appts, 'id');
+            foreach ($stationAppointments as $stAppt) {
+                if (strcasecmp((string)($stAppt['patient_id'] ?? ''), $patientId) === 0) {
+                    $stId = (int) ($stAppt['id'] ?? 0);
+                    if ($stId > 0 && !in_array($stId, $existingIds, true)) {
+                        $isImm = is_vaccination_service((string) ($stAppt['service_slug'] ?? ''), (string) ($stAppt['service_name'] ?? ''));
+                        if ($isImm) {
+                            $appts[] = $stAppt;
+                        }
+                    }
+                }
+            }
+        }
+
+        $stmt2 = $db->prepare("SELECT * FROM immunized_infants WHERE patient_id = ? ORDER BY created_at DESC");
+        $stmt2->bind_param('s', $patientId);
+        $stmt2->execute();
+        $immInfants = $stmt2->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $stmt3 = $db->prepare("SELECT * FROM infant_profiles WHERE patient_id = ? ORDER BY first_name ASC");
+        $stmt3->bind_param('s', $patientId);
+        $stmt3->execute();
+        $savedProfiles = $stmt3->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        $groupedInfants = [];
+
+        foreach ($savedProfiles as $sp) {
+            $k = strtolower(trim($sp['first_name']) . '_' . trim($sp['last_name']) . '_' . trim($sp['birth_date']));
+            $groupedInfants[$k] = [
+                'profile_id' => (int) $sp['id'],
+                'first_name' => $sp['first_name'],
+                'middle_name' => $sp['middle_name'] ?? '',
+                'last_name' => $sp['last_name'],
+                'birth_date' => $sp['birth_date'],
+                'gender' => $sp['gender'] ?? 'Not specified',
+                'relationship' => $sp['relationship'] ?? 'Child',
+                'mother_name' => $sp['mother_name'] ?? '',
+                'father_name' => $sp['father_name'] ?? '',
+                'guardian_name' => $sp['guardian_name'] ?? $parentName,
+                'custom_notes' => $sp['custom_notes'] ?? '',
+                'appointments' => [],
+                'photos' => [],
+                'vaccine_doses' => [],
+            ];
+        }
+
+        foreach ($appts as $appt) {
+            $rec = appointment_recipient_details($appt);
+            if ($rec['is_self']) {
+                continue;
+            }
+
+            $rFirst = trim((string) ($rec['recipient_first_name'] ?: $appt['recipient_first_name'] ?: ''));
+            $rMiddle = trim((string) ($rec['recipient_middle_name'] ?: $appt['recipient_middle_name'] ?: ''));
+            $rLast = trim((string) ($rec['recipient_last_name'] ?: $appt['recipient_last_name'] ?: ''));
+            $rDob = trim((string) ($rec['recipient_birth_date'] ?: $appt['recipient_birth_date'] ?: ''));
+            $rRel = trim((string) ($rec['relationship'] ?: $appt['immunization_relationship'] ?: 'Child'));
+
+            if ($rFirst === '' || $rLast === '') {
+                continue;
+            }
+
+            $k = strtolower($rFirst . '_' . $rLast . '_' . $rDob);
+            if (!isset($groupedInfants[$k])) {
+                $defMother = (strcasecmp($parentGender, 'Female') === 0 || stripos($rRel, 'Mother') !== false) ? $parentName : '';
+                $defFather = (strcasecmp($parentGender, 'Male') === 0 || stripos($rRel, 'Father') !== false) ? $parentName : '';
+                $defGuardian = $parentName;
+
+                $profId = save_or_update_infant_profile([
+                    'patient_id' => $patientId,
+                    'first_name' => $rFirst,
+                    'middle_name' => $rMiddle,
+                    'last_name' => $rLast,
+                    'birth_date' => $rDob ?: date('Y-m-d'),
+                    'gender' => $appt['gender'] ?? 'Not specified',
+                    'relationship' => $rRel,
+                    'mother_name' => $defMother,
+                    'father_name' => $defFather,
+                    'guardian_name' => $defGuardian,
+                ]);
+
+                $groupedInfants[$k] = [
+                    'profile_id' => $profId,
+                    'first_name' => $rFirst,
+                    'middle_name' => $rMiddle,
+                    'last_name' => $rLast,
+                    'birth_date' => $rDob,
+                    'gender' => $appt['gender'] ?? 'Not specified',
+                    'relationship' => $rRel,
+                    'mother_name' => $defMother,
+                    'father_name' => $defFather,
+                    'guardian_name' => $defGuardian,
+                    'custom_notes' => '',
+                    'appointments' => [],
+                    'photos' => [],
+                    'vaccine_doses' => [],
+                ];
+            }
+
+            $groupedInfants[$k]['appointments'][] = $appt;
+            if (!empty($appt['photo_path'])) {
+                $groupedInfants[$k]['photos'][] = $appt['photo_path'];
+            }
+            $vType = trim((string) ($appt['vaccine_type'] ?? ''));
+            if ($vType !== '' && strcasecmp($vType, 'Not recorded') !== 0 && strcasecmp($vType, 'Not yet recorded') !== 0) {
+                $groupedInfants[$k]['vaccine_doses'][] = [
+                    'vaccine_type' => $vType,
+                    'date' => $appt['preferred_date'],
+                    'station_name' => $appt['station_name'] ?? '',
+                    'appointment_code' => $appt['appointment_code'] ?? $appt['reference_code'] ?? '',
+                    'doctor_notes' => $appt['doctor_notes'] ?? '',
+                    'status' => $appt['status'] ?? '',
+                ];
+            }
+        }
+
+        foreach ($immInfants as $imm) {
+            $rFirst = trim((string) $imm['first_name']);
+            $rMiddle = trim((string) ($imm['middle_name'] ?? ''));
+            $rLast = trim((string) $imm['last_name']);
+            $rDob = trim((string) ($imm['birth_date'] ?? ''));
+            $rRel = trim((string) ($imm['relationship'] ?? 'Child'));
+
+            if ($rFirst === '' || $rLast === '') {
+                continue;
+            }
+
+            $k = strtolower($rFirst . '_' . $rLast . '_' . $rDob);
+            if (!isset($groupedInfants[$k])) {
+                $defMother = (strcasecmp($parentGender, 'Female') === 0) ? $parentName : '';
+                $defFather = (strcasecmp($parentGender, 'Male') === 0) ? $parentName : '';
+
+                $profId = save_or_update_infant_profile([
+                    'patient_id' => $patientId,
+                    'first_name' => $rFirst,
+                    'middle_name' => $rMiddle,
+                    'last_name' => $rLast,
+                    'birth_date' => $rDob ?: date('Y-m-d'),
+                    'gender' => $imm['gender'] ?? 'Not specified',
+                    'relationship' => $rRel,
+                    'mother_name' => $defMother,
+                    'father_name' => $defFather,
+                    'guardian_name' => $parentName,
+                ]);
+
+                $groupedInfants[$k] = [
+                    'profile_id' => $profId,
+                    'first_name' => $rFirst,
+                    'middle_name' => $rMiddle,
+                    'last_name' => $rLast,
+                    'birth_date' => $rDob,
+                    'gender' => $imm['gender'] ?? 'Not specified',
+                    'relationship' => $rRel,
+                    'mother_name' => $defMother,
+                    'father_name' => $defFather,
+                    'guardian_name' => $parentName,
+                    'custom_notes' => '',
+                    'appointments' => [],
+                    'photos' => [],
+                    'vaccine_doses' => [],
+                ];
+            }
+
+            $vType = trim((string) ($imm['vaccine_type'] ?? ''));
+            if ($vType !== '' && strcasecmp($vType, 'Not recorded') !== 0 && strcasecmp($vType, 'Not yet recorded') !== 0) {
+                $alreadyAdded = false;
+                foreach ($groupedInfants[$k]['vaccine_doses'] as $vd) {
+                    if ($vd['vaccine_type'] === $vType && ($vd['appointment_code'] === ($imm['appointment_code'] ?? ''))) {
+                        $alreadyAdded = true;
+                        break;
+                    }
+                }
+                if (!$alreadyAdded) {
+                    $groupedInfants[$k]['vaccine_doses'][] = [
+                        'vaccine_type' => $vType,
+                        'date' => $imm['created_at'] ? date('Y-m-d', strtotime($imm['created_at'])) : date('Y-m-d'),
+                        'station_name' => $imm['station_slug'] ?? '',
+                        'appointment_code' => $imm['appointment_code'] ?? '',
+                        'doctor_notes' => '',
+                        'status' => 'Completed',
+                    ];
+                }
+            }
+        }
+
+        foreach ($groupedInfants as $k => $inf) {
+            $nameParts = array_filter([$inf['first_name'], $inf['middle_name'], $inf['last_name']]);
+            $infFullName = trim(implode(' ', $nameParts));
+
+            $ageLabel = 'Age unavailable';
+            if (!empty($inf['birth_date']) && $inf['birth_date'] !== '0000-00-00') {
+                try {
+                    $dob = new DateTimeImmutable($inf['birth_date']);
+                    $today = new DateTimeImmutable('today');
+                    $diff = $dob->diff($today);
+                    if ($diff->y > 0) {
+                        $ageLabel = $diff->y . ' yr' . ($diff->y > 1 ? 's' : '') . ' old';
+                    } elseif ($diff->m > 0) {
+                        $ageLabel = $diff->m . ' mo' . ($diff->m > 1 ? 's' : '') . ' old';
+                    } else {
+                        $ageLabel = $diff->d . ' day' . ($diff->d > 1 ? 's' : '') . ' old';
+                    }
+                } catch (Throwable $e) {}
+            }
+
+            $latestPhoto = !empty($inf['photos']) ? $inf['photos'][0] : '';
+
+            $vaccineCounts = [];
+            foreach ($inf['vaccine_doses'] as $dose) {
+                $vt = $dose['vaccine_type'];
+                $vaccineCounts[$vt] = ($vaccineCounts[$vt] ?? 0) + 1;
+            }
+
+            $infants[] = [
+                'id' => $inf['profile_id'],
+                'infant_key' => $k,
+                'patient_id' => $patientId,
+                'full_name' => $infFullName,
+                'first_name' => $inf['first_name'],
+                'middle_name' => $inf['middle_name'],
+                'last_name' => $inf['last_name'],
+                'birth_date' => $inf['birth_date'],
+                'age_label' => $ageLabel,
+                'gender' => $inf['gender'],
+                'relationship' => $inf['relationship'],
+                'mother_name' => $inf['mother_name'],
+                'father_name' => $inf['father_name'],
+                'guardian_name' => $inf['guardian_name'],
+                'parent_name' => $parentName,
+                'custom_notes' => $inf['custom_notes'],
+                'photo_path' => $latestPhoto,
+                'vaccine_counts' => $vaccineCounts,
+                'vaccine_doses' => $inf['vaccine_doses'],
+                'total_doses' => count($inf['vaccine_doses']),
+                'appointments' => $inf['appointments'],
+            ];
+        }
+    } catch (Throwable $e) {
+        error_log('Error fetching infant sub profiles: ' . $e->getMessage());
+    }
+
+    return $infants;
+}
+
+/**
+ * Save or update an infant profile
+ */
+function save_or_update_infant_profile(array $data): ?int
+{
+    $patientId = trim((string) ($data['patient_id'] ?? ''));
+    $firstName = trim((string) ($data['first_name'] ?? ''));
+    $middleName = trim((string) ($data['middle_name'] ?? ''));
+    $lastName = trim((string) ($data['last_name'] ?? ''));
+    $birthDate = trim((string) ($data['birth_date'] ?? ''));
+    $gender = trim((string) ($data['gender'] ?? ''));
+    $relationship = trim((string) ($data['relationship'] ?? 'Child'));
+    $motherName = trim((string) ($data['mother_name'] ?? ''));
+    $fatherName = trim((string) ($data['father_name'] ?? ''));
+    $guardianName = trim((string) ($data['guardian_name'] ?? ''));
+    $customNotes = trim((string) ($data['custom_notes'] ?? ''));
+    $profileId = isset($data['id']) ? (int) $data['id'] : 0;
+
+    if ($patientId === '' || $firstName === '' || $lastName === '') {
+        return null;
+    }
+
+    try {
+        $db = db();
+        ensure_infant_profiles_table($db);
+
+        if ($profileId > 0) {
+            $stmt = $db->prepare("UPDATE infant_profiles SET first_name = ?, middle_name = ?, last_name = ?, birth_date = ?, gender = ?, relationship = ?, mother_name = ?, father_name = ?, guardian_name = ?, custom_notes = ? WHERE id = ?");
+            $stmt->bind_param('ssssssssssi', $firstName, $middleName, $lastName, $birthDate, $gender, $relationship, $motherName, $fatherName, $guardianName, $customNotes, $profileId);
+            $stmt->execute();
+            return $profileId;
+        }
+
+        $chkStmt = $db->prepare("SELECT id FROM infant_profiles WHERE patient_id = ? AND first_name = ? AND last_name = ? AND birth_date = ? LIMIT 1");
+        $chkStmt->bind_param('ssss', $patientId, $firstName, $lastName, $birthDate);
+        $chkStmt->execute();
+        $existing = $chkStmt->get_result()->fetch_assoc();
+
+        if ($existing) {
+            $existingId = (int) $existing['id'];
+            $updStmt = $db->prepare("UPDATE infant_profiles SET middle_name = ?, gender = ?, relationship = ?, mother_name = ?, father_name = ?, guardian_name = ?, custom_notes = ? WHERE id = ?");
+            $updStmt->bind_param('sssssssi', $middleName, $gender, $relationship, $motherName, $fatherName, $guardianName, $customNotes, $existingId);
+            $updStmt->execute();
+            return $existingId;
+        }
+
+        $insStmt = $db->prepare("INSERT INTO infant_profiles (patient_id, first_name, middle_name, last_name, birth_date, gender, relationship, mother_name, father_name, guardian_name, custom_notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $insStmt->bind_param('sssssssssss', $patientId, $firstName, $middleName, $lastName, $birthDate, $gender, $relationship, $motherName, $fatherName, $guardianName, $customNotes);
+        $insStmt->execute();
+        return (int) $db->insert_id;
+    } catch (Throwable $e) {
+        error_log('Error saving infant profile: ' . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Fetch infant profile by ID
+ */
+function fetch_infant_profile_by_id(int $infantId): ?array
+{
+    if ($infantId <= 0) {
+        return null;
+    }
+    try {
+        $db = db();
+        ensure_infant_profiles_table($db);
+        $stmt = $db->prepare("SELECT * FROM infant_profiles WHERE id = ? LIMIT 1");
+        $stmt->bind_param('i', $infantId);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc() ?: null;
     } catch (Throwable $e) {
