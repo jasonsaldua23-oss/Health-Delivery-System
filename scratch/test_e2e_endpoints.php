@@ -67,7 +67,7 @@ echo "\n[TEST 2] Testing Staff Panel Login & Patient Profiles View...\n";
 $loginRes = http_request(
     $baseUrl . '/Patients/login-handler.php',
     'POST',
-    ['email' => 'staff-bata@bata.health', 'password' => 'password123', 'action' => 'login_staff'],
+    ['email' => 'staff-bata@bata.health', 'password' => 'StaffPassword123!', 'action' => 'login_staff'],
     $cookieJarStaff
 );
 echo "  ✓ Staff login response: " . $loginRes['body'] . "\n";

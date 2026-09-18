@@ -768,6 +768,8 @@ function create_appointments_table(mysqli $connection, string $engine = 'InnoDB'
             pulse_rate VARCHAR(30) DEFAULT NULL,
             respiration_rate VARCHAR(30) DEFAULT NULL,
             blood_pressure VARCHAR(30) DEFAULT NULL,
+            height VARCHAR(50) DEFAULT NULL,
+            weight VARCHAR(50) DEFAULT NULL,
             vaccine_type VARCHAR(150) DEFAULT NULL,
             doctor_notes TEXT DEFAULT NULL,
             reminder_sms_sent TINYINT(1) NOT NULL DEFAULT 0,
@@ -1297,9 +1299,23 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
         } catch (Throwable $e) {}
     }
 
+    if (!db_column_exists($connection, 'appointments', 'height')) {
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN height VARCHAR(50) DEFAULT NULL AFTER blood_pressure');
+            $log[] = 'Added appointments.height';
+        } catch (Throwable $e) {}
+    }
+
+    if (!db_column_exists($connection, 'appointments', 'weight')) {
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN weight VARCHAR(50) DEFAULT NULL AFTER height');
+            $log[] = 'Added appointments.weight';
+        } catch (Throwable $e) {}
+    }
+
     if (!db_column_exists($connection, 'appointments', 'doctor_notes')) {
         try {
-            $connection->query('ALTER TABLE appointments ADD COLUMN doctor_notes TEXT DEFAULT NULL AFTER blood_pressure');
+            $connection->query('ALTER TABLE appointments ADD COLUMN doctor_notes TEXT DEFAULT NULL AFTER weight');
             $log[] = 'Added appointments.doctor_notes';
         } catch (Throwable $e) {}
     }
@@ -2596,15 +2612,17 @@ function save_appointment_clinical_details(int $appointmentId, array $data, ?str
     $pulseRate = array_key_exists('pulse_rate', $data) ? trim((string) $data['pulse_rate']) : (string) ($appointment['pulse_rate'] ?? '');
     $respirationRate = array_key_exists('respiration_rate', $data) ? trim((string) $data['respiration_rate']) : (string) ($appointment['respiration_rate'] ?? '');
     $bloodPressure = array_key_exists('blood_pressure', $data) ? trim((string) $data['blood_pressure']) : (string) ($appointment['blood_pressure'] ?? '');
+    $height = array_key_exists('height', $data) ? trim((string) $data['height']) : (string) ($appointment['height'] ?? '');
+    $weight = array_key_exists('weight', $data) ? trim((string) $data['weight']) : (string) ($appointment['weight'] ?? '');
     $vaccineType = array_key_exists('vaccine_type', $data) ? trim((string) $data['vaccine_type']) : (string) ($appointment['vaccine_type'] ?? '');
     $doctorNotes = array_key_exists('doctor_notes', $data) ? trim((string) $data['doctor_notes']) : (string) ($appointment['doctor_notes'] ?? '');
 
     $stmt = db()->prepare(
         'UPDATE appointments
-         SET body_temperature = ?, pulse_rate = ?, respiration_rate = ?, blood_pressure = ?, vaccine_type = ?, doctor_notes = ?
+         SET body_temperature = ?, pulse_rate = ?, respiration_rate = ?, blood_pressure = ?, height = ?, weight = ?, vaccine_type = ?, doctor_notes = ?
          WHERE id = ?'
     );
-    $stmt->bind_param('ssssssi', $bodyTemperature, $pulseRate, $respirationRate, $bloodPressure, $vaccineType, $doctorNotes, $appointmentId);
+    $stmt->bind_param('ssssssssi', $bodyTemperature, $pulseRate, $respirationRate, $bloodPressure, $height, $weight, $vaccineType, $doctorNotes, $appointmentId);
 
     $ok = $stmt->execute();
     if ($ok && $vaccineType !== '') {
@@ -3498,6 +3516,22 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
             }
         }
 
+        // Fetch the latest photo recorded for this account/appointment if individual infant photo was not set
+        $latestAccountPhoto = '';
+        try {
+            $stmtPhoto = $db->prepare("SELECT photo_path FROM appointments WHERE patient_id = ? AND photo_path IS NOT NULL AND photo_path != '' ORDER BY preferred_date DESC, id DESC LIMIT 1");
+            $stmtPhoto->bind_param('s', $patientId);
+            $stmtPhoto->execute();
+            $photoRow = $stmtPhoto->get_result()->fetch_assoc();
+            if ($photoRow && !empty($photoRow['photo_path'])) {
+                $latestAccountPhoto = (string) $photoRow['photo_path'];
+            }
+        } catch (Throwable $e) {}
+
+        if ($latestAccountPhoto === '' && !empty($parentProfile['photo_path'])) {
+            $latestAccountPhoto = (string) $parentProfile['photo_path'];
+        }
+
         foreach ($groupedInfants as $k => $inf) {
             $nameParts = array_filter([$inf['first_name'], $inf['middle_name'], $inf['last_name']]);
             $infFullName = trim(implode(' ', $nameParts));
@@ -3518,7 +3552,15 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 } catch (Throwable $e) {}
             }
 
-            $latestPhoto = !empty($inf['photos']) ? $inf['photos'][0] : '';
+            $latestPhoto = !empty($inf['photos']) ? $inf['photos'][0] : $latestAccountPhoto;
+
+            $infAppts = $inf['appointments'];
+            foreach ($infAppts as &$ia) {
+                if (empty($ia['photo_path']) && $latestPhoto !== '') {
+                    $ia['photo_path'] = $latestPhoto;
+                }
+            }
+            unset($ia);
 
             $vaccineCounts = [];
             foreach ($inf['vaccine_doses'] as $dose) {
@@ -3554,7 +3596,7 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 'vaccine_counts' => $vaccineCounts,
                 'vaccine_doses' => $inf['vaccine_doses'],
                 'total_doses' => count($inf['vaccine_doses']),
-                'appointments' => $inf['appointments'],
+                'appointments' => $infAppts,
             ];
         }
     } catch (Throwable $e) {

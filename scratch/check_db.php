@@ -3,11 +3,16 @@ require_once __DIR__ . '/../shared/bootstrap.php';
 require_once __DIR__ . '/../shared/database.php';
 
 $db = db();
-echo "=== APPOINTMENTS WITH RECIPIENTS OR IMMUNIZATION ===\n";
-$res = $db->query("SELECT id, patient_id, service_slug, service_name, appointment_code, vaccine_type, recipient_first_name, recipient_last_name, doctor_notes, status FROM appointments WHERE recipient_first_name IS NOT NULL AND recipient_first_name != '' OR service_slug LIKE '%immuniz%' OR service_slug LIKE '%vaccin%'");
-while ($r = $res->fetch_assoc()) {
-    echo "ID: {$r['id']} | Patient: {$r['patient_id']} | Service: {$r['service_name']} | Recipient: {$r['recipient_first_name']} {$r['recipient_last_name']} | Vaccine: '{$r['vaccine_type']}' | Status: {$r['status']} | Notes: {$r['doctor_notes']}\n";
+$log = run_database_migrations($db);
+echo "Migrations result:\n";
+print_r($log);
+
+
+$resStaff = $db->query("SELECT id, email, password_hash, full_name, station_slug FROM staff_accounts");
+while ($s = $resStaff->fetch_assoc()) {
+    echo "Staff: {$s['id']} | {$s['email']} | {$s['full_name']} | {$s['station_slug']} | Hash: " . substr($s['password_hash'], 0, 10) . "...\n";
 }
+
 
 echo "\n=== IMMUNIZED_INFANTS ===\n";
 $res2 = $db->query("SELECT * FROM immunized_infants");
@@ -15,8 +20,16 @@ while ($r2 = $res2->fetch_assoc()) {
     print_r($r2);
 }
 
-echo "\n=== INFANT_PROFILES ===\n";
-$res3 = $db->query("SELECT * FROM infant_profiles");
-while ($r3 = $res3->fetch_assoc()) {
-    print_r($r3);
+echo "\n=== APPOINTMENTS COLUMNS ===\n";
+$resCols = $db->query("SHOW COLUMNS FROM appointments");
+while ($c = $resCols->fetch_assoc()) {
+    echo "{$c['Field']} ({$c['Type']})\n";
 }
+
+
+echo "\n=== PATIENTS PHOTOS ===\n";
+$resPat = $db->query("SELECT id, patient_id, first_name, last_name, photo_path FROM patients");
+while ($rpat = $resPat->fetch_assoc()) {
+    echo "ID: {$rpat['id']} | Patient: {$rpat['patient_id']} | Name: {$rpat['first_name']} {$rpat['last_name']} | Photo: '{$rpat['photo_path']}'\n";
+}
+

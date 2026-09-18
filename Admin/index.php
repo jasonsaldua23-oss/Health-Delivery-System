@@ -5164,8 +5164,10 @@ window.renderAdminSelectedInfant = function(index) {
     }
 
     let photoHtml = '';
-    if (infant.latest_photo) {
-        photoHtml = `<img src="../Patients/${adminEscapeHtml(infant.latest_photo)}" alt="Infant Photo" style="width: 100%; height: 100%; object-fit: cover;">`;
+    const photoRaw = (infant.latest_photo || infant.photo_path || '').trim();
+    if (photoRaw) {
+        const photoSrc = (photoRaw.startsWith('http') || photoRaw.startsWith('data:') || photoRaw.startsWith('/')) ? photoRaw : `../Patients/${photoRaw.replace(/^\.\.\/Patients\//, '')}`;
+        photoHtml = `<img src="${adminEscapeHtml(photoSrc)}" alt="Infant Photo" style="width: 100%; height: 100%; object-fit: cover;">`;
     } else {
         photoHtml = `<?= admin_icon('baby'); ?>`;
     }
@@ -5238,6 +5240,8 @@ window.renderAdminSelectedInfant = function(index) {
             const apptCode = appt.appointment_code || appt.reference_code || ('#' + (idx + 1));
             const apptDate = appt.preferred_date ? new Date(appt.preferred_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
             const vacType = appt.vaccine_type || 'Immunization Consultation';
+            const apptPhotoRaw = (appt.photo_path || infant.latest_photo || infant.photo_path || '').trim();
+            const apptPhotoSrc = apptPhotoRaw ? ((apptPhotoRaw.startsWith('http') || apptPhotoRaw.startsWith('data:') || apptPhotoRaw.startsWith('/')) ? apptPhotoRaw : `../Patients/${apptPhotoRaw.replace(/^\.\.\/Patients\//, '')}`) : '';
             
             timelineHtml += `
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
@@ -5254,14 +5258,16 @@ window.renderAdminSelectedInfant = function(index) {
                     <div><strong>PR:</strong> ${adminEscapeHtml(appt.pulse_rate || 'N/A')} bpm</div>
                     <div><strong>RR:</strong> ${adminEscapeHtml(appt.respiration_rate || 'N/A')} cpm</div>
                     <div><strong>BP:</strong> ${adminEscapeHtml(appt.blood_pressure || 'N/A')}</div>
+                    ${appt.height ? `<div><strong>Height:</strong> ${adminEscapeHtml(appt.height)}</div>` : ''}
+                    ${appt.weight ? `<div><strong>Weight:</strong> ${adminEscapeHtml(appt.weight)}</div>` : ''}
                 </div>
 
                 ${appt.doctor_notes ? `<div style="font-size: 0.82rem; color: #334155; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px 12px; border-radius: 8px;">
                     <strong>Doctor's Clinical Notes:</strong> ${adminEscapeHtml(appt.doctor_notes)}
                 </div>` : ''}
 
-                ${appt.photo_path ? `<div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
-                    <img src="../Patients/${adminEscapeHtml(appt.photo_path)}" alt="Visit Photo" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid #cbd5e1;">
+                ${apptPhotoSrc ? `<div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                    <img src="${adminEscapeHtml(apptPhotoSrc)}" alt="Visit Photo" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid #cbd5e1;">
                     <span style="font-size: 0.78rem; color: #64748b;">Consultation Verification Photo Recorded</span>
                 </div>` : ''}
             </div>`;

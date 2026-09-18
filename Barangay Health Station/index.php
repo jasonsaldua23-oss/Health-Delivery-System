@@ -2171,11 +2171,32 @@ for ($i = 0; $i < 6; $i++) {
                                     </div>
                                 </div>
 
-                                <?php if (is_vaccination_service((string) ($selectedVitalsAppointment['service_slug'] ?? ''), (string) ($selectedVitalsAppointment['service_name'] ?? ''))): ?>
-                                    <?php
-                                    $vitRec = appointment_recipient_details($selectedVitalsAppointment);
-                                    $isNonSelf = $vitRec['is_immunization'] && !in_array(strtolower($vitRec['relationship']), ['myself', 'self', 'me'], true);
-                                    ?>
+                                <?php
+                                $isVaccination = is_vaccination_service((string) ($selectedVitalsAppointment['service_slug'] ?? ''), (string) ($selectedVitalsAppointment['service_name'] ?? ''));
+                                $vitRec = appointment_recipient_details($selectedVitalsAppointment);
+                                $isNonSelf = $vitRec['is_immunization'] && !in_array(strtolower($vitRec['relationship']), ['myself', 'self', 'me'], true);
+                                ?>
+
+                                <?php if ($isVaccination && $isNonSelf): ?>
+                                    <div class="form-row-grid">
+                                        <div class="form-group-item">
+                                            <label for="queue_height" class="form-field-label">
+                                                <span>Height (Infant)</span>
+                                                <span class="required">*</span>
+                                            </label>
+                                            <input type="text" id="queue_height" name="height" value="<?= h((string) ($selectedVitalsAppointment['height'] ?? '')); ?>" placeholder="e.g. 65 cm" required class="form-input-field">
+                                        </div>
+                                        <div class="form-group-item">
+                                            <label for="queue_weight" class="form-field-label">
+                                                <span>Weight (Infant)</span>
+                                                <span class="required">*</span>
+                                            </label>
+                                            <input type="text" id="queue_weight" name="weight" value="<?= h((string) ($selectedVitalsAppointment['weight'] ?? '')); ?>" placeholder="e.g. 7.2 kg" required class="form-input-field">
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($isVaccination): ?>
                                     <?php if ($isNonSelf): ?>
                                         <!-- Non-Self / Infant Immunization: Standard 9-option Select Dropdown with dynamic Others input -->
                                         <div class="form-group-item full-width" style="margin-top: 18px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 14px; padding: 16px 18px;">
@@ -2402,9 +2423,8 @@ for ($i = 0; $i < 6; $i++) {
                                         </div>
                                         <div class="pat-card-right" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                                             <?php if ($hasInfantBookings): ?>
-                                                <button type="button" class="patient-infant-toggle-btn" id="infantToggleBtn_<?= h($prof['key']); ?>" onclick="togglePatientInfantsTray('<?= h($prof['key']); ?>')" title="View Registered Infant Sub-Profiles (<?= count($infantSubProfiles); ?>)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 9px 14px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.28); transition: transform 0.15s, background 0.15s;">
+                                                <button type="button" class="patient-infant-toggle-btn" id="infantToggleBtn_<?= h($prof['key']); ?>" onclick="togglePatientInfantsTray('<?= h($prof['key']); ?>')" title="Registered Infant Sub-Profiles (<?= count($infantSubProfiles); ?>)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 10px 14px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.28); transition: transform 0.15s, background 0.15s;">
                                                     <?= staff_icon('baby'); ?>
-                                                    <span>Infants (<?= count($infantSubProfiles); ?>)</span>
                                                 </button>
                                             <?php endif; ?>
                                             <a class="view-medical-file-btn patient-profile-open-btn" href="<?= h($profUrl); ?>" onclick="return window.openPatientProfileModal(event, '<?= h($prof['key']); ?>');" title="View Patient Profile and Appointment History" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; border: none; padding: 9px 18px; border-radius: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);">
@@ -2436,10 +2456,18 @@ for ($i = 0; $i < 6; $i++) {
                                                 </div>
                                                 <div class="infant-popup-cards-list">
                                                     <?php foreach ($infantSubProfiles as $infant): ?>
+                                                        <?php
+                                                        $infPhotoRaw = (string) ($infant['latest_photo'] ?: $infant['photo_path'] ?: '');
+                                                        if ($infPhotoRaw !== '' && !str_starts_with($infPhotoRaw, 'http') && !str_starts_with($infPhotoRaw, 'data:') && !str_starts_with($infPhotoRaw, '/')) {
+                                                            $infPhotoSrc = '../Patients/' . ltrim(str_replace('../Patients/', '', $infPhotoRaw), '/');
+                                                        } else {
+                                                            $infPhotoSrc = $infPhotoRaw;
+                                                        }
+                                                        ?>
                                                         <div class="infant-popup-card-item" onclick="openStaffInfantModal(<?= htmlspecialchars(json_encode($infant), ENT_QUOTES, 'UTF-8'); ?>)" title="Click to view full record and details">
                                                             <div class="infant-popup-avatar">
-                                                                <?php if (!empty($infant['latest_photo'])): ?>
-                                                                    <img src="../Patients/<?= h($infant['latest_photo']); ?>" alt="Infant Photo">
+                                                                <?php if ($infPhotoSrc !== ''): ?>
+                                                                    <img src="<?= h($infPhotoSrc); ?>" alt="Infant Photo">
                                                                 <?php else: ?>
                                                                     <?= staff_icon('baby'); ?>
                                                                 <?php endif; ?>
@@ -5870,8 +5898,10 @@ window.openStaffInfantModal = function(infant) {
     const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '<?= h($csrf); ?>';
     
     let photoHtml = '';
-    if (infant.latest_photo) {
-        photoHtml = `<img src="../Patients/${staffEscapeHtml(infant.latest_photo)}" alt="Infant Photo" style="width: 100%; height: 100%; object-fit: cover;">`;
+    const photoRaw = (infant.latest_photo || infant.photo_path || '').trim();
+    if (photoRaw) {
+        const photoSrc = (photoRaw.startsWith('http') || photoRaw.startsWith('data:') || photoRaw.startsWith('/')) ? photoRaw : `../Patients/${photoRaw.replace(/^\.\.\/Patients\//, '')}`;
+        photoHtml = `<img src="${staffEscapeHtml(photoSrc)}" alt="Infant Photo" style="width: 100%; height: 100%; object-fit: cover;">`;
     } else {
         photoHtml = `<?= staff_icon('baby'); ?>`;
     }
@@ -5944,6 +5974,8 @@ window.openStaffInfantModal = function(infant) {
             const apptCode = appt.appointment_code || appt.reference_code || ('#' + (idx + 1));
             const apptDate = appt.preferred_date ? new Date(appt.preferred_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
             const vacType = appt.vaccine_type || 'Immunization Consultation';
+            const apptPhotoRaw = (appt.photo_path || infant.latest_photo || infant.photo_path || '').trim();
+            const apptPhotoSrc = apptPhotoRaw ? ((apptPhotoRaw.startsWith('http') || apptPhotoRaw.startsWith('data:') || apptPhotoRaw.startsWith('/')) ? apptPhotoRaw : `../Patients/${apptPhotoRaw.replace(/^\.\.\/Patients\//, '')}`) : '';
             
             timelineHtml += `
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
@@ -5960,14 +5992,16 @@ window.openStaffInfantModal = function(infant) {
                     <div><strong>PR:</strong> ${staffEscapeHtml(appt.pulse_rate || 'N/A')} bpm</div>
                     <div><strong>RR:</strong> ${staffEscapeHtml(appt.respiration_rate || 'N/A')} cpm</div>
                     <div><strong>BP:</strong> ${staffEscapeHtml(appt.blood_pressure || 'N/A')}</div>
+                    ${appt.height ? `<div><strong>Height:</strong> ${staffEscapeHtml(appt.height)}</div>` : ''}
+                    ${appt.weight ? `<div><strong>Weight:</strong> ${staffEscapeHtml(appt.weight)}</div>` : ''}
                 </div>
 
                 ${appt.doctor_notes ? `<div style="font-size: 0.82rem; color: #334155; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px 12px; border-radius: 8px;">
                     <strong>Doctor's Notes:</strong> ${staffEscapeHtml(appt.doctor_notes)}
                 </div>` : ''}
 
-                ${appt.photo_path ? `<div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
-                    <img src="../Patients/${staffEscapeHtml(appt.photo_path)}" alt="Visit Photo" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid #cbd5e1;">
+                ${apptPhotoSrc ? `<div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                    <img src="${staffEscapeHtml(apptPhotoSrc)}" alt="Visit Photo" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid #cbd5e1;">
                     <span style="font-size: 0.78rem; color: #64748b;">Visit Verification Photo Captured</span>
                 </div>` : ''}
             </div>`;
@@ -6343,8 +6377,9 @@ function toggleDualStatusFilter(clickedVal, otherVal, paramName, event) {
         const isProfileModalOpen = profileModalEl && (profileModalEl.classList.contains('is-active-modal') || (!profileModalEl.classList.contains('hidden') && profileModalEl.style.display !== 'none'));
         const staffInfantModal = document.getElementById('staffInfantModalBackdrop');
         const isStaffInfantModalOpen = staffInfantModal && (!staffInfantModal.classList.contains('hidden') && staffInfantModal.style.display !== 'none');
+        const hasOpenInfantTray = Array.from(document.querySelectorAll('.patient-infant-subprofile-popup')).some(el => el.style.display === 'block');
 
-        if (isCameraActive || isTyping || isModalOpen || isEventModalOpen || isUnattendedModalOpen || isProfileModalOpen || isStaffInfantModalOpen) return;
+        if (isCameraActive || isTyping || isModalOpen || isEventModalOpen || isUnattendedModalOpen || isProfileModalOpen || isStaffInfantModalOpen || hasOpenInfantTray) return;
 
         try {
             isStaffSyncing = true;
