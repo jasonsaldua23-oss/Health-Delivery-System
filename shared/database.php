@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/brevo_sms.php';
+require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/config.php';
 
 
@@ -27,6 +28,7 @@ const DB_TABLE_ACTIVITY_LOG = 'activity_log';
 const DB_TABLE_UNATTENDED_APPOINTMENTS = 'unattended_appointments';
 const DB_TABLE_UNATTENDED_QUEUE = 'unattended_queue';
 const DB_TABLE_IMMUNIZED_INFANTS = 'immunized_infants';
+const DB_TABLE_PASSWORD_RESET_OTPS = 'password_reset_otps';
 
 
 function contact_details(): array
@@ -1156,6 +1158,30 @@ function ensure_station_service_schedules_table(mysqli $connection): void
     ensure_table_is_usable($connection, 'station_service_schedules', 'create_station_service_schedules_table');
 }
 
+function create_password_reset_otps_table(mysqli $connection, string $engine = 'InnoDB'): void
+{
+    $connection->query(
+        'CREATE TABLE IF NOT EXISTS password_reset_otps (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            role VARCHAR(30) NOT NULL,
+            email VARCHAR(150) NOT NULL,
+            otp_code VARCHAR(10) NOT NULL,
+            expires_at DATETIME NOT NULL,
+            attempts INT UNSIGNED NOT NULL DEFAULT 0,
+            is_used TINYINT(1) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_otp_email_role (email, role),
+            INDEX idx_otp_expires (expires_at)
+        ) ENGINE=' . $engine . ' DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
+    );
+}
+
+function ensure_password_reset_otps_table(mysqli $connection): void
+{
+    ensure_table_is_usable($connection, 'password_reset_otps', 'create_password_reset_otps_table');
+}
+
 function run_database_migrations(mysqli $connection, bool $verbose = false): array
 {
     $GLOBALS['health_db_bootstrapping'] = true;
@@ -1178,6 +1204,7 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
     ensure_unattended_queue_table($connection);
     ensure_immunized_infants_table($connection);
     ensure_station_service_schedules_table($connection);
+    ensure_password_reset_otps_table($connection);
     $log[] = 'Core tables verified';
 
     // Purge sample test account Juan Dela Cruz across appointments, profiles, accounts, and history
@@ -1561,6 +1588,7 @@ function db(): mysqli
     // Auto-check if core tables and latest columns exist. If missing, auto-migrate seamlessly on connection!
     try {
         if (!db_table_exists($connection, 'immunized_infants')
+            || !db_table_exists($connection, 'password_reset_otps')
             || !db_column_exists($connection, 'appointments', 'immunization_relationship')
             || !db_column_exists($connection, 'appointments', 'recipient_first_name')
             || !db_column_exists($connection, 'appointments', 'recipient_middle_name')
@@ -5529,6 +5557,223 @@ function count_unattended_records(string $stationSlug = ''): array
         'queue' => $queueCount,
         'total' => $apptsCount + $queueCount,
     ];
+}
+
+/**
+ * Mask an email address for privacy display (e.g. j***n@gmail.com).
+ */
+function mask_email_address(string $email): string
+{
+    $clean = trim($email);
+    if (!str_contains($clean, '@')) {
+        return $clean;
+    }
+    [$user, $domain] = explode('@', $clean, 2);
+    $len = strlen($user);
+    if ($len <= 2) {
+        $maskedUser = substr($user, 0, 1) . '*';
+    } elseif ($len <= 4) {
+        $maskedUser = substr($user, 0, 1) . str_repeat('*', $len - 2) . substr($user, -1);
+    } else {
+        $maskedUser = substr($user, 0, 2) . str_repeat('*', $len - 4) . substr($user, -2);
+    }
+    return $maskedUser . '@' . $domain;
+}
+
+/**
+ * Stores a generated OTP code for password reset into password_reset_otps table.
+ */
+function store_password_reset_otp(string $role, string $email, string $otpCode, int $expiresMinutes = 10): bool
+{
+    $role = strtolower(trim($role));
+    $email = strtolower(trim($email));
+    $otpCode = trim($otpCode);
+    if ($role === '' || $email === '' || $otpCode === '') {
+        return false;
+    }
+
+    try {
+        $connection = db();
+        ensure_password_reset_otps_table($connection);
+
+        // Invalidate prior active OTPs for this email and role
+        $stmtInvalidate = $connection->prepare('UPDATE password_reset_otps SET is_used = 1 WHERE LOWER(email) = ? AND LOWER(role) = ? AND is_used = 0');
+        if ($stmtInvalidate) {
+            $stmtInvalidate->bind_param('ss', $email, $role);
+            $stmtInvalidate->execute();
+            $stmtInvalidate->close();
+        }
+
+        $expiresAt = date('Y-m-d H:i:s', time() + ($expiresMinutes * 60));
+        $stmt = $connection->prepare('INSERT INTO password_reset_otps (role, email, otp_code, expires_at, attempts, is_used) VALUES (?, ?, ?, ?, 0, 0)');
+        if ($stmt) {
+            $stmt->bind_param('ssss', $role, $email, $otpCode, $expiresAt);
+            $ok = $stmt->execute();
+            $stmt->close();
+            return $ok;
+        }
+    } catch (Throwable $e) {
+        error_log('Error storing password reset OTP: ' . $e->getMessage());
+    }
+
+    return false;
+}
+
+/**
+ * Verifies a provided OTP against the password_reset_otps table.
+ */
+function verify_password_reset_otp(string $role, string $email, string $otpCode): array
+{
+    $role = strtolower(trim($role));
+    $email = strtolower(trim($email));
+    $otpCode = trim($otpCode);
+
+    if ($role === '' || $email === '' || $otpCode === '') {
+        return ['valid' => false, 'error' => 'Please enter the 6-digit verification code sent to your email.'];
+    }
+
+    try {
+        $connection = db();
+        ensure_password_reset_otps_table($connection);
+
+        $stmt = $connection->prepare('SELECT id, otp_code, expires_at, attempts, is_used FROM password_reset_otps WHERE LOWER(email) = ? AND LOWER(role) = ? AND is_used = 0 ORDER BY id DESC LIMIT 1');
+        if (!$stmt) {
+            return ['valid' => false, 'error' => 'Unable to process OTP verification at this time.'];
+        }
+
+        $stmt->bind_param('ss', $email, $role);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res->fetch_assoc();
+        $stmt->close();
+
+        if (!$row) {
+            return ['valid' => false, 'error' => 'No active OTP verification code found. Please request a new code.'];
+        }
+
+        $otpId = (int) $row['id'];
+        $attempts = (int) $row['attempts'];
+        $expiresAt = strtotime((string) $row['expires_at']);
+        $dbOtp = (string) $row['otp_code'];
+
+        if ($attempts >= 5) {
+            $connection->query("UPDATE password_reset_otps SET is_used = 1 WHERE id = {$otpId}");
+            return ['valid' => false, 'error' => 'Too many failed verification attempts. Please request a new code.'];
+        }
+
+        if (time() > $expiresAt) {
+            return ['valid' => false, 'error' => 'Your 6-digit verification code has expired. Please request a new code.'];
+        }
+
+        if ($dbOtp !== $otpCode) {
+            $newAttempts = $attempts + 1;
+            $connection->query("UPDATE password_reset_otps SET attempts = {$newAttempts} WHERE id = {$otpId}");
+            $remaining = max(0, 5 - $newAttempts);
+            return ['valid' => false, 'error' => "Invalid verification code. Please check your email. ({$remaining} attempts remaining)"];
+        }
+
+        return ['valid' => true, 'otp_id' => $otpId];
+    } catch (Throwable $e) {
+        return ['valid' => false, 'error' => 'Verification failed: ' . $e->getMessage()];
+    }
+}
+
+/**
+ * Marks a password reset OTP as used.
+ */
+function mark_password_reset_otp_used(string $role, string $email, string $otpCode): bool
+{
+    $role = strtolower(trim($role));
+    $email = strtolower(trim($email));
+    $otpCode = trim($otpCode);
+
+    try {
+        $connection = db();
+        $stmt = $connection->prepare('UPDATE password_reset_otps SET is_used = 1 WHERE LOWER(email) = ? AND LOWER(role) = ? AND otp_code = ?');
+        if ($stmt) {
+            $stmt->bind_param('sss', $email, $role, $otpCode);
+            $res = $stmt->execute();
+            $stmt->close();
+            return $res;
+        }
+    } catch (Throwable $e) {}
+
+    return false;
+}
+
+/**
+ * Updates patient account password hash.
+ */
+function update_patient_password(string $email, string $newPassword): bool
+{
+    $email = strtolower(trim($email));
+    if ($email === '' || strlen($newPassword) < 6) {
+        return false;
+    }
+    $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+    try {
+        $stmt = db()->prepare('UPDATE ' . DB_TABLE_PATIENT_ACCOUNTS . ' SET password_hash = ? WHERE LOWER(email) = ?');
+        if ($stmt) {
+            $stmt->bind_param('ss', $newHash, $email);
+            $stmt->execute();
+            $affected = $stmt->affected_rows;
+            $stmt->close();
+            return $affected >= 0;
+        }
+    } catch (Throwable $e) {
+        error_log('Error updating patient password: ' . $e->getMessage());
+    }
+    return false;
+}
+
+/**
+ * Updates staff account password hash.
+ */
+function update_staff_password(string $email, string $newPassword): bool
+{
+    $email = strtolower(trim($email));
+    if ($email === '' || strlen($newPassword) < 6) {
+        return false;
+    }
+    $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+    try {
+        $stmt = db()->prepare('UPDATE ' . DB_TABLE_STAFF_ACCOUNTS . ' SET password_hash = ? WHERE LOWER(email) = ?');
+        if ($stmt) {
+            $stmt->bind_param('ss', $newHash, $email);
+            $stmt->execute();
+            $affected = $stmt->affected_rows;
+            $stmt->close();
+            return $affected >= 0;
+        }
+    } catch (Throwable $e) {
+        error_log('Error updating staff password: ' . $e->getMessage());
+    }
+    return false;
+}
+
+/**
+ * Updates admin account password hash.
+ */
+function update_admin_password(string $email, string $newPassword): bool
+{
+    $email = strtolower(trim($email));
+    if ($email === '' || strlen($newPassword) < 6) {
+        return false;
+    }
+    $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+    try {
+        $stmt = db()->prepare('UPDATE ' . DB_TABLE_ADMIN_ACCOUNTS . ' SET password_hash = ? WHERE LOWER(email) = ?');
+        if ($stmt) {
+            $stmt->bind_param('ss', $newHash, $email);
+            $stmt->execute();
+            $affected = $stmt->affected_rows;
+            $stmt->close();
+            return $affected >= 0;
+        }
+    } catch (Throwable $e) {
+        error_log('Error updating admin password: ' . $e->getMessage());
+    }
+    return false;
 }
 
 

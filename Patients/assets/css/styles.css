@@ -2863,3 +2863,172 @@ select#immunization_relationship:focus {
     max-height: 18px !important;
     display: block !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   FORGOT PASSWORD & MAILER OTP COMPONENT STYLES
+   ══════════════════════════════════════════════════════════════════════ */
+
+.forgot-pw-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: -6px;
+    margin-bottom: 14px;
+}
+
+.forgot-pw-link {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: #0d9488;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.forgot-pw-link:hover {
+    color: #0f766e;
+    text-decoration: underline;
+}
+
+.modal-content.volunteer-themed .forgot-pw-link {
+    color: #3b82f6;
+}
+
+.modal-content.volunteer-themed .forgot-pw-link:hover {
+    color: #1d4ed8;
+}
+
+.modal-content.admin-themed .forgot-pw-link {
+    color: #4f46e5;
+}
+
+.modal-content.admin-themed .forgot-pw-link:hover {
+    color: #4338ca;
+}
+
+.otp-instruction-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+}
+
+.otp-instruction-card p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: #475569;
+    line-height: 1.5;
+}
+
+.otp-dest-pill {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f0fdfa;
+    border: 1px solid #99f6e4;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 0.86rem;
+    color: #0f766e;
+}
+
+.modal-content.volunteer-themed .otp-dest-pill {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1e40af;
+}
+
+.modal-content.admin-themed .otp-dest-pill {
+    background: #faf5ff;
+    border-color: #e9d5ff;
+    color: #4c1d95;
+}
+
+.mini-text-action {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 2px 4px;
+}
+
+.mini-text-action:hover {
+    opacity: 0.8;
+}
+
+.otp-code-input {
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 1.45rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 6px !important;
+    text-align: center !important;
+    padding: 12px 14px !important;
+    background: #f8fafc !important;
+    border: 2px solid #cbd5e1 !important;
+    border-radius: 12px !important;
+    transition: all 0.2s ease !important;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.otp-code-input:focus {
+    background: #ffffff !important;
+    border-color: #0d9488 !important;
+    box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.15) !important;
+}
+
+.modal-content.volunteer-themed .otp-code-input:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15) !important;
+}
+
+.modal-content.admin-themed .otp-code-input:focus {
+    border-color: #4f46e5 !important;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15) !important;
+}
+
+.otp-timer-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+    margin-bottom: 16px;
+    font-size: 0.82rem;
+    color: #64748b;
+}
+
+.resend-otp-btn {
+    background: transparent;
+    border: none;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #0d9488;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+}
+
+.resend-otp-btn:hover {
+    color: #0f766e;
+}
+
+.modal-content.volunteer-themed .resend-otp-btn {
+    color: #3b82f6;
+}
+
+.modal-content.admin-themed .resend-otp-btn {
+    color: #4f46e5;
+}
+
+.auth-submit-btn.is-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.8;
+}

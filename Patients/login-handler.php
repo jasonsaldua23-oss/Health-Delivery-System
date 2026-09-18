@@ -382,6 +382,155 @@ if ($action === 'register_patient') {
     exit;
 }
 
+if ($action === 'request_password_otp') {
+    $role = strtolower(trim((string) ($_POST['role'] ?? 'patient')));
+    $identifier = trim((string) ($_POST['email'] ?? $_POST['username'] ?? ''));
+
+    if ($identifier === '') {
+        echo json_encode(['success' => false, 'message' => 'Please enter your email address or username.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    $targetEmail = '';
+    $targetName = '';
+
+    if ($role === 'patient') {
+        $email = strtolower($identifier);
+        $typoError = check_email_misspelling($email);
+        if ($typoError !== null) {
+            echo json_encode(['success' => false, 'message' => $typoError], JSON_THROW_ON_ERROR);
+            exit;
+        }
+
+        $account = fetch_patient_account_by_email($email);
+        if ($account === null) {
+            echo json_encode(['success' => false, 'message' => 'No patient account found with this email address. Please check your spelling or register.'], JSON_THROW_ON_ERROR);
+            exit;
+        }
+        $targetEmail = strtolower((string) ($account['email'] ?? $email));
+        $targetName = trim((string) (($account['first_name'] ?? '') . ' ' . ($account['last_name'] ?? '')));
+    } elseif ($role === 'staff') {
+        $email = strtolower($identifier);
+        $account = fetch_staff_account_by_email($email);
+        if ($account === null && ($email === 'staff_user' || str_contains($email, 'staff'))) {
+            $account = fetch_staff_account_by_email('staff-bata@bata.health');
+        }
+        if ($account === null) {
+            echo json_encode(['success' => false, 'message' => 'No staff account found with this work email address.'], JSON_THROW_ON_ERROR);
+            exit;
+        }
+        $targetEmail = strtolower((string) ($account['email'] ?? $email));
+        $targetName = (string) ($account['staff_name'] ?? 'Health Station Staff');
+    } elseif ($role === 'admin') {
+        $adminIdent = strtolower($identifier);
+        $account = fetch_admin_account_by_email($adminIdent) ?? fetch_admin_account_by_username($identifier);
+        if ($account === null && in_array($adminIdent, ['admin', 'admin_root', 'admintest@gmail.com'], true)) {
+            $account = fetch_admin_account_by_email('admintest@gmail.com');
+        }
+        if ($account === null) {
+            echo json_encode(['success' => false, 'message' => 'No administrator account found with this username or email.'], JSON_THROW_ON_ERROR);
+            exit;
+        }
+        $targetEmail = strtolower((string) ($account['email'] ?? 'admintest@gmail.com'));
+        $targetName = (string) ($account['admin_name'] ?? 'Administrator');
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Invalid portal role specified.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    if (!filter_var($targetEmail, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['success' => false, 'message' => 'The registered account does not have a valid email address configured.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    // Generate 6-digit numeric OTP code
+    $otpCode = (string) random_int(100000, 999999);
+    $expiresMinutes = 10;
+
+    // Persist OTP in database
+    $stored = store_password_reset_otp($role, $targetEmail, $otpCode, $expiresMinutes);
+    if (!$stored) {
+        echo json_encode(['success' => false, 'message' => 'Unable to initialize verification code. Please try again.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    // Dispatch transactional email via Mailer
+    $sent = sendPasswordResetOtpEmail($targetEmail, $targetName, $otpCode, $role, $expiresMinutes);
+
+    $maskedEmail = mask_email_address($targetEmail);
+
+    echo json_encode([
+        'success' => true,
+        'message' => "A 6-digit verification code has been sent to {$maskedEmail}.",
+        'email' => $targetEmail,
+        'masked_email' => $maskedEmail,
+        'role' => $role,
+        'expires_in' => $expiresMinutes * 60,
+    ], JSON_THROW_ON_ERROR);
+    exit;
+}
+
+if ($action === 'verify_and_reset_password') {
+    $role = strtolower(trim((string) ($_POST['role'] ?? 'patient')));
+    $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+    $otp = trim((string) ($_POST['otp'] ?? ''));
+    $newPassword = (string) ($_POST['new_password'] ?? '');
+    $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
+
+    if ($email === '') {
+        echo json_encode(['success' => false, 'message' => 'Email address is required.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    if (strlen($otp) !== 6 || !ctype_digit($otp)) {
+        echo json_encode(['success' => false, 'message' => 'Please enter the valid 6-digit numeric verification code.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    if (strlen($newPassword) < 6) {
+        echo json_encode(['success' => false, 'message' => 'New password must be at least 6 characters long.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    if ($newPassword !== $confirmPassword) {
+        echo json_encode(['success' => false, 'message' => 'Passwords do not match. Please verify your new password.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    // Verify OTP
+    $verification = verify_password_reset_otp($role, $email, $otp);
+    if (!$verification['valid']) {
+        echo json_encode(['success' => false, 'message' => $verification['error'] ?? 'Invalid verification code.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    // Update password in respective role table
+    $updated = false;
+    if ($role === 'patient') {
+        $updated = update_patient_password($email, $newPassword);
+    } elseif ($role === 'staff') {
+        $updated = update_staff_password($email, $newPassword);
+    } elseif ($role === 'admin') {
+        $updated = update_admin_password($email, $newPassword);
+    }
+
+    if (!$updated) {
+        echo json_encode(['success' => false, 'message' => 'Unable to update password. Please check your account and try again.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    // Mark OTP code as used
+    mark_password_reset_otp_used($role, $email, $otp);
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Your password has been successfully reset! You can now log in with your new credentials.',
+        'email' => $email,
+        'role' => $role,
+    ], JSON_THROW_ON_ERROR);
+    exit;
+}
+
 if ($action !== '' || ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     echo json_encode(['success' => false, 'message' => 'Invalid action'], JSON_THROW_ON_ERROR);
     exit;

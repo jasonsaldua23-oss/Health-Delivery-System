@@ -938,25 +938,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 </button>
             </div>
             <div class="modal-body">
-                <form class="auth-form" id="volunteerLoginForm" novalidate>
-                    <div class="field-group">
-                        <label for="volunteerEmail">Work Email</label>
-                        <div class="input-with-icon">
-                            <span class="field-icon"><?= iconSvg('mail'); ?></span>
-                            <input id="volunteerEmail" name="volunteer_email" type="email" value="" placeholder="e.g. staff-bata@bata.health or leo@bata.health" required>
+                <div id="volunteerLoginView">
+                    <form class="auth-form" id="volunteerLoginForm" novalidate>
+                        <div class="field-group">
+                            <label for="volunteerEmail">Work Email</label>
+                            <div class="input-with-icon">
+                                <span class="field-icon"><?= iconSvg('mail'); ?></span>
+                                <input id="volunteerEmail" name="volunteer_email" type="email" value="" placeholder="e.g. staff-bata@bata.health or leo@bata.health" required>
+                            </div>
+                            <small>Use your assigned health station email (e.g., staff-bata@bata.health, leo@bata.health)</small>
                         </div>
-                        <small>Use your assigned health station email (e.g., staff-bata@bata.health, leo@bata.health)</small>
-                    </div>
-                    <div class="field-group">
-                        <label for="volunteerPassword">Password</label>
-                        <div class="input-with-icon password-field">
-                            <span class="field-icon"><?= iconSvg('shield'); ?></span>
-                            <input id="volunteerPassword" name="volunteer_password" type="password" value="" placeholder="Enter your password" required>
-                            <button type="button" class="toggle-password" aria-label="Show password"><?= iconSvg('eye'); ?></button>
+                        <div class="field-group">
+                            <label for="volunteerPassword">Password</label>
+                            <div class="input-with-icon password-field">
+                                <span class="field-icon"><?= iconSvg('shield'); ?></span>
+                                <input id="volunteerPassword" name="volunteer_password" type="password" value="" placeholder="Enter your password" required>
+                                <button type="button" class="toggle-password" aria-label="Show password"><?= iconSvg('eye'); ?></button>
+                            </div>
                         </div>
+                        <div class="forgot-pw-row">
+                            <button type="button" class="forgot-pw-link" id="volunteerForgotPwLink">Forgot Password?</button>
+                        </div>
+                        <button type="submit" class="auth-submit-btn volunteer-submit" id="volunteerSignInBtn">Sign In</button>
+                    </form>
+                </div>
+
+                <!-- Volunteer Forgot Password Step -->
+                <div id="volunteerForgotView" class="hidden-step" aria-hidden="true">
+                    <!-- Request OTP View -->
+                    <div id="volunteerForgotRequestView">
+                        <div class="otp-instruction-card">
+                            <p>Enter your assigned health station work email address to receive a 6-digit password reset verification code.</p>
+                        </div>
+                        <form class="auth-form" id="volunteerForgotRequestForm" novalidate>
+                            <div class="field-group">
+                                <label for="volunteerForgotEmail">Work Email Address</label>
+                                <div class="input-with-icon">
+                                    <span class="field-icon"><?= iconSvg('mail'); ?></span>
+                                    <input id="volunteerForgotEmail" type="email" placeholder="staff-bata@bata.health" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="auth-submit-btn volunteer-submit" id="volunteerSendOtpBtn">Send Verification Code</button>
+                            <p class="auth-switch-text">
+                                Remember your password?
+                                <button type="button" class="text-action" id="volunteerBackToLoginBtn">Back to Sign In</button>
+                            </p>
+                        </form>
                     </div>
-                    <button type="submit" class="auth-submit-btn volunteer-submit">Sign In</button>
-                </form>
+
+                    <!-- Verify OTP & Reset Password View -->
+                    <div id="volunteerForgotResetView" class="hidden-step" aria-hidden="true">
+                        <div class="otp-dest-pill">
+                            <span>Code sent to: <strong id="volunteerMaskedEmail"></strong></span>
+                            <button type="button" class="mini-text-action" id="volunteerChangeEmailBtn">Change</button>
+                        </div>
+                        <form class="auth-form" id="volunteerForgotResetForm" novalidate>
+                            <div class="field-group">
+                                <label for="volunteerOtpInput">6-Digit Verification Code</label>
+                                <input id="volunteerOtpInput" type="text" maxlength="6" inputmode="numeric" placeholder="000000" class="otp-code-input" required autocomplete="one-time-code">
+                                <div class="otp-timer-box">
+                                    <span id="volunteerTimerText">Resend code in <strong>0:59</strong></span>
+                                    <button type="button" class="resend-otp-btn" id="volunteerResendOtpBtn" style="display:none;">Resend Code</button>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <label for="volunteerNewPassword">New Password</label>
+                                <div class="input-with-icon password-field">
+                                    <span class="field-icon"><?= iconSvg('lock'); ?></span>
+                                    <input id="volunteerNewPassword" type="password" placeholder="Min. 6 characters" minlength="6" required>
+                                    <button type="button" class="toggle-password" aria-label="Show password"><?= iconSvg('eye'); ?></button>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <label for="volunteerConfirmPassword">Confirm New Password</label>
+                                <div class="input-with-icon password-field">
+                                    <span class="field-icon"><?= iconSvg('lock'); ?></span>
+                                    <input id="volunteerConfirmPassword" type="password" placeholder="Re-enter new password" minlength="6" required>
+                                    <button type="button" class="toggle-password" aria-label="Show password"><?= iconSvg('eye'); ?></button>
+                                </div>
+                            </div>
+                            <button type="submit" class="auth-submit-btn volunteer-submit" id="volunteerResetPasswordBtn">Reset Password</button>
+                            <p class="auth-switch-text">
+                                <button type="button" class="text-action" id="volunteerResetBackToLoginBtn">← Back to Sign In</button>
+                            </p>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -970,8 +1037,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                         <?= iconSvg('shield'); ?>
                     </div>
                     <div>
-                        <h2 class="modal-title">Admin Login</h2>
-                        <p class="modal-subtitle">System Administration Portal</p>
+                        <h2 class="modal-title" id="adminModalTitle">Admin Login</h2>
+                        <p class="modal-subtitle" id="adminModalSubtitle">System Administration Portal</p>
                     </div>
                 </div>
                 <button type="button" class="modal-close" id="adminModalClose">
@@ -979,24 +1046,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 </button>
             </div>
             <div class="modal-body">
-                <form class="auth-form" id="adminLoginForm" novalidate>
-                    <div class="field-group">
-                        <label for="adminUsername">Username</label>
-                        <div class="input-with-icon">
-                            <span class="field-icon"><?= iconSvg('user'); ?></span>
-                            <input id="adminUsername" name="admin_username" type="text" value="" placeholder="admin" required>
+                <div id="adminLoginView">
+                    <form class="auth-form" id="adminLoginForm" novalidate>
+                        <div class="field-group">
+                            <label for="adminUsername">Username</label>
+                            <div class="input-with-icon">
+                                <span class="field-icon"><?= iconSvg('user'); ?></span>
+                                <input id="adminUsername" name="admin_username" type="text" value="" placeholder="admin" required>
+                            </div>
                         </div>
-                    </div>
-                    <div class="field-group">
-                        <label for="adminPassword">Password</label>
-                        <div class="input-with-icon password-field">
-                            <span class="field-icon"><?= iconSvg('lock'); ?></span>
-                            <input id="adminPassword" name="admin_password" type="password" value="" placeholder="Enter your password" required>
-                            <button type="button" class="toggle-password" aria-label="Show password"><?= iconSvg('eye'); ?></button>
+                        <div class="field-group">
+                            <label for="adminPassword">Password</label>
+                            <div class="input-with-icon password-field">
+                                <span class="field-icon"><?= iconSvg('lock'); ?></span>
+                                <input id="adminPassword" name="admin_password" type="password" value="" placeholder="Enter your password" required>
+                                <button type="button" class="toggle-password" aria-label="Show password"><?= iconSvg('eye'); ?></button>
+                            </div>
                         </div>
+                        <div class="forgot-pw-row">
+                            <button type="button" class="forgot-pw-link" id="adminForgotPwLink">Forgot Password?</button>
+                        </div>
+                        <button type="submit" class="auth-submit-btn admin-submit" id="adminSignInBtn">Sign In</button>
+                    </form>
+                </div>
+
+                <!-- Admin Forgot Password Step -->
+                <div id="adminForgotView" class="hidden-step" aria-hidden="true">
+                    <!-- Request OTP View -->
+                    <div id="adminForgotRequestView">
+                        <div class="otp-instruction-card">
+                            <p>Enter your administrator username or email address to receive a 6-digit password reset verification code.</p>
+                        </div>
+                        <form class="auth-form" id="adminForgotRequestForm" novalidate>
+                            <div class="field-group">
+                                <label for="adminForgotEmail">Admin Username or Email</label>
+                                <div class="input-with-icon">
+                                    <span class="field-icon"><?= iconSvg('user'); ?></span>
+                                    <input id="adminForgotEmail" type="text" placeholder="admintest@gmail.com or admin" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="auth-submit-btn admin-submit" id="adminSendOtpBtn">Send Verification Code</button>
+                            <p class="auth-switch-text">
+                                Remember your password?
+                                <button type="button" class="text-action" id="adminBackToLoginBtn">Back to Sign In</button>
+                            </p>
+                        </form>
                     </div>
-                    <button type="submit" class="auth-submit-btn admin-submit">Sign In</button>
-                </form>
+
+                    <!-- Verify OTP & Reset Password View -->
+                    <div id="adminForgotResetView" class="hidden-step" aria-hidden="true">
+                        <div class="otp-dest-pill">
+                            <span>Code sent to: <strong id="adminMaskedEmail"></strong></span>
+                            <button type="button" class="mini-text-action" id="adminChangeEmailBtn">Change</button>
+                        </div>
+                        <form class="auth-form" id="adminForgotResetForm" novalidate>
+                            <div class="field-group">
+                                <label for="adminOtpInput">6-Digit Verification Code</label>
+                                <input id="adminOtpInput" type="text" maxlength="6" inputmode="numeric" placeholder="000000" class="otp-code-input" required autocomplete="one-time-code">
+                                <div class="otp-timer-box">
+                                    <span id="adminTimerText">Resend code in <strong>0:59</strong></span>
+                                    <button type="button" class="resend-otp-btn" id="adminResendOtpBtn" style="display:none;">Resend Code</button>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <label for="adminNewPassword">New Password</label>
+                                <div class="input-with-icon password-field">
+                                    <span class="field-icon"><?= iconSvg('lock'); ?></span>
+                                    <input id="adminNewPassword" type="password" placeholder="Min. 6 characters" minlength="6" required>
+                                    <button type="button" class="toggle-password" aria-label="Show password"><?= iconSvg('eye'); ?></button>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <label for="adminConfirmPassword">Confirm New Password</label>
+                                <div class="input-with-icon password-field">
+                                    <span class="field-icon"><?= iconSvg('lock'); ?></span>
+                                    <input id="adminConfirmPassword" type="password" placeholder="Re-enter new password" minlength="6" required>
+                                    <button type="button" class="toggle-password" aria-label="Show password"><?= iconSvg('eye'); ?></button>
+                                </div>
+                            </div>
+                            <button type="submit" class="auth-submit-btn admin-submit" id="adminResetPasswordBtn">Reset Password</button>
+                            <p class="auth-switch-text">
+                                <button type="button" class="text-action" id="adminResetBackToLoginBtn">← Back to Sign In</button>
+                            </p>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1162,13 +1296,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                             </div>
                         </div>
 
-                        <button type="submit" class="auth-submit-btn">Log In</button>
+                        <div class="forgot-pw-row">
+                            <button type="button" class="forgot-pw-link" id="patientForgotPwLink">Forgot Password?</button>
+                        </div>
+
+                        <button type="submit" class="auth-submit-btn" id="patientLoginBtn">Log In</button>
 
                         <p class="auth-switch-text">
                             Don’t have an account?
                             <button type="button" class="text-action" data-go-step="firstTimer">Create one</button>
                         </p>
                     </form>
+                </div>
+
+                <!-- Patient Forgot Password Step -->
+                <div id="patientForgotStep" class="modal-step hidden-step" aria-hidden="true">
+                    <!-- Request OTP View -->
+                    <div id="patientForgotRequestView">
+                        <div class="otp-instruction-card">
+                            <p>Enter your registered patient email address to receive a 6-digit password reset verification code.</p>
+                        </div>
+                        <form class="auth-form" id="patientForgotRequestForm" novalidate>
+                            <div class="field-group">
+                                <label for="patientForgotEmail">Email Address</label>
+                                <div class="input-with-icon">
+                                    <span class="field-icon"><?= iconSvg('mail'); ?></span>
+                                    <input id="patientForgotEmail" type="email" placeholder="juan@email.com" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="auth-submit-btn" id="patientSendOtpBtn">Send Verification Code</button>
+                            <p class="auth-switch-text">
+                                Remember your password?
+                                <button type="button" class="text-action" id="patientBackToLoginBtn">Back to Log In</button>
+                            </p>
+                        </form>
+                    </div>
+
+                    <!-- Verify OTP & Reset Password View -->
+                    <div id="patientForgotResetView" class="hidden-step" aria-hidden="true">
+                        <div class="otp-dest-pill">
+                            <span>Code sent to: <strong id="patientMaskedEmail"></strong></span>
+                            <button type="button" class="mini-text-action" id="patientChangeEmailBtn">Change</button>
+                        </div>
+                        <form class="auth-form" id="patientForgotResetForm" novalidate>
+                            <div class="field-group">
+                                <label for="patientOtpInput">6-Digit Verification Code</label>
+                                <input id="patientOtpInput" type="text" maxlength="6" inputmode="numeric" placeholder="000000" class="otp-code-input" required autocomplete="one-time-code">
+                                <div class="otp-timer-box">
+                                    <span id="patientTimerText">Resend code in <strong>0:59</strong></span>
+                                    <button type="button" class="resend-otp-btn" id="patientResendOtpBtn" style="display:none;">Resend Code</button>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <label for="patientNewPassword">New Password</label>
+                                <div class="input-with-icon password-field">
+                                    <span class="field-icon"><?= iconSvg('shield'); ?></span>
+                                    <input id="patientNewPassword" type="password" placeholder="Min. 6 characters" minlength="6" required>
+                                    <button type="button" class="toggle-password" aria-label="Show password"><?= iconSvg('eye'); ?></button>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <label for="patientConfirmPassword">Confirm New Password</label>
+                                <div class="input-with-icon password-field">
+                                    <span class="field-icon"><?= iconSvg('shield'); ?></span>
+                                    <input id="patientConfirmPassword" type="password" placeholder="Re-enter new password" minlength="6" required>
+                                    <button type="button" class="toggle-password" aria-label="Show password"><?= iconSvg('eye'); ?></button>
+                                </div>
+                            </div>
+                            <button type="submit" class="auth-submit-btn" id="patientResetPasswordBtn">Reset Password</button>
+                            <p class="auth-switch-text">
+                                <button type="button" class="text-action" id="patientResetBackToLoginBtn">← Back to Log In</button>
+                            </p>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1278,11 +1478,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const stepMap = {
             choice: 'patientChoice',
             firstTimer: 'firstTimerStep',
-            login: 'loginStep'
+            login: 'loginStep',
+            forgot: 'patientForgotStep'
         };
 
         const activeStepId = stepMap[stepName] || 'patientChoice';
-        const steps = [choiceStep, firstTimerStep, loginStep];
+        const patientForgotStepEl = document.getElementById('patientForgotStep');
+        const steps = [choiceStep, firstTimerStep, loginStep, patientForgotStepEl];
 
         steps.forEach((step) => {
             if (!step) return;
@@ -1297,6 +1499,9 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (stepName === 'login') {
             modalTitle.textContent = 'Log In';
             modalSubtitle.textContent = 'Welcome back';
+        } else if (stepName === 'forgot') {
+            modalTitle.textContent = 'Forgot Password';
+            modalSubtitle.textContent = 'Password Recovery & Mailer OTP';
         } else {
             modalTitle.textContent = 'Patient Portal';
             modalSubtitle.textContent = 'Bacolod Health Delivery System';
@@ -1312,6 +1517,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function closePatientModal() {
         patientModal.classList.add('hidden');
         document.body.style.overflow = 'auto';
+        patientForgotCtrl?.resetToLogin();
         showPatientStep('choice');
     }
 
@@ -1323,6 +1529,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function closeVolunteerModal() {
         volunteerModal.classList.add('hidden');
         document.body.style.overflow = 'auto';
+        volunteerForgotCtrl?.resetToLogin();
     }
 
     function openAdminModal() {
@@ -1333,6 +1540,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function closeAdminModal() {
         adminModal.classList.add('hidden');
         document.body.style.overflow = 'auto';
+        adminForgotCtrl?.resetToLogin();
     }
 
     portalButtons.forEach((button) => {
@@ -1812,6 +2020,360 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(() => {
             window.location.href = '../Admin/index.php?page=dashboard';
         });
+    });
+
+    // -------------------------------------------------------------
+    // Generic Controller for Forgot Password & Mailer OTP Flow
+    // -------------------------------------------------------------
+    function createForgotPwController(options) {
+        const role = options.role;
+        const theme = options.theme;
+        const loginView = options.loginView;
+        const forgotView = options.forgotView;
+        const requestView = options.requestView;
+        const resetView = options.resetView;
+        const forgotLink = options.forgotLink;
+        const backToLoginBtn = options.backToLoginBtn;
+        const resetBackToLoginBtn = options.resetBackToLoginBtn;
+        const changeEmailBtn = options.changeEmailBtn;
+        const emailInput = options.emailInput;
+        const sendOtpBtn = options.sendOtpBtn;
+        const requestForm = options.requestForm;
+        const maskedEmailEl = options.maskedEmailEl;
+        const otpInput = options.otpInput;
+        const timerTextEl = options.timerTextEl;
+        const resendOtpBtn = options.resendOtpBtn;
+        const newPwInput = options.newPwInput;
+        const confirmPwInput = options.confirmPwInput;
+        const resetPwBtn = options.resetPwBtn;
+        const resetForm = options.resetForm;
+        const onOpenForgot = options.onOpenForgot;
+        const onReturnToLogin = options.onReturnToLogin;
+
+        let activeEmail = '';
+        let timerInterval = null;
+        let remainingSeconds = 60;
+
+        function startResendCountdown(seconds = 60) {
+            clearInterval(timerInterval);
+            remainingSeconds = seconds;
+            if (resendOtpBtn) resendOtpBtn.style.display = 'none';
+            if (timerTextEl) timerTextEl.style.display = 'inline';
+
+            function updateTimer() {
+                const mins = Math.floor(remainingSeconds / 60);
+                const secs = remainingSeconds % 60;
+                const formatted = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                if (timerTextEl) {
+                    timerTextEl.innerHTML = `Resend code in <strong>${formatted}</strong>`;
+                }
+                if (remainingSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    if (timerTextEl) timerTextEl.style.display = 'none';
+                    if (resendOtpBtn) resendOtpBtn.style.display = 'inline';
+                }
+                remainingSeconds--;
+            }
+
+            updateTimer();
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function stopCountdown() {
+            clearInterval(timerInterval);
+        }
+
+        function showRequestState() {
+            if (loginView) loginView.classList.add('hidden-step');
+            if (forgotView) forgotView.classList.remove('hidden-step');
+            if (requestView) requestView.classList.remove('hidden-step');
+            if (resetView) resetView.classList.add('hidden-step');
+            if (onOpenForgot) onOpenForgot();
+            if (emailInput) {
+                setTimeout(() => emailInput.focus(), 150);
+            }
+        }
+
+        function showResetState(email, maskedEmail) {
+            activeEmail = email;
+            if (maskedEmailEl) maskedEmailEl.textContent = maskedEmail || email;
+            if (requestView) requestView.classList.add('hidden-step');
+            if (resetView) resetView.classList.remove('hidden-step');
+            if (otpInput) {
+                otpInput.value = '';
+                setTimeout(() => otpInput.focus(), 150);
+            }
+            if (newPwInput) newPwInput.value = '';
+            if (confirmPwInput) confirmPwInput.value = '';
+            startResendCountdown(60);
+        }
+
+        function returnToLogin() {
+            stopCountdown();
+            if (forgotView) forgotView.classList.add('hidden-step');
+            if (requestView) requestView.classList.remove('hidden-step');
+            if (resetView) resetView.classList.add('hidden-step');
+            if (loginView) loginView.classList.remove('hidden-step');
+            if (onReturnToLogin) onReturnToLogin();
+        }
+
+        forgotLink?.addEventListener('click', function(e) {
+            e.preventDefault();
+            showRequestState();
+        });
+
+        backToLoginBtn?.addEventListener('click', function(e) {
+            e.preventDefault();
+            returnToLogin();
+        });
+
+        resetBackToLoginBtn?.addEventListener('click', function(e) {
+            e.preventDefault();
+            returnToLogin();
+        });
+
+        changeEmailBtn?.addEventListener('click', function(e) {
+            e.preventDefault();
+            stopCountdown();
+            if (resetView) resetView.classList.add('hidden-step');
+            if (requestView) requestView.classList.remove('hidden-step');
+            if (emailInput) emailInput.focus();
+        });
+
+        otpInput?.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '').slice(0, 6);
+        });
+
+        function handleSendOtp(e) {
+            e.preventDefault();
+            const identifier = (emailInput?.value || '').trim();
+            if (!identifier) {
+                window.showSystemToast?.('Please enter your email address or username.', { type: 'warning', theme: theme, title: 'Missing Information' });
+                return;
+            }
+
+            if (sendOtpBtn) {
+                sendOtpBtn.disabled = true;
+                sendOtpBtn.classList.add('is-loading');
+                sendOtpBtn.textContent = 'Sending Verification Code...';
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'request_password_otp');
+            formData.append('role', role);
+            formData.append('email', identifier);
+
+            fetch('login-handler.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (sendOtpBtn) {
+                    sendOtpBtn.disabled = false;
+                    sendOtpBtn.classList.remove('is-loading');
+                    sendOtpBtn.textContent = 'Send Verification Code';
+                }
+                if (data.success) {
+                    window.showSystemToast?.(data.message || 'Verification code sent to your email.', { type: 'success', theme: theme, title: 'Code Dispatched' });
+                    showResetState(data.email || identifier, data.masked_email || identifier);
+                } else {
+                    window.showSystemToast?.(data.message || 'Unable to send verification code.', { type: 'error', theme: theme, title: 'Request Failed' });
+                }
+            })
+            .catch(() => {
+                if (sendOtpBtn) {
+                    sendOtpBtn.disabled = false;
+                    sendOtpBtn.classList.remove('is-loading');
+                    sendOtpBtn.textContent = 'Send Verification Code';
+                }
+                window.showSystemToast?.('Network error. Please try again.', { type: 'error', theme: theme, title: 'Connection Error' });
+            });
+        }
+
+        requestForm?.addEventListener('submit', handleSendOtp);
+
+        resendOtpBtn?.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!activeEmail) return;
+
+            resendOtpBtn.disabled = true;
+            resendOtpBtn.textContent = 'Resending...';
+
+            const formData = new FormData();
+            formData.append('action', 'request_password_otp');
+            formData.append('role', role);
+            formData.append('email', activeEmail);
+
+            fetch('login-handler.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                resendOtpBtn.disabled = false;
+                resendOtpBtn.textContent = 'Resend Code';
+                if (data.success) {
+                    window.showSystemToast?.('A fresh verification code was sent to your email.', { type: 'success', theme: theme, title: 'Code Resent' });
+                    startResendCountdown(60);
+                } else {
+                    window.showSystemToast?.(data.message || 'Unable to resend verification code.', { type: 'error', theme: theme, title: 'Resend Failed' });
+                }
+            })
+            .catch(() => {
+                resendOtpBtn.disabled = false;
+                resendOtpBtn.textContent = 'Resend Code';
+                window.showSystemToast?.('Network error during resend.', { type: 'error', theme: theme, title: 'Connection Error' });
+            });
+        });
+
+        resetForm?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const otpVal = (otpInput?.value || '').trim();
+            const newPw = (newPwInput?.value || '').trim();
+            const confirmPw = (confirmPwInput?.value || '').trim();
+
+            if (!otpVal || otpVal.length !== 6) {
+                window.showSystemToast?.('Please enter the 6-digit verification code.', { type: 'warning', theme: theme, title: 'Invalid Code' });
+                otpInput?.focus();
+                return;
+            }
+
+            if (!newPw || newPw.length < 6) {
+                window.showSystemToast?.('New password must be at least 6 characters long.', { type: 'warning', theme: theme, title: 'Password Too Short' });
+                newPwInput?.focus();
+                return;
+            }
+
+            if (newPw !== confirmPw) {
+                window.showSystemToast?.('New password and confirmation password do not match.', { type: 'error', theme: theme, title: 'Mismatch Error' });
+                confirmPwInput?.focus();
+                return;
+            }
+
+            if (resetPwBtn) {
+                resetPwBtn.disabled = true;
+                resetPwBtn.classList.add('is-loading');
+                resetPwBtn.textContent = 'Updating Password...';
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'verify_and_reset_password');
+            formData.append('role', role);
+            formData.append('email', activeEmail);
+            formData.append('otp', otpVal);
+            formData.append('new_password', newPw);
+            formData.append('confirm_password', confirmPw);
+
+            fetch('login-handler.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (resetPwBtn) {
+                    resetPwBtn.disabled = false;
+                    resetPwBtn.classList.remove('is-loading');
+                    resetPwBtn.textContent = 'Reset Password';
+                }
+                if (data.success) {
+                    window.showSystemToast?.(data.message || 'Password reset successfully! You may now sign in.', { type: 'success', theme: theme, title: 'Password Updated' });
+                    returnToLogin();
+                } else {
+                    window.showSystemToast?.(data.message || 'Password reset failed. Please check your verification code.', { type: 'error', theme: theme, title: 'Reset Failed' });
+                }
+            })
+            .catch(() => {
+                if (resetPwBtn) {
+                    resetPwBtn.disabled = false;
+                    resetPwBtn.classList.remove('is-loading');
+                    resetPwBtn.textContent = 'Reset Password';
+                }
+                window.showSystemToast?.('Network error. Please try again.', { type: 'error', theme: theme, title: 'Connection Error' });
+            });
+        });
+
+        return {
+            resetToLogin: returnToLogin,
+            stopTimer: stopCountdown
+        };
+    }
+
+    // Initialize Forgot Password for Patient Portal
+    const patientForgotCtrl = createForgotPwController({
+        role: 'patient',
+        theme: 'patient',
+        loginView: loginStep,
+        forgotView: document.getElementById('patientForgotStep'),
+        requestView: document.getElementById('patientForgotRequestView'),
+        resetView: document.getElementById('patientForgotResetView'),
+        forgotLink: document.getElementById('patientForgotPwLink'),
+        backToLoginBtn: document.getElementById('patientBackToLoginBtn'),
+        resetBackToLoginBtn: document.getElementById('patientResetBackToLoginBtn'),
+        changeEmailBtn: document.getElementById('patientChangeEmailBtn'),
+        emailInput: document.getElementById('patientForgotEmail'),
+        sendOtpBtn: document.getElementById('patientSendOtpBtn'),
+        requestForm: document.getElementById('patientForgotRequestForm'),
+        maskedEmailEl: document.getElementById('patientMaskedEmail'),
+        otpInput: document.getElementById('patientOtpInput'),
+        timerTextEl: document.getElementById('patientTimerText'),
+        resendOtpBtn: document.getElementById('patientResendOtpBtn'),
+        newPwInput: document.getElementById('patientNewPassword'),
+        confirmPwInput: document.getElementById('patientConfirmPassword'),
+        resetPwBtn: document.getElementById('patientResetPasswordBtn'),
+        resetForm: document.getElementById('patientForgotResetForm'),
+        onOpenForgot: () => showPatientStep('forgot'),
+        onReturnToLogin: () => showPatientStep('login')
+    });
+
+    // Initialize Forgot Password for Volunteer / Staff Portal
+    const volunteerForgotCtrl = createForgotPwController({
+        role: 'staff',
+        theme: 'volunteer',
+        loginView: document.getElementById('volunteerLoginView'),
+        forgotView: document.getElementById('volunteerForgotView'),
+        requestView: document.getElementById('volunteerForgotRequestView'),
+        resetView: document.getElementById('volunteerForgotResetView'),
+        forgotLink: document.getElementById('volunteerForgotPwLink'),
+        backToLoginBtn: document.getElementById('volunteerBackToLoginBtn'),
+        resetBackToLoginBtn: document.getElementById('volunteerResetBackToLoginBtn'),
+        changeEmailBtn: document.getElementById('volunteerChangeEmailBtn'),
+        emailInput: document.getElementById('volunteerForgotEmail'),
+        sendOtpBtn: document.getElementById('volunteerSendOtpBtn'),
+        requestForm: document.getElementById('volunteerForgotRequestForm'),
+        maskedEmailEl: document.getElementById('volunteerMaskedEmail'),
+        otpInput: document.getElementById('volunteerOtpInput'),
+        timerTextEl: document.getElementById('volunteerTimerText'),
+        resendOtpBtn: document.getElementById('volunteerResendOtpBtn'),
+        newPwInput: document.getElementById('volunteerNewPassword'),
+        confirmPwInput: document.getElementById('volunteerConfirmPassword'),
+        resetPwBtn: document.getElementById('volunteerResetPasswordBtn'),
+        resetForm: document.getElementById('volunteerForgotResetForm')
+    });
+
+    // Initialize Forgot Password for Admin Portal
+    const adminForgotCtrl = createForgotPwController({
+        role: 'admin',
+        theme: 'admin',
+        loginView: document.getElementById('adminLoginView'),
+        forgotView: document.getElementById('adminForgotView'),
+        requestView: document.getElementById('adminForgotRequestView'),
+        resetView: document.getElementById('adminForgotResetView'),
+        forgotLink: document.getElementById('adminForgotPwLink'),
+        backToLoginBtn: document.getElementById('adminBackToLoginBtn'),
+        resetBackToLoginBtn: document.getElementById('adminResetBackToLoginBtn'),
+        changeEmailBtn: document.getElementById('adminChangeEmailBtn'),
+        emailInput: document.getElementById('adminForgotEmail'),
+        sendOtpBtn: document.getElementById('adminSendOtpBtn'),
+        requestForm: document.getElementById('adminForgotRequestForm'),
+        maskedEmailEl: document.getElementById('adminMaskedEmail'),
+        otpInput: document.getElementById('adminOtpInput'),
+        timerTextEl: document.getElementById('adminTimerText'),
+        resendOtpBtn: document.getElementById('adminResendOtpBtn'),
+        newPwInput: document.getElementById('adminNewPassword'),
+        confirmPwInput: document.getElementById('adminConfirmPassword'),
+        resetPwBtn: document.getElementById('adminResetPasswordBtn'),
+        resetForm: document.getElementById('adminForgotResetForm')
     });
 
     document.querySelectorAll('.toggle-password').forEach((toggle) => {
