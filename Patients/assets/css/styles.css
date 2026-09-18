@@ -524,9 +524,12 @@ textarea { resize: vertical; min-height: 120px; }
     background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
 }
 
-.portal-card .portal-card-icon svg {
-    width: 36px;
-    height: 36px;
+.portal-card .portal-card-icon svg,
+.portal-card-icon svg {
+    width: 38px !important;
+    height: 38px !important;
+    max-width: 38px !important;
+    max-height: 38px !important;
     display: block;
 }
 
@@ -976,8 +979,11 @@ textarea { resize: vertical; min-height: 120px; }
 }
 
 .modal-header-icon svg {
-    width: 20px;
-    height: 20px;
+    width: 22px !important;
+    height: 22px !important;
+    max-width: 22px !important;
+    max-height: 22px !important;
+    display: block;
 }
 
 .modal-title {
@@ -2174,8 +2180,11 @@ textarea { resize: vertical; min-height: 120px; }
     }
 
     .portal-card-icon svg {
-        width: 26px;
-        height: 26px;
+        width: 28px !important;
+        height: 28px !important;
+        max-width: 28px !important;
+        max-height: 28px !important;
+        display: block;
     }
 
     .portal-card h3 {
