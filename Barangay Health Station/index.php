@@ -5876,22 +5876,64 @@ window.openStaffInfantModal = function(infant) {
         photoHtml = `<?= staff_icon('baby'); ?>`;
     }
 
-    // Vaccine dose badges HTML
+    // Aggregate vaccine counts and latest dates from vaccine_counts, vaccine_doses, and appointments
+    const vaccineSummary = {};
+    if (infant.vaccine_doses && Array.isArray(infant.vaccine_doses)) {
+        infant.vaccine_doses.forEach(d => {
+            const vType = (d.vaccine_type || '').trim();
+            if (vType && vType.toLowerCase() !== 'not recorded' && vType.toLowerCase() !== 'not yet recorded') {
+                if (!vaccineSummary[vType]) {
+                    vaccineSummary[vType] = { count: 0, latestDate: d.date || '' };
+                }
+                vaccineSummary[vType].count++;
+                if (d.date && (!vaccineSummary[vType].latestDate || d.date > vaccineSummary[vType].latestDate)) {
+                    vaccineSummary[vType].latestDate = d.date;
+                }
+            }
+        });
+    }
+    if (infant.appointments && Array.isArray(infant.appointments)) {
+        infant.appointments.forEach(a => {
+            const vType = (a.vaccine_type || '').trim();
+            if (vType && vType.toLowerCase() !== 'not recorded' && vType.toLowerCase() !== 'not yet recorded') {
+                if (!vaccineSummary[vType]) {
+                    vaccineSummary[vType] = { count: 1, latestDate: a.preferred_date || '' };
+                }
+            }
+        });
+    }
+    if (infant.vaccine_counts && typeof infant.vaccine_counts === 'object') {
+        Object.keys(infant.vaccine_counts).forEach(vType => {
+            const vt = (vType || '').trim();
+            if (vt && vt.toLowerCase() !== 'not recorded' && vt.toLowerCase() !== 'not yet recorded') {
+                const cnt = Number(infant.vaccine_counts[vType]) || 1;
+                if (!vaccineSummary[vt]) {
+                    vaccineSummary[vt] = { count: cnt, latestDate: '' };
+                } else if (cnt > vaccineSummary[vt].count) {
+                    vaccineSummary[vt].count = cnt;
+                }
+            }
+        });
+    }
+
     let dosesHtml = '';
-    const vaccineKeys = Object.keys(infant.vaccine_doses || {});
-    if (vaccineKeys.length > 0) {
-        dosesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">';
-        vaccineKeys.forEach(vName => {
-            const count = infant.vaccine_doses[vName];
-            dosesHtml += `<div style="background: #e0f2fe; border: 1.5px solid #7dd3fc; color: #0369a1; padding: 6px 14px; border-radius: 10px; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-                <?= staff_icon('syringe'); ?>
+    const vNames = Object.keys(vaccineSummary);
+    if (vNames.length > 0) {
+        dosesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">';
+        vNames.forEach(vName => {
+            const info = vaccineSummary[vName];
+            const dateStr = info.latestDate ? new Date(info.latestDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+            dosesHtml += `
+            <div style="background: #f0f9ff; border: 1.5px solid #7dd3fc; color: #0369a1; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.08);">
+                <span style="display: inline-flex; align-items: center; color: #0284c7;"><?= staff_icon('syringe'); ?></span>
                 <span>${staffEscapeHtml(vName)}</span>
-                <span style="background: #0284c7; color: #ffffff; padding: 2px 7px; border-radius: 999px; font-size: 0.75rem; margin-left: 4px;">${count} ${count === 1 ? 'Dose' : 'Doses'}</span>
+                <span style="background: #0284c7; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${info.count} ${info.count === 1 ? 'Dose Taken' : 'Doses Taken'}</span>
+                ${dateStr ? `<span style="font-size: 0.74rem; color: #0284c7; font-weight: 600; opacity: 0.85;">(${staffEscapeHtml(dateStr)})</span>` : ''}
             </div>`;
         });
         dosesHtml += '</div>';
     } else {
-        dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 6px 0 0 0;">No immunization doses recorded yet.</p>';
+        dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 8px 0 0 0;">No immunization doses recorded yet for this infant.</p>';
     }
 
     // Timeline rows HTML
@@ -5940,14 +5982,6 @@ window.openStaffInfantModal = function(infant) {
         ? `<span style="background: #fef3c7; color: #92400e; border: 1.5px solid #fde68a; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">Registered Guardian</span>`
         : `<span style="background: #e0f2fe; color: #0369a1; border: 1.5px solid #bae6fd; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">${staffEscapeHtml(infant.role_label || 'Registered Parent')}</span>`;
 
-    const roleNoticeHtml = isGuardian
-        ? `<div style="margin-top: 8px; font-size: 0.83rem; color: #78350f; background: #fffbeb; border: 1px solid #fde68a; padding: 7px 12px; border-radius: 8px; line-height: 1.4;">
-            <strong>Account Holder Role:</strong> Registered Guardian (${staffEscapeHtml(infant.parent_name || infant.guardian_name || 'Account Holder')}, ID: #${staffEscapeHtml(infant.patient_id)}) &bull; <em>Patient is registered as Guardian, not biological parent.</em>
-           </div>`
-        : `<div style="margin-top: 8px; font-size: 0.83rem; color: #0369a1; background: #eff6ff; border: 1px solid #bfdbfe; padding: 7px 12px; border-radius: 8px; line-height: 1.4;">
-            <strong>Account Holder Role:</strong> ${staffEscapeHtml(infant.role_label || 'Registered Parent')} (${staffEscapeHtml(infant.parent_name || 'Account Holder')}, ID: #${staffEscapeHtml(infant.patient_id)})
-           </div>`;
-
     body.innerHTML = `
     <!-- Header Demographic Card -->
     <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1.5px solid #bae6fd; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 18px; margin-bottom: 22px; flex-wrap: wrap;">
@@ -5958,7 +5992,6 @@ window.openStaffInfantModal = function(infant) {
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #0c4a6e;">${staffEscapeHtml(infant.full_name)}</h3>
                 <span style="background: #0284c7; color: #ffffff; font-size: 0.75rem; font-weight: 700; padding: 2px 9px; border-radius: 999px;">Infant Record</span>
-                ${roleBadgeHtml}
             </div>
             <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 0.84rem; color: #0369a1; flex-wrap: wrap;">
                 <span><strong>Age:</strong> ${staffEscapeHtml(infant.age_label)}</span>
@@ -5967,7 +6000,10 @@ window.openStaffInfantModal = function(infant) {
                 <span>&bull;</span>
                 <span><strong>Gender:</strong> ${staffEscapeHtml(infant.gender || 'Not specified')}</span>
             </div>
-            ${roleNoticeHtml}
+            <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 0.86rem; color: #075985; flex-wrap: wrap;">
+                <strong>Account Holder Role:</strong>
+                ${roleBadgeHtml}
+            </div>
         </div>
     </div>
 
@@ -6305,8 +6341,10 @@ function toggleDualStatusFilter(clickedVal, otherVal, paramName, event) {
         const isUnattendedModalOpen = unattendedModal && !unattendedModal.hasAttribute('hidden');
         const profileModalEl = document.getElementById('patientProfileModalBackdrop');
         const isProfileModalOpen = profileModalEl && (profileModalEl.classList.contains('is-active-modal') || (!profileModalEl.classList.contains('hidden') && profileModalEl.style.display !== 'none'));
+        const staffInfantModal = document.getElementById('staffInfantModalBackdrop');
+        const isStaffInfantModalOpen = staffInfantModal && (!staffInfantModal.classList.contains('hidden') && staffInfantModal.style.display !== 'none');
 
-        if (isCameraActive || isTyping || isModalOpen || isEventModalOpen || isUnattendedModalOpen || isProfileModalOpen) return;
+        if (isCameraActive || isTyping || isModalOpen || isEventModalOpen || isUnattendedModalOpen || isProfileModalOpen || isStaffInfantModalOpen) return;
 
         try {
             isStaffSyncing = true;
@@ -6318,6 +6356,14 @@ function toggleDualStatusFilter(clickedVal, otherVal, paramName, event) {
             const parser = new DOMParser();
             const newDoc = parser.parseFromString(html, 'text/html');
 
+            // Capture all currently open infant sub-profile popup IDs so sync doesn't close them
+            const openTrayIds = new Set();
+            document.querySelectorAll('.patient-infant-subprofile-popup').forEach(tray => {
+                if (tray.style.display === 'block') {
+                    openTrayIds.add(tray.id);
+                }
+            });
+
             staffSyncSelectors.forEach(selector => {
                 const currentEls = document.querySelectorAll(selector);
                 const newEls = newDoc.querySelectorAll(selector);
@@ -6328,6 +6374,14 @@ function toggleDualStatusFilter(clickedVal, otherVal, paramName, event) {
                             curEl.innerHTML = newEl.innerHTML;
                         }
                     });
+                }
+            });
+
+            // Restore open state for all previously open infant sub-profile popups
+            openTrayIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.style.display = 'block';
                 }
             });
         } catch (err) {

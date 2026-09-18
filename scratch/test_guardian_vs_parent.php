@@ -49,26 +49,39 @@ echo "  ✓ 'Child' (Male Account): Correctly resolved as Father.\n";
 echo "\n[CASE 2] Database Integration Test: Guardian Account with Infant Booking\n";
 
 // Clean test records
-$db->query("DELETE FROM appointments WHERE appointment_code = 'TEST-GDN-01'");
+$db->query("DELETE FROM appointments WHERE patient_id = 'P-GDN-TEST' OR reference_code LIKE 'REF-GDN-%'");
 $db->query("DELETE FROM infant_profiles WHERE patient_id = 'P-GDN-TEST'");
 
-$db->query("INSERT INTO appointments (
-    patient_id, service_slug, service_name, station_slug, station_name,
-    appointment_code, reference_code, preferred_date, preferred_time,
-    first_name, last_name, birth_date, gender, contact_number, complete_address,
-    recipient_first_name, recipient_last_name, recipient_birth_date, immunization_relationship,
-    status
-) VALUES (
-    'P-GDN-TEST', 'immunization', 'National Immunization Program', 'bata', 'Barangay Bata Health Center',
-    'TEST-GDN-01', 'REF-GDN-01', '" . date('Y-m-d') . "', '10:00 AM',
-    'Teresa', 'Montelibano', '1985-05-20', 'Female', '09998887777', 'Bata, Bacolod City',
-    'Baby Mateo', 'Montelibano', '2025-08-10', 'Guardian',
-    'Completed'
-)");
+$refCode = 'REF-GDN-' . uniqid();
+$apptCode = 'TEST-GDN-' . uniqid();
+
+try {
+    $db->query("INSERT INTO appointments (
+        patient_id, service_slug, service_name, station_slug, station_name,
+        appointment_code, reference_code, preferred_date, preferred_time,
+        first_name, last_name, birth_date, gender, contact_number, complete_address,
+        recipient_first_name, recipient_last_name, recipient_birth_date, immunization_relationship,
+        status
+    ) VALUES (
+        'P-GDN-TEST', 'immunization', 'National Immunization Program', 'bata', 'Barangay Bata Health Center',
+        '{$apptCode}', '{$refCode}', '" . date('Y-m-d') . "', '10:00 AM',
+        'Teresa', 'Montelibano', '1985-05-20', 'Female', '09998887777', 'Bata, Bacolod City',
+        'Baby', 'Mateo', '2025-08-10', 'Guardian',
+        'Completed'
+    )");
+} catch (\Throwable $e) {
+    echo "SQL ERROR: " . $e->getMessage() . "\n";
+    exit(1);
+}
+
 
 $infants = fetch_infant_sub_profiles_by_patient_id('P-GDN-TEST');
-assert(count($infants) >= 1, 'Infants fetched for guardian');
+if (empty($infants)) {
+    echo "NO INFANTS FOUND FOR P-GDN-TEST\n";
+    exit(1);
+}
 $mateo = $infants[0];
+
 
 assert($mateo['is_guardian'] === true, 'Mateo is_guardian');
 assert($mateo['is_parent'] === false, 'Mateo is_parent');
@@ -90,8 +103,8 @@ echo "\n[CASE 3] Updating infant details with distinct biological parents\n";
 $savedId = save_or_update_infant_profile([
     'id' => $mateo['id'],
     'patient_id' => 'P-GDN-TEST',
-    'first_name' => 'Baby Mateo',
-    'last_name' => 'Montelibano',
+    'first_name' => 'Baby',
+    'last_name' => 'Mateo',
     'birth_date' => '2025-08-10',
     'relationship' => 'Guardian',
     'guardian_name' => 'Teresa Montelibano',
@@ -114,7 +127,7 @@ echo "    - Father: {$recheck['father_name']}\n";
 echo "    - Notes: {$recheck['custom_notes']}\n";
 
 // Clean up test records
-$db->query("DELETE FROM appointments WHERE appointment_code = 'TEST-GDN-01'");
+$db->query("DELETE FROM appointments WHERE patient_id = 'P-GDN-TEST' OR reference_code LIKE 'REF-GDN-%'");
 $db->query("DELETE FROM infant_profiles WHERE patient_id = 'P-GDN-TEST'");
 
 echo "\n========================================================\n";

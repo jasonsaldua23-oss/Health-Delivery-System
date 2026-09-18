@@ -1580,7 +1580,7 @@ if (!function_exists('peso')) {
                                     <th>Health Station &amp; Address</th>
                                     <th style="text-align: center;">Contact Information</th>
                                     <th>Last Visit</th>
-                                    <th>Actions</th>
+                                    <th style="text-align: center;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1633,12 +1633,12 @@ if (!function_exists('peso')) {
                                         <td>
                                             <div><?= !empty($patient['last_visit']) ? h(date('M j, Y', strtotime((string) $patient['last_visit']))) : 'N/A'; ?></div>
                                         </td>
-                                        <td>
+                                        <td style="text-align: center;">
                                             <?php
                                             $isParent = patient_has_infant_bookings((string) $patient['patient_id']);
                                             $adminInfants = $isParent ? fetch_infant_sub_profiles_by_patient_id((string) $patient['patient_id']) : [];
                                             ?>
-                                            <div class="patient-table-action-btns">
+                                            <div class="patient-table-action-btns" style="justify-content: center;">
                                                 <a class="patient-action-btn view" href="?page=patients&patient=<?= h((string) $patient['patient_id']); ?>" title="View Complete Patient Profile">
                                                     <?= admin_icon('eye'); ?>
                                                 </a>
@@ -5170,22 +5170,64 @@ window.renderAdminSelectedInfant = function(index) {
         photoHtml = `<?= admin_icon('baby'); ?>`;
     }
 
-    // Vaccines and dose counts
+    // Aggregate vaccine counts and latest dates from vaccine_counts, vaccine_doses, and appointments
+    const vaccineSummary = {};
+    if (infant.vaccine_doses && Array.isArray(infant.vaccine_doses)) {
+        infant.vaccine_doses.forEach(d => {
+            const vType = (d.vaccine_type || '').trim();
+            if (vType && vType.toLowerCase() !== 'not recorded' && vType.toLowerCase() !== 'not yet recorded') {
+                if (!vaccineSummary[vType]) {
+                    vaccineSummary[vType] = { count: 0, latestDate: d.date || '' };
+                }
+                vaccineSummary[vType].count++;
+                if (d.date && (!vaccineSummary[vType].latestDate || d.date > vaccineSummary[vType].latestDate)) {
+                    vaccineSummary[vType].latestDate = d.date;
+                }
+            }
+        });
+    }
+    if (infant.appointments && Array.isArray(infant.appointments)) {
+        infant.appointments.forEach(a => {
+            const vType = (a.vaccine_type || '').trim();
+            if (vType && vType.toLowerCase() !== 'not recorded' && vType.toLowerCase() !== 'not yet recorded') {
+                if (!vaccineSummary[vType]) {
+                    vaccineSummary[vType] = { count: 1, latestDate: a.preferred_date || '' };
+                }
+            }
+        });
+    }
+    if (infant.vaccine_counts && typeof infant.vaccine_counts === 'object') {
+        Object.keys(infant.vaccine_counts).forEach(vType => {
+            const vt = (vType || '').trim();
+            if (vt && vt.toLowerCase() !== 'not recorded' && vt.toLowerCase() !== 'not yet recorded') {
+                const cnt = Number(infant.vaccine_counts[vType]) || 1;
+                if (!vaccineSummary[vt]) {
+                    vaccineSummary[vt] = { count: cnt, latestDate: '' };
+                } else if (cnt > vaccineSummary[vt].count) {
+                    vaccineSummary[vt].count = cnt;
+                }
+            }
+        });
+    }
+
     let dosesHtml = '';
-    const vaccineKeys = Object.keys(infant.vaccine_doses || {});
-    if (vaccineKeys.length > 0) {
-        dosesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">';
-        vaccineKeys.forEach(vName => {
-            const count = infant.vaccine_doses[vName];
-            dosesHtml += `<div style="background: #f5f3ff; border: 1.5px solid #ddd6fe; color: #6d28d9; padding: 6px 14px; border-radius: 10px; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-                <?= admin_icon('syringe'); ?>
+    const vNames = Object.keys(vaccineSummary);
+    if (vNames.length > 0) {
+        dosesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">';
+        vNames.forEach(vName => {
+            const info = vaccineSummary[vName];
+            const dateStr = info.latestDate ? new Date(info.latestDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+            dosesHtml += `
+            <div style="background: #f5f3ff; border: 1.5px solid #ddd6fe; color: #6d28d9; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(124, 58, 237, 0.08);">
+                <span style="display: inline-flex; align-items: center; color: #7c3aed;"><?= admin_icon('syringe'); ?></span>
                 <span>${adminEscapeHtml(vName)}</span>
-                <span style="background: #7c3aed; color: #ffffff; padding: 2px 7px; border-radius: 999px; font-size: 0.75rem; margin-left: 4px;">${count} ${count === 1 ? 'Dose' : 'Doses'}</span>
+                <span style="background: #7c3aed; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${info.count} ${info.count === 1 ? 'Dose Taken' : 'Doses Taken'}</span>
+                ${dateStr ? `<span style="font-size: 0.74rem; color: #7c3aed; font-weight: 600; opacity: 0.85;">(${adminEscapeHtml(dateStr)})</span>` : ''}
             </div>`;
         });
         dosesHtml += '</div>';
     } else {
-        dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 6px 0 0 0;">No immunization doses recorded yet.</p>';
+        dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 8px 0 0 0;">No immunization doses recorded yet for this infant.</p>';
     }
 
     // Timeline appointments
@@ -5233,14 +5275,6 @@ window.renderAdminSelectedInfant = function(index) {
     const roleBadgeHtml = isGuardian
         ? `<span style="background: #fef3c7; color: #92400e; border: 1.5px solid #fde68a; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">Registered Guardian</span>`
         : `<span style="background: #ede9fe; color: #6d28d9; border: 1.5px solid #ddd6fe; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">${adminEscapeHtml(infant.role_label || 'Registered Parent')}</span>`;
-
-    const roleNoticeHtml = isGuardian
-        ? `<div style="margin-top: 8px; font-size: 0.83rem; color: #78350f; background: #fffbeb; border: 1px solid #fde68a; padding: 7px 12px; border-radius: 8px; line-height: 1.4;">
-            <strong>Account Holder Role:</strong> Registered Guardian (${adminEscapeHtml(currentAdminInfantData.patient_name)}, ID: #${adminEscapeHtml(currentAdminInfantData.patient_id)}) &bull; <em>Patient is registered as Guardian, not biological parent.</em>
-           </div>`
-        : `<div style="margin-top: 8px; font-size: 0.83rem; color: #581c87; background: #fdf4ff; border: 1px solid #fae8ff; padding: 7px 12px; border-radius: 8px; line-height: 1.4;">
-            <strong>Account Holder Role:</strong> ${adminEscapeHtml(infant.role_label || 'Registered Parent')} (${adminEscapeHtml(currentAdminInfantData.patient_name)}, ID: #${adminEscapeHtml(currentAdminInfantData.patient_id)})
-           </div>`;
 
     let parentalInfoHtml = '';
     if (isGuardian) {
@@ -5291,7 +5325,6 @@ window.renderAdminSelectedInfant = function(index) {
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #4c1d95;">${adminEscapeHtml(infant.full_name)}</h3>
                 <span style="background: #7c3aed; color: #ffffff; font-size: 0.75rem; font-weight: 700; padding: 2px 9px; border-radius: 999px;">Pediatric Record</span>
-                ${roleBadgeHtml}
             </div>
             <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 0.84rem; color: #6d28d9; flex-wrap: wrap;">
                 <span><strong>Age:</strong> ${adminEscapeHtml(infant.age_label)}</span>
@@ -5300,7 +5333,10 @@ window.renderAdminSelectedInfant = function(index) {
                 <span>&bull;</span>
                 <span><strong>Gender:</strong> ${adminEscapeHtml(infant.gender || 'Not specified')}</span>
             </div>
-            ${roleNoticeHtml}
+            <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 0.86rem; color: #581c87; flex-wrap: wrap;">
+                <strong>Account Holder Role:</strong>
+                ${roleBadgeHtml}
+            </div>
         </div>
     </div>
 

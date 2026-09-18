@@ -3279,6 +3279,13 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
         $stmt->execute();
         $appts = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        if ($parentName === '' && !empty($appts)) {
+            $parentName = trim(($appts[0]['first_name'] ?? '') . ' ' . ($appts[0]['last_name'] ?? ''));
+            if ($parentGender === '') {
+                $parentGender = $appts[0]['gender'] ?? '';
+            }
+        }
+
         if (!empty($stationAppointments)) {
             $existingIds = array_column($appts, 'id');
             foreach ($stationAppointments as $stAppt) {
