@@ -9226,11 +9226,221 @@ section h4 svg {
   }
 }
 
-.infant-subprofile-card:hover {
-  background: #e0f2fe !important;
-  border-color: #38bdf8 !important;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.14);
+.patient-profile-card-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.patient-infant-subprofile-popup {
+  align-self: flex-end;
+  width: min(100%, 540px);
+  margin-top: 8px;
+  margin-bottom: 6px;
+  background: #ffffff;
+  border: 1.5px solid #7dd3fc;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px -4px rgba(2, 132, 199, 0.18), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  animation: infantPopupSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10;
+}
+
+@keyframes infantPopupSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.infant-popup-inner {
+  padding: 14px 16px;
+  background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 42px);
+}
+
+.infant-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e0f2fe;
+  margin-bottom: 10px;
+}
+
+.infant-popup-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.infant-popup-title-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #e0f2fe;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.infant-popup-title-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.infant-popup-close-btn {
+  background: #ffffff;
+  color: #64748b;
+  border: 1.5px solid #cbd5e1;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.infant-popup-close-btn:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.15);
+}
+
+.infant-popup-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.infant-popup-card-item {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.infant-popup-card-item:hover {
+  background: #f0f9ff;
+  border-color: #38bdf8;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.12);
+}
+
+.infant-popup-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e0f2fe;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 2px solid #7dd3fc;
+}
+
+.infant-popup-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.infant-popup-avatar svg {
+  width: 20px;
+  height: 20px;
+}
+
+.infant-popup-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.infant-popup-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.infant-popup-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.infant-role-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.infant-role-badge.guardian {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.infant-role-badge.parent {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.infant-popup-meta {
+  font-size: 0.76rem;
+  color: #64748b;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.infant-popup-vax-count {
+  color: #0284c7;
+  font-weight: 600;
+}
+
+.infant-popup-action {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0284c7;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #e0f2fe;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.infant-popup-card-item:hover .infant-popup-action {
+  background: #0284c7;
+  color: #ffffff;
 }
 
 

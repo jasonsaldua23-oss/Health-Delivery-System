@@ -90,11 +90,11 @@ if ($profilesRes['code'] === 200) {
         echo "  ✗ Patient Card Infant Button NOT found.\n";
     }
 
-    // Check sub-profiles tray
-    if (str_contains($html, 'patient-infants-tray') && str_contains($html, 'Baby Leo Santos')) {
-        echo "  ✓ Collapsible Infant Sub-Profiles Tray verified with 'Baby Leo Santos'.\n";
+    // Check sub-profiles popup
+    if (str_contains($html, 'patient-infant-subprofile-popup') && str_contains($html, 'Baby Leo Santos')) {
+        echo "  ✓ Docked Infant Sub-Profiles Popup verified with 'Baby Leo Santos'.\n";
     } else {
-        echo "  ✗ Infant Sub-Profiles Tray or 'Baby Leo Santos' NOT found in HTML.\n";
+        echo "  ✗ Infant Sub-Profiles Popup or 'Baby Leo Santos' NOT found in HTML.\n";
     }
 
     // Check Staff Infant Profile Modal Container

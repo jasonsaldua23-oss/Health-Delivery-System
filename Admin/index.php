@@ -5229,6 +5229,57 @@ window.renderAdminSelectedInfant = function(index) {
         timelineHtml = '<p style="color: #64748b; font-size: 0.85rem; margin-top: 8px;">No consultation history on record.</p>';
     }
 
+    const isGuardian = Boolean(infant.is_guardian);
+    const roleBadgeHtml = isGuardian
+        ? `<span style="background: #fef3c7; color: #92400e; border: 1.5px solid #fde68a; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">Registered Guardian</span>`
+        : `<span style="background: #ede9fe; color: #6d28d9; border: 1.5px solid #ddd6fe; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">${adminEscapeHtml(infant.role_label || 'Registered Parent')}</span>`;
+
+    const roleNoticeHtml = isGuardian
+        ? `<div style="margin-top: 8px; font-size: 0.83rem; color: #78350f; background: #fffbeb; border: 1px solid #fde68a; padding: 7px 12px; border-radius: 8px; line-height: 1.4;">
+            <strong>Account Holder Role:</strong> Registered Guardian (${adminEscapeHtml(currentAdminInfantData.patient_name)}, ID: #${adminEscapeHtml(currentAdminInfantData.patient_id)}) &bull; <em>Patient is registered as Guardian, not biological parent.</em>
+           </div>`
+        : `<div style="margin-top: 8px; font-size: 0.83rem; color: #581c87; background: #fdf4ff; border: 1px solid #fae8ff; padding: 7px 12px; border-radius: 8px; line-height: 1.4;">
+            <strong>Account Holder Role:</strong> ${adminEscapeHtml(infant.role_label || 'Registered Parent')} (${adminEscapeHtml(currentAdminInfantData.patient_name)}, ID: #${adminEscapeHtml(currentAdminInfantData.patient_id)})
+           </div>`;
+
+    let parentalInfoHtml = '';
+    if (isGuardian) {
+        parentalInfoHtml = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+            <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #92400e; text-transform: uppercase;">Registered Guardian:</span>
+                <strong style="display: block; font-size: 0.95rem; color: #78350f; margin-top: 3px;">${adminEscapeHtml(infant.guardian_name || currentAdminInfantData.patient_name)}</strong>
+                <span style="display: inline-block; background: #fef3c7; color: #b45309; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; margin-top: 4px;">Legal Guardian</span>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Biological Mother:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.mother_name || 'None recorded')}</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Biological Father:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.father_name || 'None recorded')}</strong>
+            </div>
+        </div>
+        `;
+    } else {
+        parentalInfoHtml = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Mother's Name:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.mother_name || 'None recorded')}</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Father's Name:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.father_name || 'None recorded')}</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Guardian Status:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #64748b; margin-top: 3px;">Registered to Biological Parent</strong>
+            </div>
+        </div>
+        `;
+    }
+
     body.innerHTML = `
     ${switcherHtml}
     <!-- Demographic Card -->
@@ -5240,6 +5291,7 @@ window.renderAdminSelectedInfant = function(index) {
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #4c1d95;">${adminEscapeHtml(infant.full_name)}</h3>
                 <span style="background: #7c3aed; color: #ffffff; font-size: 0.75rem; font-weight: 700; padding: 2px 9px; border-radius: 999px;">Pediatric Record</span>
+                ${roleBadgeHtml}
             </div>
             <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 0.84rem; color: #6d28d9; flex-wrap: wrap;">
                 <span><strong>Age:</strong> ${adminEscapeHtml(infant.age_label)}</span>
@@ -5248,9 +5300,7 @@ window.renderAdminSelectedInfant = function(index) {
                 <span>&bull;</span>
                 <span><strong>Gender:</strong> ${adminEscapeHtml(infant.gender || 'Not specified')}</span>
             </div>
-            <div style="margin-top: 6px; font-size: 0.82rem; color: #581c87;">
-                <strong>Registered Parent / Guardian:</strong> ${adminEscapeHtml(currentAdminInfantData.patient_name)} (ID: #${adminEscapeHtml(currentAdminInfantData.patient_id)})
-            </div>
+            ${roleNoticeHtml}
         </div>
     </div>
 
@@ -5264,25 +5314,16 @@ window.renderAdminSelectedInfant = function(index) {
         ${dosesHtml}
     </div>
 
-    <!-- Section 2: Parental Information (Read-Only) -->
+    <!-- Section 2: Parental / Guardian Information (Read-Only) -->
     <div style="margin-bottom: 20px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
         <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
             <span style="color: #7c3aed;"><?= admin_icon('user'); ?></span>
-            <span>Parental Information (Read-Only)</span>
+            <span>Parental &amp; Guardian Information (Read-Only)</span>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
-                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Mother's Name:</span>
-                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.mother_name || 'None recorded')}</strong>
-            </div>
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
-                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Father's Name:</span>
-                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.father_name || 'None recorded')}</strong>
-            </div>
-        </div>
-        ${infant.notes ? `<div style="margin-top: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
+        ${parentalInfoHtml}
+        ${infant.custom_notes || infant.notes ? `<div style="margin-top: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
             <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Pediatric Notes &amp; Remarks:</span>
-            <p style="margin: 3px 0 0 0; font-size: 0.88rem; color: #334155;">${adminEscapeHtml(infant.notes)}</p>
+            <p style="margin: 3px 0 0 0; font-size: 0.88rem; color: #334155;">${adminEscapeHtml(infant.custom_notes || infant.notes)}</p>
         </div>` : ''}
     </div>
 

@@ -624,6 +624,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'save
             'gender' => trim((string) ($_POST['gender'] ?? '')),
             'mother_name' => trim((string) ($_POST['mother_name'] ?? '')),
             'father_name' => trim((string) ($_POST['father_name'] ?? '')),
+            'guardian_name' => trim((string) ($_POST['guardian_name'] ?? '')),
+            'relationship' => trim((string) ($_POST['relationship'] ?? '')),
             'station_slug' => (string) ($station['slug'] ?? ''),
             'notes' => trim((string) ($_POST['notes'] ?? '')),
         ];
@@ -2362,93 +2364,111 @@ for ($i = 0; $i < 6; $i++) {
                                 $hasInfantBookings = patient_has_infant_bookings($patientIdStr, $patientStationRecords);
                                 $infantSubProfiles = $hasInfantBookings ? fetch_infant_sub_profiles_by_patient_id($patientIdStr, $patientStationRecords) : [];
                                 ?>
-                                <article class="modern-patient-record-card patient-profile-card is-completed" id="profileCard_<?= h($prof['key']); ?>">
-                                    <div class="pat-card-left">
-                                        <div class="pat-card-avatar done">
-                                            <?= h($patInitials); ?>
-                                            <span class="pat-card-avatar-shield" title="Registered Patient Profile">
-                                                <?= staff_icon('shield'); ?>
-                                            </span>
-                                        </div>
-                                        <div class="pat-card-info">
-                                            <div class="pat-card-title-row">
-                                                <h3 style="font-size: 1.08rem; font-weight: 700; color: #0f172a; margin: 0;"><?= h($prof['full_name']); ?></h3>
-                                                <span class="appt-code-badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:600;">ID: #<?= h($prof['patient_id']); ?></span>
-                                                <span class="patient-visit-count-pill" style="font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 2px 9px; border-radius: 9999px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                                    <?= staff_icon('history'); ?> <?= $prof['total_completed']; ?> <?= $prof['total_completed'] === 1 ? 'Visit' : 'Visits'; ?>
+                                <div class="patient-profile-card-wrapper" id="profileItem_<?= h($prof['key']); ?>">
+                                    <article class="modern-patient-record-card patient-profile-card is-completed" id="profileCard_<?= h($prof['key']); ?>">
+                                        <div class="pat-card-left">
+                                            <div class="pat-card-avatar done">
+                                                <?= h($patInitials); ?>
+                                                <span class="pat-card-avatar-shield" title="Registered Patient Profile">
+                                                    <?= staff_icon('shield'); ?>
                                                 </span>
                                             </div>
-
-                                            <div class="pat-card-meta-row">
-                                                <span class="pat-meta-pill demo"><?= h($prof['age_label']); ?> • <?= h($prof['gender']); ?></span>
-                                                <?php if (!empty($prof['contact_number'])): ?>
-                                                    <span class="pat-meta-pill phone"><?= staff_icon('phone'); ?> <?= h($prof['contact_number']); ?></span>
-                                                <?php endif; ?>
-                                                <span class="pat-meta-pill address"><?= staff_icon('pin'); ?> <?= h($prof['complete_address'] ?: 'Barangay ' . $station['barangay'] . ', Bacolod City'); ?></span>
-                                            </div>
-                                            <?php if ($latestAppt !== null): ?>
-                                                <div class="patient-latest-visit-row" style="margin-top: 6px; font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                                    <span style="font-weight: 600; color: #2563eb;">Latest Check-up:</span>
-                                                    <span><?= h((string) $latestAppt['service_name']); ?> (<?= h(date('M j, Y', strtotime((string) $latestAppt['preferred_date']))); ?>)</span>
-                                                    <?php if (!empty($latestAppt['blood_pressure'])): ?>
-                                                        <span style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1px 6px; border-radius: 4px; font-size: 0.75rem; color: #334155;">BP: <?= h((string) $latestAppt['blood_pressure']); ?></span>
-                                                    <?php endif; ?>
+                                            <div class="pat-card-info">
+                                                <div class="pat-card-title-row">
+                                                    <h3 style="font-size: 1.08rem; font-weight: 700; color: #0f172a; margin: 0;"><?= h($prof['full_name']); ?></h3>
+                                                    <span class="appt-code-badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:600;">ID: #<?= h($prof['patient_id']); ?></span>
+                                                    <span class="patient-visit-count-pill" style="font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 2px 9px; border-radius: 9999px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                                        <?= staff_icon('history'); ?> <?= $prof['total_completed']; ?> <?= $prof['total_completed'] === 1 ? 'Visit' : 'Visits'; ?>
+                                                    </span>
                                                 </div>
-                                            <?php endif; ?>
+
+                                                <div class="pat-card-meta-row">
+                                                    <span class="pat-meta-pill demo"><?= h($prof['age_label']); ?> • <?= h($prof['gender']); ?></span>
+                                                    <?php if (!empty($prof['contact_number'])): ?>
+                                                        <span class="pat-meta-pill phone"><?= staff_icon('phone'); ?> <?= h($prof['contact_number']); ?></span>
+                                                    <?php endif; ?>
+                                                    <span class="pat-meta-pill address"><?= staff_icon('pin'); ?> <?= h($prof['complete_address'] ?: 'Barangay ' . $station['barangay'] . ', Bacolod City'); ?></span>
+                                                </div>
+                                                <?php if ($latestAppt !== null): ?>
+                                                    <div class="patient-latest-visit-row" style="margin-top: 6px; font-size: 0.8rem; color: #64748b; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                                        <span style="font-weight: 600; color: #2563eb;">Latest Check-up:</span>
+                                                        <span><?= h((string) $latestAppt['service_name']); ?> (<?= h(date('M j, Y', strtotime((string) $latestAppt['preferred_date']))); ?>)</span>
+                                                        <?php if (!empty($latestAppt['blood_pressure'])): ?>
+                                                            <span style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1px 6px; border-radius: 4px; font-size: 0.75rem; color: #334155;">BP: <?= h((string) $latestAppt['blood_pressure']); ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="pat-card-right" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                                        <?php if ($hasInfantBookings): ?>
-                                            <button type="button" class="patient-infant-toggle-btn" onclick="togglePatientInfantsTray('<?= h($prof['key']); ?>')" title="View Registered Infant Sub-Profiles (<?= count($infantSubProfiles); ?>)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 9px 14px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.28); transition: transform 0.15s, background 0.15s;">
-                                                <?= staff_icon('baby'); ?>
-                                                <span>Infants (<?= count($infantSubProfiles); ?>)</span>
-                                            </button>
-                                        <?php endif; ?>
-                                        <a class="view-medical-file-btn patient-profile-open-btn" href="<?= h($profUrl); ?>" onclick="return window.openPatientProfileModal(event, '<?= h($prof['key']); ?>');" title="View Patient Profile and Appointment History" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; border: none; padding: 9px 18px; border-radius: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);">
-                                            <?= staff_icon('history'); ?>
-                                            <span>View Profile &amp; History</span>
-                                        </a>
-                                    </div>
+                                        <div class="pat-card-right" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                            <?php if ($hasInfantBookings): ?>
+                                                <button type="button" class="patient-infant-toggle-btn" id="infantToggleBtn_<?= h($prof['key']); ?>" onclick="togglePatientInfantsTray('<?= h($prof['key']); ?>')" title="View Registered Infant Sub-Profiles (<?= count($infantSubProfiles); ?>)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 9px 14px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.28); transition: transform 0.15s, background 0.15s;">
+                                                    <?= staff_icon('baby'); ?>
+                                                    <span>Infants (<?= count($infantSubProfiles); ?>)</span>
+                                                </button>
+                                            <?php endif; ?>
+                                            <a class="view-medical-file-btn patient-profile-open-btn" href="<?= h($profUrl); ?>" onclick="return window.openPatientProfileModal(event, '<?= h($prof['key']); ?>');" title="View Patient Profile and Appointment History" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; border: none; padding: 9px 18px; border-radius: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);">
+                                                <?= staff_icon('history'); ?>
+                                                <span>View Profile &amp; History</span>
+                                            </a>
+                                        </div>
+
+                                        <!-- Hidden template for instant client-side modal popup without page reload -->
+                                        <div id="patientProfileContent_<?= h($prof['key']); ?>" style="display: none;">
+                                            <?= render_patient_profile_body($prof, $station, '', ''); ?>
+                                        </div>
+                                    </article>
 
                                     <?php if ($hasInfantBookings && !empty($infantSubProfiles)): ?>
-                                        <div id="infantsTray_<?= h($prof['key']); ?>" class="patient-infants-tray" style="display: none; width: 100%; margin-top: 14px; padding-top: 14px; border-top: 1px dashed #cbd5e1;">
-                                            <div style="font-size: 0.85rem; font-weight: 700; color: #0369a1; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
-                                                <div style="display: flex; align-items: center; gap: 6px;">
-                                                    <?= staff_icon('baby'); ?> <span>Registered Infant / Child Sub-Profiles (<?= count($infantSubProfiles); ?>)</span>
-                                                </div>
-                                                <span style="font-size: 0.75rem; color: #64748b;">Click an infant card to view &amp; edit profile</span>
-                                            </div>
-                                            <div class="infant-subprofiles-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
-                                                <?php foreach ($infantSubProfiles as $infant): ?>
-                                                    <div class="infant-subprofile-card" onclick="openStaffInfantModal(<?= htmlspecialchars(json_encode($infant), ENT_QUOTES, 'UTF-8'); ?>)" style="background: #f0f9ff; border: 1.5px solid #bae6fd; border-radius: 12px; padding: 12px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 12px;">
-                                                        <div class="infant-mini-avatar" style="width: 44px; height: 44px; border-radius: 50%; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; overflow: hidden; border: 2px solid #38bdf8;">
-                                                            <?php if (!empty($infant['latest_photo'])): ?>
-                                                                <img src="../Patients/<?= h($infant['latest_photo']); ?>" alt="Infant Photo" style="width:100%; height:100%; object-fit:cover;">
-                                                            <?php else: ?>
-                                                                <?= staff_icon('baby'); ?>
-                                                            <?php endif; ?>
+                                        <div id="infantsTray_<?= h($prof['key']); ?>" class="patient-infant-subprofile-popup" style="display: none;">
+                                            <div class="infant-popup-inner">
+                                                <div class="infant-popup-header">
+                                                    <div class="infant-popup-title">
+                                                        <span class="infant-popup-title-icon"><?= staff_icon('baby'); ?></span>
+                                                        <div>
+                                                            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0c4a6e;">Registered Infant Sub-Profiles</h4>
+                                                            <p style="margin: 2px 0 0 0; font-size: 0.78rem; color: #64748b;">Booked under <?= h($prof['full_name']); ?> &bull; <?= count($infantSubProfiles); ?> <?= count($infantSubProfiles) === 1 ? 'record' : 'records'; ?></p>
                                                         </div>
-                                                        <div style="flex: 1; min-width: 0;">
-                                                            <div style="font-weight: 700; color: #0f172a; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?= h($infant['full_name']); ?></div>
-                                                            <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">
-                                                                <?= h($infant['age_label']); ?> • <?= h($infant['gender'] ?: 'Infant'); ?>
-                                                            </div>
-                                                            <div style="font-size: 0.76rem; color: #0284c7; font-weight: 600; margin-top: 3px;">
-                                                                <?= count($infant['appointments']); ?> <?= count($infant['appointments']) === 1 ? 'Vaccination' : 'Vaccinations'; ?> Recorded
-                                                            </div>
-                                                        </div>
-                                                        <span style="color: #0284c7; font-size: 1.1rem; font-weight: 700;">&rarr;</span>
                                                     </div>
-                                                <?php endforeach; ?>
+                                                    <button type="button" class="infant-popup-close-btn" onclick="togglePatientInfantsTray('<?= h($prof['key']); ?>')" title="Close Infant Sub-Profile Window">
+                                                        ✕ Close
+                                                    </button>
+                                                </div>
+                                                <div class="infant-popup-cards-list">
+                                                    <?php foreach ($infantSubProfiles as $infant): ?>
+                                                        <div class="infant-popup-card-item" onclick="openStaffInfantModal(<?= htmlspecialchars(json_encode($infant), ENT_QUOTES, 'UTF-8'); ?>)" title="Click to view full record and details">
+                                                            <div class="infant-popup-avatar">
+                                                                <?php if (!empty($infant['latest_photo'])): ?>
+                                                                    <img src="../Patients/<?= h($infant['latest_photo']); ?>" alt="Infant Photo">
+                                                                <?php else: ?>
+                                                                    <?= staff_icon('baby'); ?>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                            <div class="infant-popup-info">
+                                                                <div class="infant-popup-name-row">
+                                                                    <span class="infant-popup-name"><?= h($infant['full_name']); ?></span>
+                                                                    <?php if (!empty($infant['is_guardian'])): ?>
+                                                                        <span class="infant-role-badge guardian">Guardian</span>
+                                                                    <?php else: ?>
+                                                                        <span class="infant-role-badge parent"><?= h($infant['role_label'] ?: 'Parent'); ?></span>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                                <div class="infant-popup-meta">
+                                                                    <span><?= h($infant['age_label']); ?> • <?= h($infant['gender'] ?: 'Infant'); ?></span>
+                                                                    <span class="infant-popup-vax-count"><?= count($infant['appointments']); ?> <?= count($infant['appointments']) === 1 ? 'Vaccination' : 'Vaccinations'; ?></span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="infant-popup-action">
+                                                                <span>View</span>
+                                                                <span class="infant-arrow">&rarr;</span>
+                                                            </div>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
                                             </div>
                                         </div>
                                     <?php endif; ?>
-
-                                    <!-- Hidden template for instant client-side modal popup without page reload -->
-                                    <div id="patientProfileContent_<?= h($prof['key']); ?>" style="display: none;">
-                                        <?= render_patient_profile_body($prof, $station, '', ''); ?>
-                                    </div>
-                                </article>
+                                </div>
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </div>
@@ -5915,6 +5935,19 @@ window.openStaffInfantModal = function(infant) {
         timelineHtml = '<p style="color: #64748b; font-size: 0.85rem; margin-top: 8px;">No consultation history on record.</p>';
     }
 
+    const isGuardian = Boolean(infant.is_guardian);
+    const roleBadgeHtml = isGuardian
+        ? `<span style="background: #fef3c7; color: #92400e; border: 1.5px solid #fde68a; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">Registered Guardian</span>`
+        : `<span style="background: #e0f2fe; color: #0369a1; border: 1.5px solid #bae6fd; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">${staffEscapeHtml(infant.role_label || 'Registered Parent')}</span>`;
+
+    const roleNoticeHtml = isGuardian
+        ? `<div style="margin-top: 8px; font-size: 0.83rem; color: #78350f; background: #fffbeb; border: 1px solid #fde68a; padding: 7px 12px; border-radius: 8px; line-height: 1.4;">
+            <strong>Account Holder Role:</strong> Registered Guardian (${staffEscapeHtml(infant.parent_name || infant.guardian_name || 'Account Holder')}, ID: #${staffEscapeHtml(infant.patient_id)}) &bull; <em>Patient is registered as Guardian, not biological parent.</em>
+           </div>`
+        : `<div style="margin-top: 8px; font-size: 0.83rem; color: #0369a1; background: #eff6ff; border: 1px solid #bfdbfe; padding: 7px 12px; border-radius: 8px; line-height: 1.4;">
+            <strong>Account Holder Role:</strong> ${staffEscapeHtml(infant.role_label || 'Registered Parent')} (${staffEscapeHtml(infant.parent_name || 'Account Holder')}, ID: #${staffEscapeHtml(infant.patient_id)})
+           </div>`;
+
     body.innerHTML = `
     <!-- Header Demographic Card -->
     <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1.5px solid #bae6fd; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 18px; margin-bottom: 22px; flex-wrap: wrap;">
@@ -5925,6 +5958,7 @@ window.openStaffInfantModal = function(infant) {
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #0c4a6e;">${staffEscapeHtml(infant.full_name)}</h3>
                 <span style="background: #0284c7; color: #ffffff; font-size: 0.75rem; font-weight: 700; padding: 2px 9px; border-radius: 999px;">Infant Record</span>
+                ${roleBadgeHtml}
             </div>
             <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 0.84rem; color: #0369a1; flex-wrap: wrap;">
                 <span><strong>Age:</strong> ${staffEscapeHtml(infant.age_label)}</span>
@@ -5933,9 +5967,7 @@ window.openStaffInfantModal = function(infant) {
                 <span>&bull;</span>
                 <span><strong>Gender:</strong> ${staffEscapeHtml(infant.gender || 'Not specified')}</span>
             </div>
-            <div style="margin-top: 6px; font-size: 0.82rem; color: #075985;">
-                <strong>Registered Parent / Guardian:</strong> ${staffEscapeHtml(infant.parent_name || 'Account Holder')} (ID: #${staffEscapeHtml(infant.patient_id)})
-            </div>
+            ${roleNoticeHtml}
         </div>
     </div>
 
@@ -5949,12 +5981,17 @@ window.openStaffInfantModal = function(infant) {
         ${dosesHtml}
     </div>
 
-    <!-- Section 2: Editable Infant Information Form (Mother, Father, Notes) -->
+    <!-- Section 2: Editable Infant Information Form (Mother, Father, Guardian, Notes) -->
     <div style="margin-bottom: 24px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
-        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
             <span style="color: #0284c7;"><?= staff_icon('edit'); ?></span>
-            <span>Edit Infant Information &amp; Parental Metadata</span>
+            <span>Edit Infant Information &amp; Parental / Guardian Details</span>
         </div>
+        <p style="font-size: 0.82rem; color: #64748b; margin: 0 0 14px 0;">
+            ${isGuardian
+                ? 'This patient is registered as <strong>Guardian</strong>. Biological mother and father details remain distinct.'
+                : 'This patient is registered as <strong>Parent</strong> (' + staffEscapeHtml(infant.role_label || 'Parent') + ').'}
+        </p>
 
         <form method="post" action="?page=patients&view=profiles" id="staffInfantEditForm">
             <input type="hidden" name="action" value="save_infant_profile">
@@ -5967,21 +6004,32 @@ window.openStaffInfantModal = function(infant) {
             <input type="hidden" name="last_name" value="${staffEscapeHtml(infant.last_name || '')}">
             <input type="hidden" name="birth_date" value="${staffEscapeHtml(infant.birth_date || '')}">
             <input type="hidden" name="gender" value="${staffEscapeHtml(infant.gender || '')}">
+            <input type="hidden" name="relationship" value="${staffEscapeHtml(infant.relationship || (isGuardian ? 'Guardian' : 'Child'))}">
+
+            ${isGuardian ? `
+            <div style="margin-bottom: 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 14px;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #92400e; margin-bottom: 5px;">Registered Guardian's Name:</label>
+                <input type="text" name="guardian_name" value="${staffEscapeHtml(infant.guardian_name || infant.parent_name || '')}" placeholder="e.g. Legal Guardian Name" class="form-input-field" style="width: 100%; border: 1.5px solid #fcd34d; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; background: #ffffff;">
+                <span style="font-size: 0.76rem; color: #b45309; display: block; margin-top: 4px;">Account holder is confirmed as Guardian. Biological parents can be recorded separately below if known.</span>
+            </div>
+            ` : `
+            <input type="hidden" name="guardian_name" value="${staffEscapeHtml(infant.guardian_name || '')}">
+            `}
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
                 <div>
-                    <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Mother's Full Name:</label>
-                    <input type="text" name="mother_name" value="${staffEscapeHtml(infant.mother_name || '')}" placeholder="e.g. Maria Santos" class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem;">
+                    <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Biological Mother's Name:</label>
+                    <input type="text" name="mother_name" value="${staffEscapeHtml(infant.mother_name || '')}" placeholder="${isGuardian ? 'Biological Mother (optional)' : 'e.g. Maria Santos'}" class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem;">
                 </div>
                 <div>
-                    <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Father's Full Name:</label>
-                    <input type="text" name="father_name" value="${staffEscapeHtml(infant.father_name || '')}" placeholder="e.g. Juan Santos" class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem;">
+                    <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Biological Father's Name:</label>
+                    <input type="text" name="father_name" value="${staffEscapeHtml(infant.father_name || '')}" placeholder="${isGuardian ? 'Biological Father (optional)' : 'e.g. Juan Santos'}" class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem;">
                 </div>
             </div>
 
             <div style="margin-bottom: 16px;">
                 <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Staff Notes / Pediatric Remarks:</label>
-                <textarea name="notes" rows="2" placeholder="Enter any notes, pediatric remarks, or allergies..." class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; resize: vertical;">${staffEscapeHtml(infant.notes || '')}</textarea>
+                <textarea name="notes" rows="2" placeholder="Enter any notes, pediatric remarks, or allergies..." class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; resize: vertical;">${staffEscapeHtml(infant.custom_notes || infant.notes || '')}</textarea>
             </div>
 
             <button type="submit" class="primary-btn blue-btn" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 9px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
