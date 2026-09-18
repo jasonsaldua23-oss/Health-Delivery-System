@@ -929,8 +929,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                         <?= iconSvg('stethoscope'); ?>
                     </div>
                     <div>
-                        <h2 class="modal-title">Volunteer Login</h2>
-                        <p class="modal-subtitle">Health Center Staff Portal</p>
+                        <h2 class="modal-title" id="volunteerModalTitle">Volunteer Login</h2>
+                        <p class="modal-subtitle" id="volunteerModalSubtitle">Health Center Staff Portal</p>
                     </div>
                 </div>
                 <button type="button" class="modal-close" id="volunteerModalClose">
@@ -938,7 +938,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 </button>
             </div>
             <div class="modal-body">
-                <div id="volunteerLoginView">
+                <div id="volunteerLoginView" class="modal-step">
                     <form class="auth-form" id="volunteerLoginForm" novalidate>
                         <div class="field-group">
                             <label for="volunteerEmail">Work Email</label>
@@ -964,9 +964,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 </div>
 
                 <!-- Volunteer Forgot Password Step -->
-                <div id="volunteerForgotView" class="hidden-step" aria-hidden="true">
+                <div id="volunteerForgotView" class="modal-step hidden-step" aria-hidden="true">
                     <!-- Request OTP View -->
-                    <div id="volunteerForgotRequestView">
+                    <div id="volunteerForgotRequestView" class="modal-substep">
                         <div class="otp-instruction-card">
                             <p>Enter your assigned health station work email address to receive a 6-digit password reset verification code.</p>
                         </div>
@@ -987,7 +987,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     </div>
 
                     <!-- Verify OTP & Reset Password View -->
-                    <div id="volunteerForgotResetView" class="hidden-step" aria-hidden="true">
+                    <div id="volunteerForgotResetView" class="modal-substep hidden-step" aria-hidden="true">
                         <div class="otp-dest-pill">
                             <span>Code sent to: <strong id="volunteerMaskedEmail"></strong></span>
                             <button type="button" class="mini-text-action" id="volunteerChangeEmailBtn">Change</button>
@@ -1046,7 +1046,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 </button>
             </div>
             <div class="modal-body">
-                <div id="adminLoginView">
+                <div id="adminLoginView" class="modal-step">
                     <form class="auth-form" id="adminLoginForm" novalidate>
                         <div class="field-group">
                             <label for="adminUsername">Username</label>
@@ -1071,9 +1071,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 </div>
 
                 <!-- Admin Forgot Password Step -->
-                <div id="adminForgotView" class="hidden-step" aria-hidden="true">
+                <div id="adminForgotView" class="modal-step hidden-step" aria-hidden="true">
                     <!-- Request OTP View -->
-                    <div id="adminForgotRequestView">
+                    <div id="adminForgotRequestView" class="modal-substep">
                         <div class="otp-instruction-card">
                             <p>Enter your administrator username or email address to receive a 6-digit password reset verification code.</p>
                         </div>
@@ -1094,7 +1094,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     </div>
 
                     <!-- Verify OTP & Reset Password View -->
-                    <div id="adminForgotResetView" class="hidden-step" aria-hidden="true">
+                    <div id="adminForgotResetView" class="modal-substep hidden-step" aria-hidden="true">
                         <div class="otp-dest-pill">
                             <span>Code sent to: <strong id="adminMaskedEmail"></strong></span>
                             <button type="button" class="mini-text-action" id="adminChangeEmailBtn">Change</button>
@@ -1312,7 +1312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 <!-- Patient Forgot Password Step -->
                 <div id="patientForgotStep" class="modal-step hidden-step" aria-hidden="true">
                     <!-- Request OTP View -->
-                    <div id="patientForgotRequestView">
+                    <div id="patientForgotRequestView" class="modal-substep">
                         <div class="otp-instruction-card">
                             <p>Enter your registered patient email address to receive a 6-digit password reset verification code.</p>
                         </div>
@@ -1333,7 +1333,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     </div>
 
                     <!-- Verify OTP & Reset Password View -->
-                    <div id="patientForgotResetView" class="hidden-step" aria-hidden="true">
+                    <div id="patientForgotResetView" class="modal-substep hidden-step" aria-hidden="true">
                         <div class="otp-dest-pill">
                             <span>Code sent to: <strong id="patientMaskedEmail"></strong></span>
                             <button type="button" class="mini-text-action" id="patientChangeEmailBtn">Change</button>
@@ -1522,6 +1522,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function openVolunteerModal() {
+        volunteerForgotCtrl?.resetToLogin();
         volunteerModal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     }
@@ -1533,6 +1534,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function openAdminModal() {
+        adminForgotCtrl?.resetToLogin();
         adminModal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     }
@@ -2084,10 +2086,22 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function showRequestState() {
-            if (loginView) loginView.classList.add('hidden-step');
-            if (forgotView) forgotView.classList.remove('hidden-step');
-            if (requestView) requestView.classList.remove('hidden-step');
-            if (resetView) resetView.classList.add('hidden-step');
+            if (loginView) {
+                loginView.classList.add('hidden-step');
+                loginView.setAttribute('aria-hidden', 'true');
+            }
+            if (forgotView) {
+                forgotView.classList.remove('hidden-step');
+                forgotView.setAttribute('aria-hidden', 'false');
+            }
+            if (requestView) {
+                requestView.classList.remove('hidden-step');
+                requestView.setAttribute('aria-hidden', 'false');
+            }
+            if (resetView) {
+                resetView.classList.add('hidden-step');
+                resetView.setAttribute('aria-hidden', 'true');
+            }
             if (onOpenForgot) onOpenForgot();
             if (emailInput) {
                 setTimeout(() => emailInput.focus(), 150);
@@ -2097,8 +2111,14 @@ document.addEventListener('DOMContentLoaded', function () {
         function showResetState(email, maskedEmail) {
             activeEmail = email;
             if (maskedEmailEl) maskedEmailEl.textContent = maskedEmail || email;
-            if (requestView) requestView.classList.add('hidden-step');
-            if (resetView) resetView.classList.remove('hidden-step');
+            if (requestView) {
+                requestView.classList.add('hidden-step');
+                requestView.setAttribute('aria-hidden', 'true');
+            }
+            if (resetView) {
+                resetView.classList.remove('hidden-step');
+                resetView.setAttribute('aria-hidden', 'false');
+            }
             if (otpInput) {
                 otpInput.value = '';
                 setTimeout(() => otpInput.focus(), 150);
@@ -2110,10 +2130,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function returnToLogin() {
             stopCountdown();
-            if (forgotView) forgotView.classList.add('hidden-step');
-            if (requestView) requestView.classList.remove('hidden-step');
-            if (resetView) resetView.classList.add('hidden-step');
-            if (loginView) loginView.classList.remove('hidden-step');
+            if (forgotView) {
+                forgotView.classList.add('hidden-step');
+                forgotView.setAttribute('aria-hidden', 'true');
+            }
+            if (requestView) {
+                requestView.classList.remove('hidden-step');
+                requestView.setAttribute('aria-hidden', 'false');
+            }
+            if (resetView) {
+                resetView.classList.add('hidden-step');
+                resetView.setAttribute('aria-hidden', 'true');
+            }
+            if (loginView) {
+                loginView.classList.remove('hidden-step');
+                loginView.setAttribute('aria-hidden', 'false');
+            }
             if (onReturnToLogin) onReturnToLogin();
         }
 
@@ -2135,8 +2167,14 @@ document.addEventListener('DOMContentLoaded', function () {
         changeEmailBtn?.addEventListener('click', function(e) {
             e.preventDefault();
             stopCountdown();
-            if (resetView) resetView.classList.add('hidden-step');
-            if (requestView) requestView.classList.remove('hidden-step');
+            if (resetView) {
+                resetView.classList.add('hidden-step');
+                resetView.setAttribute('aria-hidden', 'true');
+            }
+            if (requestView) {
+                requestView.classList.remove('hidden-step');
+                requestView.setAttribute('aria-hidden', 'false');
+            }
             if (emailInput) emailInput.focus();
         });
 
@@ -2348,7 +2386,19 @@ document.addEventListener('DOMContentLoaded', function () {
         newPwInput: document.getElementById('volunteerNewPassword'),
         confirmPwInput: document.getElementById('volunteerConfirmPassword'),
         resetPwBtn: document.getElementById('volunteerResetPasswordBtn'),
-        resetForm: document.getElementById('volunteerForgotResetForm')
+        resetForm: document.getElementById('volunteerForgotResetForm'),
+        onOpenForgot: () => {
+            const t = document.getElementById('volunteerModalTitle');
+            const s = document.getElementById('volunteerModalSubtitle');
+            if (t) t.textContent = 'Forgot Password';
+            if (s) s.textContent = 'Health Center Staff Password Recovery';
+        },
+        onReturnToLogin: () => {
+            const t = document.getElementById('volunteerModalTitle');
+            const s = document.getElementById('volunteerModalSubtitle');
+            if (t) t.textContent = 'Volunteer Login';
+            if (s) s.textContent = 'Health Center Staff Portal';
+        }
     });
 
     // Initialize Forgot Password for Admin Portal
@@ -2373,7 +2423,19 @@ document.addEventListener('DOMContentLoaded', function () {
         newPwInput: document.getElementById('adminNewPassword'),
         confirmPwInput: document.getElementById('adminConfirmPassword'),
         resetPwBtn: document.getElementById('adminResetPasswordBtn'),
-        resetForm: document.getElementById('adminForgotResetForm')
+        resetForm: document.getElementById('adminForgotResetForm'),
+        onOpenForgot: () => {
+            const t = document.getElementById('adminModalTitle');
+            const s = document.getElementById('adminModalSubtitle');
+            if (t) t.textContent = 'Forgot Password';
+            if (s) s.textContent = 'System Administration Password Recovery';
+        },
+        onReturnToLogin: () => {
+            const t = document.getElementById('adminModalTitle');
+            const s = document.getElementById('adminModalSubtitle');
+            if (t) t.textContent = 'Admin Login';
+            if (s) s.textContent = 'System Administration Portal';
+        }
     });
 
     document.querySelectorAll('.toggle-password').forEach((toggle) => {

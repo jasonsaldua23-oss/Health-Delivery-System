@@ -1028,8 +1028,10 @@ textarea { resize: vertical; min-height: 120px; }
     gap: 16px;
 }
 
-.modal-step.hidden-step {
-    display: none;
+.hidden-step,
+.modal-step.hidden-step,
+.modal-substep.hidden-step {
+    display: none !important;
 }
 
 .auth-step-header {
