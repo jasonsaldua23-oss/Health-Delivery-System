@@ -714,8 +714,9 @@ button, input, select { font: inherit; }
 .header-actions { display: flex; gap: 10px; }
 .green-btn,
 .blue-btn,
+.danger-btn,
 .mini-btn,
-.action-btn { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 12px; padding: 10px 18px; color: #fff; cursor: pointer; font-weight: 600; font-size: 0.88rem; transition: all 0.2s ease; }
+.action-btn { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 12px; padding: 10px 18px; color: #fff; cursor: pointer; font-weight: 600; font-size: 0.88rem; transition: all 0.2s ease; white-space: nowrap; line-height: 1.2; }
 .green-btn svg,
 .blue-btn svg,
 .mini-btn svg,
@@ -3422,6 +3423,92 @@ button, input, select { font: inherit; }
 }
 
 /* Station Services Redesign & Station Daily Capacity */
+.services-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.services-page-head .action-head-copy {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.services-page-head .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.services-page-head .header-actions button,
+.services-page-head .header-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.15px;
+  white-space: nowrap;
+  line-height: 1;
+  cursor: pointer;
+  border: 0;
+  box-sizing: border-box;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.services-page-head .header-actions button svg,
+.services-page-head .header-actions a svg {
+  width: 15px !important;
+  height: 15px !important;
+  flex-shrink: 0;
+}
+
+.services-page-head .header-actions .blue-btn {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.22);
+}
+
+.services-page-head .header-actions .blue-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.32);
+}
+
+.services-page-head .header-actions .green-btn {
+  background: linear-gradient(135deg, #4f46e5 0%, #6d28d9 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.24);
+}
+
+.services-page-head .header-actions .green-btn:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #5b21b6 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+}
+
+.services-page-head .header-actions .danger-btn,
+.services-page-head .header-actions #removeServiceBtn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.24);
+}
+
+.services-page-head .header-actions .danger-btn:hover,
+.services-page-head .header-actions #removeServiceBtn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
 .service-station-hero-card {
   display: flex;
   align-items: center;

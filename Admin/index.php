@@ -2409,7 +2409,7 @@ if (!function_exists('peso')) {
                     <div class="header-actions">
                         <button type="button" class="blue-btn" onclick="openManageScheduleModal()"><?= admin_icon('calendar'); ?>Manage Schedule</button>
                         <button type="button" class="green-btn" onclick="document.getElementById('addServiceModal').style.display='grid'"><?= admin_icon('plus'); ?>Add Service</button>
-                        <button type="button" class="blue-btn" id="removeServiceBtn" style="display:none;" onclick="removeSelectedService()"><?= admin_icon('x'); ?>Remove Service</button>
+                        <button type="button" class="danger-btn" id="removeServiceBtn" style="display:none;" onclick="removeSelectedService()"><?= admin_icon('x'); ?>Remove Service</button>
                     </div>
                 </section>
                 <?php 
