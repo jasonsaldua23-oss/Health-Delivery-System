@@ -761,6 +761,7 @@ function create_appointments_table(mysqli $connection, string $engine = 'InnoDB'
             recipient_middle_name VARCHAR(100) DEFAULT NULL,
             recipient_last_name VARCHAR(100) DEFAULT NULL,
             recipient_birth_date DATE DEFAULT NULL,
+            recipient_gender VARCHAR(30) DEFAULT NULL,
             preferred_date DATE NOT NULL,
             preferred_time VARCHAR(30) NOT NULL,
             notes TEXT DEFAULT NULL,
@@ -1349,6 +1350,12 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
         try {
             $connection->query('ALTER TABLE appointments ADD COLUMN recipient_birth_date DATE DEFAULT NULL AFTER recipient_last_name');
             $log[] = 'Added appointments.recipient_birth_date';
+        } catch (Throwable $e) {}
+    }
+    if (!db_column_exists($connection, 'appointments', 'recipient_gender')) {
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN recipient_gender VARCHAR(30) DEFAULT NULL AFTER recipient_birth_date');
+            $log[] = 'Added appointments.recipient_gender';
         } catch (Throwable $e) {}
     }
 
@@ -3390,6 +3397,10 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
 
             $k = strtolower($rFirst . '_' . $rLast . '_' . $rDob);
             $roleInfo = resolve_infant_guardian_role_details($rRel, $parentName, $parentGender);
+            $rGender = trim((string) ($rec['recipient_gender'] ?? $appt['recipient_gender'] ?? $appt['gender'] ?? 'Not specified'));
+            if ($rGender === '') {
+                $rGender = 'Not specified';
+            }
 
             if (!isset($groupedInfants[$k])) {
                 $profId = save_or_update_infant_profile([
@@ -3398,7 +3409,7 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                     'middle_name' => $rMiddle,
                     'last_name' => $rLast,
                     'birth_date' => $rDob ?: date('Y-m-d'),
-                    'gender' => $appt['gender'] ?? 'Not specified',
+                    'gender' => $rGender,
                     'relationship' => $roleInfo['relationship'],
                     'mother_name' => $roleInfo['default_mother'],
                     'father_name' => $roleInfo['default_father'],
@@ -3411,7 +3422,7 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                     'middle_name' => $rMiddle,
                     'last_name' => $rLast,
                     'birth_date' => $rDob,
-                    'gender' => $appt['gender'] ?? 'Not specified',
+                    'gender' => $rGender,
                     'relationship' => $roleInfo['relationship'],
                     'mother_name' => $roleInfo['default_mother'],
                     'father_name' => $roleInfo['default_father'],
@@ -3423,6 +3434,9 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                     'vaccine_doses' => [],
                 ];
             } else {
+                if ($groupedInfants[$k]['gender'] === 'Not specified' && $rGender !== 'Not specified') {
+                    $groupedInfants[$k]['gender'] = $rGender;
+                }
                 // Update role info if appointment has more specific relationship
                 if ($rRel !== '' && strcasecmp($rRel, 'Child') !== 0) {
                     $groupedInfants[$k]['role_info'] = $roleInfo;
@@ -3753,12 +3767,14 @@ function appointment_recipient_details(array $appt): array
         $recipientMiddleName = (string) ($appt['middle_name'] ?? '');
         $recipientLastName = (string) ($appt['last_name'] ?? '');
         $recipientBirthDate = (string) ($appt['birth_date'] ?? '');
+        $recipientGender = (string) ($appt['gender'] ?? '');
         $relationshipLabel = 'Self';
     } else {
         $recipientFirstName = (string) ($appt['recipient_first_name'] ?? $appt['first_name'] ?? '');
         $recipientMiddleName = (string) ($appt['recipient_middle_name'] ?? $appt['middle_name'] ?? '');
         $recipientLastName = (string) ($appt['recipient_last_name'] ?? $appt['last_name'] ?? '');
         $recipientBirthDate = (string) ($appt['recipient_birth_date'] ?? $appt['birth_date'] ?? '');
+        $recipientGender = (string) ($appt['recipient_gender'] ?? $appt['gender'] ?? '');
         $relationshipLabel = $relationship !== '' ? $relationship : 'Child';
     }
 
@@ -3791,6 +3807,7 @@ function appointment_recipient_details(array $appt): array
         'recipient_last_name' => $recipientLastName,
         'recipient_full_name' => $recipientFullName,
         'recipient_birth_date' => $recipientBirthDate,
+        'recipient_gender' => $recipientGender,
         'recipient_age_label' => $ageLabel,
         'patient_full_name' => full_name($appt),
         'vaccine_type' => (string) ($appt['vaccine_type'] ?? ''),

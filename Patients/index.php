@@ -168,6 +168,7 @@ $formData = [
     'recipient_middle_name' => '',
     'recipient_last_name' => '',
     'recipient_birth_date' => '',
+    'recipient_gender' => '',
     'preferred_date' => '',
     'preferred_time' => '',
     'notes' => '',
@@ -354,8 +355,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
         if ($immRel === '' || !in_array($immRel, ['Self', 'Parent', 'Guardian'], true)) {
             $errors[] = 'Please select your relationship to the recipient (Self, Parent, or Guardian).';
         } elseif ($immRel !== 'Self') {
-            if ($formData['recipient_first_name'] === '' || $formData['recipient_last_name'] === '' || $formData['recipient_birth_date'] === '') {
-                $errors[] = 'Please provide the recipient\'s First Name, Last Name, and Date of Birth.';
+            if ($formData['recipient_first_name'] === '' || $formData['recipient_last_name'] === '' || $formData['recipient_birth_date'] === '' || $formData['recipient_gender'] === '') {
+                $errors[] = 'Please provide the recipient\'s First Name, Last Name, Date of Birth, and Gender.';
             }
         }
     }
@@ -402,32 +403,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
             $recipientMiddle = $formData['recipient_middle_name'];
             $recipientLast = $formData['recipient_last_name'];
             $recipientBirth = $formData['recipient_birth_date'] !== '' ? $formData['recipient_birth_date'] : null;
+            $recipientGender = $formData['recipient_gender'];
 
             if ($selectedProgram['slug'] === 'immunization' && $formData['immunization_relationship'] === 'Self') {
                 $recipientFirst = $formData['first_name'];
                 $recipientMiddle = $formData['middle_name'];
                 $recipientLast = $formData['last_name'];
                 $recipientBirth = $formData['birth_date'];
+                $recipientGender = $formData['gender'];
             }
 
             $dbConn = db();
 
             // Ensure columns exist on database before inserting
-            if (!db_column_exists($dbConn, 'appointments', 'immunization_relationship') || !db_table_exists($dbConn, 'immunized_infants')) {
+            if (!db_column_exists($dbConn, 'appointments', 'immunization_relationship') || !db_column_exists($dbConn, 'appointments', 'recipient_gender') || !db_table_exists($dbConn, 'immunized_infants')) {
                 run_database_migrations($dbConn, false);
             }
+
+            $apptGender = ($selectedProgram['slug'] === 'immunization' && $formData['immunization_relationship'] !== 'Self' && $recipientGender !== '') 
+                ? $recipientGender 
+                : $formData['gender'];
 
             $stmt = $dbConn->prepare('INSERT INTO appointments (
                 reference_code, appointment_code, patient_id, 
                 station_slug, station_name, service_slug, service_name, 
                 first_name, middle_name, last_name, birth_date, gender, 
                 contact_number, email, complete_address, immunization_relationship, 
-                recipient_first_name, recipient_middle_name, recipient_last_name, recipient_birth_date,
+                recipient_first_name, recipient_middle_name, recipient_last_name, recipient_birth_date, recipient_gender,
                 preferred_date, preferred_time, notes, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending")');
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "Pending")');
 
             $stmt->bind_param(
-                'sssssssssssssssssssssss',
+                'ssssssssssssssssssssssss',
                 $reference,
                 $appointmentCode,
                 $patientId,
@@ -439,7 +446,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 $formData['middle_name'],
                 $formData['last_name'],
                 $formData['birth_date'],
-                $formData['gender'],
+                $apptGender,
                 $formData['contact_number'],
                 $formData['email'],
                 $formData['complete_address'],
@@ -448,6 +455,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 $recipientMiddle,
                 $recipientLast,
                 $recipientBirth,
+                $recipientGender,
                 $formData['preferred_date'],
                 $formData['preferred_time'],
                 $formData['notes']
@@ -464,7 +472,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     'middle_name' => $recipientMiddle !== '' ? $recipientMiddle : $formData['middle_name'],
                     'last_name' => $recipientLast !== '' ? $recipientLast : $formData['last_name'],
                     'birth_date' => $recipientBirth !== null ? $recipientBirth : $formData['birth_date'],
-                    'gender' => $formData['gender'],
+                    'gender' => $recipientGender !== '' ? $recipientGender : $formData['gender'],
                     'relationship' => $formData['immunization_relationship'],
                     'station_slug' => $selectedStation['slug'],
                     'vaccine_type' => null,
@@ -588,7 +596,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     <div class="detail-grid two-col recipient-details-box">
                         <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('user'); ?></span><div><small>Recipient Name</small><strong><?= h($recipientInfo['recipient_full_name']); ?></strong></div></div>
                         <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('heart'); ?></span><div><small>Relationship to Recipient</small><strong class="relationship-pill-tag"><?= h($recipientInfo['relationship']); ?></strong></div></div>
-                        <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('calendar'); ?></span><div><small>Recipient Birthdate &amp; Age</small><strong><?= !empty($recipientInfo['recipient_birth_date']) ? h(date('F j, Y', strtotime($recipientInfo['recipient_birth_date']))) . ' (' . h($recipientInfo['recipient_age_label']) . ')' : 'Not specified'; ?></strong></div></div>
+                        <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('calendar'); ?></span><div><small>Recipient Birthdate &amp; Age</small><strong><?= !empty($recipientInfo['recipient_birth_date']) ? h(date('F j, Y', strtotime($recipientInfo['recipient_birth_date']))) . ' (' . h($recipientInfo['recipient_age_label']) . (!empty($recipientInfo['recipient_gender']) ? ' • ' . h($recipientInfo['recipient_gender']) : '') . ')' : 'Not specified'; ?></strong></div></div>
                         <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('shield'); ?></span><div><small>Booked By (Account Holder)</small><strong><?= h($recipientInfo['patient_full_name']); ?> (ID: #<?= h((string)($confirmedAppointment['patient_id'] ?? 'N/A')); ?>)</strong></div></div>
                         <div class="detail-line full-span-line"><span class="inline-icon light-icon"><?= iconSvg('syringe'); ?></span><div><small>Type of Vaccine</small><strong style="color: <?= !empty($confirmedAppointment['vaccine_type']) ? '#065f46' : '#64748b'; ?>;"><?= !empty($confirmedAppointment['vaccine_type']) ? h((string) $confirmedAppointment['vaccine_type']) : 'Pending staff vitals encoding upon arrival'; ?></strong></div></div>
                     </div>
@@ -640,6 +648,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     data-recipient-name="<?= h($recipientInfo['recipient_full_name']); ?>"
                     data-recipient-rel="<?= h($recipientInfo['relationship']); ?>"
                     data-recipient-dob="<?= !empty($recipientInfo['recipient_birth_date']) ? h(date('F j, Y', strtotime($recipientInfo['recipient_birth_date']))) : ''; ?>"
+                    data-recipient-gender="<?= h((string) ($recipientInfo['recipient_gender'] ?? '')); ?>"
                     data-recipient-age="<?= h($recipientInfo['recipient_age_label']); ?>"
                     data-vaccine-type="<?= h((string) ($confirmedAppointment['vaccine_type'] ?? '')); ?>"
                 ><span class="inline-icon"><?= iconSvg('download'); ?></span> Download</button>
@@ -801,10 +810,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                                             <span>Last Name <em>*</em></span>
                                             <input type="text" name="recipient_last_name" id="recipient_last_name" value="<?= h($formData['recipient_last_name']); ?>" placeholder="Last name" class="capitalize-input">
                                         </label>
-                                        <label class="full-span-desktop">
+                                        <label>
                                             <span>Date of Birth <em>*</em></span>
                                             <input type="date" name="recipient_birth_date" id="recipient_birth_date" value="<?= h($formData['recipient_birth_date']); ?>" max="<?= date('Y-m-d'); ?>">
                                         </label>
+                                        <div class="gender-radio-group full-span-desktop" style="margin-top: 4px;">
+                                            <span class="gender-label" style="font-size: 0.88rem; font-weight: 600; color: #1e293b; margin-bottom: 8px; display: block;">Baby's Gender <em>*</em></span>
+                                            <div class="gender-options" style="display: flex; gap: 14px;">
+                                                <label class="radio-option <?= $formData['recipient_gender'] === 'Male' ? 'is-selected' : 'is-unselected'; ?>" style="flex: 1;">
+                                                    <input type="radio" name="recipient_gender" id="recipient_gender_male" value="Male" <?= $formData['recipient_gender'] === 'Male' ? 'checked' : ''; ?>>
+                                                    <span class="radio-custom"></span>
+                                                    <span>Male</span>
+                                                </label>
+                                                <label class="radio-option <?= $formData['recipient_gender'] === 'Female' ? 'is-selected' : 'is-unselected'; ?>" style="flex: 1;">
+                                                    <input type="radio" name="recipient_gender" id="recipient_gender_female" value="Female" <?= $formData['recipient_gender'] === 'Female' ? 'checked' : ''; ?>>
+                                                    <span class="radio-custom"></span>
+                                                    <span>Female</span>
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

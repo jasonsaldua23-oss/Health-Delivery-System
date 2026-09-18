@@ -315,6 +315,7 @@ function downloadConfirmationImage() {
         recipientName: downloadButton.dataset.recipientName || '',
         recipientRel: downloadButton.dataset.recipientRel || '',
         recipientDob: downloadButton.dataset.recipientDob || '',
+        recipientGender: downloadButton.dataset.recipientGender || '',
         recipientAge: downloadButton.dataset.recipientAge || '',
         vaccineType: downloadButton.dataset.vaccineType || '',
     };
@@ -328,35 +329,37 @@ function downloadConfirmationImage() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const gradient = ctx.createLinearGradient(180, 120, 1420, 1200);
-    gradient.addColorStop(0, '#10b981');
-    gradient.addColorStop(1, '#059669');
-    roundedRect(ctx, 120, 90, 1360, 330, 36, gradient);
+    gradient.addColorStop(0, '#ffffff');
+    gradient.addColorStop(1, '#f1f7fe');
+    ctx.fillStyle = gradient;
+    roundedRect(ctx, 120, 80, 1360, 1180, 36, gradient);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '700 72px Outfit';
-    ctx.fillText('Booking Confirmed!', 420, 220);
-    ctx.font = '400 34px Outfit';
-    ctx.fillText('Your appointment request has been submitted successfully.', 300, 285);
+    ctx.fillStyle = '#11284a';
+    ctx.font = '700 56px Outfit';
+    ctx.fillText('Appointment Confirmation Slip', 170, 175);
 
-    roundedRect(ctx, 520, 315, 560, 120, 26, 'rgba(255,255,255,0.18)');
-    ctx.font = '500 28px Outfit';
-    ctx.fillText('Appointment ID', 660, 362);
-    ctx.font = '800 58px Outfit';
-    ctx.fillText(details.reference, 555, 415);
+    ctx.fillStyle = '#4f637d';
+    ctx.font = '400 24px Outfit';
+    ctx.fillText('Please present this confirmation slip upon arriving at the barangay health station.', 170, 220);
 
-    roundedRect(ctx, 1120, 315, 220, 120, 26, 'rgba(255,255,255,0.18)');
-    ctx.font = '500 24px Outfit';
-    ctx.fillText('Patient ID', 1168, 360);
-    ctx.font = '700 30px Outfit';
-    ctx.fillText(details.patientId || 'Pending', 1150, 405);
+    roundedRect(ctx, 170, 260, 1260, 200, 24, '#f8fbff');
+    ctx.fillStyle = '#6b7a90';
+    ctx.font = '600 22px Outfit';
+    ctx.fillText('APPOINTMENT REFERENCE CODE', 210, 315);
 
-    const cardHeight = details.isImmunization ? 600 : 410;
+    ctx.fillStyle = '#11284a';
+    ctx.font = '700 60px Outfit';
+    ctx.fillText(details.reference || 'N/A', 210, 385);
+
+    if (details.patientId) {
+        ctx.fillStyle = '#4f637d';
+        ctx.font = '500 22px Outfit';
+        ctx.fillText(`Patient ID: #${details.patientId}`, 210, 425);
+    }
+
+    const cardHeight = details.isImmunization ? 440 : 360;
     roundedRect(ctx, 120, 470, 1360, cardHeight, 28, '#ffffff');
-    ctx.strokeStyle = '#dbe7f3';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(120, 470, 1360, cardHeight);
-
-    ctx.fillStyle = '#0f2240';
+    ctx.fillStyle = '#11284a';
     ctx.font = '700 48px Outfit';
     ctx.fillText(details.isImmunization ? 'Appointment & Recipient Information' : 'Appointment Details', 170, 545);
 
@@ -373,7 +376,8 @@ function downloadConfirmationImage() {
         rows.push(['Recipient Name', details.recipientName]);
         rows.push(['Relationship to Recipient', details.recipientRel || 'Self']);
         if (details.recipientDob) {
-            rows.push(['Recipient Birthdate & Age', `${details.recipientDob}${details.recipientAge ? ' (' + details.recipientAge + ')' : ''}`]);
+            const demoSuffix = [details.recipientAge, details.recipientGender].filter(Boolean).join(' • ');
+            rows.push(['Recipient Birthdate & Age', `${details.recipientDob}${demoSuffix ? ' (' + demoSuffix + ')' : ''}`]);
         }
     }
 
@@ -444,6 +448,7 @@ const extraRecipientFields = document.getElementById('extraRecipientFields');
 const recipientFirstInput = document.getElementById('recipient_first_name');
 const recipientLastInput = document.getElementById('recipient_last_name');
 const recipientDobInput = document.getElementById('recipient_birth_date');
+const recipientGenderRadios = document.querySelectorAll('input[name="recipient_gender"]');
 
 function toggleImmunizationRecipientFields() {
     if (!immRelSelect || !extraRecipientFields) return;
@@ -454,11 +459,13 @@ function toggleImmunizationRecipientFields() {
         if (recipientFirstInput) { recipientFirstInput.setAttribute('data-required', ''); recipientFirstInput.required = true; }
         if (recipientLastInput) { recipientLastInput.setAttribute('data-required', ''); recipientLastInput.required = true; }
         if (recipientDobInput) { recipientDobInput.setAttribute('data-required', ''); recipientDobInput.required = true; }
+        recipientGenderRadios.forEach(r => { r.setAttribute('data-required', ''); });
     } else {
         extraRecipientFields.style.display = 'none';
         if (recipientFirstInput) { recipientFirstInput.removeAttribute('data-required'); recipientFirstInput.required = false; }
         if (recipientLastInput) { recipientLastInput.removeAttribute('data-required'); recipientLastInput.required = false; }
         if (recipientDobInput) { recipientDobInput.removeAttribute('data-required'); recipientDobInput.required = false; }
+        recipientGenderRadios.forEach(r => { r.removeAttribute('data-required'); });
     }
 }
 

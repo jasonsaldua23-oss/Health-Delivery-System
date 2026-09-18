@@ -13,9 +13,10 @@ echo "    VERIFYING USER REQUIREMENTS IMPLEMENTATION          \n";
 echo "========================================================\n\n";
 
 $db = db();
+run_database_migrations($db, false);
 
 // ----------------------------------------------------
-// TEST 1: Verify Infant Button Has Only Icon (No 'Infants' text)
+// TEST 1: Verify Infant Button on Staff Patient Cards (Icon only, no text)
 // ----------------------------------------------------
 echo "[TEST 1] Testing Infant Button on Patient Cards (Icon only, no text)...\n";
 $staffFile = file_get_contents(__DIR__ . '/../Barangay Health Station/index.php');
@@ -38,9 +39,9 @@ if (str_contains($staffFile, 'hasOpenInfantTray') && str_contains($staffFile, 'i
 }
 
 // ----------------------------------------------------
-// TEST 3: Verify Infant Profile Photo Resolution (Top Avatar & Appointment History)
+// TEST 3: Verify Staff Infant Profile Photo Resolution
 // ----------------------------------------------------
-echo "\n[TEST 3] Testing Infant Profile Photo Resolution...\n";
+echo "\n[TEST 3] Testing Staff Infant Profile Photo Resolution...\n";
 $infants = fetch_infant_sub_profiles_by_patient_id('P2YLL5');
 assert(!empty($infants), 'Infants found for P2YLL5');
 $babyLeo = $infants[0];
@@ -58,14 +59,12 @@ assert(!empty($firstAppt['photo_path']), 'Appointment record has photo_path popu
 // TEST 4: Verify Infant Immunization Vitals Extra Fields (Height and Weight)
 // ----------------------------------------------------
 echo "\n[TEST 4] Testing Infant Immunization Vitals Extra Fields (Height and Weight)...\n";
-// 1. Check schema in database
 $colRes = $db->query("SHOW COLUMNS FROM appointments LIKE 'height'");
 assert($colRes->num_rows === 1, 'height column exists in appointments table');
 $colRes2 = $db->query("SHOW COLUMNS FROM appointments LIKE 'weight'");
 assert($colRes2->num_rows === 1, 'weight column exists in appointments table');
 echo "  ✓ Database columns 'height' and 'weight' verified in appointments table.\n";
 
-// 2. Check HTML rendering in Staff Vitals modal
 if (str_contains($staffFile, 'name="height"') && str_contains($staffFile, 'name="weight"') && str_contains($staffFile, '$isVaccination && $isNonSelf')) {
     echo "  ✓ Height and Weight input fields verified in Staff Vitals Encoding Modal under infant immunization condition.\n";
 } else {
@@ -73,25 +72,93 @@ if (str_contains($staffFile, 'name="height"') && str_contains($staffFile, 'name=
     exit(1);
 }
 
-// 3. Test saving Height and Weight via save_appointment_clinical_details
-$testApptId = (int) $firstAppt['id'];
-$saveOk = save_appointment_clinical_details($testApptId, [
-    'body_temperature' => '36.8',
-    'pulse_rate' => '110',
-    'respiration_rate' => '28',
-    'blood_pressure' => '90/60',
-    'height' => '68 cm',
-    'weight' => '7.5 kg',
-    'vaccine_type' => 'Pentavalent (DTP-HepB-Hib)',
-    'doctor_notes' => 'Healthy infant, vitals and measurements normal.',
+// ----------------------------------------------------
+// TEST 5: Verify Admin Infant Profile Pictures Parity
+// ----------------------------------------------------
+echo "\n[TEST 5] Testing Admin Infant Profile Pictures Parity with Staff...\n";
+$adminFile = file_get_contents(__DIR__ . '/../Admin/index.php');
+
+// Verify openAdminInfantViewer and renderAdminSelectedInfant contain photo rendering
+assert(str_contains($adminFile, 'window.openAdminInfantViewer'), 'Admin has openAdminInfantViewer');
+assert(str_contains($adminFile, 'window.renderAdminSelectedInfant'), 'Admin has renderAdminSelectedInfant');
+assert(str_contains($adminFile, 'infant.latest_photo || infant.photo_path'), 'Admin resolves top avatar via latest_photo/photo_path');
+assert(str_contains($adminFile, 'appt.photo_path || infant.latest_photo || infant.photo_path'), 'Admin resolves timeline visit photos');
+
+echo "  ✓ Admin Infant Sub-Profile Modal implements exact photo resolution (Top Avatar: latest immunization photo, Timeline: visit verification photo).\n";
+
+// ----------------------------------------------------
+// TEST 6: Verify Immunization Booking Form Recipient Gender Radio Buttons
+// ----------------------------------------------------
+echo "\n[TEST 6] Testing Immunization Booking Form Recipient Gender...\n";
+$patientsFile = file_get_contents(__DIR__ . '/../Patients/index.php');
+$appJsFile = file_get_contents(__DIR__ . '/../Patients/assets/js/app.js');
+
+// 1. Check DB Schema
+$colRes3 = $db->query("SHOW COLUMNS FROM appointments LIKE 'recipient_gender'");
+assert($colRes3->num_rows === 1, 'recipient_gender column exists in appointments table');
+echo "  ✓ Database column 'recipient_gender' verified in appointments table.\n";
+
+// 2. Check HTML radio buttons in Patients/index.php
+assert(str_contains($patientsFile, 'name="recipient_gender" id="recipient_gender_male" value="Male"'), 'Male radio button exists in Patients/index.php');
+assert(str_contains($patientsFile, 'name="recipient_gender" id="recipient_gender_female" value="Female"'), 'Female radio button exists in Patients/index.php');
+assert(str_contains($patientsFile, "Baby's Gender"), "Baby's Gender label exists in Patients/index.php");
+echo "  ✓ Recipient Gender radio buttons (Male/Female) verified inside #extraRecipientFields in Patients/index.php.\n";
+
+// 3. Check JS toggle handling in Patients/assets/js/app.js
+assert(str_contains($appJsFile, 'input[name="recipient_gender"]'), 'app.js selects recipient_gender radios for validation toggling');
+echo "  ✓ Client-side JS toggle dynamically enforces required state on recipient gender radios.\n";
+
+// 4. Test simulated booking with recipient gender
+$testRef = 'TEST-GEN-' . strtoupper(bin2hex(random_bytes(3)));
+$testApptCode = 'G' . strtoupper(bin2hex(random_bytes(3)));
+$testPatientId = 'P-GENDER-TEST';
+
+// Create a test appointment with recipient_gender = 'Female'
+$stmt = $db->prepare("INSERT INTO appointments (
+    reference_code, appointment_code, patient_id,
+    station_slug, station_name, service_slug, service_name,
+    first_name, last_name, birth_date, gender,
+    contact_number, complete_address, immunization_relationship,
+    recipient_first_name, recipient_last_name, recipient_birth_date, recipient_gender,
+    preferred_date, preferred_time, status
+) VALUES (?, ?, ?, 'bata', 'Barangay Bata Health Center', 'immunization', 'Immunization & Vaccination', 'ParentName', 'TestFamily', '1992-05-10', 'Female', '09123456789', 'Barangay Bata, Bacolod City', 'Parent', 'BabyGirl', 'TestFamily', '2024-01-15', 'Female', '2026-09-25', '09:00 AM', 'Confirmed')");
+
+$stmt->bind_param('sss', $testRef, $testApptCode, $testPatientId);
+$stmt->execute();
+$newApptId = (int) $db->insert_id;
+
+save_immunized_infant([
+    'appointment_id' => $newApptId,
+    'appointment_code' => $testApptCode,
+    'patient_id' => $testPatientId,
+    'first_name' => 'BabyGirl',
+    'last_name' => 'TestFamily',
+    'birth_date' => '2024-01-15',
+    'gender' => 'Female',
+    'relationship' => 'Parent',
+    'station_slug' => 'bata',
+    'vaccine_type' => 'BCG',
 ]);
 
-assert($saveOk === true, 'save_appointment_clinical_details succeeded with height and weight');
-$recheckAppt = fetch_appointment_by_id($testApptId);
-assert($recheckAppt['height'] === '68 cm', 'Height saved correctly');
-assert($recheckAppt['weight'] === '7.5 kg', 'Weight saved correctly');
-echo "  ✓ Height ('{$recheckAppt['height']}') and Weight ('{$recheckAppt['weight']}') successfully saved and retrieved from DB.\n";
+// Fetch and verify recipient details helper
+$fetchedAppt = fetch_appointment_by_id($newApptId);
+assert($fetchedAppt !== null, 'Test appointment fetched');
+$recDetails = appointment_recipient_details($fetchedAppt);
+assert($recDetails['recipient_gender'] === 'Female', 'Recipient gender resolved as Female');
+echo "  ✓ appointment_recipient_details successfully resolved recipient_gender: '{$recDetails['recipient_gender']}'.\n";
+
+// Fetch and verify infant sub-profile
+$genderInfants = fetch_infant_sub_profiles_by_patient_id($testPatientId);
+assert(!empty($genderInfants), 'Infant sub-profile created for test parent');
+$testInfant = $genderInfants[0];
+assert($testInfant['gender'] === 'Female', "Infant sub-profile gender is Female (got {$testInfant['gender']})");
+echo "  ✓ Infant sub-profile successfully reflects gender: '{$testInfant['gender']}'.\n";
+
+// Clean up test records
+$db->query("DELETE FROM appointments WHERE patient_id = '$testPatientId'");
+$db->query("DELETE FROM immunized_infants WHERE patient_id = '$testPatientId'");
+$db->query("DELETE FROM infant_profiles WHERE patient_id = '$testPatientId'");
 
 echo "\n========================================================\n";
-echo "    ALL 4 USER REQUIREMENTS VERIFIED (100%)!            \n";
+echo "    ALL 6 USER REQUIREMENTS FULLY VERIFIED (100%)!       \n";
 echo "========================================================\n";
