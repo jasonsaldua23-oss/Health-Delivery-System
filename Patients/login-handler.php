@@ -520,6 +520,36 @@ if ($action === 'request_password_otp') {
     exit;
 }
 
+if ($action === 'verify_password_otp') {
+    $role = strtolower(trim((string) ($_POST['role'] ?? 'patient')));
+    $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+    $otp = trim((string) ($_POST['otp'] ?? ''));
+
+    if ($email === '') {
+        echo json_encode(['success' => false, 'message' => 'Email address is required.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    if (strlen($otp) !== 6 || !ctype_digit($otp)) {
+        echo json_encode(['success' => false, 'message' => 'Please enter the valid 6-digit numeric verification code.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    $verification = verify_password_reset_otp($role, $email, $otp);
+    if (!$verification['valid']) {
+        echo json_encode(['success' => false, 'message' => $verification['error'] ?? 'Invalid or expired verification code.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Verification code confirmed. You may now create your new password.',
+        'email' => $email,
+        'role' => $role,
+    ], JSON_THROW_ON_ERROR);
+    exit;
+}
+
 if ($action === 'verify_and_reset_password') {
     $role = strtolower(trim((string) ($_POST['role'] ?? 'patient')));
     $email = strtolower(trim((string) ($_POST['email'] ?? '')));

@@ -3357,8 +3357,28 @@ for ($i = 0; $i < 6; $i++) {
             </section>
         <?php elseif ($page === 'image-capture'): ?>
             <?php 
+            $todayDate = date('Y-m-d');
             $captureAppointment = $photoAppointment; 
-            $allCaptureCandidates = $allStationAppointments;
+            if ($captureAppointment !== null) {
+                $cPrefDate = (string) ($captureAppointment['preferred_date'] ?? '');
+                $cStatus = (string) ($captureAppointment['status'] ?? '');
+                if ($cPrefDate !== '' && $cPrefDate < $todayDate && $cStatus !== 'Completed') {
+                    $captureAppointment = null;
+                }
+            }
+
+            // Exclude appointments whose scheduled date has passed and were not served
+            $allCaptureCandidates = array_values(array_filter(
+                $allStationAppointments,
+                static function(array $item) use ($todayDate): bool {
+                    $prefDate = (string) ($item['preferred_date'] ?? '');
+                    $status = (string) ($item['status'] ?? '');
+                    if ($prefDate !== '' && $prefDate < $todayDate && $status !== 'Completed') {
+                        return false;
+                    }
+                    return true;
+                }
+            ));
 
             // If a service program is selected, filter candidate appointments strictly to that service
             if ($programFilter !== '') {
@@ -3381,8 +3401,6 @@ for ($i = 0; $i < 6; $i++) {
                     }
                 ));
             }
-
-            $todayDate = date('Y-m-d');
             $photosVerifiedTodayAppointments = array_values(array_filter(
                 $allCaptureCandidates,
                 static fn(array $item): bool => !empty($item['photo_path']) 

@@ -1017,13 +1017,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                         </form>
                     </div>
 
-                    <!-- Verify OTP & Reset Password View -->
-                    <div id="volunteerForgotResetView" class="modal-substep hidden-step" aria-hidden="true">
+                    <!-- Step 2: Verify OTP Alone View -->
+                    <div id="volunteerForgotOtpView" class="modal-substep hidden-step" aria-hidden="true">
                         <div class="otp-dest-pill">
                             <span>Code sent to: <strong id="volunteerMaskedEmail"></strong></span>
                             <button type="button" class="mini-text-action" id="volunteerChangeEmailBtn">Change</button>
                         </div>
-                        <form class="auth-form" id="volunteerForgotResetForm" novalidate>
+                        <div class="otp-instruction-card" style="margin-top: 10px; margin-bottom: 14px;">
+                            <p>Please enter the 6-digit verification code sent to your email address before setting a new password.</p>
+                        </div>
+                        <form class="auth-form" id="volunteerForgotOtpForm" novalidate>
                             <div class="field-group">
                                 <label for="volunteerOtpInput">6-Digit Verification Code</label>
                                 <input id="volunteerOtpInput" type="text" maxlength="6" inputmode="numeric" placeholder="000000" class="otp-code-input" required autocomplete="one-time-code">
@@ -1032,6 +1035,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                                     <button type="button" class="resend-otp-btn" id="volunteerResendOtpBtn" style="display:none;">Resend Code</button>
                                 </div>
                             </div>
+                            <button type="submit" class="auth-submit-btn volunteer-submit" id="volunteerVerifyOtpBtn">Verify Code</button>
+                            <p class="auth-switch-text">
+                                <button type="button" class="text-action" id="volunteerOtpBackToLoginBtn">← Back to Sign In</button>
+                            </p>
+                        </form>
+                    </div>
+
+                    <!-- Step 3: Reset Password View (Unlocked after OTP is verified alone) -->
+                    <div id="volunteerForgotResetView" class="modal-substep hidden-step" aria-hidden="true">
+                        <div class="otp-dest-pill">
+                            <span>Verified Account: <strong id="volunteerResetMaskedEmail"></strong></span>
+                        </div>
+                        <div class="otp-instruction-card" style="margin-top: 10px; margin-bottom: 14px;">
+                            <p>Verification successful. Create a strong new password for your staff account (minimum 6 characters).</p>
+                        </div>
+                        <form class="auth-form" id="volunteerForgotResetForm" novalidate>
                             <div class="field-group">
                                 <label for="volunteerNewPassword">New Password</label>
                                 <div class="input-with-icon password-field">
@@ -1124,13 +1143,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                         </form>
                     </div>
 
-                    <!-- Verify OTP & Reset Password View -->
-                    <div id="adminForgotResetView" class="modal-substep hidden-step" aria-hidden="true">
+                    <!-- Step 2: Verify OTP Alone View -->
+                    <div id="adminForgotOtpView" class="modal-substep hidden-step" aria-hidden="true">
                         <div class="otp-dest-pill">
                             <span>Code sent to: <strong id="adminMaskedEmail"></strong></span>
                             <button type="button" class="mini-text-action" id="adminChangeEmailBtn">Change</button>
                         </div>
-                        <form class="auth-form" id="adminForgotResetForm" novalidate>
+                        <div class="otp-instruction-card" style="margin-top: 10px; margin-bottom: 14px;">
+                            <p>Please enter the 6-digit verification code sent to your administrator email address before setting a new password.</p>
+                        </div>
+                        <form class="auth-form" id="adminForgotOtpForm" novalidate>
                             <div class="field-group">
                                 <label for="adminOtpInput">6-Digit Verification Code</label>
                                 <input id="adminOtpInput" type="text" maxlength="6" inputmode="numeric" placeholder="000000" class="otp-code-input" required autocomplete="one-time-code">
@@ -1139,6 +1161,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                                     <button type="button" class="resend-otp-btn" id="adminResendOtpBtn" style="display:none;">Resend Code</button>
                                 </div>
                             </div>
+                            <button type="submit" class="auth-submit-btn admin-submit" id="adminVerifyOtpBtn">Verify Code</button>
+                            <p class="auth-switch-text">
+                                <button type="button" class="text-action" id="adminOtpBackToLoginBtn">← Back to Sign In</button>
+                            </p>
+                        </form>
+                    </div>
+
+                    <!-- Step 3: Reset Password View (Unlocked after OTP is verified alone) -->
+                    <div id="adminForgotResetView" class="modal-substep hidden-step" aria-hidden="true">
+                        <div class="otp-dest-pill">
+                            <span>Verified Account: <strong id="adminResetMaskedEmail"></strong></span>
+                        </div>
+                        <div class="otp-instruction-card" style="margin-top: 10px; margin-bottom: 14px;">
+                            <p>Verification successful. Create a strong new password for your administrator account (minimum 6 characters).</p>
+                        </div>
+                        <form class="auth-form" id="adminForgotResetForm" novalidate>
                             <div class="field-group">
                                 <label for="adminNewPassword">New Password</label>
                                 <div class="input-with-icon password-field">
@@ -1507,9 +1545,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const loginView = options.loginView;
         const forgotView = options.forgotView;
         const requestView = options.requestView;
+        const otpView = options.otpView;
         const resetView = options.resetView;
         const forgotLink = options.forgotLink;
         const backToLoginBtn = options.backToLoginBtn;
+        const otpBackToLoginBtn = options.otpBackToLoginBtn;
         const resetBackToLoginBtn = options.resetBackToLoginBtn;
         const changeEmailBtn = options.changeEmailBtn;
         const emailInput = options.emailInput;
@@ -1517,9 +1557,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const sendOtpBtn = options.sendOtpBtn;
         const requestForm = options.requestForm;
         const maskedEmailEl = options.maskedEmailEl;
+        const resetMaskedEmailEl = options.resetMaskedEmailEl;
         const otpInput = options.otpInput;
         const timerTextEl = options.timerTextEl;
         const resendOtpBtn = options.resendOtpBtn;
+        const otpForm = options.otpForm;
+        const verifyOtpBtn = options.verifyOtpBtn;
         const newPwInput = options.newPwInput;
         const confirmPwInput = options.confirmPwInput;
         const resetPwBtn = options.resetPwBtn;
@@ -1529,6 +1572,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let activeEmail = '';
         let activeRecoveryEmail = '';
+        let validatedOtp = '';
         let countdownInterval = null;
 
         function stopCountdown() {
@@ -1566,6 +1610,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function showRequestState() {
             stopCountdown();
+            validatedOtp = '';
             if (loginView) {
                 loginView.classList.add('hidden-step');
                 loginView.setAttribute('aria-hidden', 'true');
@@ -1578,6 +1623,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 requestView.classList.remove('hidden-step');
                 requestView.setAttribute('aria-hidden', 'false');
             }
+            if (otpView) {
+                otpView.classList.add('hidden-step');
+                otpView.setAttribute('aria-hidden', 'true');
+            }
             if (resetView) {
                 resetView.classList.add('hidden-step');
                 resetView.setAttribute('aria-hidden', 'true');
@@ -1588,28 +1637,62 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        function showResetState(email, maskedEmail) {
+        function showOtpState(email, maskedEmail) {
             activeEmail = email;
+            validatedOtp = '';
             if (maskedEmailEl) maskedEmailEl.textContent = maskedEmail || email;
             if (requestView) {
                 requestView.classList.add('hidden-step');
                 requestView.setAttribute('aria-hidden', 'true');
             }
+            if (otpView) {
+                otpView.classList.remove('hidden-step');
+                otpView.setAttribute('aria-hidden', 'false');
+            }
             if (resetView) {
-                resetView.classList.remove('hidden-step');
-                resetView.setAttribute('aria-hidden', 'false');
+                resetView.classList.add('hidden-step');
+                resetView.setAttribute('aria-hidden', 'true');
             }
             if (otpInput) {
                 otpInput.value = '';
                 setTimeout(() => otpInput.focus(), 150);
             }
-            if (newPwInput) newPwInput.value = '';
-            if (confirmPwInput) confirmPwInput.value = '';
             startResendCountdown(60);
+        }
+
+        function showResetState(email, maskedEmail) {
+            activeEmail = email;
+            if (maskedEmailEl) maskedEmailEl.textContent = maskedEmail || email;
+            if (resetMaskedEmailEl) resetMaskedEmailEl.textContent = maskedEmail || email;
+            if (requestView) {
+                requestView.classList.add('hidden-step');
+                requestView.setAttribute('aria-hidden', 'true');
+            }
+            if (otpView) {
+                otpView.classList.add('hidden-step');
+                otpView.setAttribute('aria-hidden', 'true');
+            }
+            if (resetView) {
+                resetView.classList.remove('hidden-step');
+                resetView.setAttribute('aria-hidden', 'false');
+            }
+            if (newPwInput) {
+                newPwInput.value = '';
+                setTimeout(() => newPwInput.focus(), 150);
+            }
+            if (confirmPwInput) confirmPwInput.value = '';
+            if (!otpView) {
+                if (otpInput) {
+                    otpInput.value = '';
+                    setTimeout(() => otpInput.focus(), 150);
+                }
+                startResendCountdown(60);
+            }
         }
 
         function returnToLogin() {
             stopCountdown();
+            validatedOtp = '';
             if (forgotView) {
                 forgotView.classList.add('hidden-step');
                 forgotView.setAttribute('aria-hidden', 'true');
@@ -1617,6 +1700,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (requestView) {
                 requestView.classList.remove('hidden-step');
                 requestView.setAttribute('aria-hidden', 'false');
+            }
+            if (otpView) {
+                otpView.classList.add('hidden-step');
+                otpView.setAttribute('aria-hidden', 'true');
             }
             if (resetView) {
                 resetView.classList.add('hidden-step');
@@ -1646,6 +1733,11 @@ document.addEventListener('DOMContentLoaded', function () {
             returnToLogin();
         });
 
+        otpBackToLoginBtn?.addEventListener('click', function(e) {
+            e.preventDefault();
+            returnToLogin();
+        });
+
         resetBackToLoginBtn?.addEventListener('click', function(e) {
             e.preventDefault();
             returnToLogin();
@@ -1654,6 +1746,10 @@ document.addEventListener('DOMContentLoaded', function () {
         changeEmailBtn?.addEventListener('click', function(e) {
             e.preventDefault();
             stopCountdown();
+            if (otpView) {
+                otpView.classList.add('hidden-step');
+                otpView.setAttribute('aria-hidden', 'true');
+            }
             if (resetView) {
                 resetView.classList.add('hidden-step');
                 resetView.setAttribute('aria-hidden', 'true');
@@ -1711,7 +1807,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     activeRecoveryEmail = recoveryEmail;
                     window.showSystemToast?.(data.message || 'Verification code sent to your email.', { type: 'success', theme: theme, title: 'Code Dispatched' });
-                    showResetState(data.email || identifier, data.masked_email || identifier);
+                    if (otpView) {
+                        showOtpState(data.email || identifier, data.masked_email || identifier);
+                    } else {
+                        showResetState(data.email || identifier, data.masked_email || identifier);
+                    }
                 } else {
                     window.showSystemToast?.(data.message || 'Unable to send verification code.', { type: 'error', theme: theme, title: 'Request Failed' });
                 }
@@ -1765,15 +1865,73 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
+        function handleVerifyOtp(e) {
+            if (e) e.preventDefault();
+            const otpVal = (otpInput?.value || '').trim();
+            if (!otpVal || otpVal.length !== 6) {
+                window.showSystemToast?.('Please enter the complete 6-digit verification code.', { type: 'warning', theme: theme, title: 'Invalid Code' });
+                otpInput?.focus();
+                return;
+            }
+
+            if (verifyOtpBtn) {
+                verifyOtpBtn.disabled = true;
+                verifyOtpBtn.classList.add('is-loading');
+                verifyOtpBtn.textContent = 'Verifying Code...';
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'verify_password_otp');
+            formData.append('role', role);
+            formData.append('email', activeEmail);
+            formData.append('otp', otpVal);
+
+            fetch('login-handler.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (verifyOtpBtn) {
+                    verifyOtpBtn.disabled = false;
+                    verifyOtpBtn.classList.remove('is-loading');
+                    verifyOtpBtn.textContent = 'Verify Code';
+                }
+                if (data.success) {
+                    validatedOtp = otpVal;
+                    stopCountdown();
+                    window.showSystemToast?.(data.message || 'Verification code confirmed. Please set your new password.', { type: 'success', theme: theme, title: 'Code Verified' });
+                    showResetState(activeEmail, data.masked_email || (maskedEmailEl ? maskedEmailEl.textContent : activeEmail));
+                } else {
+                    window.showSystemToast?.(data.message || 'Invalid or expired verification code.', { type: 'error', theme: theme, title: 'Verification Failed' });
+                    otpInput?.focus();
+                }
+            })
+            .catch(() => {
+                if (verifyOtpBtn) {
+                    verifyOtpBtn.disabled = false;
+                    verifyOtpBtn.classList.remove('is-loading');
+                    verifyOtpBtn.textContent = 'Verify Code';
+                }
+                window.showSystemToast?.('Network error during verification.', { type: 'error', theme: theme, title: 'Connection Error' });
+            });
+        }
+
+        otpForm?.addEventListener('submit', handleVerifyOtp);
+
         resetForm?.addEventListener('submit', function(e) {
             e.preventDefault();
-            const otpVal = (otpInput?.value || '').trim();
+            const otpVal = otpView ? validatedOtp : (otpInput?.value || '').trim();
             const newPw = (newPwInput?.value || '').trim();
             const confirmPw = (confirmPwInput?.value || '').trim();
 
             if (!otpVal || otpVal.length !== 6) {
                 window.showSystemToast?.('Please enter the 6-digit verification code.', { type: 'warning', theme: theme, title: 'Invalid Code' });
-                otpInput?.focus();
+                if (otpView) {
+                    showOtpState(activeEmail, maskedEmailEl ? maskedEmailEl.textContent : activeEmail);
+                } else {
+                    otpInput?.focus();
+                }
                 return;
             }
 
@@ -1871,9 +2029,11 @@ document.addEventListener('DOMContentLoaded', function () {
         loginView: document.getElementById('volunteerLoginView'),
         forgotView: document.getElementById('volunteerForgotView'),
         requestView: document.getElementById('volunteerForgotRequestView'),
+        otpView: document.getElementById('volunteerForgotOtpView'),
         resetView: document.getElementById('volunteerForgotResetView'),
         forgotLink: document.getElementById('volunteerForgotPwLink'),
         backToLoginBtn: document.getElementById('volunteerBackToLoginBtn'),
+        otpBackToLoginBtn: document.getElementById('volunteerOtpBackToLoginBtn'),
         resetBackToLoginBtn: document.getElementById('volunteerResetBackToLoginBtn'),
         changeEmailBtn: document.getElementById('volunteerChangeEmailBtn'),
         emailInput: document.getElementById('volunteerForgotEmail'),
@@ -1881,9 +2041,12 @@ document.addEventListener('DOMContentLoaded', function () {
         sendOtpBtn: document.getElementById('volunteerSendOtpBtn'),
         requestForm: document.getElementById('volunteerForgotRequestForm'),
         maskedEmailEl: document.getElementById('volunteerMaskedEmail'),
+        resetMaskedEmailEl: document.getElementById('volunteerResetMaskedEmail'),
         otpInput: document.getElementById('volunteerOtpInput'),
         timerTextEl: document.getElementById('volunteerTimerText'),
         resendOtpBtn: document.getElementById('volunteerResendOtpBtn'),
+        otpForm: document.getElementById('volunteerForgotOtpForm'),
+        verifyOtpBtn: document.getElementById('volunteerVerifyOtpBtn'),
         newPwInput: document.getElementById('volunteerNewPassword'),
         confirmPwInput: document.getElementById('volunteerConfirmPassword'),
         resetPwBtn: document.getElementById('volunteerResetPasswordBtn'),
@@ -1909,18 +2072,23 @@ document.addEventListener('DOMContentLoaded', function () {
         loginView: document.getElementById('adminLoginView'),
         forgotView: document.getElementById('adminForgotView'),
         requestView: document.getElementById('adminForgotRequestView'),
+        otpView: document.getElementById('adminForgotOtpView'),
         resetView: document.getElementById('adminForgotResetView'),
         forgotLink: document.getElementById('adminForgotPwLink'),
         backToLoginBtn: document.getElementById('adminBackToLoginBtn'),
+        otpBackToLoginBtn: document.getElementById('adminOtpBackToLoginBtn'),
         resetBackToLoginBtn: document.getElementById('adminResetBackToLoginBtn'),
         changeEmailBtn: document.getElementById('adminChangeEmailBtn'),
         emailInput: document.getElementById('adminForgotEmail'),
         sendOtpBtn: document.getElementById('adminSendOtpBtn'),
         requestForm: document.getElementById('adminForgotRequestForm'),
         maskedEmailEl: document.getElementById('adminMaskedEmail'),
+        resetMaskedEmailEl: document.getElementById('adminResetMaskedEmail'),
         otpInput: document.getElementById('adminOtpInput'),
         timerTextEl: document.getElementById('adminTimerText'),
         resendOtpBtn: document.getElementById('adminResendOtpBtn'),
+        otpForm: document.getElementById('adminForgotOtpForm'),
+        verifyOtpBtn: document.getElementById('adminVerifyOtpBtn'),
         newPwInput: document.getElementById('adminNewPassword'),
         confirmPwInput: document.getElementById('adminConfirmPassword'),
         resetPwBtn: document.getElementById('adminResetPasswordBtn'),
