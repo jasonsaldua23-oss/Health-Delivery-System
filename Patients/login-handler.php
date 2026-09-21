@@ -586,10 +586,15 @@ if ($action !== '' || ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     exit;
 }
 } catch (Throwable $e) {
-    error_log('Error in login-handler: ' . $e->getMessage());
+    error_log('Error in login-handler: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     echo json_encode([
         'success' => false,
-        'message' => 'Unable to process your request at this time. Please check your database connection or try again later.'
+        'message' => 'Unable to process your request at this time: ' . $e->getMessage(),
+        'debug' => [
+            'error' => $e->getMessage(),
+            'file' => basename($e->getFile()),
+            'line' => $e->getLine(),
+        ]
     ], JSON_THROW_ON_ERROR);
     exit;
 }
