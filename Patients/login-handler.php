@@ -119,6 +119,8 @@ function check_email_misspelling(string $email): ?string
 
 $action = trim((string) ($_POST['action'] ?? ''));
 
+try {
+
 if ($action === 'login_patient') {
     $email = strtolower(trim((string) ($_POST['email'] ?? '')));
     $password = (string) ($_POST['password'] ?? '');
@@ -558,5 +560,13 @@ if ($action === 'verify_and_reset_password') {
 
 if ($action !== '' || ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     echo json_encode(['success' => false, 'message' => 'Invalid action'], JSON_THROW_ON_ERROR);
+    exit;
+}
+} catch (Throwable $e) {
+    error_log('Error in login-handler: ' . $e->getMessage());
+    echo json_encode([
+        'success' => false,
+        'message' => 'Unable to process your request at this time. Please check your database connection or try again later.'
+    ], JSON_THROW_ON_ERROR);
     exit;
 }

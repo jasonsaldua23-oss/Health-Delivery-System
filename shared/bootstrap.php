@@ -82,35 +82,39 @@ if ($appEnv === 'production') {
 
 // 4. Secure Session Cookie Initialization
 if (session_status() === PHP_SESSION_NONE) {
-    $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443)
-        || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+    if (!headers_sent()) {
+        $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443)
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
 
-    $sessionCookieParams = [
-        'lifetime' => 0,
-        'path'     => '/',
-        'domain'   => '',
-        'secure'   => $isSecure,
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ];
+        $sessionCookieParams = [
+            'lifetime' => 0,
+            'path'     => '/',
+            'domain'   => '',
+            'secure'   => $isSecure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ];
 
-    if (PHP_VERSION_ID >= 70300) {
-        session_set_cookie_params($sessionCookieParams);
-    } else {
-        session_set_cookie_params(
-            $sessionCookieParams['lifetime'],
-            $sessionCookieParams['path'] . '; samesite=' . $sessionCookieParams['samesite'],
-            $sessionCookieParams['domain'],
-            $sessionCookieParams['secure'],
-            $sessionCookieParams['httponly']
-        );
+        if (PHP_VERSION_ID >= 70300) {
+            session_set_cookie_params($sessionCookieParams);
+        } else {
+            session_set_cookie_params(
+                $sessionCookieParams['lifetime'],
+                $sessionCookieParams['path'] . '; samesite=' . $sessionCookieParams['samesite'],
+                $sessionCookieParams['domain'],
+                $sessionCookieParams['secure'],
+                $sessionCookieParams['httponly']
+            );
+        }
+
+        ini_set('session.use_only_cookies', '1');
+        ini_set('session.use_strict_mode', '1');
     }
 
-    ini_set('session.use_only_cookies', '1');
-    ini_set('session.use_strict_mode', '1');
-
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        @session_start();
+    }
 }
 
 // 5. CSRF Security Helpers

@@ -1587,6 +1587,27 @@ function db(): mysqli
             'name' => 'u763176290_hds',
             'port' => 3306
         ];
+        $configsToTry[] = [
+            'host' => '127.0.0.1',
+            'user' => 'root',
+            'pass' => '',
+            'name' => 'health_delivery_system',
+            'port' => 3306
+        ];
+        $configsToTry[] = [
+            'host' => 'localhost',
+            'user' => 'root',
+            'pass' => '',
+            'name' => 'u763176290_hds',
+            'port' => 3306
+        ];
+        $configsToTry[] = [
+            'host' => 'localhost',
+            'user' => 'root',
+            'pass' => '',
+            'name' => 'health_delivery_system',
+            'port' => 3306
+        ];
     } else {
         $configsToTry[] = [
             'host' => '127.0.0.1',
