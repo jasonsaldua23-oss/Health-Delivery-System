@@ -611,10 +611,110 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'crea
     exit;
 }
 
+// Define report dates and filter parameters first so they are ALWAYS available and non-null
+$now = new DateTimeImmutable('today');
+$currentQuarterMonth = (int) (floor(((int) $now->format('n') - 1) / 3) * 3 + 1);
+$quarterStart = new DateTimeImmutable($now->format('Y') . '-' . str_pad((string) $currentQuarterMonth, 2, '0', STR_PAD_LEFT) . '-01');
+$quarterEnd = $quarterStart->modify('+3 months -1 day');
+
+$reportPeriod = strtolower(trim((string) ($_GET['report_period'] ?? 'annually')));
+if (!in_array($reportPeriod, ['today', 'weekly', 'monthly', 'quarterly', 'annually'], true)) {
+    $reportPeriod = 'annually';
+}
+
+switch ($reportPeriod) {
+    case 'today':
+        $reportFrom = $now->format('Y-m-d');
+        $reportTo   = $now->format('Y-m-d');
+        break;
+    case 'weekly':
+        $reportFrom = $now->modify('monday this week')->format('Y-m-d');
+        $reportTo   = $now->modify('sunday this week')->format('Y-m-d');
+        break;
+    case 'monthly':
+        $reportFrom = $now->format('Y-m-01');
+        $reportTo   = $now->format('Y-m-t');
+        break;
+    case 'quarterly':
+        $reportFrom = $quarterStart->format('Y-m-d');
+        $reportTo   = $quarterEnd->format('Y-m-d');
+        break;
+    case 'annually':
+    default:
+        $reportFrom = $now->format('Y-01-01');
+        $reportTo   = $now->format('Y-12-31');
+        break;
+}
+
+$reportGender   = trim((string) ($_GET['gender'] ?? ''));
+$reportAgeGroup = trim((string) ($_GET['age_group'] ?? ''));
+$reportStation  = trim((string) ($_GET['station_slug'] ?? ''));
+$reportService  = trim((string) ($_GET['service_slug'] ?? ''));
+$reportStatus   = trim((string) ($_GET['status_filter'] ?? ''));
+
+$reportFilters = [
+    'report_period' => $reportPeriod,
+    'report_from'   => $reportFrom,
+    'report_to'     => $reportTo,
+    'gender'        => $reportGender,
+    'age_group'     => $reportAgeGroup,
+    'station_slug'  => $reportStation,
+    'service_slug'  => $reportService,
+    'status'        => $reportStatus,
+];
+
+// Handle CSV export for reports if requested
+if ($page === 'reports' && (($_GET['export'] ?? '') === 'csv')) {
+    $exportAppointments = fetch_filtered_report_appointments($reportFilters, 5000);
+    $filename = 'health_report_' . date('Ymd_His') . '.csv';
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Appointment Code', 'Reference Code', 'Patient / Account Holder', 'Recipient Name', 'Relationship to Recipient', 'Recipient Birth Date', 'Patient Birth Date', 'Gender', 'Contact Number', 'Address', 'Barangay Health Center', 'Service', 'Date', 'Time', 'Status', 'Vaccine Type', 'Temperature', 'Pulse', 'Blood Pressure', 'Doctor Notes', 'Created At']);
+    foreach ($exportAppointments as $row) {
+        $expRec = appointment_recipient_details($row);
+        fputcsv($output, [
+            $row['appointment_code'] ?: $row['reference_code'],
+            $row['reference_code'],
+            full_name($row),
+            $expRec['is_immunization'] ? $expRec['recipient_full_name'] : full_name($row),
+            $expRec['is_immunization'] ? $expRec['relationship'] : 'Self',
+            $expRec['is_immunization'] ? ($expRec['recipient_birth_date'] ?? '') : '',
+            $row['birth_date'],
+            $row['gender'],
+            $row['contact_number'],
+            $row['complete_address'],
+            $row['station_name'],
+            $row['service_name'],
+            $row['preferred_date'],
+            $row['preferred_time'],
+            $row['status'],
+            $row['vaccine_type'] ?? '',
+            $row['body_temperature'] ?? '',
+            $row['pulse_rate'] ?? '',
+            $row['blood_pressure'] ?? '',
+            $row['doctor_notes'] ?? '',
+            $row['created_at'],
+        ]);
+    }
+    fclose($output);
+    exit;
+}
+
+// 1. Stats and Station Counts
 try {
     $stats = appointment_stats();
     $stationCounts = fetch_station_counts('Pending');
     $stationQueueCounts = fetch_station_queue_counts();
+} catch (Throwable $e) {
+    error_log('Admin stats error: ' . $e->getMessage());
+    $stats = ['total_patients' => 0, 'appointments_today' => 0, 'active_services' => 0, 'online_bookings' => 0];
+    $stationCounts = [];
+    $stationQueueCounts = [];
+}
+
+// 2. Patients and Profiles
+try {
     $patients = fetch_unique_patients($search, [
         'station_slug' => $patientStationFilter,
         'gender'       => $patientGenderFilter,
@@ -643,6 +743,19 @@ try {
             $selectedAdminVisit = null;
         }
     }
+} catch (Throwable $e) {
+    error_log('Admin patients error: ' . $e->getMessage());
+    $patients = [];
+    $unreadNotifications = [];
+    $patientViewAppointment = null;
+    $patientProfile = null;
+    $patientHistory = [];
+    $patientServiceHistoryProfile = null;
+    $selectedAdminVisit = null;
+}
+
+// 3. Appointments & Events
+try {
     $appointments = fetch_appointments(['station_slug' => $stationView, 'service_slug' => $programFilter, 'status' => $status, 'search' => $search, 'date' => $dateFilter]);
     $allStationAppointments = $stationView !== '' ? fetch_appointments(['station_slug' => $stationView, 'date' => $dateFilter]) : [];
     $allUpcomingEvents = fetch_upcoming_events();
@@ -651,15 +764,32 @@ try {
     $countInactiveEvents = count(array_filter($allUpcomingEvents, static fn(array $e): bool => (string) ($e['status'] ?? '') === 'inactive'));
     $eventEditing = $eventEditId > 0 ? fetch_upcoming_event_by_id($eventEditId) : null;
     $upcomingEvents = $allUpcomingEvents;
+} catch (Throwable $e) {
+    error_log('Admin appointments/events error: ' . $e->getMessage());
+    $appointments = [];
+    $allStationAppointments = [];
+    $allUpcomingEvents = [];
+    $countAllEvents = 0;
+    $countActiveEvents = 0;
+    $countInactiveEvents = 0;
+    $eventEditing = null;
+    $upcomingEvents = [];
+}
+
+// 4. Staff and Admin Accounts
+try {
     $adminAccounts = fetch_admin_accounts();
     $staffAccounts = fetch_staff_accounts();
+} catch (Throwable $e) {
+    error_log('Admin accounts error: ' . $e->getMessage());
+    $adminAccounts = [];
+    $staffAccounts = [];
+}
+
+// 5. Dashboard Charts & Recent Activity
+try {
     $activities = recent_activity();
     $weekly = weekly_chart_data();
-
-    $now = new DateTimeImmutable('today');
-    $currentQuarterMonth = (int) (floor(((int) $now->format('n') - 1) / 3) * 3 + 1);
-    $quarterStart = new DateTimeImmutable($now->format('Y') . '-' . str_pad((string) $currentQuarterMonth, 2, '0', STR_PAD_LEFT) . '-01');
-    $quarterEnd = $quarterStart->modify('+3 months -1 day');
 
     $dashDemandData = [
         'day' => service_performance_data([
@@ -683,93 +813,15 @@ try {
             'report_to'   => $now->format('Y-12-31'),
         ]),
     ];
+} catch (Throwable $e) {
+    error_log('Admin dashboard analytics error: ' . $e->getMessage());
+    $activities = [];
+    $weekly = ['days' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], 'patients' => [0, 0, 0, 0, 0], 'appointments' => [0, 0, 0, 0, 0]];
+    $dashDemandData = ['day' => [], 'week' => [], 'month' => [], 'quarter' => [], 'year' => []];
+}
 
-    $reportPeriod = strtolower(trim((string) ($_GET['report_period'] ?? 'annually')));
-    if (!in_array($reportPeriod, ['today', 'weekly', 'monthly', 'quarterly', 'annually'], true)) {
-        $reportPeriod = 'annually';
-    }
-
-    switch ($reportPeriod) {
-        case 'today':
-            $reportFrom = $now->format('Y-m-d');
-            $reportTo   = $now->format('Y-m-d');
-            break;
-        case 'weekly':
-            $reportFrom = $now->modify('monday this week')->format('Y-m-d');
-            $reportTo   = $now->modify('sunday this week')->format('Y-m-d');
-            break;
-        case 'monthly':
-            $reportFrom = $now->format('Y-m-01');
-            $reportTo   = $now->format('Y-m-t');
-            break;
-        case 'quarterly':
-            $currentQuarterMonth = (int) (floor(((int) $now->format('n') - 1) / 3) * 3 + 1);
-            $quarterStart = new DateTimeImmutable($now->format('Y') . '-' . str_pad((string) $currentQuarterMonth, 2, '0', STR_PAD_LEFT) . '-01');
-            $quarterEnd = $quarterStart->modify('+3 months -1 day');
-            $reportFrom = $quarterStart->format('Y-m-d');
-            $reportTo   = $quarterEnd->format('Y-m-d');
-            break;
-        case 'annually':
-        default:
-            $reportFrom = $now->format('Y-01-01');
-            $reportTo   = $now->format('Y-12-31');
-            break;
-    }
-
-    $reportGender = trim((string) ($_GET['gender'] ?? ''));
-    $reportAgeGroup = trim((string) ($_GET['age_group'] ?? ''));
-    $reportStation = trim((string) ($_GET['station_slug'] ?? ''));
-    $reportService = trim((string) ($_GET['service_slug'] ?? ''));
-    $reportStatus = trim((string) ($_GET['status_filter'] ?? ''));
-
-    $reportFilters = [
-        'report_period' => $reportPeriod,
-        'report_from'   => $reportFrom,
-        'report_to'     => $reportTo,
-        'gender'        => $reportGender,
-        'age_group'     => $reportAgeGroup,
-        'station_slug'  => $reportStation,
-        'service_slug'  => $reportService,
-        'status'        => $reportStatus,
-    ];
-
-    if ($page === 'reports' && (($_GET['export'] ?? '') === 'csv')) {
-        $exportAppointments = fetch_filtered_report_appointments($reportFilters, 5000);
-        $filename = 'health_report_' . date('Ymd_His') . '.csv';
-        header('Content-Type: text/csv; charset=UTF-8');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        $output = fopen('php://output', 'w');
-        fputcsv($output, ['Appointment Code', 'Reference Code', 'Patient / Account Holder', 'Recipient Name', 'Relationship to Recipient', 'Recipient Birth Date', 'Patient Birth Date', 'Gender', 'Contact Number', 'Address', 'Barangay Health Center', 'Service', 'Date', 'Time', 'Status', 'Vaccine Type', 'Temperature', 'Pulse', 'Blood Pressure', 'Doctor Notes', 'Created At']);
-        foreach ($exportAppointments as $row) {
-            $expRec = appointment_recipient_details($row);
-            fputcsv($output, [
-                $row['appointment_code'] ?: $row['reference_code'],
-                $row['reference_code'],
-                full_name($row),
-                $expRec['is_immunization'] ? $expRec['recipient_full_name'] : full_name($row),
-                $expRec['is_immunization'] ? $expRec['relationship'] : 'Self',
-                $expRec['is_immunization'] ? ($expRec['recipient_birth_date'] ?? '') : '',
-                $row['birth_date'],
-                $row['gender'],
-                $row['contact_number'],
-                $row['complete_address'],
-                $row['station_name'],
-                $row['service_name'],
-                $row['preferred_date'],
-                $row['preferred_time'],
-                $row['status'],
-                $row['vaccine_type'] ?? '',
-                $row['body_temperature'] ?? '',
-                $row['pulse_rate'] ?? '',
-                $row['blood_pressure'] ?? '',
-                $row['doctor_notes'] ?? '',
-                $row['created_at'],
-            ]);
-        }
-        fclose($output);
-        exit;
-    }
-
+// 6. Reports & Health Analytics
+try {
     $reportStats         = report_summary_stats($reportFilters);
     $monthlyTrends       = monthly_trends_data($reportFilters);
     $demographics        = demographics_breakdown_data($reportFilters);
@@ -782,126 +834,21 @@ try {
     $infoChangeLog       = patient_info_change_log(20);
     $activityLog         = fetch_activity_log(30, $reportFrom, $reportTo);
     $healthEventsSummary = health_events_summary();
-} catch (Throwable $dashError) {
-    error_log('Error initializing admin dashboard: ' . $dashError->getMessage());
-    $stats = $stats ?? ['total_patients' => 0, 'appointments_today' => 0, 'active_services' => 0, 'online_bookings' => 0];
-    $stationCounts = $stationCounts ?? [];
-    $stationQueueCounts = $stationQueueCounts ?? [];
-    $patients = $patients ?? [];
-    $unreadNotifications = $unreadNotifications ?? [];
-    $patientViewAppointment = null;
-    $patientProfile = null;
-    $patientHistory = [];
-    $patientServiceHistoryProfile = null;
-    $selectedAdminVisit = null;
-    $appointments = $appointments ?? [];
-    $allStationAppointments = $allStationAppointments ?? [];
-    $allUpcomingEvents = $allUpcomingEvents ?? [];
-    $countAllEvents = $countAllEvents ?? 0;
-    $countActiveEvents = $countActiveEvents ?? 0;
-    $countInactiveEvents = $countInactiveEvents ?? 0;
-    $eventEditing = null;
-    $upcomingEvents = $upcomingEvents ?? [];
-    $adminAccounts = $adminAccounts ?? [];
-    $staffAccounts = $staffAccounts ?? [];
-    $activities = $activities ?? [];
-    $weekly = $weekly ?? ['days' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], 'patients' => [0, 0, 0, 0, 0], 'appointments' => [0, 0, 0, 0, 0]];
-    $dashDemandData = $dashDemandData ?? ['day' => [], 'week' => [], 'month' => [], 'quarter' => [], 'year' => []];
-    $reportPeriod = $reportPeriod ?? 'annually';
-    $reportFrom = $reportFrom ?? date('Y-01-01');
-    $reportTo = $reportTo ?? date('Y-12-31');
-    $reportFilters = $reportFilters ?? ['report_period' => 'annually', 'report_from' => $reportFrom, 'report_to' => $reportTo, 'gender' => '', 'age_group' => '', 'station_slug' => '', 'service_slug' => '', 'status' => ''];
-    $reportStats = $reportStats ?? ['total_patients' => 0, 'services_rendered' => 0, 'total_bookings' => 0, 'completed_count' => 0, 'cancelled_count' => 0, 'confirmed_count' => 0, 'pending_count' => 0, 'serving_count' => 0, 'avg_daily' => 0.0, 'utilization_pct' => 0, 'cancellation_pct' => 0, 'day_count' => 1];
-    $monthlyTrends = $monthlyTrends ?? ['months' => ['Jan', 'Feb', 'Mar'], 'appointments' => [0, 0, 0], 'patients' => [0, 0, 0]];
-    $demographics = $demographics ?? ['total' => 0, 'gender' => ['female' => ['count' => 0, 'pct' => 0], 'male' => ['count' => 0, 'pct' => 0], 'other' => ['count' => 0, 'pct' => 0]], 'age_groups' => []];
-    $stationPerformance = $stationPerformance ?? [];
-    $servicePerformance = $servicePerformance ?? [];
-    $barangayCompletedStats = $barangayCompletedStats ?? [];
-    $reportAppointmentsList = $reportAppointmentsList ?? [];
-    $infoChangeLog = $infoChangeLog ?? [];
-    $activityLog = $activityLog ?? [];
-    $healthEventsSummary = $healthEventsSummary ?? [];
+} catch (Throwable $e) {
+    error_log('Admin reports analytics error: ' . $e->getMessage());
+    $reportStats = ['total_patients' => 0, 'services_rendered' => 0, 'total_bookings' => 0, 'completed_count' => 0, 'cancelled_count' => 0, 'confirmed_count' => 0, 'pending_count' => 0, 'serving_count' => 0, 'avg_daily' => 0.0, 'utilization_pct' => 0, 'cancellation_pct' => 0, 'day_count' => 1];
+    $monthlyTrends = ['months' => ['Jan', 'Feb', 'Mar'], 'appointments' => [0, 0, 0], 'patients' => [0, 0, 0]];
+    $demographics = ['total' => 0, 'gender' => ['female' => ['count' => 0, 'pct' => 0], 'male' => ['count' => 0, 'pct' => 0], 'other' => ['count' => 0, 'pct' => 0]], 'age_groups' => []];
+    $stationPerformance = [];
+    $servicePerformance = [];
+    $barangayCompletedStats = [];
+    $reportAppointmentsList = [];
+    $infoChangeLog = [];
+    $activityLog = [];
+    $healthEventsSummary = [];
 }
 
 $csrf = csrf_token();
-
-if (isset($_GET['ajax']) && $_GET['ajax'] === 'debug_reports') {
-    if (!is_admin_authenticated()) {
-        http_response_code(401);
-        echo json_encode(['error' => 'Unauthorized']);
-        exit;
-    }
-
-    header('Content-Type: application/json; charset=UTF-8');
-    $diag = [];
-    $logFile = dirname(__DIR__) . '/logs/php_errors.log';
-    if (file_exists($logFile)) {
-        $lines = file($logFile);
-        $diag['last_errors'] = array_slice($lines, -35);
-    } else {
-        $diag['last_errors'] = 'Log file not found';
-    }
-
-    $funcs = [
-        'report_summary_stats' => fn() => report_summary_stats($reportFilters),
-        'monthly_trends_data' => fn() => monthly_trends_data($reportFilters),
-        'demographics_breakdown_data' => fn() => demographics_breakdown_data($reportFilters),
-        'station_performance_data' => fn() => station_performance_data($reportFilters),
-        'service_performance_data' => fn() => service_performance_data($reportFilters),
-        'barangay_completed_analytics' => fn() => barangay_completed_analytics($reportFilters),
-        'fetch_filtered_report_appointments' => fn() => fetch_filtered_report_appointments($reportFilters, 5),
-        'patient_info_change_log' => fn() => patient_info_change_log(20),
-        'fetch_activity_log' => fn() => fetch_activity_log(30, $reportFrom, $reportTo),
-        'health_events_summary' => fn() => health_events_summary(),
-        'recent_activity' => fn() => recent_activity(),
-        'weekly_chart_data' => fn() => weekly_chart_data(),
-    ];
-
-    $diag['functions'] = [];
-    foreach ($funcs as $fName => $fn) {
-        try {
-            $res = $fn();
-            $diag['functions'][$fName] = [
-                'status' => 'ok',
-                'type' => gettype($res),
-                'count' => is_array($res) ? count($res) : null,
-                'sample' => is_array($res) ? array_slice($res, 0, 2) : $res,
-            ];
-        } catch (Throwable $e) {
-            $diag['functions'][$fName] = [
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ];
-        }
-    }
-
-    try {
-        $cnt = db()->query('SELECT COUNT(*) FROM appointments')->fetch_row()[0];
-        $diag['appointments_total'] = (int) $cnt;
-        $cols = [];
-        $colRes = db()->query('SHOW COLUMNS FROM appointments');
-        while ($cRow = $colRes->fetch_assoc()) {
-            $cols[] = $cRow['Field'];
-        }
-        $diag['appointments_columns'] = $cols;
-
-        $actCols = [];
-        $actRes = db()->query('SHOW COLUMNS FROM activity_log');
-        if ($actRes) {
-            while ($aRow = $actRes->fetch_assoc()) {
-                $actCols[] = $aRow['Field'];
-            }
-        }
-        $diag['activity_log_columns'] = $actCols;
-    } catch (Throwable $e) {
-        $diag['db_inspection_error'] = $e->getMessage();
-    }
-
-    echo json_encode($diag, JSON_PRETTY_PRINT);
-    exit;
-}
 
 $stationLookup = [];
 foreach ($stations as $station) {
@@ -1308,6 +1255,16 @@ if (!function_exists('peso')) {
                 </article>
 
                 <!-- Service Utilization Card -->
+                <?php
+                    $defaultDemandPeriod = 'quarter';
+                    if (empty($dashDemandData['quarter']) && !empty($dashDemandData['year'])) {
+                        $defaultDemandPeriod = 'year';
+                    } elseif (empty($dashDemandData['quarter']) && empty($dashDemandData['year'])) {
+                        foreach (['month', 'week', 'day'] as $chk) {
+                            if (!empty($dashDemandData[$chk])) { $defaultDemandPeriod = $chk; break; }
+                        }
+                    }
+                ?>
                 <article class="panel-card dash-service-util-card">
                     <div class="dash-card-head" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
                         <div>
@@ -1318,11 +1275,11 @@ if (!function_exists('peso')) {
                             <label for="dashDemandPeriodSelect" class="dash-demand-period-label">
                                 <span class="dash-period-prefix">This:</span>
                                 <select id="dashDemandPeriodSelect" class="dash-period-select-control" onchange="switchDemandPeriod(this.value)">
-                                    <option value="day">Day</option>
-                                    <option value="week">Week</option>
-                                    <option value="month">Month</option>
-                                    <option value="quarter" selected>Quarter</option>
-                                    <option value="year">Year</option>
+                                    <option value="day" <?= $defaultDemandPeriod === 'day' ? 'selected' : ''; ?>>Day</option>
+                                    <option value="week" <?= $defaultDemandPeriod === 'week' ? 'selected' : ''; ?>>Week</option>
+                                    <option value="month" <?= $defaultDemandPeriod === 'month' ? 'selected' : ''; ?>>Month</option>
+                                    <option value="quarter" <?= $defaultDemandPeriod === 'quarter' ? 'selected' : ''; ?>>Quarter</option>
+                                    <option value="year" <?= $defaultDemandPeriod === 'year' ? 'selected' : ''; ?>>Year</option>
                                 </select>
                             </label>
                         </div>
@@ -1332,15 +1289,15 @@ if (!function_exists('peso')) {
                             <?php 
                                 $pServices = $dashDemandData[$pKey] ?? [];
                                 $totalDemand = array_sum(array_map(static fn(array $s): int => (int) $s['total'], $pServices)) ?: 1;
-                                $isDefault = $pKey === 'quarter';
+                                $isDefault = ($pKey === $defaultDemandPeriod);
                             ?>
                             <div class="dash-demand-period-view" data-period="<?= $pKey; ?>" style="display: <?= $isDefault ? 'flex' : 'none'; ?>; flex-direction: column; gap: 14px;">
                                 <?php if (empty($pServices)): ?>
                                     <div class="empty-state" style="padding: 24px 16px; text-align: center; color: #94a3b8; font-size: 0.88rem;">
                                         No appointment demand records for this <?= h($pKey); ?> yet.
-                                        <?php if ($pKey !== 'quarter'): ?>
+                                        <?php if ($pKey !== $defaultDemandPeriod): ?>
                                             <div style="margin-top: 8px;">
-                                                <button type="button" onclick="switchDemandPeriod('quarter')" style="background: none; border: none; color: #3b82f6; text-decoration: underline; cursor: pointer; font-weight: 600; font-size: 0.85rem; padding: 0;">View Active Quarter Breakdown &rarr;</button>
+                                                <button type="button" onclick="switchDemandPeriod('<?= $defaultDemandPeriod; ?>')" style="background: none; border: none; color: #3b82f6; text-decoration: underline; cursor: pointer; font-weight: 600; font-size: 0.85rem; padding: 0;">View Active <?= ucfirst($defaultDemandPeriod); ?> Breakdown &rarr;</button>
                                             </div>
                                         <?php endif; ?>
                                     </div>
@@ -4306,19 +4263,19 @@ if (!function_exists('peso')) {
            <?php else: ?>
             <?php
                 $activeFilterCount = 0;
-                if ($reportGender !== '' && strtolower($reportGender) !== 'all') $activeFilterCount++;
-                if ($reportAgeGroup !== '' && strtolower($reportAgeGroup) !== 'all') $activeFilterCount++;
-                if ($reportStation !== '' && strtolower($reportStation) !== 'all') $activeFilterCount++;
-                if ($reportService !== '' && strtolower($reportService) !== 'all') $activeFilterCount++;
-                if ($reportStatus !== '' && strtolower($reportStatus) !== 'all') $activeFilterCount++;
+                if (!empty($reportGender) && strtolower((string)$reportGender) !== 'all') $activeFilterCount++;
+                if (!empty($reportAgeGroup) && strtolower((string)$reportAgeGroup) !== 'all') $activeFilterCount++;
+                if (!empty($reportStation) && strtolower((string)$reportStation) !== 'all') $activeFilterCount++;
+                if (!empty($reportService) && strtolower((string)$reportService) !== 'all') $activeFilterCount++;
+                if (!empty($reportStatus) && strtolower((string)$reportStatus) !== 'all') $activeFilterCount++;
 
                 $selectedStationName = '';
-                if ($reportStation !== '' && isset($stationLookup[$reportStation])) {
+                if (!empty($reportStation) && isset($stationLookup[$reportStation])) {
                     $selectedStationName = $stationLookup[$reportStation]['name'];
                 }
 
                 $selectedServiceName = '';
-                if ($reportService !== '' && isset($serviceCatalog[$reportService])) {
+                if (!empty($reportService) && isset($serviceCatalog[$reportService])) {
                     $selectedServiceName = $serviceCatalog[$reportService]['title'];
                 }
 
@@ -4374,7 +4331,7 @@ if (!function_exists('peso')) {
                         <span>📅 Period: <strong><?= h(ucfirst($reportPeriod)); ?></strong> (<?= h(date('M j, Y', strtotime($reportFrom))); ?><?= $reportFrom !== $reportTo ? ' &ndash; ' . h(date('M j, Y', strtotime($reportTo))) : ''; ?>)</span>
                     </div>
 
-                    <?php if ($reportGender !== '' && strtolower($reportGender) !== 'all'): ?>
+                    <?php if (!empty($reportGender) && strtolower((string)$reportGender) !== 'all'): ?>
                         <?php 
                             $removeGenderQuery = $reportFilters; 
                             unset($removeGenderQuery['gender']);
@@ -4385,7 +4342,7 @@ if (!function_exists('peso')) {
                         </div>
                     <?php endif; ?>
 
-                    <?php if ($reportAgeGroup !== '' && strtolower($reportAgeGroup) !== 'all'): ?>
+                    <?php if (!empty($reportAgeGroup) && strtolower((string)$reportAgeGroup) !== 'all'): ?>
                         <?php 
                             $removeAgeQuery = $reportFilters; 
                             unset($removeAgeQuery['age_group']);
@@ -4396,7 +4353,7 @@ if (!function_exists('peso')) {
                         </div>
                     <?php endif; ?>
 
-                    <?php if ($reportStation !== '' && strtolower($reportStation) !== 'all'): ?>
+                    <?php if (!empty($reportStation) && strtolower((string)$reportStation) !== 'all'): ?>
                         <?php 
                             $removeStationQuery = $reportFilters; 
                             unset($removeStationQuery['station_slug']);
@@ -4407,7 +4364,7 @@ if (!function_exists('peso')) {
                         </div>
                     <?php endif; ?>
 
-                    <?php if ($reportService !== '' && strtolower($reportService) !== 'all'): ?>
+                    <?php if (!empty($reportService) && strtolower((string)$reportService) !== 'all'): ?>
                         <?php 
                             $removeServiceQuery = $reportFilters; 
                             unset($removeServiceQuery['service_slug']);
@@ -4418,7 +4375,7 @@ if (!function_exists('peso')) {
                         </div>
                     <?php endif; ?>
 
-                    <?php if ($reportStatus !== '' && strtolower($reportStatus) !== 'all'): ?>
+                    <?php if (!empty($reportStatus) && strtolower((string)$reportStatus) !== 'all'): ?>
                         <?php 
                             $removeStatusQuery = $reportFilters; 
                             unset($removeStatusQuery['status']);

@@ -1254,6 +1254,38 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
     $connection->query("DELETE FROM appointment_status_notifications WHERE patient_id = 'HE6JH6'");
 
     // Ensure columns
+    $staffCols = [
+        'home_address' => 'VARCHAR(255) DEFAULT NULL',
+        'recovery_email' => 'VARCHAR(150) DEFAULT NULL',
+        'emergency_contact' => 'VARCHAR(100) DEFAULT NULL',
+        'emergency_phone' => 'VARCHAR(30) DEFAULT NULL',
+        'last_active_at' => 'TIMESTAMP NULL DEFAULT NULL',
+        'is_logged_in' => 'TINYINT(1) NOT NULL DEFAULT 0',
+    ];
+    foreach ($staffCols as $cName => $cDef) {
+        if (!db_column_exists($connection, 'staff_accounts', $cName)) {
+            try {
+                $connection->query("ALTER TABLE `staff_accounts` ADD COLUMN `{$cName}` {$cDef}");
+                $log[] = "Added staff_accounts.{$cName}";
+            } catch (Throwable $e) {}
+        }
+    }
+
+    $adminCols = [
+        'contact_number' => 'VARCHAR(30) DEFAULT NULL',
+        'recovery_email' => 'VARCHAR(150) DEFAULT NULL',
+        'last_active_at' => 'TIMESTAMP NULL DEFAULT NULL',
+        'is_logged_in' => 'TINYINT(1) NOT NULL DEFAULT 0',
+    ];
+    foreach ($adminCols as $cName => $cDef) {
+        if (!db_column_exists($connection, 'admin_accounts', $cName)) {
+            try {
+                $connection->query("ALTER TABLE `admin_accounts` ADD COLUMN `{$cName}` {$cDef}");
+                $log[] = "Added admin_accounts.{$cName}";
+            } catch (Throwable $e) {}
+        }
+    }
+
     if (!db_column_exists($connection, 'station_service_assignments', 'daily_capacity')) {
         try {
             $connection->query('ALTER TABLE station_service_assignments ADD COLUMN daily_capacity INT UNSIGNED NOT NULL DEFAULT 200 AFTER sort_order');
@@ -1768,7 +1800,9 @@ function db(): mysqli
             || !db_column_exists($connection, 'appointments', 'recipient_last_name')
             || !db_column_exists($connection, 'appointments', 'recipient_birth_date')
             || !db_column_exists($connection, 'admin_accounts', 'last_active_at')
+            || !db_column_exists($connection, 'admin_accounts', 'recovery_email')
             || !db_column_exists($connection, 'staff_accounts', 'last_active_at')
+            || !db_column_exists($connection, 'staff_accounts', 'recovery_email')
             || !db_column_exists($connection, 'upcoming_events', 'status') 
             || !db_column_exists($connection, 'appointments', 'vaccine_type') 
             || !db_column_exists($connection, 'appointments', 'reminder_sms_sent')
@@ -4645,17 +4679,85 @@ function update_staff_account_by_admin(int $staffId, array $data): bool
     }
 }
 
+function ensure_account_schema_columns(?mysqli $connection = null): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+
+    try {
+        $conn = $connection ?? db();
+        if (!($conn instanceof mysqli)) {
+            return;
+        }
+
+        $staffColumns = [
+            'home_address' => 'VARCHAR(255) DEFAULT NULL',
+            'recovery_email' => 'VARCHAR(150) DEFAULT NULL',
+            'emergency_contact' => 'VARCHAR(100) DEFAULT NULL',
+            'emergency_phone' => 'VARCHAR(30) DEFAULT NULL',
+            'last_active_at' => 'TIMESTAMP NULL DEFAULT NULL',
+            'is_logged_in' => 'TINYINT(1) NOT NULL DEFAULT 0',
+        ];
+        foreach ($staffColumns as $col => $def) {
+            if (!db_column_exists($conn, 'staff_accounts', $col)) {
+                try {
+                    $conn->query("ALTER TABLE `staff_accounts` ADD COLUMN `{$col}` {$def}");
+                } catch (Throwable $e) {}
+            }
+        }
+
+        $adminColumns = [
+            'contact_number' => 'VARCHAR(30) DEFAULT NULL',
+            'recovery_email' => 'VARCHAR(150) DEFAULT NULL',
+            'last_active_at' => 'TIMESTAMP NULL DEFAULT NULL',
+            'is_logged_in' => 'TINYINT(1) NOT NULL DEFAULT 0',
+        ];
+        foreach ($adminColumns as $col => $def) {
+            if (!db_column_exists($conn, 'admin_accounts', $col)) {
+                try {
+                    $conn->query("ALTER TABLE `admin_accounts` ADD COLUMN `{$col}` {$def}");
+                } catch (Throwable $e) {}
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('Error ensuring account schema columns: ' . $e->getMessage());
+    }
+}
+
 function fetch_staff_accounts(): array
 {
-    $result = db()->query('SELECT id, station_slug, station_name, staff_name, email, contact_number, recovery_email, emergency_phone, last_active_at, is_logged_in FROM staff_accounts ORDER BY station_name');
-    $rows = [];
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
+    try {
+        ensure_account_schema_columns();
+        $result = db()->query('SELECT id, station_slug, station_name, staff_name, email, contact_number, recovery_email, emergency_phone, last_active_at, is_logged_in FROM staff_accounts ORDER BY station_name');
+        $rows = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $rows[] = $row;
+            }
+        }
+        return $rows;
+    } catch (Throwable $e) {
+        try {
+            $fallback = db()->query('SELECT id, station_slug, station_name, staff_name, email, contact_number FROM staff_accounts ORDER BY station_name');
+            $rows = [];
+            if ($fallback) {
+                while ($row = $fallback->fetch_assoc()) {
+                    $row['recovery_email'] = '';
+                    $row['emergency_phone'] = '';
+                    $row['last_active_at'] = null;
+                    $row['is_logged_in'] = 0;
+                    $rows[] = $row;
+                }
+            }
+            return $rows;
+        } catch (Throwable $e2) {
+            error_log('Error in fetch_staff_accounts: ' . $e2->getMessage());
+            return [];
         }
     }
-
-    return $rows;
 }
 
 function save_staff_account(array $accountData): bool
@@ -4732,13 +4834,33 @@ function fetch_admin_account_by_username(string $username): ?array
 
 function fetch_admin_accounts(): array
 {
-    $result = db()->query('SELECT id, admin_name, office_name, email, last_active_at, is_logged_in FROM admin_accounts ORDER BY admin_name');
-    $rows = [];
-    while ($row = $result->fetch_assoc()) {
-        $rows[] = $row;
+    try {
+        ensure_account_schema_columns();
+        $result = db()->query('SELECT id, admin_name, office_name, email, last_active_at, is_logged_in FROM admin_accounts ORDER BY admin_name');
+        $rows = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $rows[] = $row;
+            }
+        }
+        return $rows;
+    } catch (Throwable $e) {
+        try {
+            $fallback = db()->query('SELECT id, admin_name, office_name, email FROM admin_accounts ORDER BY admin_name');
+            $rows = [];
+            if ($fallback) {
+                while ($row = $fallback->fetch_assoc()) {
+                    $row['last_active_at'] = null;
+                    $row['is_logged_in'] = 0;
+                    $rows[] = $row;
+                }
+            }
+            return $rows;
+        } catch (Throwable $e2) {
+            error_log('Error in fetch_admin_accounts: ' . $e2->getMessage());
+            return [];
+        }
     }
-
-    return $rows;
 }
 
 function record_user_login(string $role, string $email): void
@@ -4959,9 +5081,14 @@ function weekly_chart_data(): array
         // If current calendar week has 0 records, fall back to the most recent week with activity
         $totalThisWeek = array_sum($bookedAppointments) + array_sum($completedPatients);
         if ($totalThisWeek === 0) {
-            $latestRes = db()->query('SELECT MAX(preferred_date) AS max_date FROM appointments WHERE status <> "Cancelled"');
+            $latestRes = db()->query('SELECT MAX(preferred_date) AS max_date FROM appointments WHERE status <> "Cancelled" AND preferred_date <= CURDATE()');
             $latestRow = $latestRes ? $latestRes->fetch_assoc() : null;
             $maxDateStr = (string) ($latestRow['max_date'] ?? '');
+            if ($maxDateStr === '') {
+                $latestRes = db()->query('SELECT MAX(preferred_date) AS max_date FROM appointments WHERE status <> "Cancelled"');
+                $latestRow = $latestRes ? $latestRes->fetch_assoc() : null;
+                $maxDateStr = (string) ($latestRow['max_date'] ?? '');
+            }
             if ($maxDateStr !== '') {
                 $latestDate = new DateTimeImmutable($maxDateStr);
                 $latestDow = (int) $latestDate->format('N');
