@@ -1140,7 +1140,7 @@ if (!function_exists('peso')) {
                     </div>
                     <div class="dash-chart-wrapper">
                         <?php 
-                            $maxVal = max(max($weekly['patients']), max($weekly['appointments']), 10);
+                            $maxVal = max(max($weekly['patients'] ?: [0]), max($weekly['appointments'] ?: [0]), 10);
                             $chartHeight = 250;
                             $chartWidth = 640;
                             $padding = 45;
@@ -1255,7 +1255,12 @@ if (!function_exists('peso')) {
                             <div class="dash-demand-period-view" data-period="<?= $pKey; ?>" style="display: <?= $isDefault ? 'flex' : 'none'; ?>; flex-direction: column; gap: 14px;">
                                 <?php if (empty($pServices)): ?>
                                     <div class="empty-state" style="padding: 24px 16px; text-align: center; color: #94a3b8; font-size: 0.88rem;">
-                                        No service demand records for this <?= $pKey; ?>.
+                                        No appointment demand records for this <?= h($pKey); ?> yet.
+                                        <?php if ($pKey !== 'quarter'): ?>
+                                            <div style="margin-top: 8px;">
+                                                <button type="button" onclick="switchDemandPeriod('quarter')" style="background: none; border: none; color: #3b82f6; text-decoration: underline; cursor: pointer; font-weight: 600; font-size: 0.85rem; padding: 0;">View Active Quarter Breakdown &rarr;</button>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                 <?php else: ?>
                                     <?php foreach ($pServices as $srv): ?>
@@ -4408,9 +4413,10 @@ if (!function_exists('peso')) {
             </section>
 
             <?php
-                $maxCompletedCount = max(1, ...array_map(static fn(array $b): int => (int) $b['completed_count'], $barangayCompletedStats));
-                $totalCompletedAllStations = array_sum(array_map(static fn(array $b): int => (int) $b['completed_count'], $barangayCompletedStats));
-                $totalDemandBookings = array_sum(array_map(static fn(array $s): int => (int) $s['total'], $servicePerformance)) ?: 1;
+                $brgyCompletedCounts = array_map(static fn(array $b): int => (int) ($b['completed_count'] ?? 0), $barangayCompletedStats);
+                $maxCompletedCount = !empty($brgyCompletedCounts) ? max(1, max($brgyCompletedCounts)) : 1;
+                $totalCompletedAllStations = array_sum($brgyCompletedCounts);
+                $totalDemandBookings = array_sum(array_map(static fn(array $s): int => (int) ($s['total'] ?? 0), $servicePerformance)) ?: 1;
             ?>
 
             <!-- Barangay Patient Completion Analytics Graph (Interactive Hover Tooltip) -->

@@ -4955,6 +4955,66 @@ function weekly_chart_data(): array
                 }
             }
         }
+
+        // If current calendar week has 0 records, fall back to the most recent week with activity
+        $totalThisWeek = array_sum($bookedAppointments) + array_sum($completedPatients);
+        if ($totalThisWeek === 0) {
+            $latestRes = db()->query('SELECT MAX(preferred_date) AS max_date FROM appointments WHERE status <> "Cancelled"');
+            $latestRow = $latestRes ? $latestRes->fetch_assoc() : null;
+            $maxDateStr = (string) ($latestRow['max_date'] ?? '');
+            if ($maxDateStr !== '') {
+                $latestDate = new DateTimeImmutable($maxDateStr);
+                $latestDow = (int) $latestDate->format('N');
+                $fallbackStart = $latestDate->sub(new DateInterval('P' . ($latestDow - 1) . 'D'));
+                $fallbackEnd = $fallbackStart->add(new DateInterval('P4D'));
+
+                $fallbackDateKeys = [];
+                foreach ($days as $index => $label) {
+                    $fallbackDateKeys[$fallbackStart->add(new DateInterval('P' . $index . 'D'))->format('Y-m-d')] = $label;
+                }
+
+                $fbStartStr = $fallbackStart->format('Y-m-d');
+                $fbEndStr = $fallbackEnd->format('Y-m-d');
+
+                $stmt1Fb = db()->prepare(
+                    'SELECT preferred_date AS day_date, COUNT(*) AS total_count
+                       FROM appointments
+                      WHERE status <> "Cancelled"
+                        AND preferred_date BETWEEN ? AND ?
+                      GROUP BY preferred_date'
+                );
+                if ($stmt1Fb) {
+                    $stmt1Fb->bind_param('ss', $fbStartStr, $fbEndStr);
+                    $stmt1Fb->execute();
+                    $r1 = $stmt1Fb->get_result();
+                    while ($row = $r1->fetch_assoc()) {
+                        $d = (string) ($row['day_date'] ?? '');
+                        if (isset($fallbackDateKeys[$d])) {
+                            $bookedAppointments[$fallbackDateKeys[$d]] = (int) ($row['total_count'] ?? 0);
+                        }
+                    }
+                }
+
+                $stmt2Fb = db()->prepare(
+                    'SELECT preferred_date AS day_date, COUNT(DISTINCT COALESCE(patient_id, CONCAT(first_name, "|", last_name, "|", birth_date))) AS completed_count
+                       FROM appointments
+                      WHERE status = "Completed"
+                        AND preferred_date BETWEEN ? AND ?
+                      GROUP BY preferred_date'
+                );
+                if ($stmt2Fb) {
+                    $stmt2Fb->bind_param('ss', $fbStartStr, $fbEndStr);
+                    $stmt2Fb->execute();
+                    $r2 = $stmt2Fb->get_result();
+                    while ($row = $r2->fetch_assoc()) {
+                        $cd = (string) ($row['day_date'] ?? '');
+                        if (isset($fallbackDateKeys[$cd])) {
+                            $completedPatients[$fallbackDateKeys[$cd]] = (int) ($row['completed_count'] ?? 0);
+                        }
+                    }
+                }
+            }
+        }
     } catch (Throwable $e) {
         error_log('Error in weekly_chart_data: ' . $e->getMessage());
     }
