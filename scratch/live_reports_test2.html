@@ -1,0 +1,2518 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Admin Panel - Bacolod City Health</title>
+    <!-- PWA & Mobile App Capabilities -->
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="BHS Admin">
+    <link rel="icon" type="image/svg+xml" href="../assets/icons/favicon.svg">
+    <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
+    <link rel="stylesheet" href="../shared/pwa-install.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/styles.css?v=1789985248">
+</head>
+<body>
+<div class="admin-drawer-backdrop" id="adminDrawerBackdrop"></div>
+<div class="admin-shell">
+    <aside class="sidebar" id="adminSidebar">
+        <div class="sidebar-drawer-header">
+            <div class="drawer-brand-mini">
+                <span class="brand-mark-mini"><span class="brand-mark" style="width:36px;height:36px;"><svg width="24" height="24" viewBox="0 0 24 24" style="width:24px;height:24px;max-width:24px;max-height:24px;display:inline-block;vertical-align:middle;"><path d="M6 3v6a4 4 0 0 0 8 0V3m-6 0h4m6 8a3 3 0 1 0 3 3v-4m-3 7a4 4 0 0 1-4 4h-1a4 4 0 0 1-4-4v-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
+                <div>
+                    <strong>Bacolod City Health</strong>
+                    <small>Admin Panel</small>
+                </div>
+            </div>
+            <button type="button" class="sidebar-drawer-close" id="adminSidebarCloseBtn" aria-label="Close navigation">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="sidebar-desktop-brand">
+            <div class="sidebar-brand"><span class="brand-mark"><svg width="24" height="24" viewBox="0 0 24 24" style="width:24px;height:24px;max-width:24px;max-height:24px;display:inline-block;vertical-align:middle;"><path d="M6 3v6a4 4 0 0 0 8 0V3m-6 0h4m6 8a3 3 0 1 0 3 3v-4m-3 7a4 4 0 0 1-4 4h-1a4 4 0 0 1-4-4v-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><strong>Bacolod City Health</strong><small>Admin Panel</small></div></div>
+        </div>
+        <div style="flex: 1;">
+            <nav class="sidebar-nav">
+                <a class="" href="?page=dashboard"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 3h6m-6 3h6v-6h-6v6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Dashboard</a>
+                <a class="" href="?page=patients"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2m18 0v-2a4 4 0 0 0-3-3.87M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm7 14v-2a4 4 0 0 0-3-3.87M18 3a4 4 0 0 1 0 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Patients</a>
+                <a class="" href="?page=appointments"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M8 2v4m8-4v4M3 10h18M5 5h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Appointments</a>
+                <a class="" href="?page=queue"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M4 7h16M4 12h10M4 17h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Queue Management</a>
+                <a class="" href="?page=services"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Station Services</a>
+                <a class="" href="?page=events"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Upcoming Events</a>
+                <a class="" href="?page=users"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M9 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-6 8a6 6 0 0 1 12 0m3-10h3m-1.5-1.5v3m-3.8 7.3 1.1 1.1 2.4-2.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>User Management</a>
+                <a class="active" href="?page=reports"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M4 19V5m5 14V9m5 10V3m6 16H2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Reports</a>
+            </nav>
+        </div>
+        <div class="sidebar-footer-widget">
+            <div class="sidebar-admin-badge">
+                <div class="badge-role-tag">Administrator</div>
+                <strong>Admin User</strong>
+                <span>admintest@gmail.com</span>
+            </div>
+            <button type="button" class="sidebar-account-btn" id="sidebarOpenAccountBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                <span>Account Settings</span>
+            </button>
+            <button type="button" class="pwa-drawer-install-btn" data-pwa-install style="margin-bottom: 12px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Install Mobile App</span>
+            </button>
+        </div>
+        <div class="sidebar-drawer-signout">
+            <form method="post" class="logout-form" style="margin: 0;">
+                <input type="hidden" name="action" value="logout">
+                <input type="hidden" name="csrf_token" value="4ba287555d58b813aae0a15cc9ff4e00c5297ee4ea070a33950e7f9839b6e0dd">
+                <button type="submit" class="sidebar-logout-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                    <span>Sign Out</span>
+                </button>
+            </form>
+        </div>
+    </aside>
+    <main class="main-content">
+        <header class="admin-header">
+            <div class="admin-header-left">
+                <button type="button" class="admin-mobile-nav-toggle" id="adminMobileNavToggle" aria-label="Toggle navigation menu">
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <div class="admin-status-indicator">
+                    <span class="live-pulse"></span>
+                    <span class="live-text">City Health Network Online</span>
+                </div>
+                <div class="admin-date-badge">Monday, September 21, 2026</div>
+            </div>
+            <div class="admin-header-actions">
+                <div class="admin-user-badge" id="adminTopbarUserBadge" style="cursor: pointer;" title="Open Account Settings">
+                    <div class="admin-user-avatar">
+                        A                    </div>
+                    <div class="admin-user-info">
+                        <strong>Admin User</strong>
+                        <span>admintest@gmail.com</span>
+                    </div>
+                </div>
+                <form method="post" class="logout-form admin-header-logout">
+                    <input type="hidden" name="action" value="logout">
+                    <input type="hidden" name="csrf_token" value="4ba287555d58b813aae0a15cc9ff4e00c5297ee4ea070a33950e7f9839b6e0dd">
+                    <button type="submit" class="logout-button" title="Sign out of admin panel"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Sign Out</span></button>
+                </form>
+            </div>
+        </header>
+
+        
+                                <section class="page-header action-head reports-page-head">
+                <div class="action-head-copy">
+                    <h1>Reports &amp; Health Analytics</h1>
+                    <p>Clinical metrics, demographic breakdowns, and station performance reports</p>
+                </div>
+                <div class="header-actions">
+                    <button type="button" class="dash-hero-btn secondary reports-filter-btn" onclick="openReportsFilterModal()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M3 5h18l-7 8v6l-4-2v-4L3 5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                        <span>Filter Reports</span>
+                                            </button>
+                    <a href="?page=reports&export=csv&report_period=annually&report_from=2026-01-01&report_to=2026-12-31" class="dash-hero-btn primary" title="Download matching appointment records as CSV">
+                        <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                        <span>Export CSV</span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- Active Filter Chips Bar -->
+            <section class="report-active-chips-bar">
+                <div class="report-chips-label">
+                    <span>Active Filters:</span>
+                </div>
+                <div class="report-chips-list">
+                    <div class="report-chip date">
+                        <span>📅 Period: <strong>Annually</strong> (Jan 1, 2026 &ndash; Dec 31, 2026)</span>
+                    </div>
+
+                    
+                    
+                    
+                    
+                    
+                                    </div>
+            </section>
+
+            <!-- KPI Metric Summary Cards -->
+            <section class="dash-stat-grid report-stat-grid">
+                <article class="dash-stat-card theme-emerald">
+                    <div class="dash-stat-top">
+                        <div class="dash-stat-icon"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2m18 0v-2a4 4 0 0 0-3-3.87M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm7 14v-2a4 4 0 0 0-3-3.87M18 3a4 4 0 0 1 0 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                        <span class="dash-stat-tag">♀ 55% | ♂ 45%</span>
+                    </div>
+                    <div class="dash-stat-body">
+                        <h3>6</h3>
+                        <p>Patients Served</p>
+                    </div>
+                    <div class="dash-stat-footer">
+                        <span>Completed appointments in period</span>
+                    </div>
+                </article>
+
+                <article class="dash-stat-card theme-blue">
+                    <div class="dash-stat-top">
+                        <div class="dash-stat-icon"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M8 2v4m8-4v4M3 10h18M5 5h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                        <span class="dash-stat-tag">23 Rendered</span>
+                    </div>
+                    <div class="dash-stat-body">
+                        <h3>23</h3>
+                        <p>Total Bookings</p>
+                    </div>
+                    <div class="dash-stat-footer">
+                        <span>All matching appointment records</span>
+                    </div>
+                </article>
+
+                <article class="dash-stat-card theme-indigo">
+                    <div class="dash-stat-top">
+                        <div class="dash-stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m5 12 5 5L20 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                        <span class="dash-stat-tag">6 Completed</span>
+                    </div>
+                    <div class="dash-stat-body">
+                        <h3>26%</h3>
+                        <p>Completion Rate</p>
+                    </div>
+                    <div class="dash-stat-footer">
+                        <span>Fulfilled vs total scheduled bookings</span>
+                    </div>
+                </article>
+
+                <article class="dash-stat-card theme-amber">
+                    <div class="dash-stat-top">
+                        <div class="dash-stat-icon"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                        <span class="dash-stat-tag">Over 365 Days</span>
+                    </div>
+                    <div class="dash-stat-body">
+                        <h3>0.1</h3>
+                        <p>Daily Patient Volume</p>
+                    </div>
+                    <div class="dash-stat-footer">
+                        <span>Average daily booking volume</span>
+                    </div>
+                </article>
+            </section>
+
+            
+            <!-- Barangay Patient Completion Analytics Graph (Interactive Hover Tooltip) -->
+            <section class="panel-card brgy-completion-graph-card">
+                <div class="dash-card-head">
+                    <div class="brgy-graph-head-left">
+                        <div class="brgy-graph-icon-badge">
+                            <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                        </div>
+                        <div>
+                            <h3>Completed Appointments by Barangay</h3>
+                            <p>Number of patients who have completed their appointments per health station. Hover over any bar to view utilized services.</p>
+                        </div>
+                    </div>
+                    <div class="brgy-graph-meta-right">
+                        <div class="brgy-graph-pill">
+                            <span class="dot green"></span>
+                            <strong>6</strong> Total Completed
+                        </div>
+                    </div>
+                </div>
+
+                <div class="brgy-chart-viewport">
+                    <div class="brgy-chart-canvas">
+                        <!-- Background Grid Lines -->
+                        <div class="brgy-grid-lines">
+                            <div class="grid-line"><span>5</span></div>
+                            <div class="grid-line"><span>4</span></div>
+                            <div class="grid-line"><span>3</span></div>
+                            <div class="grid-line"><span>1</span></div>
+                            <div class="grid-line"><span>0</span></div>
+                        </div>
+
+                        <!-- Bar Columns Track -->
+                        <div class="brgy-bars-track">
+                                                                                            <div class="brgy-bar-item has-data tooltip-align-left" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge active">
+                                        5                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar active-fill" style="height: 160px;">
+                                                                                            <div class="brgy-bar-gloss"></div>
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Bata Barangay Health Station">Bata</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Bata Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge completed">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m5 12 5 5L20 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    5 Completed (4 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-section-title">
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M3 12h4l2-4 4 8 2-4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    <span>Services Utilized</span>
+                                                </div>
+                                                <div class="brgy-hover-services-list">
+                                                                                                                                                                    <div class="brgy-hover-srv-item">
+                                                            <div class="brgy-hover-srv-row">
+                                                                <div class="brgy-hover-srv-info">
+                                                                    <span class="brgy-srv-icon-badge blue">
+                                                                        <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m14 4 6 6M5 19l7.5-7.5M9.5 8.5 17 16M4 20l3-3M3 21l3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m8 16 9-9 3 3-9 9-3-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                                    </span>
+                                                                    <span class="brgy-srv-name">Immunization</span>
+                                                                </div>
+                                                                <div class="brgy-hover-srv-stat">
+                                                                    <strong>2</strong>
+                                                                    <small>(40%)</small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="brgy-hover-srv-progress">
+                                                                <div class="brgy-hover-srv-bar blue" style="width: 40%;"></div>
+                                                            </div>
+                                                        </div>
+                                                                                                                                                                    <div class="brgy-hover-srv-item">
+                                                            <div class="brgy-hover-srv-row">
+                                                                <div class="brgy-hover-srv-info">
+                                                                    <span class="brgy-srv-icon-badge mint">
+                                                                        <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M9 12.5a4.5 4.5 0 0 0 4.5 4.5H15a3 3 0 0 0 3-3v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>                                                                    </span>
+                                                                    <span class="brgy-srv-name">General Consultation</span>
+                                                                </div>
+                                                                <div class="brgy-hover-srv-stat">
+                                                                    <strong>1</strong>
+                                                                    <small>(20%)</small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="brgy-hover-srv-progress">
+                                                                <div class="brgy-hover-srv-bar mint" style="width: 20%;"></div>
+                                                            </div>
+                                                        </div>
+                                                                                                                                                                    <div class="brgy-hover-srv-item">
+                                                            <div class="brgy-hover-srv-row">
+                                                                <div class="brgy-hover-srv-info">
+                                                                    <span class="brgy-srv-icon-badge cyan">
+                                                                        <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M7 3C4.5 3 3 5 3 8c0 3.5 1.5 7 2.5 10 .8 2.5 2 3 3.5 3s2-2 3-2 1.5 2 3 2 2.7-.5 3.5-3c1-3 2.5-6.5 2.5-10 0-3-1.5-5-4-5-2 0-3.5 1.5-4.5 2C12.5 4.5 11 3 7 3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                                    </span>
+                                                                    <span class="brgy-srv-name">Dental Services</span>
+                                                                </div>
+                                                                <div class="brgy-hover-srv-stat">
+                                                                    <strong>1</strong>
+                                                                    <small>(20%)</small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="brgy-hover-srv-progress">
+                                                                <div class="brgy-hover-srv-bar cyan" style="width: 20%;"></div>
+                                                            </div>
+                                                        </div>
+                                                                                                                                                                    <div class="brgy-hover-srv-item">
+                                                            <div class="brgy-hover-srv-row">
+                                                                <div class="brgy-hover-srv-info">
+                                                                    <span class="brgy-srv-icon-badge violet">
+                                                                        <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M22 12h-4l-3 9L9 3l-3 9H2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                                    </span>
+                                                                    <span class="brgy-srv-name">TB DOTS</span>
+                                                                </div>
+                                                                <div class="brgy-hover-srv-stat">
+                                                                    <strong>1</strong>
+                                                                    <small>(20%)</small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="brgy-hover-srv-progress">
+                                                                <div class="brgy-hover-srv-bar violet" style="width: 20%;"></div>
+                                                            </div>
+                                                        </div>
+                                                                                                    </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item has-data tooltip-align-left" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge active">
+                                        1                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar active-fill" style="height: 32px;">
+                                                                                            <div class="brgy-bar-gloss"></div>
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Mandalagan Barangay Health Station">Mandalagan</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Mandalagan Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge completed">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m5 12 5 5L20 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    1 Completed (1 Patient)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-section-title">
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M3 12h4l2-4 4 8 2-4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    <span>Services Utilized</span>
+                                                </div>
+                                                <div class="brgy-hover-services-list">
+                                                                                                                                                                    <div class="brgy-hover-srv-item">
+                                                            <div class="brgy-hover-srv-row">
+                                                                <div class="brgy-hover-srv-info">
+                                                                    <span class="brgy-srv-icon-badge blue">
+                                                                        <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m14 4 6 6M5 19l7.5-7.5M9.5 8.5 17 16M4 20l3-3M3 21l3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m8 16 9-9 3 3-9 9-3-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                                    </span>
+                                                                    <span class="brgy-srv-name">Immunization</span>
+                                                                </div>
+                                                                <div class="brgy-hover-srv-stat">
+                                                                    <strong>1</strong>
+                                                                    <small>(100%)</small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="brgy-hover-srv-progress">
+                                                                <div class="brgy-hover-srv-bar blue" style="width: 100%;"></div>
+                                                            </div>
+                                                        </div>
+                                                                                                    </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-center" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Alijis Barangay Health Station">Alijis</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Alijis Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-center" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Bacolod City Health Office">Bacolod City Health Office</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Bacolod City Health Office</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-center" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Cabug Barangay Health Station">Cabug</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Cabug Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-center" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Estefania Barangay Health Station">Estefania</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Estefania Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-center" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Granada Barangay Health Station">Granada</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Granada Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-center" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Handumanan Barangay Health Station">Handumanan</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Handumanan Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-center" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Mansilingan Barangay Health Station">Mansilingan</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Mansilingan Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-center" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Pahanocoy Barangay Health Station">Pahanocoy</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Pahanocoy Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-center" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Singcang Barangay Health Station">Singcang</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Singcang Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-center" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Sum-Ag Barangay Health Station">Sum-Ag</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Sum-Ag Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-center" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Taculing Barangay Health Station">Taculing</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Taculing Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-center" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Villa Esperanza Barangay Health Station">Villa Esperanza</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Villa Esperanza Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-right" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Villamonte Barangay Health Station">Villamonte</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Villamonte Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                                                            <div class="brgy-bar-item no-data tooltip-align-right" tabindex="0">
+                                    <!-- Value Badge -->
+                                    <span class="brgy-bar-val-badge ">
+                                        0                                    </span>
+
+                                    <!-- Bar Visual -->
+                                    <div class="brgy-bar-pillar-wrap">
+                                        <div class="brgy-bar-pillar empty-fill" style="height: 8px;">
+                                                                                    </div>
+                                    </div>
+
+                                    <!-- Station Label -->
+                                    <div class="brgy-bar-label-wrap">
+                                        <span class="brgy-bar-name" title="Vista Alegre Barangay Health Station">Vista Alegre</span>
+                                    </div>
+
+                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <div class="brgy-hover-card">
+                                        <div class="brgy-hover-head">
+                                            <div class="brgy-hover-station-name">
+                                                <strong>Vista Alegre Barangay Health Station</strong>
+                                                <span class="brgy-hover-badge muted">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    0 Completed (0 Patients)
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="brgy-hover-body">
+                                                                                            <div class="brgy-hover-empty">
+                                                    <p>No completed appointments in this period</p>
+                                                </div>
+                                                                                    </div>
+                                    </div>
+                                </div>
+                                                    </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Top Grid: Station Performance & Program Demand Breakdown -->
+            <section class="dash-charts-grid">
+                <article class="panel-card dash-station-perf-card">
+                    <div class="dash-card-head">
+                        <div>
+                            <h3>Station Performance</h3>
+                            <p>Volume and completion metrics by barangay center</p>
+                        </div>
+                    </div>
+                                            <div class="table-scroll-wrapper">
+                            <table class="data-table report-perf-table">
+                                <thead>
+                                    <tr>
+                                        <th>Station</th>
+                                        <th>Completed</th>
+                                        <th>Cancelled</th>
+                                        <th>Pending</th>
+                                        <th>Total</th>
+                                        <th>Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                                                            <tr>
+                                            <td><strong>Bata Barangay Health Station</strong></td>
+                                            <td class="text-green">5</td>
+                                            <td class="text-red">0</td>
+                                            <td class="text-muted">3</td>
+                                            <td><strong>8</strong></td>
+                                            <td>
+                                                                                                <span class="rate-badge med">
+                                                    63%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                                                            <tr>
+                                            <td><strong>Mandalagan Barangay Health Station</strong></td>
+                                            <td class="text-green">1</td>
+                                            <td class="text-red">0</td>
+                                            <td class="text-muted">12</td>
+                                            <td><strong>13</strong></td>
+                                            <td>
+                                                                                                <span class="rate-badge low">
+                                                    8%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                                                            <tr>
+                                            <td><strong>Alijis Barangay Health Station</strong></td>
+                                            <td class="text-green">0</td>
+                                            <td class="text-red">0</td>
+                                            <td class="text-muted">1</td>
+                                            <td><strong>1</strong></td>
+                                            <td>
+                                                                                                <span class="rate-badge low">
+                                                    0%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                                                            <tr>
+                                            <td><strong>Mansilingan Barangay Health Station</strong></td>
+                                            <td class="text-green">0</td>
+                                            <td class="text-red">0</td>
+                                            <td class="text-muted">1</td>
+                                            <td><strong>1</strong></td>
+                                            <td>
+                                                                                                <span class="rate-badge low">
+                                                    0%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                                                    </tbody>
+                            </table>
+                        </div>
+                                    </article>
+
+                <!-- Program Demand Breakdown Card (Like in Dashboard) -->
+                <article class="panel-card dash-service-util-card">
+                    <div class="dash-card-head">
+                        <div>
+                            <h3>Program Demand Breakdown</h3>
+                            <p>Most requested healthcare services across centers</p>
+                        </div>
+                    </div>
+                    <div class="dash-service-bars">
+                                                                                                                    <div class="dash-util-row">
+                                    <div class="dash-util-meta">
+                                        <span class="dash-util-title">
+                                            <span class="srv-mini-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m14 4 6 6M5 19l7.5-7.5M9.5 8.5 17 16M4 20l3-3M3 21l3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m8 16 9-9 3 3-9 9-3-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                                            Immunization                                        </span>
+                                        <span class="dash-util-count">
+                                            <strong>9</strong> bookings (39%)
+                                            <span class="dash-util-completed-tag">3 completed</span>
+                                        </span>
+                                    </div>
+                                    <div class="dash-util-track">
+                                        <div class="dash-util-fill fill-blue" style="width: 39%;"></div>
+                                    </div>
+                                </div>
+                                                                                            <div class="dash-util-row">
+                                    <div class="dash-util-meta">
+                                        <span class="dash-util-title">
+                                            <span class="srv-mini-icon mint"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M9 12.5a4.5 4.5 0 0 0 4.5 4.5H15a3 3 0 0 0 3-3v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+                                            General Consultation                                        </span>
+                                        <span class="dash-util-count">
+                                            <strong>6</strong> bookings (26%)
+                                            <span class="dash-util-completed-tag">1 completed</span>
+                                        </span>
+                                    </div>
+                                    <div class="dash-util-track">
+                                        <div class="dash-util-fill fill-mint" style="width: 26%;"></div>
+                                    </div>
+                                </div>
+                                                                                            <div class="dash-util-row">
+                                    <div class="dash-util-meta">
+                                        <span class="dash-util-title">
+                                            <span class="srv-mini-icon red"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                                            Family Planning                                        </span>
+                                        <span class="dash-util-count">
+                                            <strong>2</strong> bookings (9%)
+                                            <span class="dash-util-completed-tag">0 completed</span>
+                                        </span>
+                                    </div>
+                                    <div class="dash-util-track">
+                                        <div class="dash-util-fill fill-red" style="width: 9%;"></div>
+                                    </div>
+                                </div>
+                                                                                            <div class="dash-util-row">
+                                    <div class="dash-util-meta">
+                                        <span class="dash-util-title">
+                                            <span class="srv-mini-icon violet"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M22 12h-4l-3 9L9 3l-3 9H2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                                            TB DOTS                                        </span>
+                                        <span class="dash-util-count">
+                                            <strong>2</strong> bookings (9%)
+                                            <span class="dash-util-completed-tag">1 completed</span>
+                                        </span>
+                                    </div>
+                                    <div class="dash-util-track">
+                                        <div class="dash-util-fill fill-violet" style="width: 9%;"></div>
+                                    </div>
+                                </div>
+                                                                                            <div class="dash-util-row">
+                                    <div class="dash-util-meta">
+                                        <span class="dash-util-title">
+                                            <span class="srv-mini-icon cyan"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m14 4 6 6M5 19l7.5-7.5M9.5 8.5 17 16M4 20l3-3M3 21l3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m8 16 9-9 3 3-9 9-3-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                                            Flu Vaccination                                        </span>
+                                        <span class="dash-util-count">
+                                            <strong>2</strong> bookings (9%)
+                                            <span class="dash-util-completed-tag">0 completed</span>
+                                        </span>
+                                    </div>
+                                    <div class="dash-util-track">
+                                        <div class="dash-util-fill fill-cyan" style="width: 9%;"></div>
+                                    </div>
+                                </div>
+                                                                                            <div class="dash-util-row">
+                                    <div class="dash-util-meta">
+                                        <span class="dash-util-title">
+                                            <span class="srv-mini-icon pink"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M9 12h.01M15 12h.01M10 16c.5.5 1.2.8 2 .8s1.5-.3 2-.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4v-2M9 4.5C9.5 3 10.5 2 12 2c1.5 0 2.5 1 3 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                                            Pre-Natal Care                                        </span>
+                                        <span class="dash-util-count">
+                                            <strong>1</strong> bookings (4%)
+                                            <span class="dash-util-completed-tag">0 completed</span>
+                                        </span>
+                                    </div>
+                                    <div class="dash-util-track">
+                                        <div class="dash-util-fill fill-pink" style="width: 4%;"></div>
+                                    </div>
+                                </div>
+                                                                                            <div class="dash-util-row">
+                                    <div class="dash-util-meta">
+                                        <span class="dash-util-title">
+                                            <span class="srv-mini-icon cyan"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M7 3C4.5 3 3 5 3 8c0 3.5 1.5 7 2.5 10 .8 2.5 2 3 3.5 3s2-2 3-2 1.5 2 3 2 2.7-.5 3.5-3c1-3 2.5-6.5 2.5-10 0-3-1.5-5-4-5-2 0-3.5 1.5-4.5 2C12.5 4.5 11 3 7 3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                                            Dental Services                                        </span>
+                                        <span class="dash-util-count">
+                                            <strong>1</strong> bookings (4%)
+                                            <span class="dash-util-completed-tag">1 completed</span>
+                                        </span>
+                                    </div>
+                                    <div class="dash-util-track">
+                                        <div class="dash-util-fill fill-cyan" style="width: 4%;"></div>
+                                    </div>
+                                </div>
+                                                                        </div>
+                </article>
+            </section>
+
+            <!-- Bottom Grid: Demographics & Monthly Volume Trends Analytics -->
+            <section class="dash-bottom-grid">
+                <article class="panel-card dash-demographics-card">
+                    <div class="dash-card-head">
+                        <div>
+                            <h3>Demographic Distribution</h3>
+                            <p>Age group and gender breakdown of unique patients</p>
+                        </div>
+                    </div>
+                    
+                    <div class="demo-section">
+                        <h4>Age Group Breakdown</h4>
+                        <div class="demo-bars-stack">
+                                                            <div class="demo-bar-row">
+                                    <div class="demo-bar-meta">
+                                        <span>Infants &amp; Children (0-12y)</span>
+                                        <strong>2 (18%)</strong>
+                                    </div>
+                                    <div class="demo-bar-track">
+                                        <div class="demo-bar-fill age-pediatric" style="width: 18%;"></div>
+                                    </div>
+                                </div>
+                                                            <div class="demo-bar-row">
+                                    <div class="demo-bar-meta">
+                                        <span>Adolescents (13-17y)</span>
+                                        <strong>1 (9%)</strong>
+                                    </div>
+                                    <div class="demo-bar-track">
+                                        <div class="demo-bar-fill age-adolescent" style="width: 9%;"></div>
+                                    </div>
+                                </div>
+                                                            <div class="demo-bar-row">
+                                    <div class="demo-bar-meta">
+                                        <span>Young Adults (18-30y)</span>
+                                        <strong>7 (64%)</strong>
+                                    </div>
+                                    <div class="demo-bar-track">
+                                        <div class="demo-bar-fill age-young-adult" style="width: 64%;"></div>
+                                    </div>
+                                </div>
+                                                            <div class="demo-bar-row">
+                                    <div class="demo-bar-meta">
+                                        <span>Middle Adults (31-45y)</span>
+                                        <strong>0 (0%)</strong>
+                                    </div>
+                                    <div class="demo-bar-track">
+                                        <div class="demo-bar-fill age-mid-adult" style="width: 3%;"></div>
+                                    </div>
+                                </div>
+                                                            <div class="demo-bar-row">
+                                    <div class="demo-bar-meta">
+                                        <span>Mature Adults (46-59y)</span>
+                                        <strong>0 (0%)</strong>
+                                    </div>
+                                    <div class="demo-bar-track">
+                                        <div class="demo-bar-fill age-mature-adult" style="width: 3%;"></div>
+                                    </div>
+                                </div>
+                                                            <div class="demo-bar-row">
+                                    <div class="demo-bar-meta">
+                                        <span>Seniors (60y+)</span>
+                                        <strong>1 (9%)</strong>
+                                    </div>
+                                    <div class="demo-bar-track">
+                                        <div class="demo-bar-fill age-senior" style="width: 9%;"></div>
+                                    </div>
+                                </div>
+                                                    </div>
+                    </div>
+
+                    <div class="demo-section" style="margin-top: 18px;">
+                        <h4>Gender Share</h4>
+                        <div class="demo-gender-grid">
+                            <div class="gender-card female">
+                                <span class="gender-title">Female</span>
+                                <h3>6</h3>
+                                <small>55% share</small>
+                            </div>
+                            <div class="gender-card male">
+                                <span class="gender-title">Male</span>
+                                <h3>5</h3>
+                                <small>45% share</small>
+                            </div>
+                                                    </div>
+                    </div>
+                </article>
+
+                <article class="panel-card dash-chart-card">
+                    <div class="dash-card-head">
+                        <div>
+                            <h3>Monthly Volume Trends</h3>
+                            <p>Appointment volume &amp; unique patient check-ins</p>
+                        </div>
+                        <div class="dash-chart-legend">
+                            <span class="legend-chip blue"><i class="dot"></i> Bookings</span>
+                            <span class="legend-chip green"><i class="dot"></i> Patients</span>
+                        </div>
+                    </div>
+                                            <div class="report-monthly-bar-chart">
+                                                                                            <div class="report-bar-col">
+                                    <div class="report-bar-pair">
+                                        <span class="bar appts" style="height: 6px" title="0 Bookings">
+                                            <small>0</small>
+                                        </span>
+                                        <span class="bar patients" style="height: 6px" title="0 Patients">
+                                            <small>0</small>
+                                        </span>
+                                    </div>
+                                    <label>Jul</label>
+                                </div>
+                                                                                            <div class="report-bar-col">
+                                    <div class="report-bar-pair">
+                                        <span class="bar appts" style="height: 15px" title="2 Bookings">
+                                            <small>2</small>
+                                        </span>
+                                        <span class="bar patients" style="height: 29px" title="2 Patients">
+                                            <small>2</small>
+                                        </span>
+                                    </div>
+                                    <label>Aug</label>
+                                </div>
+                                                                                            <div class="report-bar-col">
+                                    <div class="report-bar-pair">
+                                        <span class="bar appts" style="height: 160px" title="21 Bookings">
+                                            <small>21</small>
+                                        </span>
+                                        <span class="bar patients" style="height: 160px" title="11 Patients">
+                                            <small>11</small>
+                                        </span>
+                                    </div>
+                                    <label>Sep</label>
+                                </div>
+                                                    </div>
+                                    </article>
+            </section>
+
+            <!-- Recent Appointment Records Table -->
+            <section class="panel-card report-appointments-table-card" style="margin-top:20px;">
+                <div class="dash-card-head">
+                    <div>
+                        <h3>Recent Patient Visits &amp; Appointments</h3>
+                        <p>Showing 5 latest completed records matching active filter criteria</p>
+                    </div>
+                </div>
+                                    <div class="table-scroll-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Appt #</th>
+                                    <th>Patient Name</th>
+                                    <th>Age / Gender</th>
+                                    <th>Health Station</th>
+                                    <th>Service</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                                                                                        <tr>
+                                        <td style="font-family:monospace;font-weight:700;color:#3b82f6;">
+                                            #YKABLLWP                                        </td>
+                                        <td>
+                                            <strong>Mekai Villegas Dudot</strong>
+                                            <small style="color:#64748b;">09665600834</small>
+                                        </td>
+                                        <td>26y / Female</td>
+                                        <td>Mandalagan Barangay Health Station</td>
+                                        <td><span class="report-service-tag">Immunization</span></td>
+                                        <td>
+                                            <div>Sep 18, 2026</div>
+                                        </td>
+                                        <td>
+                                            <span class="status-pill status-completed">Completed</span>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="patient-action-btn view" title="View Consultation Details" data-record="{&quot;id&quot;:26,&quot;reference_code&quot;:&quot;BK260918061824999&quot;,&quot;appointment_code&quot;:&quot;YKABLLWP&quot;,&quot;patient_id&quot;:&quot;DBBF98&quot;,&quot;station_slug&quot;:&quot;mandalagan&quot;,&quot;station_name&quot;:&quot;Mandalagan Barangay Health Station&quot;,&quot;service_slug&quot;:&quot;immunization&quot;,&quot;service_name&quot;:&quot;Immunization&quot;,&quot;first_name&quot;:&quot;Mekai&quot;,&quot;middle_name&quot;:&quot;Villegas&quot;,&quot;last_name&quot;:&quot;Dudot&quot;,&quot;birth_date&quot;:&quot;2000-05-21&quot;,&quot;gender&quot;:&quot;Female&quot;,&quot;contact_number&quot;:&quot;09665600834&quot;,&quot;email&quot;:&quot;mekai123@gmail.com&quot;,&quot;complete_address&quot;:&quot;Purok Bulak, Barangay Mandalagan, Bacolod City&quot;,&quot;immunization_relationship&quot;:&quot;Parent&quot;,&quot;recipient_first_name&quot;:&quot;Ayanna&quot;,&quot;recipient_middle_name&quot;:&quot;Bandoy&quot;,&quot;recipient_last_name&quot;:&quot;Fajardo&quot;,&quot;recipient_birth_date&quot;:&quot;2026-09-16&quot;,&quot;recipient_gender&quot;:&quot;Female&quot;,&quot;preferred_date&quot;:&quot;2026-09-18&quot;,&quot;preferred_time&quot;:&quot;Daily Slot&quot;,&quot;notes&quot;:&quot;&quot;,&quot;body_temperature&quot;:&quot;36.7 C&quot;,&quot;pulse_rate&quot;:&quot;80 bpm&quot;,&quot;respiration_rate&quot;:&quot;18 cpm&quot;,&quot;blood_pressure&quot;:&quot;120\/80&quot;,&quot;height&quot;:&quot;65&quot;,&quot;weight&quot;:&quot;6.7&quot;,&quot;vaccine_type&quot;:&quot;Hepatitis B&quot;,&quot;doctor_notes&quot;:&quot;Come back next week for another vaccination.&quot;,&quot;reminder_sms_sent&quot;:0,&quot;reminder_sent_at&quot;:null,&quot;follow_up_date&quot;:null,&quot;follow_up_time&quot;:null,&quot;follow_up_notes&quot;:null,&quot;follow_up_set_at&quot;:null,&quot;photo_path&quot;:&quot;uploads\/patient_6aacd925312254.71921599.jpg&quot;,&quot;status&quot;:&quot;Completed&quot;,&quot;created_at&quot;:&quot;2026-09-18 06:18:24&quot;,&quot;updated_at&quot;:&quot;2026-09-18 06:29:20&quot;}" onclick="openReportVisitModal(this)">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                            </button>
+                                        </td>
+                                    </tr>
+                                                                                                        <tr>
+                                        <td style="font-family:monospace;font-weight:700;color:#3b82f6;">
+                                            #6KZ7TPR6                                        </td>
+                                        <td>
+                                            <strong>Leo Taboclaon Zacarias</strong>
+                                            <small style="color:#64748b;">09691080024</small>
+                                        </td>
+                                        <td>23y / Male</td>
+                                        <td>Bata Barangay Health Station</td>
+                                        <td><span class="report-service-tag">Immunization</span></td>
+                                        <td>
+                                            <div>Sep 17, 2026</div>
+                                        </td>
+                                        <td>
+                                            <span class="status-pill status-completed">Completed</span>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="patient-action-btn view" title="View Consultation Details" data-record="{&quot;id&quot;:24,&quot;reference_code&quot;:&quot;BK260917092832760&quot;,&quot;appointment_code&quot;:&quot;6KZ7TPR6&quot;,&quot;patient_id&quot;:&quot;P2YLL5&quot;,&quot;station_slug&quot;:&quot;bata&quot;,&quot;station_name&quot;:&quot;Bata Barangay Health Station&quot;,&quot;service_slug&quot;:&quot;immunization&quot;,&quot;service_name&quot;:&quot;Immunization&quot;,&quot;first_name&quot;:&quot;Leo&quot;,&quot;middle_name&quot;:&quot;Taboclaon&quot;,&quot;last_name&quot;:&quot;Zacarias&quot;,&quot;birth_date&quot;:&quot;2002-11-17&quot;,&quot;gender&quot;:&quot;Male&quot;,&quot;contact_number&quot;:&quot;09691080024&quot;,&quot;email&quot;:&quot;leozcrs17@gmail.com&quot;,&quot;complete_address&quot;:&quot;Purok Pag-isa, Barangay Bata, Bacolod City&quot;,&quot;immunization_relationship&quot;:&quot;Guardian&quot;,&quot;recipient_first_name&quot;:&quot;Miko&quot;,&quot;recipient_middle_name&quot;:&quot;Ciocon&quot;,&quot;recipient_last_name&quot;:&quot;Santos&quot;,&quot;recipient_birth_date&quot;:&quot;2026-03-09&quot;,&quot;recipient_gender&quot;:null,&quot;preferred_date&quot;:&quot;2026-09-17&quot;,&quot;preferred_time&quot;:&quot;Daily Slot&quot;,&quot;notes&quot;:&quot;&quot;,&quot;body_temperature&quot;:&quot;36.7 C&quot;,&quot;pulse_rate&quot;:&quot;80 bpm&quot;,&quot;respiration_rate&quot;:&quot;18 cpm&quot;,&quot;blood_pressure&quot;:&quot;120\/80&quot;,&quot;height&quot;:null,&quot;weight&quot;:null,&quot;vaccine_type&quot;:&quot;Hepatitis&quot;,&quot;doctor_notes&quot;:&quot;Ok na buhhi pana&quot;,&quot;reminder_sms_sent&quot;:0,&quot;reminder_sent_at&quot;:null,&quot;follow_up_date&quot;:null,&quot;follow_up_time&quot;:null,&quot;follow_up_notes&quot;:null,&quot;follow_up_set_at&quot;:null,&quot;photo_path&quot;:&quot;uploads\/patient_6aabb60f27e1c0.02536229.jpg&quot;,&quot;status&quot;:&quot;Completed&quot;,&quot;created_at&quot;:&quot;2026-09-17 09:28:32&quot;,&quot;updated_at&quot;:&quot;2026-09-17 09:43:30&quot;}" onclick="openReportVisitModal(this)">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                            </button>
+                                        </td>
+                                    </tr>
+                                                                                                        <tr>
+                                        <td style="font-family:monospace;font-weight:700;color:#3b82f6;">
+                                            #M7CRSYSG                                        </td>
+                                        <td>
+                                            <strong>Leo Taboclaon Zacarias</strong>
+                                            <small style="color:#64748b;">09691080024</small>
+                                        </td>
+                                        <td>23y / Male</td>
+                                        <td>Bata Barangay Health Station</td>
+                                        <td><span class="report-service-tag">Immunization</span></td>
+                                        <td>
+                                            <div>Sep 16, 2026</div>
+                                        </td>
+                                        <td>
+                                            <span class="status-pill status-completed">Completed</span>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="patient-action-btn view" title="View Consultation Details" data-record="{&quot;id&quot;:17,&quot;reference_code&quot;:&quot;BK260915201119915&quot;,&quot;appointment_code&quot;:&quot;M7CRSYSG&quot;,&quot;patient_id&quot;:&quot;P2YLL5&quot;,&quot;station_slug&quot;:&quot;bata&quot;,&quot;station_name&quot;:&quot;Bata Barangay Health Station&quot;,&quot;service_slug&quot;:&quot;immunization&quot;,&quot;service_name&quot;:&quot;Immunization&quot;,&quot;first_name&quot;:&quot;Leo&quot;,&quot;middle_name&quot;:&quot;Taboclaon&quot;,&quot;last_name&quot;:&quot;Zacarias&quot;,&quot;birth_date&quot;:&quot;2002-11-17&quot;,&quot;gender&quot;:&quot;Male&quot;,&quot;contact_number&quot;:&quot;09691080024&quot;,&quot;email&quot;:&quot;leozcrs17@gmail.com&quot;,&quot;complete_address&quot;:&quot;Purok Pag-isa, Barangay Bata, Bacolod City&quot;,&quot;immunization_relationship&quot;:&quot;Guardian&quot;,&quot;recipient_first_name&quot;:&quot;Miko&quot;,&quot;recipient_middle_name&quot;:&quot;Ciocon&quot;,&quot;recipient_last_name&quot;:&quot;Santos&quot;,&quot;recipient_birth_date&quot;:&quot;2026-03-09&quot;,&quot;recipient_gender&quot;:null,&quot;preferred_date&quot;:&quot;2026-09-16&quot;,&quot;preferred_time&quot;:&quot;Daily Slot&quot;,&quot;notes&quot;:&quot;&quot;,&quot;body_temperature&quot;:&quot;36.7 C&quot;,&quot;pulse_rate&quot;:&quot;120&quot;,&quot;respiration_rate&quot;:&quot;27&quot;,&quot;blood_pressure&quot;:&quot;80\/60&quot;,&quot;height&quot;:null,&quot;weight&quot;:null,&quot;vaccine_type&quot;:&quot;Influenza&quot;,&quot;doctor_notes&quot;:&quot;Infant is healthy, and has been vaccinated.&quot;,&quot;reminder_sms_sent&quot;:0,&quot;reminder_sent_at&quot;:null,&quot;follow_up_date&quot;:null,&quot;follow_up_time&quot;:null,&quot;follow_up_notes&quot;:null,&quot;follow_up_set_at&quot;:null,&quot;photo_path&quot;:&quot;uploads\/patient_6aa9f83bb24f21.47687780.jpg&quot;,&quot;status&quot;:&quot;Completed&quot;,&quot;created_at&quot;:&quot;2026-09-15 20:11:19&quot;,&quot;updated_at&quot;:&quot;2026-09-16 02:02:31&quot;}" onclick="openReportVisitModal(this)">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                            </button>
+                                        </td>
+                                    </tr>
+                                                                                                        <tr>
+                                        <td style="font-family:monospace;font-weight:700;color:#3b82f6;">
+                                            #D6MAZNKW                                        </td>
+                                        <td>
+                                            <strong>Leo Taboclaon Zacarias</strong>
+                                            <small style="color:#64748b;">09691080024</small>
+                                        </td>
+                                        <td>23y / Male</td>
+                                        <td>Bata Barangay Health Station</td>
+                                        <td><span class="report-service-tag">TB DOTS</span></td>
+                                        <td>
+                                            <div>Sep 1, 2026</div>
+                                        </td>
+                                        <td>
+                                            <span class="status-pill status-completed">Completed</span>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="patient-action-btn view" title="View Consultation Details" data-record="{&quot;id&quot;:8,&quot;reference_code&quot;:&quot;BK260828090518936&quot;,&quot;appointment_code&quot;:&quot;D6MAZNKW&quot;,&quot;patient_id&quot;:&quot;P2YLL5&quot;,&quot;station_slug&quot;:&quot;bata&quot;,&quot;station_name&quot;:&quot;Bata Barangay Health Station&quot;,&quot;service_slug&quot;:&quot;tb&quot;,&quot;service_name&quot;:&quot;TB DOTS&quot;,&quot;first_name&quot;:&quot;Leo&quot;,&quot;middle_name&quot;:&quot;Taboclaon&quot;,&quot;last_name&quot;:&quot;Zacarias&quot;,&quot;birth_date&quot;:&quot;2002-11-17&quot;,&quot;gender&quot;:&quot;Male&quot;,&quot;contact_number&quot;:&quot;09691080024&quot;,&quot;email&quot;:&quot;leozcrs17@gmail.com&quot;,&quot;complete_address&quot;:&quot;Purok Pag-isa, Barangay Bata, Bacolod City&quot;,&quot;immunization_relationship&quot;:&quot;&quot;,&quot;recipient_first_name&quot;:null,&quot;recipient_middle_name&quot;:null,&quot;recipient_last_name&quot;:null,&quot;recipient_birth_date&quot;:null,&quot;recipient_gender&quot;:null,&quot;preferred_date&quot;:&quot;2026-09-01&quot;,&quot;preferred_time&quot;:&quot;Daily Slot&quot;,&quot;notes&quot;:&quot;&quot;,&quot;body_temperature&quot;:&quot;37.2&quot;,&quot;pulse_rate&quot;:&quot;75&quot;,&quot;respiration_rate&quot;:&quot;15&quot;,&quot;blood_pressure&quot;:&quot;120\/80&quot;,&quot;height&quot;:null,&quot;weight&quot;:null,&quot;vaccine_type&quot;:null,&quot;doctor_notes&quot;:&quot;Blah blah skrrt skrrrt. Follow up in a week.&quot;,&quot;reminder_sms_sent&quot;:0,&quot;reminder_sent_at&quot;:null,&quot;follow_up_date&quot;:&quot;2026-09-08&quot;,&quot;follow_up_time&quot;:&quot;&quot;,&quot;follow_up_notes&quot;:&quot;Follow-up medical assessment.&quot;,&quot;follow_up_set_at&quot;:&quot;2026-09-01 02:17:34&quot;,&quot;photo_path&quot;:&quot;uploads\/patient_6a962ef1ea9091.86311167.jpg&quot;,&quot;status&quot;:&quot;Completed&quot;,&quot;created_at&quot;:&quot;2026-08-28 07:05:18&quot;,&quot;updated_at&quot;:&quot;2026-09-11 05:51:02&quot;}" onclick="openReportVisitModal(this)">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                            </button>
+                                        </td>
+                                    </tr>
+                                                                                                        <tr>
+                                        <td style="font-family:monospace;font-weight:700;color:#3b82f6;">
+                                            #4RFT9WC6                                        </td>
+                                        <td>
+                                            <strong>Evelyn Taboclaon Zacarias</strong>
+                                            <small style="color:#64748b;">09426388677</small>
+                                        </td>
+                                        <td>62y / Female</td>
+                                        <td>Bata Barangay Health Station</td>
+                                        <td><span class="report-service-tag">Dental Services</span></td>
+                                        <td>
+                                            <div>Aug 28, 2026</div>
+                                        </td>
+                                        <td>
+                                            <span class="status-pill status-completed">Completed</span>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="patient-action-btn view" title="View Consultation Details" data-record="{&quot;id&quot;:7,&quot;reference_code&quot;:&quot;BK260827160252393&quot;,&quot;appointment_code&quot;:&quot;4RFT9WC6&quot;,&quot;patient_id&quot;:&quot;AD00A8&quot;,&quot;station_slug&quot;:&quot;bata&quot;,&quot;station_name&quot;:&quot;Bata Barangay Health Station&quot;,&quot;service_slug&quot;:&quot;dental&quot;,&quot;service_name&quot;:&quot;Dental Services&quot;,&quot;first_name&quot;:&quot;Evelyn&quot;,&quot;middle_name&quot;:&quot;Taboclaon&quot;,&quot;last_name&quot;:&quot;Zacarias&quot;,&quot;birth_date&quot;:&quot;1963-12-26&quot;,&quot;gender&quot;:&quot;Female&quot;,&quot;contact_number&quot;:&quot;09426388677&quot;,&quot;email&quot;:&quot;evelyntaboclaon@gmail.com&quot;,&quot;complete_address&quot;:&quot;Purok Pag-isa, Barangay Bata, Bacolod City&quot;,&quot;immunization_relationship&quot;:&quot;&quot;,&quot;recipient_first_name&quot;:null,&quot;recipient_middle_name&quot;:null,&quot;recipient_last_name&quot;:null,&quot;recipient_birth_date&quot;:null,&quot;recipient_gender&quot;:null,&quot;preferred_date&quot;:&quot;2026-08-28&quot;,&quot;preferred_time&quot;:&quot;Daily Slot&quot;,&quot;notes&quot;:&quot;&quot;,&quot;body_temperature&quot;:&quot;36.7 C&quot;,&quot;pulse_rate&quot;:&quot;80 bpm&quot;,&quot;respiration_rate&quot;:&quot;18 cpm&quot;,&quot;blood_pressure&quot;:&quot;120\/80&quot;,&quot;height&quot;:null,&quot;weight&quot;:null,&quot;vaccine_type&quot;:null,&quot;doctor_notes&quot;:&quot;Vitals were normal, proceeded with tooth extraction.&quot;,&quot;reminder_sms_sent&quot;:0,&quot;reminder_sent_at&quot;:null,&quot;follow_up_date&quot;:null,&quot;follow_up_time&quot;:null,&quot;follow_up_notes&quot;:null,&quot;follow_up_set_at&quot;:null,&quot;photo_path&quot;:&quot;uploads\/patient_6a9102dfd608a2.13514162.jpg&quot;,&quot;status&quot;:&quot;Completed&quot;,&quot;created_at&quot;:&quot;2026-08-27 14:02:52&quot;,&quot;updated_at&quot;:&quot;2026-09-11 05:51:02&quot;}" onclick="openReportVisitModal(this)">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                            </button>
+                                        </td>
+                                    </tr>
+                                                            </tbody>
+                        </table>
+                    </div>
+                            </section>
+
+            <!-- Multi-Filter Interactive Modal -->
+            <div id="reportsFilterModal" style="display:none;" class="service-modal-overlay report-modal-backdrop" onclick="if(event.target===this)closeReportsFilterModal()">
+                <div class="service-modal-card report-filter-modal-card">
+                    <!-- Modal Header -->
+                    <div class="report-modal-header">
+                        <div class="report-modal-header-left">
+                            <div class="report-modal-icon-badge">
+                                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M3 5h18l-7 8v6l-4-2v-4L3 5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                            </div>
+                            <div>
+                                <h2>Filter Reports &amp; Analytics</h2>
+                                <p>Select multiple criteria to refine data across all health centers</p>
+                            </div>
+                        </div>
+                        <button type="button" class="modal-close-btn report-modal-close" onclick="closeReportsFilterModal()">&times;</button>
+                    </div>
+
+                    <form method="get" action="" class="report-modal-form">
+                        <input type="hidden" name="page" value="reports">
+                        
+                        <div class="report-modal-body">
+                            <!-- Group 1: Date Range & Period -->
+                            <div class="report-filter-group">
+                                <div class="report-group-title">
+                                    <span class="group-num">1</span>
+                                    <span>Date Range &amp; Period</span>
+                                </div>
+                                <div class="clean-field">
+                                    <label>Report Timeframe</label>
+                                    <div class="period-segmented-control">
+                                        <label class="period-segment-label">
+                                            <input type="radio" name="report_period" value="today" >
+                                            <span class="segment-btn">Today</span>
+                                        </label>
+                                        <label class="period-segment-label">
+                                            <input type="radio" name="report_period" value="weekly" >
+                                            <span class="segment-btn">Weekly</span>
+                                        </label>
+                                        <label class="period-segment-label">
+                                            <input type="radio" name="report_period" value="monthly" >
+                                            <span class="segment-btn">Monthly</span>
+                                        </label>
+                                        <label class="period-segment-label">
+                                            <input type="radio" name="report_period" value="quarterly" >
+                                            <span class="segment-btn">Quarterly</span>
+                                        </label>
+                                        <label class="period-segment-label">
+                                            <input type="radio" name="report_period" value="annually" checked>
+                                            <span class="segment-btn">Annually</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Group 2: Patient Demographics -->
+                            <div class="report-filter-group">
+                                <div class="report-group-title">
+                                    <span class="group-num">2</span>
+                                    <span>Patient Demographics</span>
+                                </div>
+                                <div class="clean-field">
+                                    <label>Gender Demographic</label>
+                                    <div class="gender-segmented-control">
+                                        <label class="gender-segment-label">
+                                            <input type="radio" name="gender" value="" checked>
+                                            <span class="segment-btn">All Genders</span>
+                                        </label>
+                                        <label class="gender-segment-label">
+                                            <input type="radio" name="gender" value="Female" >
+                                            <span class="segment-btn">Female</span>
+                                        </label>
+                                        <label class="gender-segment-label">
+                                            <input type="radio" name="gender" value="Male" >
+                                            <span class="segment-btn">Male</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="clean-field" style="margin-top: 14px;">
+                                    <label for="filterAgeGroup">Age Group Bracket</label>
+                                    <div class="clean-select-wrap">
+                                        <select name="age_group" id="filterAgeGroup">
+                                            <option value="" selected>All Age Groups</option>
+                                            <option value="0-12" >Infants &amp; Children (0 &ndash; 12 years)</option>
+                                            <option value="13-17" >Adolescents (13 &ndash; 17 years)</option>
+                                            <option value="18-30" >Young Adults (18 &ndash; 30 years)</option>
+                                            <option value="31-45" >Middle Adults (31 &ndash; 45 years)</option>
+                                            <option value="46-59" >Mature Adults (46 &ndash; 59 years)</option>
+                                            <option value="60+" >Senior Citizens (60+ years)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Group 3: Location & Health Service -->
+                            <div class="report-filter-group">
+                                <div class="report-group-title">
+                                    <span class="group-num">3</span>
+                                    <span>Facility, Service &amp; Status</span>
+                                </div>
+                                <div class="filter-two-col">
+                                    <div class="clean-field">
+                                        <label for="filterStation">Barangay Health Center</label>
+                                        <div class="clean-select-wrap">
+                                            <select name="station_slug" id="filterStation">
+                                                <option value="" selected>All Health Stations</option>
+                                                                                                    <option value="alijis" >
+                                                        Alijis Barangay Health Station                                                    </option>
+                                                                                                    <option value="bata" >
+                                                        Bata Barangay Health Station                                                    </option>
+                                                                                                    <option value="cabug" >
+                                                        Cabug Barangay Health Station                                                    </option>
+                                                                                                    <option value="city-health" >
+                                                        Bacolod City Health Office                                                    </option>
+                                                                                                    <option value="estefania" >
+                                                        Estefania Barangay Health Station                                                    </option>
+                                                                                                    <option value="granada" >
+                                                        Granada Barangay Health Station                                                    </option>
+                                                                                                    <option value="handumanan" >
+                                                        Handumanan Barangay Health Station                                                    </option>
+                                                                                                    <option value="mandalagan" >
+                                                        Mandalagan Barangay Health Station                                                    </option>
+                                                                                                    <option value="mansilingan" >
+                                                        Mansilingan Barangay Health Station                                                    </option>
+                                                                                                    <option value="pahanocoy" >
+                                                        Pahanocoy Barangay Health Station                                                    </option>
+                                                                                                    <option value="singcang" >
+                                                        Singcang Barangay Health Station                                                    </option>
+                                                                                                    <option value="sum-ag" >
+                                                        Sum-Ag Barangay Health Station                                                    </option>
+                                                                                                    <option value="taculing" >
+                                                        Taculing Barangay Health Station                                                    </option>
+                                                                                                    <option value="villamonte" >
+                                                        Villamonte Barangay Health Station                                                    </option>
+                                                                                                    <option value="villa-esperanza" >
+                                                        Villa Esperanza Barangay Health Station                                                    </option>
+                                                                                                    <option value="vista-alegre" >
+                                                        Vista Alegre Barangay Health Station                                                    </option>
+                                                                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="clean-field">
+                                        <label for="filterService">Health Service Program</label>
+                                        <div class="clean-select-wrap">
+                                            <select name="service_slug" id="filterService">
+                                                <option value="" selected>All Health Services</option>
+                                                                                                    <option value="immunization" >
+                                                        Immunization                                                    </option>
+                                                                                                    <option value="prenatal" >
+                                                        Pre-Natal Care                                                    </option>
+                                                                                                    <option value="family" >
+                                                        Family Planning                                                    </option>
+                                                                                                    <option value="tb" >
+                                                        TB DOTS                                                    </option>
+                                                                                                    <option value="consultation" >
+                                                        General Consultation                                                    </option>
+                                                                                                    <option value="nutrition" >
+                                                        Nutrition Program                                                    </option>
+                                                                                                    <option value="dental" >
+                                                        Dental Services                                                    </option>
+                                                                                                    <option value="pharmacy" >
+                                                        Pharmacy Services                                                    </option>
+                                                                                                    <option value="checkup" >
+                                                        Wellness Checkup                                                    </option>
+                                                                                                    <option value="maternal" >
+                                                        Maternal Counseling                                                    </option>
+                                                                                                    <option value="pediatric" >
+                                                        Pediatric Consultation                                                    </option>
+                                                                                                    <option value="senior" >
+                                                        Senior Citizen Care                                                    </option>
+                                                                                                    <option value="adolescent" >
+                                                        Adolescent Day                                                    </option>
+                                                                                                    <option value="flu" >
+                                                        Flu Vaccination                                                    </option>
+                                                                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="clean-field" style="margin-top: 14px;">
+                                    <label for="filterStatus">Appointment Status</label>
+                                    <div class="clean-select-wrap">
+                                        <select name="status_filter" id="filterStatus">
+                                            <option value="" selected>All Statuses</option>
+                                            <option value="Completed" >Completed</option>
+                                            <option value="Confirmed" >Confirmed</option>
+                                            <option value="Serving" >Serving</option>
+                                            <option value="Pending" >Pending</option>
+                                            <option value="Cancelled" >Cancelled</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Footer -->
+                        <div class="report-modal-footer">
+                            <a href="?page=reports" class="report-modal-reset-link">
+                                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0-5v5h5M12 7v5l4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                <span>Reset All Filters</span>
+                            </a>
+                            <div class="report-modal-footer-actions">
+                                <button type="button" class="report-btn-secondary" onclick="closeReportsFilterModal()">Cancel</button>
+                                <button type="submit" class="report-btn-primary">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m5 12 5 5L20 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                    <span>Apply Filters</span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Consultation Record Inspection Modal on Reports Page -->
+            <div id="reportVisitModal" style="display:none;" class="service-modal-overlay report-modal-backdrop" onclick="if(event.target===this)closeReportVisitModal()">
+                <div class="service-modal-card clinical-modal-card-modern">
+                    <div class="report-modal-header">
+                        <div class="report-modal-header-left">
+                            <div class="report-modal-icon-badge" style="background:#e8fbf3;color:#0db273;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m5 12 5 5L20 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                            </div>
+                            <div>
+                                <h2 id="reportVisitCode">Consultation Record</h2>
+                                <p id="reportVisitServiceStation">-</p>
+                            </div>
+                        </div>
+                        <button type="button" class="modal-close-btn report-modal-close" onclick="closeReportVisitModal()">&times;</button>
+                    </div>
+
+                    <div class="report-modal-body clinical-modal-body">
+                        <!-- Patient Overview Strip -->
+                        <div class="clinical-patient-overview-strip">
+                            <div id="reportVisitPhotoWrap" style="display:none;">
+                                <img id="reportVisitPhoto" class="clinical-photo-modern" src="" alt="Patient photo">
+                            </div>
+                            <div id="reportVisitAvatar" class="patient-avatar-circle" style="display:none; width:54px; height:54px; font-size:1.2rem; background:#ecfdf5; color:#059669; border-radius:50%; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;">
+                                PT
+                            </div>
+                            <div class="clinical-overview-meta">
+                                <h3 id="reportVisitName">-</h3>
+                                <div class="clinical-meta-pills">
+                                    <span id="reportVisitDemographics">-</span>
+                                    <span id="reportVisitSchedule">-</span>
+                                    <span id="reportVisitContact">-</span>
+                                    <span id="reportVisitStatus" class="status-pill status-pending">-</span>
+                                </div>
+                                <div class="clinical-address-line">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 21s-6-5.33-6-11a6 6 0 1 1 12 0c0 5.67-6 11-6 11Zm0-8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                    <span id="reportVisitAddress">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vital Signs Section -->
+                        <div class="clinical-vitals-section">
+                            <h4 class="clinical-section-title">Patient Vital Signs &amp; Triage</h4>
+                            <div class="clinical-vitals-grid">
+                                <div class="vital-metric-card">
+                                    <span class="vital-label">Body Temperature</span>
+                                    <strong class="vital-value" id="reportVisitTemp"><em class="not-set">Not recorded</em></strong>
+                                </div>
+                                <div class="vital-metric-card">
+                                    <span class="vital-label">Pulse Rate</span>
+                                    <strong class="vital-value" id="reportVisitPulse"><em class="not-set">Not recorded</em></strong>
+                                </div>
+                                <div class="vital-metric-card">
+                                    <span class="vital-label">Respiration Rate</span>
+                                    <strong class="vital-value" id="reportVisitResp"><em class="not-set">Not recorded</em></strong>
+                                </div>
+                                <div class="vital-metric-card">
+                                    <span class="vital-label">Blood Pressure</span>
+                                    <strong class="vital-value" id="reportVisitBp"><em class="not-set">Not recorded</em></strong>
+                                </div>
+                                <div class="vital-metric-card" id="reportVisitVaccineCard" style="display:none; grid-column: 1 / -1; background: #eff6ff; border: 1px solid #bfdbfe;">
+                                    <span class="vital-label" style="color: #1e40af; font-weight: 700;">Type of Vaccine Administered</span>
+                                    <strong class="vital-value" id="reportVisitVaccine" style="color: #1e3a8a; font-size: 1.05rem;">-</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Doctor's Notes -->
+                        <div class="clinical-notes-section">
+                            <h4 class="clinical-section-title">Physician &amp; Clinical Notes</h4>
+                            <div class="clinical-notes-card">
+                                <p id="reportVisitNotes"><em>No clinical notes or assessments recorded for this consultation.</em></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="report-modal-footer" style="justify-content:flex-end;">
+                        <button type="button" class="report-btn-secondary" onclick="closeReportVisitModal()">Close Record</button>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+            function openReportsFilterModal() {
+                const modal = document.getElementById('reportsFilterModal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                }
+            }
+            function closeReportsFilterModal() {
+                const modal = document.getElementById('reportsFilterModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                    const visitModal = document.getElementById('reportVisitModal');
+                    if (!visitModal || visitModal.style.display === 'none') {
+                        document.body.style.overflow = '';
+                    }
+                }
+            }
+
+            function openReportVisitModal(buttonEl) {
+                if (!buttonEl) return;
+                try {
+                    const raw = buttonEl.getAttribute('data-record');
+                    const data = JSON.parse(raw || '{}');
+                    
+                    const modal = document.getElementById('reportVisitModal');
+                    if (!modal) return;
+                    
+                    const code = data.appointment_code || data.reference_code || '';
+                    document.getElementById('reportVisitCode').textContent = 'Consultation Record #' + (code ? String(code).replace(/^#/, '') : 'N/A');
+                    document.getElementById('reportVisitServiceStation').textContent = (data.service_name || 'General Consultation') + ' • ' + (data.station_name || 'Health Station');
+                    
+                    const fullName = [data.first_name || '', data.middle_name || '', data.last_name || ''].filter(Boolean).join(' ') || 'Patient';
+                    document.getElementById('reportVisitName').textContent = fullName;
+                    
+                    // Photo / Avatar
+                    const photoWrap = document.getElementById('reportVisitPhotoWrap');
+                    const photoEl = document.getElementById('reportVisitPhoto');
+                    const avatarEl = document.getElementById('reportVisitAvatar');
+                    if (data.photo_path) {
+                        if (photoEl) photoEl.src = '../Patients/' + data.photo_path;
+                        if (photoWrap) photoWrap.style.display = 'block';
+                        if (avatarEl) avatarEl.style.display = 'none';
+                    } else {
+                        if (photoWrap) photoWrap.style.display = 'none';
+                        if (avatarEl) {
+                            const firstInitial = (data.first_name || 'P')[0] || 'P';
+                            const lastInitial = (data.last_name || 'T')[0] || 'T';
+                            avatarEl.textContent = (firstInitial + lastInitial).toUpperCase();
+                            avatarEl.style.display = 'flex';
+                        }
+                    }
+                    
+                    // Age calculation
+                    let ageStr = '';
+                    if (data.birth_date) {
+                        const bDate = new Date(data.birth_date);
+                        const today = new Date();
+                        let age = today.getFullYear() - bDate.getFullYear();
+                        const m = today.getMonth() - bDate.getMonth();
+                        if (m < 0 || (m === 0 && today.getDate() < bDate.getDate())) age--;
+                        if (age >= 0) ageStr = age + ' yrs old';
+                    }
+                    const gender = data.gender || '';
+                    document.getElementById('reportVisitDemographics').textContent = [ageStr, gender ? '(' + gender + ')' : ''].filter(Boolean).join(' ') || 'Age N/A';
+                    
+                    // Schedule
+                    let dateStr = data.preferred_date || '';
+                    if (dateStr) {
+                        try {
+                            const d = new Date(dateStr + 'T00:00:00');
+                            if (!isNaN(d.getTime())) {
+                                dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                            }
+                        } catch(e) {}
+                    }
+                    document.getElementById('reportVisitSchedule').textContent = 'Date: ' + dateStr + (data.preferred_time ? ' (' + data.preferred_time + ')' : '');
+                    document.getElementById('reportVisitContact').textContent = 'Contact: ' + (data.contact_number || 'None');
+                    
+                    // Status Pill
+                    const statusEl = document.getElementById('reportVisitStatus');
+                    if (statusEl) {
+                        const st = data.status || 'Pending';
+                        statusEl.textContent = st;
+                        statusEl.className = 'status-pill status-' + st.toLowerCase().replace(/\s+/g, '-');
+                    }
+                    
+                    document.getElementById('reportVisitAddress').textContent = data.complete_address || 'Bacolod City';
+                    
+                    // Vitals
+                    const tempEl = document.getElementById('reportVisitTemp');
+                    const pulseEl = document.getElementById('reportVisitPulse');
+                    const respEl = document.getElementById('reportVisitResp');
+                    const bpEl = document.getElementById('reportVisitBp');
+                    
+                    tempEl.innerHTML = data.body_temperature ? (data.body_temperature + ' &deg;C') : '<em class="not-set">Not recorded</em>';
+                    pulseEl.innerHTML = data.pulse_rate ? (data.pulse_rate + ' bpm') : '<em class="not-set">Not recorded</em>';
+                    respEl.innerHTML = data.respiration_rate ? (data.respiration_rate + ' cpm') : '<em class="not-set">Not recorded</em>';
+                    bpEl.innerHTML = data.blood_pressure ? data.blood_pressure : '<em class="not-set">Not recorded</em>';
+                    
+                    // Vaccine
+                    const vaccineCard = document.getElementById('reportVisitVaccineCard');
+                    const vaccineEl = document.getElementById('reportVisitVaccine');
+                    if (vaccineCard && vaccineEl) {
+                        if (data.vaccine_type && data.vaccine_type.trim()) {
+                            vaccineEl.textContent = data.vaccine_type;
+                            vaccineCard.style.display = 'block';
+                        } else {
+                            vaccineCard.style.display = 'none';
+                        }
+                    }
+                    
+                    // Notes
+                    const notesEl = document.getElementById('reportVisitNotes');
+                    if (data.doctor_notes && data.doctor_notes.trim()) {
+                        notesEl.textContent = data.doctor_notes;
+                    } else {
+                        notesEl.innerHTML = '<em>No clinical notes or assessments recorded for this consultation.</em>';
+                    }
+                    
+                    modal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                } catch(err) {
+                    console.error('Failed to open consultation details:', err);
+                }
+            }
+
+            function closeReportVisitModal() {
+                const modal = document.getElementById('reportVisitModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                    const filterModal = document.getElementById('reportsFilterModal');
+                    if (!filterModal || filterModal.style.display === 'none') {
+                        document.body.style.overflow = '';
+                    }
+                }
+            }
+
+            // Close modal on Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeReportsFilterModal();
+                    closeReportVisitModal();
+                }
+            });
+            </script>
+            </main>
+</div>
+
+<!-- Admin Account Settings Modal -->
+<div class="account-modal-backdrop" id="accountModal" hidden>
+    <div class="account-modal-card admin-themed-modal" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
+        <div class="account-modal-header">
+            <div class="account-modal-title-group">
+                <span class="account-modal-icon"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <div>
+                    <h2 id="accountModalTitle">Admin Account Settings</h2>
+                    <p>Manage your central administration credentials, profile, and security settings.</p>
+                </div>
+            </div>
+            <button type="button" class="account-modal-close" id="closeAccountModalBtn" aria-label="Close modal">×</button>
+        </div>
+        
+        <form method="post" action="index.php" class="account-settings-form" id="adminAccountForm">
+            <input type="hidden" name="action" value="update_admin_account">
+            <input type="hidden" name="csrf_token" value="4ba287555d58b813aae0a15cc9ff4e00c5297ee4ea070a33950e7f9839b6e0dd">
+            <input type="hidden" name="return_page" value="reports">
+            
+            <div class="account-modal-body">
+                <!-- Administrative Identity -->
+                <div class="account-section-divider">
+                    <svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                    <span>Administrative Profile</span>
+                </div>
+                
+                <div class="form-group-item">
+                    <label for="admin_name_input" class="form-field-label">
+                        <span>Administrator Full Name</span>
+                        <span class="required">*</span>
+                    </label>
+                    <input type="text" id="admin_name_input" name="admin_name" value="Admin User" required placeholder="e.g. Dr. Ma. Teresa Lim" maxlength="150" class="form-input-field">
+                </div>
+
+                <div class="form-group-item">
+                    <label for="admin_office_input" class="form-field-label">
+                        <span>Department / Office Designation</span>
+                    </label>
+                    <input type="text" id="admin_office_input" name="office_name" value="Bacolod City Health Office" placeholder="e.g. City Health Office - Central Admin" maxlength="255" class="form-input-field">
+                </div>
+
+                <!-- Contact & Account Details -->
+                <div class="account-section-divider">
+                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M4 6h16v12H4V6Zm0 0 8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                    <span>Contact &amp; Recovery Details</span>
+                </div>
+
+                <div class="form-row-grid">
+                    <div class="form-group-item">
+                        <label for="admin_email_input" class="form-field-label">
+                            <span>Admin Login Email</span>
+                            <span class="required">*</span>
+                        </label>
+                        <input type="email" id="admin_email_input" name="email" value="admintest@gmail.com" required placeholder="e.g. admintest@gmail.com" maxlength="150" class="form-input-field">
+                    </div>
+                    
+                    <div class="form-group-item">
+                        <label for="admin_contact_input" class="form-field-label">
+                            <span>Contact Number</span>
+                        </label>
+                        <input type="tel" id="admin_contact_input" name="contact_number" value="" placeholder="e.g. 0917 123 4567" maxlength="30" class="form-input-field">
+                    </div>
+                </div>
+
+                <div class="form-group-item">
+                    <label for="admin_recovery_email_input" class="form-field-label">
+                        <span>Personal Recovery Email</span>
+                    </label>
+                    <input type="email" id="admin_recovery_email_input" name="recovery_email" value="" placeholder="e.g. personal.admin@gmail.com" maxlength="150" class="form-input-field">
+                    <small class="field-subnote">Personal email used for emergency account recovery and OTP password resets.</small>
+                </div>
+
+                <!-- Network Role (Read-only) -->
+                <div class="account-section-divider">
+                    <svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                    <span>System Role &amp; Access</span>
+                </div>
+                
+                <div class="form-group-item">
+                    <div class="station-readonly-box admin-role-box">
+                        <span class="station-pin-icon admin-role-icon"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                        <div class="station-info-text">
+                            <strong>Central Health Network Administrator</strong>
+                            <span>Full System Access • All 6 Barangay Stations • City-wide Health Delivery Network</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Security & Password -->
+                <div class="account-section-divider">
+                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M7 11V7a5 5 0 0 1 10 0v4m-12 0h14v10H5V11Zm7 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                    <span>Security &amp; Password (Optional)</span>
+                </div>
+                
+                <div class="form-row-grid">
+                    <div class="form-group-item">
+                        <label for="admin_new_password_input" class="form-field-label">
+                            <span>New Password</span>
+                        </label>
+                        <div class="input-password-wrap">
+                            <input type="password" id="admin_new_password_input" name="new_password" placeholder="Leave blank to keep current" minlength="6" class="form-input-field">
+                            <button type="button" class="btn-toggle-eye" data-target="admin_new_password_input" aria-label="Toggle password visibility">
+                                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group-item">
+                        <label for="admin_confirm_password_input" class="form-field-label">
+                            <span>Confirm New Password</span>
+                        </label>
+                        <div class="input-password-wrap">
+                            <input type="password" id="admin_confirm_password_input" name="confirm_password" placeholder="Re-enter new password" minlength="6" class="form-input-field">
+                            <button type="button" class="btn-toggle-eye" data-target="admin_confirm_password_input" aria-label="Toggle password visibility">
+                                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                            </button>
+                        </div>
+                    </div>
+                </div>
+                <p class="form-help-hint">Passwords must be at least 6 characters. Leave blank if you don't wish to change your password.</p>
+            </div>
+            
+            <div class="account-modal-footer">
+                <button type="button" class="ghost-btn" id="cancelAccountModalBtn">Cancel</button>
+                <button type="submit" class="primary-btn admin-primary-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m5 12 5 5L20 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                    <span>Save Account Details</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+function toggleDualDateFilter(clickedType, paramName, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const container = event ? event.target.closest('.dual-date-filter') : document.querySelector(`.dual-date-filter[data-param="${paramName}"]`);
+    if (!container) return;
+
+    let todayActive = container.getAttribute('data-today') === '1';
+    let upcomingActive = container.getAttribute('data-upcoming') === '1';
+
+    let nextVal = 'both';
+
+    if (clickedType === 'today') {
+        if (todayActive && upcomingActive) {
+            nextVal = 'upcoming';
+        } else if (!todayActive && upcomingActive) {
+            nextVal = 'both';
+        } else if (todayActive && !upcomingActive) {
+            nextVal = 'upcoming';
+        } else {
+            nextVal = 'today';
+        }
+    } else if (clickedType === 'upcoming') {
+        if (todayActive && upcomingActive) {
+            nextVal = 'today';
+        } else if (todayActive && !upcomingActive) {
+            nextVal = 'both';
+        } else if (!todayActive && upcomingActive) {
+            nextVal = 'today';
+        } else {
+            nextVal = 'upcoming';
+        }
+    }
+
+    const form = container.closest('form');
+    if (form) {
+        let input = form.querySelector(`input[name="${paramName}"]`);
+        if (!input) {
+            input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = paramName;
+            form.appendChild(input);
+        }
+        input.value = nextVal;
+        form.submit();
+    } else {
+        const url = new URL(window.location.href);
+        url.searchParams.set(paramName, nextVal);
+        window.location.href = url.toString();
+    }
+}
+
+(function() {
+    const markNotificationRead = (notificationId) => {
+        if (!notificationId) return;
+        fetch('?ajax=mark_notification_read&notification_id=' + encodeURIComponent(notificationId))
+            .catch(() => {});
+    };
+
+    const hideNotifications = () => {
+        const selectors = [
+            '.toast-success',
+            '.photo-notice',
+            '.notification-row',
+            '.notification-message'
+        ];
+        const notifications = Array.from(new Set(selectors.flatMap((selector) => Array.from(document.querySelectorAll(selector)))));
+        if (notifications.length === 0) {
+            return;
+        }
+
+        // Mark all visible patient notifications as read via AJAX
+        document.querySelectorAll('tr[data-notification-id]').forEach((row) => {
+            const notifId = row.dataset.notificationId;
+            if (notifId) {
+                markNotificationRead(notifId);
+            }
+        });
+
+        window.setTimeout(() => {
+            notifications.forEach((element) => {
+                element.style.transition = 'opacity 0.35s ease';
+                element.style.opacity = '0';
+                window.setTimeout(() => {
+                    if (element.parentNode) {
+                        element.parentNode.removeChild(element);
+                    }
+                }, 350);
+            });
+        }, 5000);
+    };
+
+    hideNotifications();
+
+    // ── 5-SECOND BACKGROUND TABLE LIVE SYNC FOR ADMIN PORTAL ──
+    // Seamlessly updates admin tables, queue states, and metrics without full page reload
+    let isAdminSyncing = false;
+    const adminSyncSelectors = [
+        '.table-scroll-wrapper',
+        'table.data-table',
+        '.stat-grid',
+        '.stat-cards',
+        '.station-queue-grid',
+        '.admin-overview-grid',
+        '.reports-table-wrap',
+        '.user-organized-list',
+        '.user-selection-grid',
+        '.user-station-grid',
+        '#staff-list-container'
+    ];
+
+    setInterval(async function () {
+        if (isAdminSyncing) return;
+        const activeEl = document.activeElement;
+        const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+        const userModal = document.getElementById('userModal');
+        const isUserModalOpen = userModal && userModal.classList.contains('open');
+        const reportVisitModal = document.getElementById('reportVisitModal');
+        const isReportVisitOpen = reportVisitModal && reportVisitModal.style.display !== 'none';
+        const accountModal = document.getElementById('accountModal');
+        const isAccountModalOpen = accountModal && !accountModal.hasAttribute('hidden');
+        const editStaffModal = document.getElementById('editStaffModalBackdrop');
+        const isEditStaffModalOpen = editStaffModal && !editStaffModal.classList.contains('hidden');
+
+        if (isTyping || isUserModalOpen || isReportVisitOpen || isReportsFilterOpen || isAccountModalOpen || isEditStaffModalOpen) return;
+
+        try {
+            isAdminSyncing = true;
+            const res = await fetch(window.location.href, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!res.ok) return;
+            const html = await res.text();
+            const parser = new DOMParser();
+            const newDoc = parser.parseFromString(html, 'text/html');
+
+            adminSyncSelectors.forEach(selector => {
+                const currentEls = document.querySelectorAll(selector);
+                const newEls = newDoc.querySelectorAll(selector);
+                if (currentEls.length > 0 && currentEls.length === newEls.length) {
+                    currentEls.forEach((curEl, idx) => {
+                        const newEl = newEls[idx];
+                        if (newEl && curEl.innerHTML !== newEl.innerHTML) {
+                            curEl.innerHTML = newEl.innerHTML;
+                        }
+                    });
+                }
+            });
+
+            // Re-assert visibility of active station staff list in case of DOM replacement
+            const currentStaffListPanel = document.getElementById('staffListPanel');
+            if (currentStaffListPanel && !currentStaffListPanel.classList.contains('hidden')) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const activeStation = urlParams.get('user_station') || sessionStorage.getItem('admin_user_active_station');
+                if (activeStation) {
+                    document.querySelectorAll('[data-staff-list-for]').forEach(list => {
+                        if (list.dataset.staffListFor === activeStation) {
+                            list.classList.remove('hidden');
+                        } else {
+                            list.classList.add('hidden');
+                        }
+                    });
+                }
+            }
+        } catch (err) {
+            console.debug('Admin live sync notice:', err);
+        } finally {
+            isAdminSyncing = false;
+        }
+    }, 5000);
+})();
+
+window.switchDemandPeriod = function(period) {
+    if (!period) period = 'quarter';
+    sessionStorage.setItem('admin_demand_period', period);
+    const select = document.getElementById('dashDemandPeriodSelect');
+    if (select && select.value !== period) {
+        select.value = period;
+    }
+    const views = document.querySelectorAll('.dash-demand-period-view');
+    views.forEach(v => {
+        if (v.getAttribute('data-period') === period) {
+            v.style.display = 'flex';
+            v.style.flexDirection = 'column';
+            v.style.gap = '14px';
+        } else {
+            v.style.display = 'none';
+        }
+    });
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const savedPeriod = sessionStorage.getItem('admin_demand_period');
+    if (savedPeriod && document.getElementById('dashDemandPeriodSelect')) {
+        window.switchDemandPeriod(savedPeriod);
+    }
+});
+
+window.dismissAdminToast = function() {
+    const toast = document.getElementById('adminFlashToast');
+    if (toast) {
+        toast.classList.add('hide-toast');
+        setTimeout(() => {
+            toast.remove();
+        }, 350);
+    }
+};
+(function() {
+    const toast = document.getElementById('adminFlashToast');
+    if (toast) {
+        setTimeout(() => {
+            window.dismissAdminToast();
+        }, 5000);
+    }
+})();
+
+// Admin Mobile Navigation Drawer & Dashboard Stat Slideshow Logic
+(function() {
+    const mobileToggle = document.getElementById('adminMobileNavToggle');
+    const sidebar = document.getElementById('adminSidebar');
+    const backdrop = document.getElementById('adminDrawerBackdrop');
+    const closeBtn = document.getElementById('adminSidebarCloseBtn');
+
+    function openAdminDrawer() {
+        if (!sidebar || !backdrop) return;
+        backdrop.classList.add('active');
+        sidebar.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeAdminDrawer() {
+        if (!sidebar || !backdrop) return;
+        backdrop.classList.remove('active');
+        sidebar.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    mobileToggle?.addEventListener('click', openAdminDrawer);
+    closeBtn?.addEventListener('click', closeAdminDrawer);
+    backdrop?.addEventListener('click', closeAdminDrawer);
+
+    // Dashboard Carousel sync
+    const carousel = document.getElementById('adminStatCarousel');
+    const dotsContainer = document.getElementById('adminStatDots');
+    if (carousel && dotsContainer) {
+        const dots = dotsContainer.querySelectorAll('.stat-dot');
+        const cards = carousel.querySelectorAll('.dash-stat-card');
+
+        dots.forEach((dot, idx) => {
+            dot.addEventListener('click', () => {
+                if (cards[idx]) {
+                    cards[idx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            });
+        });
+
+        carousel.addEventListener('scroll', () => {
+            const scrollLeft = carousel.scrollLeft;
+            const cardWidth = cards[0] ? cards[0].offsetWidth + 14 : 1;
+            const activeIndex = Math.round(scrollLeft / cardWidth);
+            dots.forEach((d, i) => {
+                d.classList.toggle('active', i === activeIndex);
+            });
+        }, { passive: true });
+    }
+})();
+
+// Admin Infant Sub-Profiles Viewer Logic
+let currentAdminInfantData = null;
+let currentAdminSelectedInfantIndex = 0;
+
+function adminEscapeHtml(str) {
+    return (str || '').toString().replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+    });
+}
+
+window.openAdminInfantViewer = function(data) {
+    if (!data || !data.infants || data.infants.length === 0) return;
+    currentAdminInfantData = data;
+    currentAdminSelectedInfantIndex = 0;
+    
+    const modal = document.getElementById('adminInfantModal');
+    if (!modal) return;
+    
+    window.renderAdminSelectedInfant(0);
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+};
+
+window.renderAdminSelectedInfant = function(index) {
+    if (!currentAdminInfantData || !currentAdminInfantData.infants || !currentAdminInfantData.infants[index]) return;
+    currentAdminSelectedInfantIndex = index;
+    const infant = currentAdminInfantData.infants[index];
+    const totalInfants = currentAdminInfantData.infants.length;
+    const body = document.getElementById('adminInfantModalBody');
+    if (!body) return;
+
+    // Multiple infants switcher if count > 1
+    let switcherHtml = '';
+    if (totalInfants > 1) {
+        switcherHtml = '<div style="display: flex; gap: 8px; margin-bottom: 18px; overflow-x: auto; padding-bottom: 4px;">';
+        currentAdminInfantData.infants.forEach((inf, i) => {
+            const isSel = i === index;
+            switcherHtml += `
+            <button type="button" onclick="renderAdminSelectedInfant(${i})" style="padding: 8px 16px; border-radius: 10px; font-size: 0.84rem; font-weight: 700; cursor: pointer; border: 1.5px solid ${isSel ? '#7c3aed' : '#e2e8f0'}; background: ${isSel ? '#f5f3ff' : '#ffffff'}; color: ${isSel ? '#6d28d9' : '#64748b'}; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;">
+                <span>👶 ${adminEscapeHtml(inf.full_name)}</span>
+            </button>`;
+        });
+        switcherHtml += '</div>';
+    }
+
+    let photoHtml = '';
+    const photoRaw = (infant.latest_photo || infant.photo_path || '').trim();
+    if (photoRaw) {
+        const photoSrc = (photoRaw.startsWith('http') || photoRaw.startsWith('data:') || photoRaw.startsWith('/')) ? photoRaw : `../Patients/${photoRaw.replace(/^\.\.\/Patients\//, '')}`;
+        photoHtml = `<img src="${adminEscapeHtml(photoSrc)}" alt="Infant Photo" style="width: 100%; height: 100%; object-fit: cover;">`;
+    } else {
+        photoHtml = `<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M9 12h.01M15 12h.01M10 16c.5.5 1.2.8 2 .8s1.5-.3 2-.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4v-2M9 4.5C9.5 3 10.5 2 12 2c1.5 0 2.5 1 3 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    }
+
+    // Aggregate vaccine counts and latest dates from vaccine_counts, vaccine_doses, and appointments
+    const vaccineSummary = {};
+    if (infant.vaccine_doses && Array.isArray(infant.vaccine_doses)) {
+        infant.vaccine_doses.forEach(d => {
+            const vType = (d.vaccine_type || '').trim();
+            if (vType && vType.toLowerCase() !== 'not recorded' && vType.toLowerCase() !== 'not yet recorded') {
+                if (!vaccineSummary[vType]) {
+                    vaccineSummary[vType] = { count: 0, latestDate: d.date || '' };
+                }
+                vaccineSummary[vType].count++;
+                if (d.date && (!vaccineSummary[vType].latestDate || d.date > vaccineSummary[vType].latestDate)) {
+                    vaccineSummary[vType].latestDate = d.date;
+                }
+            }
+        });
+    }
+    if (infant.appointments && Array.isArray(infant.appointments)) {
+        infant.appointments.forEach(a => {
+            const vType = (a.vaccine_type || '').trim();
+            if (vType && vType.toLowerCase() !== 'not recorded' && vType.toLowerCase() !== 'not yet recorded') {
+                if (!vaccineSummary[vType]) {
+                    vaccineSummary[vType] = { count: 1, latestDate: a.preferred_date || '' };
+                }
+            }
+        });
+    }
+    if (infant.vaccine_counts && typeof infant.vaccine_counts === 'object') {
+        Object.keys(infant.vaccine_counts).forEach(vType => {
+            const vt = (vType || '').trim();
+            if (vt && vt.toLowerCase() !== 'not recorded' && vt.toLowerCase() !== 'not yet recorded') {
+                const cnt = Number(infant.vaccine_counts[vType]) || 1;
+                if (!vaccineSummary[vt]) {
+                    vaccineSummary[vt] = { count: cnt, latestDate: '' };
+                } else if (cnt > vaccineSummary[vt].count) {
+                    vaccineSummary[vt].count = cnt;
+                }
+            }
+        });
+    }
+
+    let dosesHtml = '';
+    const vNames = Object.keys(vaccineSummary);
+    if (vNames.length > 0) {
+        dosesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">';
+        vNames.forEach(vName => {
+            const info = vaccineSummary[vName];
+            const dateStr = info.latestDate ? new Date(info.latestDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+            dosesHtml += `
+            <div style="background: #f5f3ff; border: 1.5px solid #ddd6fe; color: #6d28d9; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(124, 58, 237, 0.08);">
+                <span style="display: inline-flex; align-items: center; color: #7c3aed;"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m14 4 6 6M5 19l7.5-7.5M9.5 8.5 17 16M4 20l3-3M3 21l3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m8 16 9-9 3 3-9 9-3-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <span>${adminEscapeHtml(vName)}</span>
+                <span style="background: #7c3aed; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${info.count} ${info.count === 1 ? 'Dose Taken' : 'Doses Taken'}</span>
+                ${dateStr ? `<span style="font-size: 0.74rem; color: #7c3aed; font-weight: 600; opacity: 0.85;">(${adminEscapeHtml(dateStr)})</span>` : ''}
+            </div>`;
+        });
+        dosesHtml += '</div>';
+    } else {
+        dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 8px 0 0 0;">No immunization doses recorded yet for this infant.</p>';
+    }
+
+    // Timeline appointments
+    let timelineHtml = '';
+    if (infant.appointments && infant.appointments.length > 0) {
+        timelineHtml = '<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">';
+        infant.appointments.forEach((appt, idx) => {
+            const apptCode = appt.appointment_code || appt.reference_code || ('#' + (idx + 1));
+            const apptDate = appt.preferred_date ? new Date(appt.preferred_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
+            const vacType = appt.vaccine_type || 'Immunization Consultation';
+            const apptPhotoRaw = (appt.photo_path || infant.latest_photo || infant.photo_path || '').trim();
+            const apptPhotoSrc = apptPhotoRaw ? ((apptPhotoRaw.startsWith('http') || apptPhotoRaw.startsWith('data:') || apptPhotoRaw.startsWith('/')) ? apptPhotoRaw : `../Patients/${apptPhotoRaw.replace(/^\.\.\/Patients\//, '')}`) : '';
+            
+            timelineHtml += `
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="background: #ede9fe; color: #6d28d9; font-weight: 700; font-size: 0.8rem; padding: 2px 8px; border-radius: 6px;">#${adminEscapeHtml(apptCode)}</span>
+                        <strong style="color: #0f172a; font-size: 0.92rem;">${adminEscapeHtml(vacType)}</strong>
+                    </div>
+                    <span style="font-size: 0.82rem; color: #64748b; font-weight: 600;">📅 ${adminEscapeHtml(apptDate)} &bull; ${adminEscapeHtml(appt.preferred_time || 'Regular Hours')}</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; font-size: 0.8rem; color: #475569; background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                    <div><strong>Temp:</strong> ${adminEscapeHtml(appt.body_temperature || 'N/A')} °C</div>
+                    <div><strong>PR:</strong> ${adminEscapeHtml(appt.pulse_rate || 'N/A')} bpm</div>
+                    <div><strong>RR:</strong> ${adminEscapeHtml(appt.respiration_rate || 'N/A')} cpm</div>
+                    <div><strong>BP:</strong> ${adminEscapeHtml(appt.blood_pressure || 'N/A')}</div>
+                    ${appt.height ? `<div><strong>Height:</strong> ${adminEscapeHtml(appt.height)}</div>` : ''}
+                    ${appt.weight ? `<div><strong>Weight:</strong> ${adminEscapeHtml(appt.weight)}</div>` : ''}
+                </div>
+
+                ${appt.doctor_notes ? `<div style="font-size: 0.82rem; color: #334155; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px 12px; border-radius: 8px;">
+                    <strong>Doctor's Clinical Notes:</strong> ${adminEscapeHtml(appt.doctor_notes)}
+                </div>` : ''}
+
+                ${apptPhotoSrc ? `<div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                    <img src="${adminEscapeHtml(apptPhotoSrc)}" alt="Visit Photo" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid #cbd5e1;">
+                    <span style="font-size: 0.78rem; color: #64748b;">Consultation Verification Photo Recorded</span>
+                </div>` : ''}
+            </div>`;
+        });
+        timelineHtml += '</div>';
+    } else {
+        timelineHtml = '<p style="color: #64748b; font-size: 0.85rem; margin-top: 8px;">No consultation history on record.</p>';
+    }
+
+    const isGuardian = Boolean(infant.is_guardian);
+    const roleBadgeHtml = isGuardian
+        ? `<span style="background: #fef3c7; color: #92400e; border: 1.5px solid #fde68a; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">Registered Guardian</span>`
+        : `<span style="background: #ede9fe; color: #6d28d9; border: 1.5px solid #ddd6fe; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">${adminEscapeHtml(infant.role_label || 'Registered Parent')}</span>`;
+
+    let parentalInfoHtml = '';
+    if (isGuardian) {
+        parentalInfoHtml = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+            <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #92400e; text-transform: uppercase;">Registered Guardian:</span>
+                <strong style="display: block; font-size: 0.95rem; color: #78350f; margin-top: 3px;">${adminEscapeHtml(infant.guardian_name || currentAdminInfantData.patient_name)}</strong>
+                <span style="display: inline-block; background: #fef3c7; color: #b45309; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; margin-top: 4px;">Legal Guardian</span>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Biological Mother:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.mother_name || 'None recorded')}</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Biological Father:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.father_name || 'None recorded')}</strong>
+            </div>
+        </div>
+        `;
+    } else {
+        parentalInfoHtml = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Mother's Name:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.mother_name || 'None recorded')}</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Father's Name:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.father_name || 'None recorded')}</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Guardian Status:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #64748b; margin-top: 3px;">Registered to Biological Parent</strong>
+            </div>
+        </div>
+        `;
+    }
+
+    body.innerHTML = `
+    ${switcherHtml}
+    <!-- Demographic Card -->
+    <div style="background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%); border: 1.5px solid #ddd6fe; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 18px; margin-bottom: 20px; flex-wrap: wrap;">
+        <div style="width: 72px; height: 72px; border-radius: 50%; background: #ffffff; border: 3px solid #a855f7; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; color: #7c3aed; font-size: 1.6rem; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);">
+            ${photoHtml}
+        </div>
+        <div style="flex: 1; min-width: 220px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #4c1d95;">${adminEscapeHtml(infant.full_name)}</h3>
+                <span style="background: #7c3aed; color: #ffffff; font-size: 0.75rem; font-weight: 700; padding: 2px 9px; border-radius: 999px;">Pediatric Record</span>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 0.84rem; color: #6d28d9; flex-wrap: wrap;">
+                <span><strong>Age:</strong> ${adminEscapeHtml(infant.age_label)}</span>
+                <span>&bull;</span>
+                <span><strong>Birthdate:</strong> ${infant.birth_date ? new Date(infant.birth_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</span>
+                <span>&bull;</span>
+                <span><strong>Gender:</strong> ${adminEscapeHtml(infant.gender || 'Not specified')}</span>
+            </div>
+            <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 0.86rem; color: #581c87; flex-wrap: wrap;">
+                <strong>Account Holder Role:</strong>
+                ${roleBadgeHtml}
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 1: Types of Vaccines Taken & Dose Counts -->
+    <div style="margin-bottom: 20px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <span style="color: #7c3aed;"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m14 4 6 6M5 19l7.5-7.5M9.5 8.5 17 16M4 20l3-3M3 21l3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m8 16 9-9 3 3-9 9-3-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span>Types of Vaccines Taken &amp; Dose Summary</span>
+        </div>
+        <p style="font-size: 0.82rem; color: #64748b; margin: 3px 0 0 0;">Summary of all completed antigens and number of doses administered to this infant.</p>
+        ${dosesHtml}
+    </div>
+
+    <!-- Section 2: Parental / Guardian Information (Read-Only) -->
+    <div style="margin-bottom: 20px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <span style="color: #7c3aed;"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span>Parental &amp; Guardian Information (Read-Only)</span>
+        </div>
+        ${parentalInfoHtml}
+        ${infant.custom_notes || infant.notes ? `<div style="margin-top: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
+            <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Pediatric Notes &amp; Remarks:</span>
+            <p style="margin: 3px 0 0 0; font-size: 0.88rem; color: #334155;">${adminEscapeHtml(infant.custom_notes || infant.notes)}</p>
+        </div>` : ''}
+    </div>
+
+    <!-- Section 3: Immunization & Consultation History Timeline -->
+    <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <span style="color: #7c3aed;"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0-5v5h5M12 7v5l4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span>Immunization &amp; Consultation Appointments (${infant.appointments ? infant.appointments.length : 0})</span>
+        </div>
+        <p style="font-size: 0.82rem; color: #64748b; margin: 3px 0 0 0;">Chronological history of all immunization appointments booked for this infant.</p>
+        ${timelineHtml}
+    </div>
+    `;
+};
+
+window.closeAdminInfantModal = function() {
+    const modal = document.getElementById('adminInfantModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+};
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const adminInfantModal = document.getElementById('adminInfantModal');
+        if (adminInfantModal && adminInfantModal.style.display !== 'none') {
+            window.closeAdminInfantModal();
+        }
+    }
+});
+
+// Admin Account Settings Modal Controller
+(function() {
+    'use strict';
+    const accountModal = document.getElementById('accountModal');
+    const openBtns = [
+        document.getElementById('sidebarOpenAccountBtn'),
+        document.getElementById('adminTopbarUserBadge')
+    ].filter(Boolean);
+
+    const closeBtn = document.getElementById('closeAccountModalBtn');
+    const cancelBtn = document.getElementById('cancelAccountModalBtn');
+
+    function openAccountModal() {
+        if (!accountModal) return;
+        accountModal.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+        const nameInput = document.getElementById('admin_name_input');
+        if (nameInput) {
+            setTimeout(() => nameInput.focus(), 50);
+        }
+    }
+
+    function closeAccountModal() {
+        if (!accountModal) return;
+        accountModal.setAttribute('hidden', '');
+        document.body.style.overflow = '';
+    }
+
+    openBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAccountModal();
+        });
+    });
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeAccountModal();
+        });
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeAccountModal();
+        });
+    }
+
+    if (accountModal) {
+        accountModal.addEventListener('click', (e) => {
+            if (e.target === accountModal) {
+                closeAccountModal();
+            }
+        });
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && accountModal && !accountModal.hasAttribute('hidden')) {
+            closeAccountModal();
+        }
+    });
+
+    // Password visibility toggle
+    document.querySelectorAll('.btn-toggle-eye').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = btn.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            if (!input) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.classList.add('active');
+            } else {
+                input.type = 'password';
+                btn.classList.remove('active');
+            }
+        });
+    });
+})();
+</script>
+<script src="../shared/pwa-install.js" defer></script>
+</body>
+</html>
