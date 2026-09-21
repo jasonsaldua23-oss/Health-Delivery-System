@@ -3818,10 +3818,14 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
             }
         }
 
-        // Fetch the latest photo recorded for this account/appointment if individual infant photo was not set
+        // Fetch the very recent picture taken by the account holder in their recent immunization appointment
         $latestAccountPhoto = '';
         try {
-            $stmtPhoto = $db->prepare("SELECT photo_path FROM appointments WHERE patient_id = ? AND photo_path IS NOT NULL AND photo_path != '' ORDER BY preferred_date DESC, id DESC LIMIT 1");
+            $stmtPhoto = $db->prepare("SELECT photo_path FROM appointments 
+                WHERE patient_id = ? 
+                  AND (service_slug LIKE '%immuniz%' OR service_slug LIKE '%vaccin%' OR service_name LIKE '%immuniz%' OR service_name LIKE '%vaccin%') 
+                  AND photo_path IS NOT NULL AND photo_path != '' 
+                ORDER BY preferred_date DESC, id DESC LIMIT 1");
             $stmtPhoto->bind_param('s', $patientId);
             $stmtPhoto->execute();
             $photoRow = $stmtPhoto->get_result()->fetch_assoc();
@@ -3829,6 +3833,19 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 $latestAccountPhoto = (string) $photoRow['photo_path'];
             }
         } catch (Throwable $e) {}
+
+        // If no immunization photo found on account, fallback to any appointment photo, then profile photo
+        if ($latestAccountPhoto === '') {
+            try {
+                $stmtPhoto = $db->prepare("SELECT photo_path FROM appointments WHERE patient_id = ? AND photo_path IS NOT NULL AND photo_path != '' ORDER BY preferred_date DESC, id DESC LIMIT 1");
+                $stmtPhoto->bind_param('s', $patientId);
+                $stmtPhoto->execute();
+                $photoRow = $stmtPhoto->get_result()->fetch_assoc();
+                if ($photoRow && !empty($photoRow['photo_path'])) {
+                    $latestAccountPhoto = (string) $photoRow['photo_path'];
+                }
+            } catch (Throwable $e) {}
+        }
 
         if ($latestAccountPhoto === '' && !empty($parentProfile['photo_path'])) {
             $latestAccountPhoto = (string) $parentProfile['photo_path'];
@@ -3854,7 +3871,7 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 } catch (Throwable $e) {}
             }
 
-            // Resolve the latest valid photo for this infant from their own appointments
+            // Resolve the latest valid photo for this infant from their own immunization appointments
             $latestPhoto = '';
             foreach ($inf['photos'] as $pCandidate) {
                 if (resolve_patient_photo_url((string) $pCandidate, 'staff') !== '') {
@@ -3869,14 +3886,25 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 }
             }
 
+            // If individual appointments did not have a valid photo on disk, use the account holder's recent immunization appointment photo
+            if ($latestPhoto === '' || resolve_patient_photo_url($latestPhoto, 'staff') === '') {
+                if ($latestAccountPhoto !== '' && resolve_patient_photo_url($latestAccountPhoto, 'staff') !== '') {
+                    $latestPhoto = $latestAccountPhoto;
+                }
+            }
+
             $infAppts = $inf['appointments'];
             foreach ($infAppts as &$ia) {
                 $iaPhoto = trim((string) ($ia['photo_path'] ?? ''));
                 if ($iaPhoto !== '') {
                     $resolvedIa = resolve_patient_photo_url($iaPhoto, 'staff');
                     if ($resolvedIa === '' && !str_starts_with($iaPhoto, 'http') && !str_starts_with($iaPhoto, 'data:')) {
-                        // File not on disk; clear so a broken image thumbnail is never displayed
-                        $ia['photo_path'] = '';
+                        // If file not found on disk, fallback to the account holder's recent immunization appointment photo
+                        if ($latestPhoto !== '') {
+                            $ia['photo_path'] = $latestPhoto;
+                        } else {
+                            $ia['photo_path'] = '';
+                        }
                     } else {
                         // Normalize slashes and uploads prefix
                         $norm = str_replace('\\', '/', $iaPhoto);
@@ -3887,6 +3915,9 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                         }
                         $ia['photo_path'] = $norm;
                     }
+                } elseif ($latestPhoto !== '') {
+                    // Appointment record has no photo captured, inherit the account holder's photo taken when they went for that immunization appointment
+                    $ia['photo_path'] = $latestPhoto;
                 }
             }
             unset($ia);
