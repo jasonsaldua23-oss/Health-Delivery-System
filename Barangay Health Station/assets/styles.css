@@ -1549,6 +1549,94 @@ button { border: 0; cursor: pointer; }
   margin-top: 2px;
 }
 
+.gender-radio-options {
+  display: flex;
+  gap: 10px;
+  height: 46px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gender-radio-card {
+  flex: 1;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0 14px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: #334155;
+  user-select: none;
+  box-sizing: border-box;
+  position: relative;
+  margin: 0;
+}
+
+.gender-radio-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.custom-radio-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.gender-radio-card:hover {
+  border-color: #2563eb;
+  background: #f8faff;
+}
+
+.gender-radio-card:hover .custom-radio-circle {
+  border-color: #2563eb;
+}
+
+.gender-radio-card:has(input[type="radio"]:checked),
+.gender-radio-card.selected {
+  border-color: #2563eb !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+.gender-radio-card input[type="radio"]:checked ~ .custom-radio-circle,
+.gender-radio-card.selected .custom-radio-circle {
+  border-color: #2563eb !important;
+  background: #ffffff !important;
+}
+
+.gender-radio-card input[type="radio"]:checked ~ .custom-radio-circle::after,
+.gender-radio-card.selected .custom-radio-circle::after {
+  content: '';
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #2563eb !important;
+}
+
+.gender-radio-card input[type="radio"]:focus-visible ~ .custom-radio-circle {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
 .station-readonly-box {
   display: flex;
   align-items: center;

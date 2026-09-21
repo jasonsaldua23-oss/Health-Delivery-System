@@ -4795,16 +4795,21 @@ for ($i = 0; $i < 6; $i++) {
                     </div>
                     
                     <div class="form-group-item">
-                        <label for="staff_gender" class="form-field-label">
+                        <label class="form-field-label">
                             <span>Gender</span>
                         </label>
-                        <select id="staff_gender" name="gender" class="form-input-field">
-                            <option value="">Select Gender</option>
-                            <option value="Female" <?= ((string) ($staffAccount['gender'] ?? '') === 'Female') ? 'selected' : ''; ?>>Female</option>
-                            <option value="Male" <?= ((string) ($staffAccount['gender'] ?? '') === 'Male') ? 'selected' : ''; ?>>Male</option>
-                            <option value="Other" <?= ((string) ($staffAccount['gender'] ?? '') === 'Other') ? 'selected' : ''; ?>>Other</option>
-                            <option value="Prefer not to say" <?= ((string) ($staffAccount['gender'] ?? '') === 'Prefer not to say') ? 'selected' : ''; ?>>Prefer not to say</option>
-                        </select>
+                        <div class="gender-radio-options">
+                            <label class="gender-radio-card <?= (strcasecmp((string) ($staffAccount['gender'] ?? ''), 'Male') === 0) ? 'selected' : ''; ?>" for="staff_gender_male">
+                                <input type="radio" name="gender" id="staff_gender_male" value="Male" <?= (strcasecmp((string) ($staffAccount['gender'] ?? ''), 'Male') === 0) ? 'checked' : ''; ?>>
+                                <span class="custom-radio-circle"></span>
+                                <span class="radio-label-text">Male</span>
+                            </label>
+                            <label class="gender-radio-card <?= (strcasecmp((string) ($staffAccount['gender'] ?? ''), 'Female') === 0) ? 'selected' : ''; ?>" for="staff_gender_female">
+                                <input type="radio" name="gender" id="staff_gender_female" value="Female" <?= (strcasecmp((string) ($staffAccount['gender'] ?? ''), 'Female') === 0) ? 'checked' : ''; ?>>
+                                <span class="custom-radio-circle"></span>
+                                <span class="radio-label-text">Female</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -5252,6 +5257,20 @@ for ($i = 0; $i < 6; $i++) {
         if (e.key === 'Escape' && accountModal && !accountModal.hasAttribute('hidden')) {
             closeAccountModal();
         }
+    });
+
+    // Staff Account Settings Modal - Gender Radio Button Selection Toggle
+    const staffGenderRadios = document.querySelectorAll('#staffAccountForm input[name="gender"]');
+    staffGenderRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            document.querySelectorAll('#staffAccountForm .gender-radio-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            const parentCard = radio.closest('.gender-radio-card');
+            if (parentCard && radio.checked) {
+                parentCard.classList.add('selected');
+            }
+        });
     });
 
     // Password visibility toggle
