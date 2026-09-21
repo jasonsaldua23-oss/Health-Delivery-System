@@ -1576,7 +1576,77 @@ function db(): mysqli
             'pass' => DB_PASS,
             'name' => DB_NAME,
             'port' => DB_PORT
-        ]
+        ],
+        [
+            'host' => 'localhost',
+            'user' => DB_USER,
+            'pass' => DB_PASS,
+            'name' => DB_NAME,
+            'port' => DB_PORT
+        ],
+        [
+            'host' => '127.0.0.1',
+            'user' => DB_USER,
+            'pass' => DB_PASS,
+            'name' => DB_NAME,
+            'port' => DB_PORT
+        ],
+        [
+            'host' => 'localhost',
+            'user' => DB_USER,
+            'pass' => DB_PASS,
+            'name' => 'u763176290_HDS',
+            'port' => 3306
+        ],
+        [
+            'host' => 'localhost',
+            'user' => DB_USER,
+            'pass' => DB_PASS,
+            'name' => 'u763176290_hds',
+            'port' => 3306
+        ],
+        [
+            'host' => '127.0.0.1',
+            'user' => DB_USER,
+            'pass' => DB_PASS,
+            'name' => 'u763176290_HDS',
+            'port' => 3306
+        ],
+        [
+            'host' => '127.0.0.1',
+            'user' => DB_USER,
+            'pass' => DB_PASS,
+            'name' => 'u763176290_hds',
+            'port' => 3306
+        ],
+        [
+            'host' => 'localhost',
+            'user' => 'u763176290_health_del_sys',
+            'pass' => 'qfA*ZwVyDzBpz36',
+            'name' => 'u763176290_HDS',
+            'port' => 3306
+        ],
+        [
+            'host' => 'localhost',
+            'user' => 'u763176290_health_del_sys',
+            'pass' => 'qfA*ZwVyDzBpz36',
+            'name' => 'u763176290_hds',
+            'port' => 3306
+        ],
+        [
+            'host' => '127.0.0.1',
+            'user' => 'u763176290_health_del_sys',
+            'pass' => 'qfA*ZwVyDzBpz36',
+            'name' => 'u763176290_HDS',
+            'port' => 3306
+        ],
+        [
+            'host' => '127.0.0.1',
+            'user' => 'u763176290_health_del_sys',
+            'pass' => 'qfA*ZwVyDzBpz36',
+            'name' => 'u763176290_hds',
+            'port' => 3306
+        ],
     ];
 
     if ($isLocalDev) {
@@ -1591,29 +1661,35 @@ function db(): mysqli
             'host' => '127.0.0.1',
             'user' => 'root',
             'pass' => '',
-            'name' => 'health_delivery_system',
+            'name' => 'u763176290_HDS',
             'port' => 3306
         ];
-        $configsToTry[] = [
-            'host' => 'localhost',
-            'user' => 'root',
-            'pass' => '',
-            'name' => 'u763176290_hds',
-            'port' => 3306
-        ];
-        $configsToTry[] = [
-            'host' => 'localhost',
-            'user' => 'root',
-            'pass' => '',
-            'name' => 'health_delivery_system',
-            'port' => 3306
-        ];
-    } else {
         $configsToTry[] = [
             'host' => '127.0.0.1',
-            'user' => 'u763176290_health_del_sys',
-            'pass' => 'qfA*ZwVyDzBpz36',
+            'user' => 'root',
+            'pass' => '',
+            'name' => 'health_delivery_system',
+            'port' => 3306
+        ];
+        $configsToTry[] = [
+            'host' => 'localhost',
+            'user' => 'root',
+            'pass' => '',
             'name' => 'u763176290_hds',
+            'port' => 3306
+        ];
+        $configsToTry[] = [
+            'host' => 'localhost',
+            'user' => 'root',
+            'pass' => '',
+            'name' => 'u763176290_HDS',
+            'port' => 3306
+        ];
+        $configsToTry[] = [
+            'host' => 'localhost',
+            'user' => 'root',
+            'pass' => '',
+            'name' => 'health_delivery_system',
             'port' => 3306
         ];
     }
@@ -1636,7 +1712,7 @@ function db(): mysqli
     foreach ($configsToTry as $idx => $cfg) {
         try {
             $m = new mysqli();
-            $m->options(MYSQLI_OPT_CONNECT_TIMEOUT, 1);
+            $m->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
             $m->real_connect($cfg['host'], $cfg['user'], $cfg['pass'], $cfg['name'], (int) $cfg['port']);
             $m->set_charset('utf8mb4');
             $connection = $m;
@@ -1652,14 +1728,14 @@ function db(): mysqli
             if ($exception->getCode() === 1049) {
                 try {
                     $bootstrap = new mysqli();
-                    $bootstrap->options(MYSQLI_OPT_CONNECT_TIMEOUT, 1);
+                    $bootstrap->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
                     $bootstrap->real_connect($cfg['host'], $cfg['user'], $cfg['pass'], '', (int) $cfg['port']);
                     $bootstrap->set_charset('utf8mb4');
                     $bootstrap->query('CREATE DATABASE IF NOT EXISTS `' . $cfg['name'] . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
                     $bootstrap->close();
 
                     $m2 = new mysqli();
-                    $m2->options(MYSQLI_OPT_CONNECT_TIMEOUT, 1);
+                    $m2->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
                     $m2->real_connect($cfg['host'], $cfg['user'], $cfg['pass'], $cfg['name'], (int) $cfg['port']);
                     $m2->set_charset('utf8mb4');
                     $connection = $m2;
@@ -4786,76 +4862,101 @@ function delete_staff_account(int $id): bool
 
 function appointment_stats(): array
 {
-    $patients = db()->query('SELECT COUNT(DISTINCT CONCAT(first_name, "|", COALESCE(middle_name, ""), "|", last_name, "|", contact_number)) AS total FROM appointments WHERE status = "Completed"')->fetch_assoc();
-    $today = db()->query('SELECT COUNT(*) AS total FROM appointments WHERE status IN ("Pending", "Confirmed", "Serving") AND preferred_date = CURDATE()')->fetch_assoc();
-    $services = db()->query('SELECT COUNT(DISTINCT service_slug) AS total FROM appointments WHERE status <> "Cancelled"')->fetch_assoc();
-    $bookings = db()->query('SELECT COUNT(*) AS total FROM appointments WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND status <> "Cancelled"')->fetch_assoc();
+    try {
+        $patients = db()->query('SELECT COUNT(DISTINCT CONCAT(first_name, "|", COALESCE(middle_name, ""), "|", last_name, "|", contact_number)) AS total FROM appointments WHERE status = "Completed"');
+        $patientsRow = $patients ? $patients->fetch_assoc() : null;
 
-    return [
-        'total_patients' => (int) ($patients['total'] ?? 0),
-        'appointments_today' => (int) ($today['total'] ?? 0),
-        'active_services' => (int) ($services['total'] ?? 0),
-        'online_bookings' => (int) ($bookings['total'] ?? 0),
-    ];
+        $today = db()->query('SELECT COUNT(*) AS total FROM appointments WHERE status IN ("Pending", "Confirmed", "Serving") AND preferred_date = CURDATE()');
+        $todayRow = $today ? $today->fetch_assoc() : null;
+
+        $services = db()->query('SELECT COUNT(DISTINCT service_slug) AS total FROM appointments WHERE status <> "Cancelled"');
+        $servicesRow = $services ? $services->fetch_assoc() : null;
+
+        $bookings = db()->query('SELECT COUNT(*) AS total FROM appointments WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND status <> "Cancelled"');
+        $bookingsRow = $bookings ? $bookings->fetch_assoc() : null;
+
+        return [
+            'total_patients' => (int) ($patientsRow['total'] ?? 0),
+            'appointments_today' => (int) ($todayRow['total'] ?? 0),
+            'active_services' => (int) ($servicesRow['total'] ?? 0),
+            'online_bookings' => (int) ($bookingsRow['total'] ?? 0),
+        ];
+    } catch (Throwable $e) {
+        error_log('Error in appointment_stats: ' . $e->getMessage());
+        return [
+            'total_patients' => 0,
+            'appointments_today' => 0,
+            'active_services' => 0,
+            'online_bookings' => 0,
+        ];
+    }
 }
 
 function weekly_chart_data(): array
 {
-    $weekStart = new DateTimeImmutable('today');
-    $dayOfWeek = (int) $weekStart->format('N');
-    $weekStart = $weekStart->sub(new DateInterval('P' . ($dayOfWeek - 1) . 'D'));
-    $weekEnd = $weekStart->add(new DateInterval('P4D'));
-
     $days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-    $dateKeys = [];
-    foreach ($days as $index => $label) {
-        $dateKeys[$weekStart->add(new DateInterval('P' . $index . 'D'))->format('Y-m-d')] = $label;
-    }
-
     $completedPatients = array_fill_keys($days, 0);
     $bookedAppointments = array_fill_keys($days, 0);
 
-    $startDate = $weekStart->format('Y-m-d');
-    $endDate = $weekEnd->format('Y-m-d');
+    try {
+        $weekStart = new DateTimeImmutable('today');
+        $dayOfWeek = (int) $weekStart->format('N');
+        $weekStart = $weekStart->sub(new DateInterval('P' . ($dayOfWeek - 1) . 'D'));
+        $weekEnd = $weekStart->add(new DateInterval('P4D'));
 
-    // 1. Appointments scheduled for each day of the week (preferred_date)
-    $stmt1 = db()->prepare(
-        'SELECT preferred_date AS day_date, COUNT(*) AS total_count
-           FROM appointments
-          WHERE status <> "Cancelled"
-            AND preferred_date BETWEEN ? AND ?
-          GROUP BY preferred_date'
-    );
-    $stmt1->bind_param('ss', $startDate, $endDate);
-    $stmt1->execute();
-    $result1 = $stmt1->get_result();
-
-    while ($row = $result1->fetch_assoc()) {
-        $date = (string) ($row['day_date'] ?? '');
-        if (isset($dateKeys[$date])) {
-            $dayLabel = $dateKeys[$date];
-            $bookedAppointments[$dayLabel] = (int) ($row['total_count'] ?? 0);
+        $dateKeys = [];
+        foreach ($days as $index => $label) {
+            $dateKeys[$weekStart->add(new DateInterval('P' . $index . 'D'))->format('Y-m-d')] = $label;
         }
-    }
 
-    // 2. Patients who completed their appointments for each day of the week
-    $stmt2 = db()->prepare(
-        'SELECT preferred_date AS day_date, COUNT(DISTINCT COALESCE(patient_id, CONCAT(first_name, "|", last_name, "|", birth_date))) AS completed_count
-           FROM appointments
-          WHERE status = "Completed"
-            AND preferred_date BETWEEN ? AND ?
-          GROUP BY preferred_date'
-    );
-    $stmt2->bind_param('ss', $startDate, $endDate);
-    $stmt2->execute();
-    $result2 = $stmt2->get_result();
+        $startDate = $weekStart->format('Y-m-d');
+        $endDate = $weekEnd->format('Y-m-d');
 
-    while ($row = $result2->fetch_assoc()) {
-        $compDate = (string) ($row['day_date'] ?? '');
-        if (isset($dateKeys[$compDate])) {
-            $dayLabel = $dateKeys[$compDate];
-            $completedPatients[$dayLabel] = (int) ($row['completed_count'] ?? 0);
+        // 1. Appointments scheduled for each day of the week (preferred_date)
+        $stmt1 = db()->prepare(
+            'SELECT preferred_date AS day_date, COUNT(*) AS total_count
+               FROM appointments
+              WHERE status <> "Cancelled"
+                AND preferred_date BETWEEN ? AND ?
+              GROUP BY preferred_date'
+        );
+        if ($stmt1) {
+            $stmt1->bind_param('ss', $startDate, $endDate);
+            $stmt1->execute();
+            $result1 = $stmt1->get_result();
+
+            while ($row = $result1->fetch_assoc()) {
+                $date = (string) ($row['day_date'] ?? '');
+                if (isset($dateKeys[$date])) {
+                    $dayLabel = $dateKeys[$date];
+                    $bookedAppointments[$dayLabel] = (int) ($row['total_count'] ?? 0);
+                }
+            }
         }
+
+        // 2. Patients who completed their appointments for each day of the week
+        $stmt2 = db()->prepare(
+            'SELECT preferred_date AS day_date, COUNT(DISTINCT COALESCE(patient_id, CONCAT(first_name, "|", last_name, "|", birth_date))) AS completed_count
+               FROM appointments
+              WHERE status = "Completed"
+                AND preferred_date BETWEEN ? AND ?
+              GROUP BY preferred_date'
+        );
+        if ($stmt2) {
+            $stmt2->bind_param('ss', $startDate, $endDate);
+            $stmt2->execute();
+            $result2 = $stmt2->get_result();
+
+            while ($row = $result2->fetch_assoc()) {
+                $compDate = (string) ($row['day_date'] ?? '');
+                if (isset($dateKeys[$compDate])) {
+                    $dayLabel = $dateKeys[$compDate];
+                    $completedPatients[$dayLabel] = (int) ($row['completed_count'] ?? 0);
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('Error in weekly_chart_data: ' . $e->getMessage());
     }
 
     return [
@@ -4867,13 +4968,19 @@ function weekly_chart_data(): array
 
 function service_utilization_data(): array
 {
-    $rows = db()->query('SELECT service_name, COUNT(*) AS total FROM appointments WHERE status <> "Cancelled" GROUP BY service_name ORDER BY total DESC LIMIT 5');
     $labels = [];
     $values = [];
 
-    while ($row = $rows->fetch_assoc()) {
-        $labels[] = $row['service_name'];
-        $values[] = (int) $row['total'];
+    try {
+        $rows = db()->query('SELECT service_name, COUNT(*) AS total FROM appointments WHERE status <> "Cancelled" GROUP BY service_name ORDER BY total DESC LIMIT 5');
+        if ($rows) {
+            while ($row = $rows->fetch_assoc()) {
+                $labels[] = $row['service_name'];
+                $values[] = (int) $row['total'];
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('Error in service_utilization_data: ' . $e->getMessage());
     }
 
     if ($labels === []) {
@@ -4886,10 +4993,16 @@ function service_utilization_data(): array
 
 function recent_activity(): array
 {
-    $rows = db()->query('SELECT first_name, middle_name, last_name, service_name, station_name, created_at, updated_at, status FROM appointments ORDER BY updated_at DESC, created_at DESC LIMIT 10');
     $items = [];
-    while ($row = $rows->fetch_assoc()) {
-        $items[] = $row;
+    try {
+        $rows = db()->query('SELECT first_name, middle_name, last_name, service_name, station_name, created_at, updated_at, status FROM appointments ORDER BY updated_at DESC, created_at DESC LIMIT 10');
+        if ($rows) {
+            while ($row = $rows->fetch_assoc()) {
+                $items[] = $row;
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('Error in recent_activity: ' . $e->getMessage());
     }
 
     return $items;
@@ -4996,34 +5109,40 @@ function monthly_trends_data($fromDateOrFilters = '', string $toDate = ''): arra
         $patsByMonth[$key] = 0;
     }
 
-    $trendFilters = $filters;
-    $trendFilters['report_from'] = $now->modify('-2 months')->format('Y-m-01');
-    $trendFilters['report_to']   = $now->format('Y-m-t');
+    try {
+        $trendFilters = $filters;
+        $trendFilters['report_from'] = $now->modify('-2 months')->format('Y-m-01');
+        $trendFilters['report_to']   = $now->format('Y-m-t');
 
-    $builder = build_report_filter_sql($trendFilters);
-    $where = $builder['where'] !== '' ? $builder['where'] . ' AND status <> \'Cancelled\'' : 'WHERE status <> \'Cancelled\'';
+        $builder = build_report_filter_sql($trendFilters);
+        $where = $builder['where'] !== '' ? $builder['where'] . ' AND status <> \'Cancelled\'' : 'WHERE status <> \'Cancelled\'';
 
-    $sql = 'SELECT DATE_FORMAT(preferred_date, \'%Y-%m\') AS month_key,
-                   COUNT(*) AS appointments,
-                   COUNT(DISTINCT COALESCE(patient_id, CONCAT(first_name, last_name, birth_date))) AS patients
-            FROM appointments
-            ' . $where . '
-            GROUP BY month_key
-            ORDER BY month_key ASC';
+        $sql = 'SELECT DATE_FORMAT(preferred_date, \'%Y-%m\') AS month_key,
+                       COUNT(*) AS appointments,
+                       COUNT(DISTINCT COALESCE(patient_id, CONCAT(first_name, last_name, birth_date))) AS patients
+                FROM appointments
+                ' . $where . '
+                GROUP BY month_key
+                ORDER BY month_key ASC';
 
-    $stmt = db()->prepare($sql);
-    if ($builder['params'] !== []) {
-        $stmt->bind_param($builder['types'], ...$builder['params']);
-    }
-    $stmt->execute();
-    $result = $stmt->get_result();
+        $stmt = db()->prepare($sql);
+        if ($stmt) {
+            if ($builder['params'] !== []) {
+                $stmt->bind_param($builder['types'], ...$builder['params']);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
 
-    while ($row = $result->fetch_assoc()) {
-        $k = (string) $row['month_key'];
-        if (isset($apptsByMonth[$k])) {
-            $apptsByMonth[$k] = (int) $row['appointments'];
-            $patsByMonth[$k] = (int) $row['patients'];
+            while ($row = $result->fetch_assoc()) {
+                $k = (string) $row['month_key'];
+                if (isset($apptsByMonth[$k])) {
+                    $apptsByMonth[$k] = (int) $row['appointments'];
+                    $patsByMonth[$k] = (int) $row['patients'];
+                }
+            }
         }
+    } catch (Throwable $e) {
+        error_log('Error in monthly_trends_data: ' . $e->getMessage());
     }
 
     return [
@@ -5035,43 +5154,51 @@ function monthly_trends_data($fromDateOrFilters = '', string $toDate = ''): arra
 
 function station_performance_data(array $filters = []): array
 {
-    $builder = build_report_filter_sql($filters);
-    $where = $builder['where'];
-
-    $sql = 'SELECT station_name, station_slug,
-                   SUM(status = \'Completed\')  AS completed,
-                   SUM(status = \'Cancelled\')  AS cancelled,
-                   SUM(status = \'Pending\')    AS pending,
-                   SUM(status = \'Confirmed\')  AS confirmed,
-                   SUM(status = \'Serving\')    AS serving,
-                   COUNT(*) AS total
-            FROM appointments
-            ' . $where . '
-            GROUP BY station_slug, station_name
-            ORDER BY completed DESC, total DESC';
-
-    $stmt = db()->prepare($sql);
-    if ($builder['params'] !== []) {
-        $stmt->bind_param($builder['types'], ...$builder['params']);
-    }
-    $stmt->execute();
-    $rows = $stmt->get_result();
-
     $items = [];
-    while ($row = $rows->fetch_assoc()) {
-        $total    = (int) $row['total'];
-        $completed = (int) $row['completed'];
-        $items[] = [
-            'station_name' => $row['station_name'],
-            'station_slug' => $row['station_slug'],
-            'completed'    => $completed,
-            'cancelled'    => (int) $row['cancelled'],
-            'pending'      => (int) $row['pending'],
-            'confirmed'    => (int) $row['confirmed'],
-            'serving'      => (int) $row['serving'],
-            'total'        => $total,
-            'completion_rate' => $total > 0 ? round($completed * 100 / $total) : 0,
-        ];
+    try {
+        $builder = build_report_filter_sql($filters);
+        $where = $builder['where'];
+
+        $sql = 'SELECT station_name, station_slug,
+                       SUM(status = \'Completed\')  AS completed,
+                       SUM(status = \'Cancelled\')  AS cancelled,
+                       SUM(status = \'Pending\')    AS pending,
+                       SUM(status = \'Confirmed\')  AS confirmed,
+                       SUM(status = \'Serving\')    AS serving,
+                       COUNT(*) AS total
+                FROM appointments
+                ' . $where . '
+                GROUP BY station_slug, station_name
+                ORDER BY completed DESC, total DESC';
+
+        $stmt = db()->prepare($sql);
+        if ($stmt) {
+            if ($builder['params'] !== []) {
+                $stmt->bind_param($builder['types'], ...$builder['params']);
+            }
+            $stmt->execute();
+            $rows = $stmt->get_result();
+
+            if ($rows) {
+                while ($row = $rows->fetch_assoc()) {
+                    $total    = (int) $row['total'];
+                    $completed = (int) $row['completed'];
+                    $items[] = [
+                        'station_name' => $row['station_name'],
+                        'station_slug' => $row['station_slug'],
+                        'completed'    => $completed,
+                        'cancelled'    => (int) $row['cancelled'],
+                        'pending'      => (int) $row['pending'],
+                        'confirmed'    => (int) $row['confirmed'],
+                        'serving'      => (int) $row['serving'],
+                        'total'        => $total,
+                        'completion_rate' => $total > 0 ? round($completed * 100 / $total) : 0,
+                    ];
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('Error in station_performance_data: ' . $e->getMessage());
     }
 
     return $items;
@@ -5079,54 +5206,63 @@ function station_performance_data(array $filters = []): array
 
 function service_performance_data(array $filters = []): array
 {
-    $builder = build_report_filter_sql($filters);
-    $where = $builder['where'];
-    $serviceCatalog = service_catalog();
-
-    $sql = 'SELECT COALESCE(NULLIF(service_slug, \'\'), LOWER(REPLACE(service_name, \' \', \'-\'))) AS slug,
-                   MAX(service_name) AS raw_service_name,
-                   SUM(status = \'Completed\')  AS completed,
-                   SUM(status = \'Cancelled\')  AS cancelled,
-                   SUM(status = \'Pending\')    AS pending,
-                   SUM(status = \'Confirmed\')  AS confirmed,
-                   SUM(status = \'Serving\')    AS serving,
-                   COUNT(*) AS total
-            FROM appointments
-            ' . $where . '
-            GROUP BY COALESCE(NULLIF(service_slug, \'\'), LOWER(REPLACE(service_name, \' \', \'-\')))
-            ORDER BY total DESC';
-
-    $stmt = db()->prepare($sql);
-    if ($builder['params'] !== []) {
-        $stmt->bind_param($builder['types'], ...$builder['params']);
-    }
-    $stmt->execute();
-    $rows = $stmt->get_result();
-
     $items = [];
     $totalOverall = 0;
-    while ($row = $rows->fetch_assoc()) {
-        $slug = (string) $row['slug'];
-        $canonicalName = $serviceCatalog[$slug]['title'] ?? $row['raw_service_name'];
-        $total = (int) $row['total'];
-        $totalOverall += $total;
-        $items[] = [
-            'service_name' => $canonicalName,
-            'service_slug' => $slug,
-            'completed'    => (int) $row['completed'],
-            'cancelled'    => (int) $row['cancelled'],
-            'pending'      => (int) $row['pending'],
-            'confirmed'    => (int) $row['confirmed'],
-            'serving'      => (int) $row['serving'],
-            'total'        => $total,
-            'share_pct'    => 0,
-        ];
-    }
+    $serviceCatalog = service_catalog();
 
-    foreach ($items as &$it) {
-        $it['share_pct'] = $totalOverall > 0 ? round(($it['total'] / $totalOverall) * 100) : 0;
+    try {
+        $builder = build_report_filter_sql($filters);
+        $where = $builder['where'];
+
+        $sql = 'SELECT COALESCE(NULLIF(service_slug, \'\'), LOWER(REPLACE(service_name, \' \', \'-\'))) AS slug,
+                       MAX(service_name) AS raw_service_name,
+                       SUM(status = \'Completed\')  AS completed,
+                       SUM(status = \'Cancelled\')  AS cancelled,
+                       SUM(status = \'Pending\')    AS pending,
+                       SUM(status = \'Confirmed\')  AS confirmed,
+                       SUM(status = \'Serving\')    AS serving,
+                       COUNT(*) AS total
+                FROM appointments
+                ' . $where . '
+                GROUP BY COALESCE(NULLIF(service_slug, \'\'), LOWER(REPLACE(service_name, \' \', \'-\')))
+                ORDER BY total DESC';
+
+        $stmt = db()->prepare($sql);
+        if ($stmt) {
+            if ($builder['params'] !== []) {
+                $stmt->bind_param($builder['types'], ...$builder['params']);
+            }
+            $stmt->execute();
+            $rows = $stmt->get_result();
+
+            if ($rows) {
+                while ($row = $rows->fetch_assoc()) {
+                    $slug = (string) $row['slug'];
+                    $canonicalName = $serviceCatalog[$slug]['title'] ?? $row['raw_service_name'];
+                    $total = (int) $row['total'];
+                    $totalOverall += $total;
+                    $items[] = [
+                        'service_name' => $canonicalName,
+                        'service_slug' => $slug,
+                        'completed'    => (int) $row['completed'],
+                        'cancelled'    => (int) $row['cancelled'],
+                        'pending'      => (int) $row['pending'],
+                        'confirmed'    => (int) $row['confirmed'],
+                        'serving'      => (int) $row['serving'],
+                        'total'        => $total,
+                        'share_pct'    => 0,
+                    ];
+                }
+            }
+        }
+
+        foreach ($items as &$it) {
+            $it['share_pct'] = $totalOverall > 0 ? round(($it['total'] / $totalOverall) * 100) : 0;
+        }
+        unset($it);
+    } catch (Throwable $e) {
+        error_log('Error in service_performance_data: ' . $e->getMessage());
     }
-    unset($it);
 
     return $items;
 }
@@ -5136,191 +5272,259 @@ function barangay_completed_analytics(array $filters = []): array
     $stations = station_catalog();
     $serviceCatalog = service_catalog();
 
-    $completedFilters = $filters;
-    $completedFilters['status'] = 'Completed';
+    try {
+        $completedFilters = $filters;
+        $completedFilters['status'] = 'Completed';
 
-    $builder = build_report_filter_sql($completedFilters);
-    $where = $builder['where'];
+        $builder = build_report_filter_sql($completedFilters);
+        $where = $builder['where'];
 
-    $sql = "SELECT station_slug, station_name, service_slug, service_name,
-                   COUNT(*) AS completed_count,
-                   COUNT(DISTINCT COALESCE(patient_id, CONCAT(first_name, '|', last_name, '|', birth_date))) AS unique_patients
-            FROM appointments
-            {$where}
-            GROUP BY station_slug, station_name, service_slug, service_name
-            ORDER BY completed_count DESC";
+        $sql = "SELECT station_slug, station_name, service_slug, service_name,
+                       COUNT(*) AS completed_count,
+                       COUNT(DISTINCT COALESCE(patient_id, CONCAT(first_name, '|', last_name, '|', birth_date))) AS unique_patients
+                FROM appointments
+                {$where}
+                GROUP BY station_slug, station_name, service_slug, service_name
+                ORDER BY completed_count DESC";
 
-    $stmt = db()->prepare($sql);
-    if ($builder['params'] !== []) {
-        $stmt->bind_param($builder['types'], ...$builder['params']);
-    }
-    $stmt->execute();
-    $rows = $stmt->get_result();
+        $stmt = db()->prepare($sql);
+        if ($stmt) {
+            if ($builder['params'] !== []) {
+                $stmt->bind_param($builder['types'], ...$builder['params']);
+            }
+            $stmt->execute();
+            $rows = $stmt->get_result();
 
-    $stationData = [];
-    while ($r = $rows->fetch_assoc()) {
-        $slug = (string) ($r['station_slug'] ?? '');
-        if ($slug === '') {
-            continue;
+            $stationData = [];
+            if ($rows) {
+                while ($r = $rows->fetch_assoc()) {
+                    $slug = (string) ($r['station_slug'] ?? '');
+                    if ($slug === '') {
+                        continue;
+                    }
+                    if (!isset($stationData[$slug])) {
+                        $stationData[$slug] = [
+                            'completed_total' => 0,
+                            'unique_patients_total' => 0,
+                            'services' => [],
+                        ];
+                    }
+                    $c = (int) $r['completed_count'];
+                    $stationData[$slug]['completed_total'] += $c;
+                    $stationData[$slug]['unique_patients_total'] += (int) $r['unique_patients'];
+
+                    $srvSlug = (string) ($r['service_slug'] ?? '');
+                    $srvMeta = $serviceCatalog[$srvSlug] ?? null;
+                    $stationData[$slug]['services'][] = [
+                        'service_slug' => $srvSlug,
+                        'service_name' => $r['service_name'] ?: ($srvMeta['title'] ?? ucfirst($srvSlug)),
+                        'count' => $c,
+                        'color' => $srvMeta['color'] ?? 'mint',
+                        'icon' => $srvMeta['icon'] ?? 'appointments',
+                    ];
+                }
+            }
+
+            $result = [];
+            foreach ($stations as $st) {
+                $slug = $st['slug'];
+                $data = $stationData[$slug] ?? null;
+                $completedTotal = $data ? $data['completed_total'] : 0;
+                $uniquePatients = $data ? $data['unique_patients_total'] : 0;
+                $services = $data ? $data['services'] : [];
+
+                if ($completedTotal > 0) {
+                    foreach ($services as &$srv) {
+                        $srv['pct'] = round(($srv['count'] / $completedTotal) * 100);
+                    }
+                    unset($srv);
+                }
+
+                $shortName = str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', $st['name']);
+
+                $result[] = [
+                    'station_slug' => $slug,
+                    'station_name' => $st['name'],
+                    'barangay_name' => $shortName,
+                    'color' => $st['color'] ?? 'mint',
+                    'completed_count' => $completedTotal,
+                    'unique_patients' => $uniquePatients,
+                    'services' => $services,
+                    'top_service' => !empty($services) ? $services[0]['service_name'] : 'None',
+                ];
+            }
+
+            usort($result, static function (array $a, array $b): int {
+                if ($a['completed_count'] !== $b['completed_count']) {
+                    return $b['completed_count'] <=> $a['completed_count'];
+                }
+                return strcasecmp($a['barangay_name'], $b['barangay_name']);
+            });
+
+            return $result;
         }
-        if (!isset($stationData[$slug])) {
-            $stationData[$slug] = [
-                'completed_total' => 0,
-                'unique_patients_total' => 0,
-                'services' => [],
-            ];
-        }
-        $c = (int) $r['completed_count'];
-        $stationData[$slug]['completed_total'] += $c;
-        $stationData[$slug]['unique_patients_total'] += (int) $r['unique_patients'];
-
-        $srvSlug = (string) ($r['service_slug'] ?? '');
-        $srvMeta = $serviceCatalog[$srvSlug] ?? null;
-        $stationData[$slug]['services'][] = [
-            'service_slug' => $srvSlug,
-            'service_name' => $r['service_name'] ?: ($srvMeta['title'] ?? ucfirst($srvSlug)),
-            'count' => $c,
-            'color' => $srvMeta['color'] ?? 'mint',
-            'icon' => $srvMeta['icon'] ?? 'appointments',
-        ];
+    } catch (Throwable $e) {
+        error_log('Error in barangay_completed_analytics: ' . $e->getMessage());
     }
 
     $result = [];
     foreach ($stations as $st) {
-        $slug = $st['slug'];
-        $data = $stationData[$slug] ?? null;
-        $completedTotal = $data ? $data['completed_total'] : 0;
-        $uniquePatients = $data ? $data['unique_patients_total'] : 0;
-        $services = $data ? $data['services'] : [];
-
-        if ($completedTotal > 0) {
-            foreach ($services as &$srv) {
-                $srv['pct'] = round(($srv['count'] / $completedTotal) * 100);
-            }
-            unset($srv);
-        }
-
         $shortName = str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', $st['name']);
-
         $result[] = [
-            'station_slug' => $slug,
+            'station_slug' => $st['slug'],
             'station_name' => $st['name'],
             'barangay_name' => $shortName,
             'color' => $st['color'] ?? 'mint',
-            'completed_count' => $completedTotal,
-            'unique_patients' => $uniquePatients,
-            'services' => $services,
-            'top_service' => !empty($services) ? $services[0]['service_name'] : 'None',
+            'completed_count' => 0,
+            'unique_patients' => 0,
+            'services' => [],
+            'top_service' => 'None',
         ];
     }
-
-    usort($result, static function (array $a, array $b): int {
-        if ($a['completed_count'] !== $b['completed_count']) {
-            return $b['completed_count'] <=> $a['completed_count'];
-        }
-        return strcasecmp($a['barangay_name'], $b['barangay_name']);
-    });
-
     return $result;
 }
 
 function demographics_breakdown_data(array $filters = []): array
 {
-    $builder = build_report_filter_sql($filters);
-    $where = $builder['where'];
-
-    $sql = 'SELECT
-                SUM(CASE WHEN LOWER(gender) = \'female\' THEN 1 ELSE 0 END) AS count_female,
-                SUM(CASE WHEN LOWER(gender) = \'male\' THEN 1 ELSE 0 END) AS count_male,
-                SUM(CASE WHEN LOWER(gender) NOT IN (\'female\', \'male\') THEN 1 ELSE 0 END) AS count_other,
-                SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 0 AND 12 THEN 1 ELSE 0 END) AS age_pediatric,
-                SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 13 AND 17 THEN 1 ELSE 0 END) AS age_adolescent,
-                SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 18 AND 30 THEN 1 ELSE 0 END) AS age_young_adult,
-                SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 31 AND 45 THEN 1 ELSE 0 END) AS age_mid_adult,
-                SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 46 AND 59 THEN 1 ELSE 0 END) AS age_mature_adult,
-                SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) >= 60 THEN 1 ELSE 0 END) AS age_senior,
-                COUNT(*) AS total
-            FROM (
-                SELECT
-                    COALESCE(NULLIF(patient_id, \'\'), CONCAT(first_name, \'|\', last_name, \'|\', birth_date)) AS unique_patient_key,
-                    MAX(gender) AS gender,
-                    MAX(birth_date) AS birth_date
-                FROM appointments
-                ' . $where . '
-                GROUP BY unique_patient_key
-            ) AS distinct_patients';
-
-    $stmt = db()->prepare($sql);
-    if ($builder['params'] !== []) {
-        $stmt->bind_param($builder['types'], ...$builder['params']);
-    }
-    $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc();
-
-    $total = (int) ($row['total'] ?? 0);
-    $female = (int) ($row['count_female'] ?? 0);
-    $male = (int) ($row['count_male'] ?? 0);
-    $other = (int) ($row['count_other'] ?? 0);
-
-    $pediatric   = (int) ($row['age_pediatric'] ?? 0);
-    $adolescent  = (int) ($row['age_adolescent'] ?? 0);
-    $youngAdult  = (int) ($row['age_young_adult'] ?? 0);
-    $midAdult    = (int) ($row['age_mid_adult'] ?? 0);
-    $matureAdult = (int) ($row['age_mature_adult'] ?? 0);
-    $senior      = (int) ($row['age_senior'] ?? 0);
-
-    return [
-        'total' => $total,
+    $defaultDemographics = [
+        'total' => 0,
         'gender' => [
-            'female' => ['count' => $female, 'pct' => $total > 0 ? round($female * 100 / $total) : 0],
-            'male'   => ['count' => $male, 'pct' => $total > 0 ? round($male * 100 / $total) : 0],
-            'other'  => ['count' => $other, 'pct' => $total > 0 ? round($other * 100 / $total) : 0],
+            'female' => ['count' => 0, 'pct' => 0],
+            'male'   => ['count' => 0, 'pct' => 0],
+            'other'  => ['count' => 0, 'pct' => 0],
         ],
         'age_groups' => [
-            'pediatric'    => ['label' => 'Infants & Children (0-12y)', 'count' => $pediatric, 'pct' => $total > 0 ? round($pediatric * 100 / $total) : 0],
-            'adolescent'   => ['label' => 'Adolescents (13-17y)', 'count' => $adolescent, 'pct' => $total > 0 ? round($adolescent * 100 / $total) : 0],
-            'young-adult'  => ['label' => 'Young Adults (18-30y)', 'count' => $youngAdult, 'pct' => $total > 0 ? round($youngAdult * 100 / $total) : 0],
-            'mid-adult'    => ['label' => 'Middle Adults (31-45y)', 'count' => $midAdult, 'pct' => $total > 0 ? round($midAdult * 100 / $total) : 0],
-            'mature-adult' => ['label' => 'Mature Adults (46-59y)', 'count' => $matureAdult, 'pct' => $total > 0 ? round($matureAdult * 100 / $total) : 0],
-            'senior'       => ['label' => 'Seniors (60y+)', 'count' => $senior, 'pct' => $total > 0 ? round($senior * 100 / $total) : 0],
+            'pediatric'    => ['label' => 'Infants & Children (0-12y)', 'count' => 0, 'pct' => 0],
+            'adolescent'   => ['label' => 'Adolescents (13-17y)', 'count' => 0, 'pct' => 0],
+            'young-adult'  => ['label' => 'Young Adults (18-30y)', 'count' => 0, 'pct' => 0],
+            'mid-adult'    => ['label' => 'Middle Adults (31-45y)', 'count' => 0, 'pct' => 0],
+            'mature-adult' => ['label' => 'Mature Adults (46-59y)', 'count' => 0, 'pct' => 0],
+            'senior'       => ['label' => 'Seniors (60y+)', 'count' => 0, 'pct' => 0],
         ],
     ];
+
+    try {
+        $builder = build_report_filter_sql($filters);
+        $where = $builder['where'];
+
+        $sql = 'SELECT
+                    SUM(CASE WHEN LOWER(gender) = \'female\' THEN 1 ELSE 0 END) AS count_female,
+                    SUM(CASE WHEN LOWER(gender) = \'male\' THEN 1 ELSE 0 END) AS count_male,
+                    SUM(CASE WHEN LOWER(gender) NOT IN (\'female\', \'male\') THEN 1 ELSE 0 END) AS count_other,
+                    SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 0 AND 12 THEN 1 ELSE 0 END) AS age_pediatric,
+                    SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 13 AND 17 THEN 1 ELSE 0 END) AS age_adolescent,
+                    SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 18 AND 30 THEN 1 ELSE 0 END) AS age_young_adult,
+                    SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 31 AND 45 THEN 1 ELSE 0 END) AS age_mid_adult,
+                    SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) BETWEEN 46 AND 59 THEN 1 ELSE 0 END) AS age_mature_adult,
+                    SUM(CASE WHEN TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) >= 60 THEN 1 ELSE 0 END) AS age_senior,
+                    COUNT(*) AS total
+                FROM (
+                    SELECT
+                        COALESCE(NULLIF(patient_id, \'\'), CONCAT(first_name, \'|\', last_name, \'|\', birth_date)) AS unique_patient_key,
+                        MAX(gender) AS gender,
+                        MAX(birth_date) AS birth_date
+                    FROM appointments
+                    ' . $where . '
+                    GROUP BY unique_patient_key
+                ) AS distinct_patients';
+
+        $stmt = db()->prepare($sql);
+        if ($stmt) {
+            if ($builder['params'] !== []) {
+                $stmt->bind_param($builder['types'], ...$builder['params']);
+            }
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+
+            $total = (int) ($row['total'] ?? 0);
+            $female = (int) ($row['count_female'] ?? 0);
+            $male = (int) ($row['count_male'] ?? 0);
+            $other = (int) ($row['count_other'] ?? 0);
+
+            $pediatric   = (int) ($row['age_pediatric'] ?? 0);
+            $adolescent  = (int) ($row['age_adolescent'] ?? 0);
+            $youngAdult  = (int) ($row['age_young_adult'] ?? 0);
+            $midAdult    = (int) ($row['age_mid_adult'] ?? 0);
+            $matureAdult = (int) ($row['age_mature_adult'] ?? 0);
+            $senior      = (int) ($row['age_senior'] ?? 0);
+
+            return [
+                'total' => $total,
+                'gender' => [
+                    'female' => ['count' => $female, 'pct' => $total > 0 ? round($female * 100 / $total) : 0],
+                    'male'   => ['count' => $male, 'pct' => $total > 0 ? round($male * 100 / $total) : 0],
+                    'other'  => ['count' => $other, 'pct' => $total > 0 ? round($other * 100 / $total) : 0],
+                ],
+                'age_groups' => [
+                    'pediatric'    => ['label' => 'Infants & Children (0-12y)', 'count' => $pediatric, 'pct' => $total > 0 ? round($pediatric * 100 / $total) : 0],
+                    'adolescent'   => ['label' => 'Adolescents (13-17y)', 'count' => $adolescent, 'pct' => $total > 0 ? round($adolescent * 100 / $total) : 0],
+                    'young-adult'  => ['label' => 'Young Adults (18-30y)', 'count' => $youngAdult, 'pct' => $total > 0 ? round($youngAdult * 100 / $total) : 0],
+                    'mid-adult'    => ['label' => 'Middle Adults (31-45y)', 'count' => $midAdult, 'pct' => $total > 0 ? round($midAdult * 100 / $total) : 0],
+                    'mature-adult' => ['label' => 'Mature Adults (46-59y)', 'count' => $matureAdult, 'pct' => $total > 0 ? round($matureAdult * 100 / $total) : 0],
+                    'senior'       => ['label' => 'Seniors (60y+)', 'count' => $senior, 'pct' => $total > 0 ? round($senior * 100 / $total) : 0],
+                ],
+            ];
+        }
+    } catch (Throwable $e) {
+        error_log('Error in demographics_breakdown_data: ' . $e->getMessage());
+    }
+
+    return $defaultDemographics;
 }
 
 function fetch_filtered_report_appointments(array $filters, int $limit = 100): array
 {
-    $builder = build_report_filter_sql($filters);
-    $where = $builder['where'];
+    try {
+        $builder = build_report_filter_sql($filters);
+        $where = $builder['where'];
 
-    $sql = 'SELECT * FROM appointments
-            ' . $where . '
-            ORDER BY preferred_date DESC, preferred_time DESC, created_at DESC
-            LIMIT ?';
+        $sql = 'SELECT * FROM appointments
+                ' . $where . '
+                ORDER BY preferred_date DESC, preferred_time DESC, created_at DESC
+                LIMIT ?';
 
-    $params = $builder['params'];
-    $params[] = $limit;
-    $types = $builder['types'] . 'i';
+        $params = $builder['params'];
+        $params[] = $limit;
+        $types = $builder['types'] . 'i';
 
-    $stmt = db()->prepare($sql);
-    $stmt->bind_param($types, ...$params);
-    $stmt->execute();
-    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt = db()->prepare($sql);
+        if ($stmt) {
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        }
+    } catch (Throwable $e) {
+        error_log('Error in fetch_filtered_report_appointments: ' . $e->getMessage());
+    }
+
+    return [];
 }
 
 function patient_info_change_log(int $limit = 20): array
 {
-    $stmt = db()->prepare(
-        'SELECT h.field_name, h.old_value, h.new_value, h.changed_at,
-                CONCAT(p.first_name, \' \', p.last_name) AS patient_name,
-                p.patient_id
-         FROM patient_info_history h
-         JOIN patient_profiles p ON h.patient_id = p.patient_id
-         ORDER BY h.changed_at DESC
-         LIMIT ?'
-    );
-    $stmt->bind_param('i', $limit);
-    $stmt->execute();
-    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    try {
+        ensure_patient_info_history_table(db());
+        $stmt = db()->prepare(
+            'SELECT h.field_name, h.old_value, h.new_value, h.changed_at,
+                    COALESCE(CONCAT(p.first_name, \' \', p.last_name), h.patient_id) AS patient_name,
+                    h.patient_id
+             FROM patient_info_history h
+             LEFT JOIN patient_profiles p ON h.patient_id = p.patient_id
+             ORDER BY h.changed_at DESC
+             LIMIT ?'
+        );
+        if ($stmt) {
+            $stmt->bind_param('i', $limit);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        }
+    } catch (Throwable $e) {
+        error_log('Error in patient_info_change_log: ' . $e->getMessage());
+    }
+
+    return [];
 }
 
 function report_summary_stats($fromDateOrFilters = '', string $toDate = ''): array
@@ -5337,69 +5541,97 @@ function report_summary_stats($fromDateOrFilters = '', string $toDate = ''): arr
         $filters['report_to'] = date('Y-12-31');
     }
 
-    $builder = build_report_filter_sql($filters);
-    $where = $builder['where'];
+    try {
+        $builder = build_report_filter_sql($filters);
+        $where = $builder['where'];
 
-    $sqlStats = 'SELECT
-                    COUNT(DISTINCT COALESCE(patient_id, CONCAT(first_name, last_name, birth_date))) AS total_unique_patients,
-                    SUM(status = \'Completed\') AS completed_count,
-                    SUM(status = \'Cancelled\') AS cancelled_count,
-                    SUM(status = \'Confirmed\') AS confirmed_count,
-                    SUM(status = \'Serving\') AS serving_count,
-                    SUM(status = \'Pending\') AS pending_count,
-                    COUNT(*) AS total_bookings
-                 FROM appointments
-                 ' . $where;
+        $sqlStats = 'SELECT
+                        COUNT(DISTINCT COALESCE(patient_id, CONCAT(first_name, last_name, birth_date))) AS total_unique_patients,
+                        SUM(status = \'Completed\') AS completed_count,
+                        SUM(status = \'Cancelled\') AS cancelled_count,
+                        SUM(status = \'Confirmed\') AS confirmed_count,
+                        SUM(status = \'Serving\') AS serving_count,
+                        SUM(status = \'Pending\') AS pending_count,
+                        COUNT(*) AS total_bookings
+                     FROM appointments
+                     ' . $where;
 
-    $stmtStats = db()->prepare($sqlStats);
-    if ($builder['params'] !== []) {
-        $stmtStats->bind_param($builder['types'], ...$builder['params']);
+        $stmtStats = db()->prepare($sqlStats);
+        if ($stmtStats) {
+            if ($builder['params'] !== []) {
+                $stmtStats->bind_param($builder['types'], ...$builder['params']);
+            }
+            $stmtStats->execute();
+            $statsRow = $stmtStats->get_result()->fetch_assoc();
+
+            $totalBookings = (int) ($statsRow['total_bookings'] ?? 0);
+            $completedCount = (int) ($statsRow['completed_count'] ?? 0);
+            $cancelledCount = (int) ($statsRow['cancelled_count'] ?? 0);
+            $completionRate = $totalBookings > 0 ? round($completedCount * 100 / $totalBookings) : 0;
+            $cancellationRate = $totalBookings > 0 ? round($cancelledCount * 100 / $totalBookings) : 0;
+
+            $dateFrom = new DateTimeImmutable((string) $filters['report_from']);
+            $dateTo = new DateTimeImmutable((string) $filters['report_to']);
+            $dayCount = max(1, $dateFrom->diff($dateTo)->days + 1);
+            $avgDaily = round($totalBookings / $dayCount, 1);
+
+            return [
+                'total_patients'    => (int) ($statsRow['total_unique_patients'] ?? 0),
+                'services_rendered' => $totalBookings - $cancelledCount,
+                'total_bookings'    => $totalBookings,
+                'completed_count'   => $completedCount,
+                'cancelled_count'   => $cancelledCount,
+                'confirmed_count'   => (int) ($statsRow['confirmed_count'] ?? 0),
+                'pending_count'     => (int) ($statsRow['pending_count'] ?? 0),
+                'serving_count'     => (int) ($statsRow['serving_count'] ?? 0),
+                'avg_daily'         => $avgDaily,
+                'utilization_pct'   => $completionRate,
+                'cancellation_pct'  => $cancellationRate,
+                'day_count'         => $dayCount,
+            ];
+        }
+    } catch (Throwable $e) {
+        error_log('Error in report_summary_stats: ' . $e->getMessage());
     }
-    $stmtStats->execute();
-    $statsRow = $stmtStats->get_result()->fetch_assoc();
-
-    $totalBookings = (int) ($statsRow['total_bookings'] ?? 0);
-    $completedCount = (int) ($statsRow['completed_count'] ?? 0);
-    $cancelledCount = (int) ($statsRow['cancelled_count'] ?? 0);
-    $completionRate = $totalBookings > 0 ? round($completedCount * 100 / $totalBookings) : 0;
-    $cancellationRate = $totalBookings > 0 ? round($cancelledCount * 100 / $totalBookings) : 0;
-
-    $dateFrom = new DateTimeImmutable((string) $filters['report_from']);
-    $dateTo = new DateTimeImmutable((string) $filters['report_to']);
-    $dayCount = max(1, $dateFrom->diff($dateTo)->days + 1);
-    $avgDaily = round($totalBookings / $dayCount, 1);
 
     return [
-        'total_patients'    => (int) ($statsRow['total_unique_patients'] ?? 0),
-        'services_rendered' => $totalBookings - $cancelledCount,
-        'total_bookings'    => $totalBookings,
-        'completed_count'   => $completedCount,
-        'cancelled_count'   => $cancelledCount,
-        'confirmed_count'   => (int) ($statsRow['confirmed_count'] ?? 0),
-        'pending_count'     => (int) ($statsRow['pending_count'] ?? 0),
-        'serving_count'     => (int) ($statsRow['serving_count'] ?? 0),
-        'avg_daily'         => $avgDaily,
-        'utilization_pct'   => $completionRate,
-        'cancellation_pct'  => $cancellationRate,
-        'day_count'         => $dayCount,
+        'total_patients'    => 0,
+        'services_rendered' => 0,
+        'total_bookings'    => 0,
+        'completed_count'   => 0,
+        'cancelled_count'   => 0,
+        'confirmed_count'   => 0,
+        'pending_count'     => 0,
+        'serving_count'     => 0,
+        'avg_daily'         => 0.0,
+        'utilization_pct'   => 0,
+        'cancellation_pct'  => 0,
+        'day_count'         => 1,
     ];
 }
 
 function health_events_summary(): array
 {
-    $today = date('Y-m-d');
-    $rows = db()->query(
-        "SELECT station_name,
-                COUNT(*) AS total_events,
-                SUM(event_date >= '{$today}') AS upcoming,
-                SUM(event_date < '{$today}') AS past
-         FROM upcoming_events
-         GROUP BY station_slug, station_name
-         ORDER BY total_events DESC"
-    );
     $items = [];
-    while ($row = $rows->fetch_assoc()) {
-        $items[] = $row;
+    try {
+        ensure_upcoming_events_table(db());
+        $today = date('Y-m-d');
+        $rows = db()->query(
+            "SELECT station_name,
+                    COUNT(*) AS total_events,
+                    SUM(event_date >= '{$today}') AS upcoming,
+                    SUM(event_date < '{$today}') AS past
+             FROM upcoming_events
+             GROUP BY station_slug, station_name
+             ORDER BY total_events DESC"
+        );
+        if ($rows) {
+            while ($row = $rows->fetch_assoc()) {
+                $items[] = $row;
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('Error in health_events_summary: ' . $e->getMessage());
     }
 
     return $items;
@@ -5433,34 +5665,53 @@ function ensure_activity_log_table(mysqli $connection): void
 
 function log_activity(string $actorType, string $actorId, string $action, string $target = '', string $targetId = '', string $oldStatus = '', string $newStatus = '', string $stationSlug = ''): void
 {
-    ensure_activity_log_table(db());
-    $stmt = db()->prepare(
-        'INSERT INTO activity_log (actor_type, actor_id, action, target, target_id, old_status, new_status, station_slug)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    );
-    $stmt->bind_param('ssssssss', $actorType, $actorId, $action, $target, $targetId, $oldStatus, $newStatus, $stationSlug);
-    $stmt->execute();
+    try {
+        ensure_activity_log_table(db());
+        $stmt = db()->prepare(
+            'INSERT INTO activity_log (actor_type, actor_id, action, target, target_id, old_status, new_status, station_slug)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        if ($stmt) {
+            $stmt->bind_param('ssssssss', $actorType, $actorId, $action, $target, $targetId, $oldStatus, $newStatus, $stationSlug);
+            $stmt->execute();
+        }
+    } catch (Throwable $e) {
+        error_log('Error in log_activity: ' . $e->getMessage());
+    }
 }
 
 function fetch_activity_log(int $limit = 30, string $fromDate = '', string $toDate = ''): array
 {
-    ensure_activity_log_table(db());
+    try {
+        ensure_activity_log_table(db());
 
-    if ($fromDate !== '' && $toDate !== '') {
-        $stmt = db()->prepare(
-            'SELECT * FROM activity_log
-             WHERE DATE(created_at) BETWEEN ? AND ?
-             ORDER BY created_at DESC
-             LIMIT ?'
-        );
-        $stmt->bind_param('ssi', $fromDate, $toDate, $limit);
-    } else {
-        $stmt = db()->prepare('SELECT * FROM activity_log ORDER BY created_at DESC LIMIT ?');
-        $stmt->bind_param('i', $limit);
+        if ($fromDate !== '' && $toDate !== '') {
+            $stmt = db()->prepare(
+                'SELECT * FROM activity_log
+                 WHERE DATE(created_at) BETWEEN ? AND ?
+                 ORDER BY created_at DESC
+                 LIMIT ?'
+            );
+            if ($stmt) {
+                $stmt->bind_param('ssi', $fromDate, $toDate, $limit);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+            }
+        } else {
+            $stmt = db()->prepare('SELECT * FROM activity_log ORDER BY created_at DESC LIMIT ?');
+            if ($stmt) {
+                $stmt->bind_param('i', $limit);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('Error in fetch_activity_log: ' . $e->getMessage());
     }
 
-    $stmt->execute();
-    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    return [];
 }
 
 function track_patient_info_change(string $patientId, string $fieldName, string $oldValue, string $newValue): void
@@ -5469,61 +5720,103 @@ function track_patient_info_change(string $patientId, string $fieldName, string 
         return;
     }
 
-    $stmt = db()->prepare(
-        'INSERT INTO patient_info_history (patient_id, field_name, old_value, new_value)
-         VALUES (?, ?, ?, ?)'
-    );
-    $stmt->bind_param('ssss', $patientId, $fieldName, $oldValue, $newValue);
-    $stmt->execute();
+    try {
+        ensure_patient_info_history_table(db());
+        $stmt = db()->prepare(
+            'INSERT INTO patient_info_history (patient_id, field_name, old_value, new_value)
+             VALUES (?, ?, ?, ?)'
+        );
+        if ($stmt) {
+            $stmt->bind_param('ssss', $patientId, $fieldName, $oldValue, $newValue);
+            $stmt->execute();
+        }
+    } catch (Throwable $e) {
+        error_log('Error in track_patient_info_change: ' . $e->getMessage());
+    }
 }
 
 function create_patient_update_notification(string $patientId, string $patientName, string $fieldUpdated): void
 {
-    $stmt = db()->prepare(
-        'INSERT INTO patient_update_notifications (patient_id, patient_name, field_updated)
-         VALUES (?, ?, ?)'
-    );
-    $stmt->bind_param('sss', $patientId, $patientName, $fieldUpdated);
-    $stmt->execute();
+    try {
+        ensure_patient_update_notifications_table(db());
+        $stmt = db()->prepare(
+            'INSERT INTO patient_update_notifications (patient_id, patient_name, field_updated)
+             VALUES (?, ?, ?)'
+        );
+        if ($stmt) {
+            $stmt->bind_param('sss', $patientId, $patientName, $fieldUpdated);
+            $stmt->execute();
+        }
+    } catch (Throwable $e) {
+        error_log('Error in create_patient_update_notification: ' . $e->getMessage());
+    }
 }
 
 function fetch_patient_info_history(string $patientId, ?string $fieldName = null): array
 {
-    if ($fieldName !== null) {
-        $stmt = db()->prepare(
-            'SELECT * FROM patient_info_history
-             WHERE patient_id = ? AND field_name = ?
-             ORDER BY changed_at DESC'
-        );
-        $stmt->bind_param('ss', $patientId, $fieldName);
-    } else {
-        $stmt = db()->prepare(
-            'SELECT * FROM patient_info_history
-             WHERE patient_id = ?
-             ORDER BY changed_at DESC'
-        );
-        $stmt->bind_param('s', $patientId);
+    try {
+        ensure_patient_info_history_table(db());
+        if ($fieldName !== null) {
+            $stmt = db()->prepare(
+                'SELECT * FROM patient_info_history
+                 WHERE patient_id = ? AND field_name = ?
+                 ORDER BY changed_at DESC'
+            );
+            if ($stmt) {
+                $stmt->bind_param('ss', $patientId, $fieldName);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+            }
+        } else {
+            $stmt = db()->prepare(
+                'SELECT * FROM patient_info_history
+                 WHERE patient_id = ?
+                 ORDER BY changed_at DESC'
+            );
+            if ($stmt) {
+                $stmt->bind_param('s', $patientId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('Error in fetch_patient_info_history: ' . $e->getMessage());
     }
 
-    $stmt->execute();
-    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    return [];
 }
 
 function fetch_unread_patient_notifications(): array
 {
-    $result = db()->query(
-        'SELECT * FROM patient_update_notifications
-         WHERE is_read = 0
-         ORDER BY created_at DESC'
-    );
-    return $result->fetch_all(MYSQLI_ASSOC);
+    try {
+        ensure_patient_update_notifications_table(db());
+        $result = db()->query(
+            'SELECT * FROM patient_update_notifications
+             WHERE is_read = 0
+             ORDER BY created_at DESC'
+        );
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    } catch (Throwable $e) {
+        error_log('Error in fetch_unread_patient_notifications: ' . $e->getMessage());
+        return [];
+    }
 }
 
 function mark_notification_as_read(int $notificationId): bool
 {
-    $stmt = db()->prepare('UPDATE patient_update_notifications SET is_read = 1 WHERE id = ?');
-    $stmt->bind_param('i', $notificationId);
-    return $stmt->execute();
+    try {
+        ensure_patient_update_notifications_table(db());
+        $stmt = db()->prepare('UPDATE patient_update_notifications SET is_read = 1 WHERE id = ?');
+        if ($stmt) {
+            $stmt->bind_param('i', $notificationId);
+            return $stmt->execute();
+        }
+    } catch (Throwable $e) {
+        error_log('Error in mark_notification_as_read: ' . $e->getMessage());
+    }
+    return false;
 }
 
 function fetch_station_service_selection(string $stationSlug): array
