@@ -629,6 +629,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'save_infant_profile')) {
+    $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+              || (isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json'))
+              || (!empty($_POST['ajax']));
+
+    $savedId = null;
     if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
         $data = [
             'id' => !empty($_POST['infant_id']) ? (int) $_POST['infant_id'] : null,
@@ -655,6 +660,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'save
             $_SESSION['staff_flash'] = 'Unable to save infant profile details.';
             $_SESSION['staff_flash_type'] = 'error';
         }
+    } else {
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Invalid security token. Please refresh and try again.']);
+            exit;
+        }
+    }
+
+    if ($isAjax) {
+        header('Content-Type: application/json');
+        if ($savedId) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Infant profile updated successfully!',
+                'infant_id' => $savedId,
+                'data' => $data,
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => $_SESSION['staff_flash'] ?? 'Unable to save infant profile details.',
+            ]);
+        }
+        exit;
     }
 
     $returnUrl = trim((string) ($_POST['return_url'] ?? ''));
@@ -6158,7 +6187,9 @@ window.openStaffInfantModal = function(infant) {
                 <textarea name="notes" rows="2" placeholder="Enter any notes, pediatric remarks, or allergies..." class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; resize: vertical;">${staffEscapeHtml(infant.custom_notes || infant.notes || '')}</textarea>
             </div>
 
-            <button type="submit" class="primary-btn blue-btn" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 9px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+            <div id="staffInfantSaveAlert" style="display: none; margin-bottom: 14px; padding: 10px 14px; border-radius: 10px; font-size: 0.86rem; font-weight: 600;"></div>
+
+            <button type="submit" class="primary-btn blue-btn" id="saveInfantProfileBtn" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 9px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
                 <?= staff_icon('check'); ?>
                 <span>Save Infant Profile Details</span>
             </button>
@@ -6179,6 +6210,118 @@ window.openStaffInfantModal = function(infant) {
     modal.classList.remove('hidden');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+
+    // Handle form submission via AJAX so modal remains open on profile
+    const infantForm = document.getElementById('staffInfantEditForm');
+    if (infantForm) {
+        infantForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('saveInfantProfileBtn') || infantForm.querySelector('button[type="submit"]');
+            const alertBox = document.getElementById('staffInfantSaveAlert');
+            const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.75';
+                submitBtn.innerHTML = `<?= staff_icon('pulse'); ?> <span>Saving Changes...</span>`;
+            }
+            if (alertBox) {
+                alertBox.style.display = 'none';
+            }
+
+            const formData = new FormData(infantForm);
+            formData.append('ajax', '1');
+
+            fetch(infantForm.getAttribute('action') || window.location.href, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                }
+
+                if (data && data.success) {
+                    if (data.infant_id) {
+                        infant.id = data.infant_id;
+                        const infantIdInput = infantForm.querySelector('input[name="infant_id"]');
+                        if (infantIdInput) infantIdInput.value = String(data.infant_id);
+                    }
+                    if (formData.has('mother_name')) infant.mother_name = formData.get('mother_name');
+                    if (formData.has('father_name')) infant.father_name = formData.get('father_name');
+                    if (formData.has('guardian_name')) infant.guardian_name = formData.get('guardian_name');
+                    if (formData.has('notes')) {
+                        infant.custom_notes = formData.get('notes');
+                        infant.notes = formData.get('notes');
+                    }
+
+                    if (submitBtn) {
+                        submitBtn.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
+                        submitBtn.innerHTML = `<?= staff_icon('check'); ?> <span>Saved Successfully</span>`;
+                        setTimeout(() => {
+                            submitBtn.style.background = 'linear-gradient(135deg, #0284c7, #0369a1)';
+                            submitBtn.innerHTML = originalBtnHtml;
+                        }, 2500);
+                    }
+
+                    if (alertBox) {
+                        alertBox.style.display = 'flex';
+                        alertBox.style.alignItems = 'center';
+                        alertBox.style.gap = '8px';
+                        alertBox.style.background = '#f0fdf4';
+                        alertBox.style.border = '1.5px solid #86efac';
+                        alertBox.style.color = '#15803d';
+                        alertBox.innerHTML = `<span>✓</span> <span>Infant profile details saved successfully! You can review or continue editing, and close when finished.</span>`;
+                    }
+
+                    if (window.showSystemToast) {
+                        window.showSystemToast('Infant profile details saved successfully.', { type: 'success', theme: 'volunteer', title: 'Changes Saved' });
+                    }
+                } else {
+                    if (submitBtn) {
+                        submitBtn.innerHTML = originalBtnHtml;
+                    }
+                    if (alertBox) {
+                        alertBox.style.display = 'flex';
+                        alertBox.style.alignItems = 'center';
+                        alertBox.style.gap = '8px';
+                        alertBox.style.background = '#fef2f2';
+                        alertBox.style.border = '1.5px solid #fca5a5';
+                        alertBox.style.color = '#991b1b';
+                        alertBox.innerHTML = `<span>⚠️</span> <span>${(data && data.message) ? data.message : 'Unable to save infant profile details. Please try again.'}</span>`;
+                    }
+                    if (window.showSystemToast) {
+                        window.showSystemToast((data && data.message) ? data.message : 'Unable to save infant profile details.', { type: 'error', theme: 'volunteer', title: 'Save Failed' });
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Error saving infant profile:', err);
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    submitBtn.innerHTML = originalBtnHtml;
+                }
+                if (alertBox) {
+                    alertBox.style.display = 'flex';
+                    alertBox.style.alignItems = 'center';
+                    alertBox.style.gap = '8px';
+                    alertBox.style.background = '#fef2f2';
+                    alertBox.style.border = '1.5px solid #fca5a5';
+                    alertBox.style.color = '#991b1b';
+                    alertBox.innerHTML = `<span>⚠️</span> <span>Network error while saving. Please try again.</span>`;
+                }
+                if (window.showSystemToast) {
+                    window.showSystemToast('Network error while saving infant profile details.', { type: 'error', theme: 'volunteer', title: 'Network Error' });
+                }
+            });
+        });
+    }
 };
 
 window.closeStaffInfantModal = function() {
