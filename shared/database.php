@@ -674,6 +674,8 @@ function create_admin_accounts_table(mysqli $connection, string $engine = 'InnoD
             office_name VARCHAR(255) NOT NULL,
             email VARCHAR(150) NOT NULL UNIQUE,
             password_hash VARCHAR(255) NOT NULL,
+            contact_number VARCHAR(30) DEFAULT NULL,
+            recovery_email VARCHAR(150) DEFAULT NULL,
             last_active_at TIMESTAMP NULL DEFAULT NULL,
             is_logged_in TINYINT(1) NOT NULL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -697,6 +699,7 @@ function create_staff_accounts_table(mysqli $connection, string $engine = 'InnoD
             gender VARCHAR(30) DEFAULT NULL,
             contact_number VARCHAR(30) DEFAULT NULL,
             home_address VARCHAR(255) DEFAULT NULL,
+            recovery_email VARCHAR(150) DEFAULT NULL,
             emergency_contact VARCHAR(100) DEFAULT NULL,
             emergency_phone VARCHAR(30) DEFAULT NULL,
             last_active_at TIMESTAMP NULL DEFAULT NULL,
@@ -1450,6 +1453,12 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
             $log[] = 'Added staff_accounts.home_address';
         } catch (Throwable $e) {}
     }
+    if (!db_column_exists($connection, 'staff_accounts', 'recovery_email')) {
+        try {
+            $connection->query('ALTER TABLE staff_accounts ADD COLUMN recovery_email VARCHAR(150) DEFAULT NULL AFTER home_address');
+            $log[] = 'Added staff_accounts.recovery_email';
+        } catch (Throwable $e) {}
+    }
     if (!db_column_exists($connection, 'staff_accounts', 'emergency_contact')) {
         try {
             $connection->query('ALTER TABLE staff_accounts ADD COLUMN emergency_contact VARCHAR(100) DEFAULT NULL AFTER home_address');
@@ -1460,6 +1469,18 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
         try {
             $connection->query('ALTER TABLE staff_accounts ADD COLUMN emergency_phone VARCHAR(30) DEFAULT NULL AFTER emergency_contact');
             $log[] = 'Added staff_accounts.emergency_phone';
+        } catch (Throwable $e) {}
+    }
+    if (!db_column_exists($connection, 'admin_accounts', 'contact_number')) {
+        try {
+            $connection->query('ALTER TABLE admin_accounts ADD COLUMN contact_number VARCHAR(30) DEFAULT NULL AFTER email');
+            $log[] = 'Added admin_accounts.contact_number';
+        } catch (Throwable $e) {}
+    }
+    if (!db_column_exists($connection, 'admin_accounts', 'recovery_email')) {
+        try {
+            $connection->query('ALTER TABLE admin_accounts ADD COLUMN recovery_email VARCHAR(150) DEFAULT NULL AFTER contact_number');
+            $log[] = 'Added admin_accounts.recovery_email';
         } catch (Throwable $e) {}
     }
     if (!db_column_exists($connection, 'admin_accounts', 'last_active_at')) {
@@ -4323,6 +4344,7 @@ function update_staff_account_details(int $staffId, array $data): bool
     $gender = trim((string) ($data['gender'] ?? ''));
     $contactNumber = trim((string) ($data['contact_number'] ?? ''));
     $homeAddress = trim((string) ($data['home_address'] ?? ''));
+    $recoveryEmail = strtolower(trim((string) ($data['recovery_email'] ?? '')));
     $emergencyContact = trim((string) ($data['emergency_contact'] ?? ''));
     $emergencyPhone = trim((string) ($data['emergency_phone'] ?? ''));
 
@@ -4338,22 +4360,71 @@ function update_staff_account_details(int $staffId, array $data): bool
     }
 
     $birthDateVal = ($birthDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $birthDate)) ? $birthDate : null;
+    $recoveryEmailVal = $recoveryEmail !== '' ? $recoveryEmail : null;
+    $emergencyContactVal = $emergencyContact !== '' ? $emergencyContact : null;
+    $emergencyPhoneVal = $emergencyPhone !== '' ? $emergencyPhone : null;
+    $contactNumberVal = $contactNumber !== '' ? $contactNumber : null;
+    $homeAddressVal = $homeAddress !== '' ? $homeAddress : null;
 
     if ($password !== '') {
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
         $stmt = db()->prepare(
             'UPDATE staff_accounts 
-             SET staff_name = ?, email = ?, birth_date = ?, gender = ?, contact_number = ?, home_address = ?, emergency_contact = ?, emergency_phone = ?, password_hash = ? 
+             SET staff_name = ?, email = ?, birth_date = ?, gender = ?, contact_number = ?, home_address = ?, recovery_email = ?, emergency_contact = ?, emergency_phone = ?, password_hash = ? 
              WHERE id = ?'
         );
-        $stmt->bind_param('sssssssssi', $staffName, $email, $birthDateVal, $gender, $contactNumber, $homeAddress, $emergencyContact, $emergencyPhone, $passwordHash, $staffId);
+        $stmt->bind_param('ssssssssssi', $staffName, $email, $birthDateVal, $gender, $contactNumberVal, $homeAddressVal, $recoveryEmailVal, $emergencyContactVal, $emergencyPhoneVal, $passwordHash, $staffId);
     } else {
         $stmt = db()->prepare(
             'UPDATE staff_accounts 
-             SET staff_name = ?, email = ?, birth_date = ?, gender = ?, contact_number = ?, home_address = ?, emergency_contact = ?, emergency_phone = ? 
+             SET staff_name = ?, email = ?, birth_date = ?, gender = ?, contact_number = ?, home_address = ?, recovery_email = ?, emergency_contact = ?, emergency_phone = ? 
              WHERE id = ?'
         );
-        $stmt->bind_param('ssssssssi', $staffName, $email, $birthDateVal, $gender, $contactNumber, $homeAddress, $emergencyContact, $emergencyPhone, $staffId);
+        $stmt->bind_param('sssssssssi', $staffName, $email, $birthDateVal, $gender, $contactNumberVal, $homeAddressVal, $recoveryEmailVal, $emergencyContactVal, $emergencyPhoneVal, $staffId);
+    }
+
+    return $stmt->execute();
+}
+
+function update_admin_account_details(int $adminId, array $data): bool
+{
+    $adminName = trim((string) ($data['admin_name'] ?? ''));
+    $officeName = trim((string) ($data['office_name'] ?? ''));
+    $email = strtolower(trim((string) ($data['email'] ?? '')));
+    $contactNumber = trim((string) ($data['contact_number'] ?? ''));
+    $recoveryEmail = strtolower(trim((string) ($data['recovery_email'] ?? '')));
+    $password = (string) ($data['password'] ?? '');
+
+    if ($adminId <= 0 || $adminName === '' || $email === '') {
+        return false;
+    }
+
+    $stmtCheck = db()->prepare('SELECT id FROM admin_accounts WHERE email = ? AND id <> ? LIMIT 1');
+    $stmtCheck->bind_param('si', $email, $adminId);
+    $stmtCheck->execute();
+    if ($stmtCheck->get_result()->num_rows > 0) {
+        return false;
+    }
+
+    $recoveryEmailVal = $recoveryEmail !== '' ? $recoveryEmail : null;
+    $contactNumberVal = $contactNumber !== '' ? $contactNumber : null;
+    $officeNameVal = $officeName !== '' ? $officeName : 'Central City Health Office';
+
+    if ($password !== '') {
+        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+        $stmt = db()->prepare(
+            'UPDATE admin_accounts 
+             SET admin_name = ?, office_name = ?, email = ?, contact_number = ?, recovery_email = ?, password_hash = ? 
+             WHERE id = ?'
+        );
+        $stmt->bind_param('ssssssi', $adminName, $officeNameVal, $email, $contactNumberVal, $recoveryEmailVal, $passwordHash, $adminId);
+    } else {
+        $stmt = db()->prepare(
+            'UPDATE admin_accounts 
+             SET admin_name = ?, office_name = ?, email = ?, contact_number = ?, recovery_email = ? 
+             WHERE id = ?'
+        );
+        $stmt->bind_param('sssssi', $adminName, $officeNameVal, $email, $contactNumberVal, $recoveryEmailVal, $adminId);
     }
 
     return $stmt->execute();

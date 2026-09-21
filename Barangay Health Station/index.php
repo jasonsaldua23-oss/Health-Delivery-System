@@ -409,6 +409,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'upda
         $gender = trim((string) ($_POST['gender'] ?? ''));
         $contactNumber = trim((string) ($_POST['contact_number'] ?? ''));
         $homeAddress = trim((string) ($_POST['home_address'] ?? ''));
+        $recoveryEmail = strtolower(trim((string) ($_POST['recovery_email'] ?? '')));
         $emergencyContact = trim((string) ($_POST['emergency_contact'] ?? ''));
         $emergencyPhone = trim((string) ($_POST['emergency_phone'] ?? ''));
         $newPassword = (string) ($_POST['new_password'] ?? '');
@@ -439,6 +440,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'upda
                     'gender' => $gender,
                     'contact_number' => $contactNumber,
                     'home_address' => $homeAddress,
+                    'recovery_email' => $recoveryEmail,
                     'emergency_contact' => $emergencyContact,
                     'emergency_phone' => $emergencyPhone,
                     'password' => $hasPasswordChange ? $newPassword : '',
@@ -4822,18 +4824,19 @@ for ($i = 0; $i < 6; $i++) {
                     <small class="field-subnote">Enter your personal home residence (separate from your assigned health station).</small>
                 </div>
 
-                <!-- Emergency Contact (Optional) -->
+                <!-- Account Recovery & Emergency Contact -->
                 <div class="account-section-divider">
-                    <?= staff_icon('heart'); ?>
-                    <span>Emergency Contact Information</span>
+                    <?= staff_icon('shield'); ?>
+                    <span>Account Recovery &amp; Emergency Contact</span>
                 </div>
 
                 <div class="form-row-grid">
                     <div class="form-group-item">
-                        <label for="staff_emergency_contact" class="form-field-label">
-                            <span>Emergency Contact Person</span>
+                        <label for="staff_recovery_email" class="form-field-label">
+                            <span>Personal Recovery Email</span>
                         </label>
-                        <input type="text" id="staff_emergency_contact" name="emergency_contact" value="<?= h((string) ($staffAccount['emergency_contact'] ?? '')); ?>" placeholder="e.g. Juan Santos (Spouse / Parent)" maxlength="100" class="form-input-field">
+                        <input type="email" id="staff_recovery_email" name="recovery_email" value="<?= h((string) ($staffAccount['recovery_email'] ?? '')); ?>" placeholder="e.g. personal.email@gmail.com" maxlength="150" class="form-input-field">
+                        <small class="field-subnote">Personal email used to receive OTP verification codes for password recovery.</small>
                     </div>
                     
                     <div class="form-group-item">
@@ -4841,6 +4844,7 @@ for ($i = 0; $i < 6; $i++) {
                             <span>Emergency Contact Phone</span>
                         </label>
                         <input type="tel" id="staff_emergency_phone" name="emergency_phone" value="<?= h((string) ($staffAccount['emergency_phone'] ?? '')); ?>" placeholder="e.g. 0918 987 6543" maxlength="20" class="form-input-field">
+                        <small class="field-subnote">Mobile number for urgent station notices.</small>
                     </div>
                 </div>
 

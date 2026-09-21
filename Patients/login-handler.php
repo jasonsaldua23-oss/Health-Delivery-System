@@ -411,6 +411,13 @@ if ($action === 'request_password_otp') {
         $targetName = trim((string) (($account['first_name'] ?? '') . ' ' . ($account['last_name'] ?? '')));
     } elseif ($role === 'staff') {
         $email = strtolower($identifier);
+        $inputRecoveryEmail = strtolower(trim((string) ($_POST['recovery_email'] ?? '')));
+
+        if ($inputRecoveryEmail === '') {
+            echo json_encode(['success' => false, 'message' => 'Please enter your personal recovery email.'], JSON_THROW_ON_ERROR);
+            exit;
+        }
+
         $account = fetch_staff_account_by_email($email);
         if ($account === null && ($email === 'staff_user' || str_contains($email, 'staff'))) {
             $account = fetch_staff_account_by_email('staff-bata@bata.health');
@@ -419,7 +426,23 @@ if ($action === 'request_password_otp') {
             echo json_encode(['success' => false, 'message' => 'No staff account found with this work email address.'], JSON_THROW_ON_ERROR);
             exit;
         }
-        $targetEmail = strtolower((string) ($account['email'] ?? $email));
+
+        $savedRecovery = strtolower(trim((string) ($account['recovery_email'] ?? '')));
+        if ($savedRecovery !== '') {
+            if ($savedRecovery !== $inputRecoveryEmail) {
+                echo json_encode(['success' => false, 'message' => 'The personal recovery email provided does not match the recovery email registered for this staff account.'], JSON_THROW_ON_ERROR);
+                exit;
+            }
+            $targetEmail = $savedRecovery;
+        } else {
+            if (!filter_var($inputRecoveryEmail, FILTER_VALIDATE_EMAIL)) {
+                echo json_encode(['success' => false, 'message' => 'Please provide a valid personal recovery email address.'], JSON_THROW_ON_ERROR);
+                exit;
+            }
+            $targetEmail = $inputRecoveryEmail;
+        }
+
+        $accountEmail = strtolower((string) ($account['email'] ?? $email));
         $targetName = (string) ($account['staff_name'] ?? 'Health Station Staff');
     } elseif ($role === 'admin') {
         $adminIdent = strtolower($identifier);
@@ -443,12 +466,14 @@ if ($action === 'request_password_otp') {
         exit;
     }
 
+    $accountIdentifier = ($role === 'staff') ? $accountEmail : $targetEmail;
+
     // Generate 6-digit numeric OTP code
     $otpCode = (string) random_int(100000, 999999);
     $expiresMinutes = 10;
 
     // Persist OTP in database
-    $stored = store_password_reset_otp($role, $targetEmail, $otpCode, $expiresMinutes);
+    $stored = store_password_reset_otp($role, $accountIdentifier, $otpCode, $expiresMinutes);
     if (!$stored) {
         echo json_encode(['success' => false, 'message' => 'Unable to initialize verification code. Please try again.'], JSON_THROW_ON_ERROR);
         exit;
@@ -462,7 +487,7 @@ if ($action === 'request_password_otp') {
     echo json_encode([
         'success' => true,
         'message' => "A 6-digit verification code has been sent to {$maskedEmail}.",
-        'email' => $targetEmail,
+        'email' => $accountIdentifier,
         'masked_email' => $maskedEmail,
         'role' => $role,
         'expires_in' => $expiresMinutes * 60,

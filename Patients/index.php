@@ -992,7 +992,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     <!-- Request OTP View -->
                     <div id="volunteerForgotRequestView" class="modal-substep">
                         <div class="otp-instruction-card">
-                            <p>Enter your assigned health station work email address to receive a 6-digit password reset verification code.</p>
+                            <p>Enter your assigned health station work email address and your personal recovery email to receive a 6-digit password reset verification code.</p>
                         </div>
                         <form class="auth-form" id="volunteerForgotRequestForm" novalidate>
                             <div class="field-group">
@@ -1000,6 +1000,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                                 <div class="input-with-icon">
                                     <span class="field-icon"><?= iconSvg('mail'); ?></span>
                                     <input id="volunteerForgotEmail" type="email" placeholder="staff-bata@bata.health" required>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <label for="volunteerForgotRecoveryEmail">Personal Recovery Email</label>
+                                <div class="input-with-icon">
+                                    <span class="field-icon"><?= iconSvg('mail'); ?></span>
+                                    <input id="volunteerForgotRecoveryEmail" type="email" placeholder="personal.email@gmail.com" required>
                                 </div>
                             </div>
                             <button type="submit" class="auth-submit-btn volunteer-submit" id="volunteerSendOtpBtn">Send Verification Code</button>
@@ -2110,6 +2117,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function showRequestState() {
+            stopCountdown();
             if (loginView) {
                 loginView.classList.add('hidden-step');
                 loginView.setAttribute('aria-hidden', 'true');
@@ -2170,12 +2178,68 @@ document.addEventListener('DOMContentLoaded', function () {
                 loginView.classList.remove('hidden-step');
                 loginView.setAttribute('aria-hidden', 'false');
             }
+            if (otpInput) otpInput.value = '';
+            if (newPwInput) newPwInput.value = '';
+            if (confirmPwInput) confirmPwInput.value = '';
+            if (recoveryEmailInput) recoveryEmailInput.value = '';
+            activeEmail = '';
+            activeRecoveryEmail = '';
             if (onReturnToLogin) onReturnToLogin();
+        }
+
+        function startResendCountdown(seconds) {
+            stopCountdown();
+            let remaining = seconds;
+            if (resendOtpBtn) resendOtpBtn.style.display = 'none';
+            if (timerTextEl) {
+                timerTextEl.style.display = 'inline';
+                timerTextEl.innerHTML = `Resend code in <strong>0:${remaining.toString().padStart(2, '0')}</strong>`;
+            }
+
+            countdownInterval = setInterval(() => {
+                remaining--;
+                if (remaining <= 0) {
+                    stopCountdown();
+                    if (timerTextEl) timerTextEl.style.display = 'none';
+                    if (resendOtpBtn) {
+                        resendOtpBtn.style.display = 'inline-block';
+                        resendOtpBtn.disabled = false;
+                    }
+                } else {
+                    if (timerTextEl) {
+                        timerTextEl.innerHTML = `Resend code in <strong>0:${remaining.toString().padStart(2, '0')}</strong>`;
+                    }
+                }
+            }, 1000);
+        }
+
+        function stopCountdown() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
         }
 
         forgotLink?.addEventListener('click', function(e) {
             e.preventDefault();
-            showRequestState();
+            if (loginView) {
+                loginView.classList.add('hidden-step');
+                loginView.setAttribute('aria-hidden', 'true');
+            }
+            if (resetView) {
+                resetView.classList.add('hidden-step');
+                resetView.setAttribute('aria-hidden', 'true');
+            }
+            if (forgotView) {
+                forgotView.classList.remove('hidden-step');
+                forgotView.setAttribute('aria-hidden', 'false');
+            }
+            if (requestView) {
+                requestView.classList.remove('hidden-step');
+                requestView.setAttribute('aria-hidden', 'false');
+            }
+            onOpenForgot?.();
+            if (emailInput) emailInput.focus();
         });
 
         backToLoginBtn?.addEventListener('click', function(e) {
@@ -2209,8 +2273,14 @@ document.addEventListener('DOMContentLoaded', function () {
         function handleSendOtp(e) {
             e.preventDefault();
             const identifier = (emailInput?.value || '').trim();
+            const recoveryEmail = (recoveryEmailInput?.value || '').trim();
+
             if (!identifier) {
-                window.showSystemToast?.('Please enter your email address or username.', { type: 'warning', theme: theme, title: 'Missing Information' });
+                window.showSystemToast?.('Please enter your work email address or username.', { type: 'warning', theme: theme, title: 'Missing Information' });
+                return;
+            }
+            if (recoveryEmailInput && !recoveryEmail) {
+                window.showSystemToast?.('Please enter your personal recovery email.', { type: 'warning', theme: theme, title: 'Missing Information' });
                 return;
             }
 
@@ -2224,6 +2294,9 @@ document.addEventListener('DOMContentLoaded', function () {
             formData.append('action', 'request_password_otp');
             formData.append('role', role);
             formData.append('email', identifier);
+            if (recoveryEmail) {
+                formData.append('recovery_email', recoveryEmail);
+            }
 
             fetch('login-handler.php', {
                 method: 'POST',
@@ -2237,6 +2310,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     sendOtpBtn.textContent = 'Send Verification Code';
                 }
                 if (data.success) {
+                    activeRecoveryEmail = recoveryEmail;
                     window.showSystemToast?.(data.message || 'Verification code sent to your email.', { type: 'success', theme: theme, title: 'Code Dispatched' });
                     showResetState(data.email || identifier, data.masked_email || identifier);
                 } else {
@@ -2266,6 +2340,9 @@ document.addEventListener('DOMContentLoaded', function () {
             formData.append('action', 'request_password_otp');
             formData.append('role', role);
             formData.append('email', activeEmail);
+            if (activeRecoveryEmail) {
+                formData.append('recovery_email', activeRecoveryEmail);
+            }
 
             fetch('login-handler.php', {
                 method: 'POST',
@@ -2401,6 +2478,7 @@ document.addEventListener('DOMContentLoaded', function () {
         resetBackToLoginBtn: document.getElementById('volunteerResetBackToLoginBtn'),
         changeEmailBtn: document.getElementById('volunteerChangeEmailBtn'),
         emailInput: document.getElementById('volunteerForgotEmail'),
+        recoveryEmailInput: document.getElementById('volunteerForgotRecoveryEmail'),
         sendOtpBtn: document.getElementById('volunteerSendOtpBtn'),
         requestForm: document.getElementById('volunteerForgotRequestForm'),
         maskedEmailEl: document.getElementById('volunteerMaskedEmail'),

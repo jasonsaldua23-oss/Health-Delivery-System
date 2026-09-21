@@ -173,6 +173,75 @@ if (!is_admin_authenticated()) {
 
 record_user_activity('admin', (string) $_SESSION['admin_email']);
 
+$adminEmail = (string) ($_SESSION['admin_email'] ?? ADMIN_LOGIN_EMAIL);
+$adminAccount = fetch_admin_account_by_email($adminEmail);
+if (!is_array($adminAccount)) {
+    $adminAccount = fetch_admin_account_by_username((string) ($_SESSION['admin_name'] ?? 'admin')) ?? fetch_admin_account_by_email(ADMIN_LOGIN_EMAIL);
+    if (!is_array($adminAccount)) {
+        $adminAccount = [
+            'id' => 1,
+            'admin_name' => (string) ($_SESSION['admin_name'] ?? 'Administrator'),
+            'office_name' => 'Bacolod City Health Department - Central Administration',
+            'email' => $adminEmail,
+            'contact_number' => '',
+            'recovery_email' => '',
+        ];
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'update_admin_account')) {
+    if (verify_csrf($_POST['csrf_token'] ?? null)) {
+        $adminName = trim((string) ($_POST['admin_name'] ?? ''));
+        $officeName = trim((string) ($_POST['office_name'] ?? ''));
+        $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+        $contactNumber = trim((string) ($_POST['contact_number'] ?? ''));
+        $recoveryEmail = strtolower(trim((string) ($_POST['recovery_email'] ?? '')));
+        $newPassword = (string) ($_POST['new_password'] ?? '');
+        $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
+
+        $hasPasswordChange = $newPassword !== '';
+        $passwordValid = true;
+
+        if ($hasPasswordChange) {
+            if (strlen($newPassword) < 6) {
+                $_SESSION['admin_flash'] = 'New password must be at least 6 characters long.';
+                $passwordValid = false;
+            } elseif ($newPassword !== $confirmPassword) {
+                $_SESSION['admin_flash'] = 'New password and confirmation password do not match.';
+                $passwordValid = false;
+            }
+        }
+
+        if ($passwordValid) {
+            if ($adminName !== '' && $email !== '') {
+                $adminId = (int) ($adminAccount['id'] ?? 0);
+                $updateData = [
+                    'admin_name' => $adminName,
+                    'office_name' => $officeName !== '' ? $officeName : 'Bacolod City Health Department - Central Administration',
+                    'email' => $email,
+                    'contact_number' => $contactNumber,
+                    'recovery_email' => $recoveryEmail,
+                    'password' => $hasPasswordChange ? $newPassword : '',
+                ];
+
+                if ($adminId > 0 && update_admin_account_details($adminId, $updateData)) {
+                    $_SESSION['admin_name'] = $adminName;
+                    $_SESSION['admin_email'] = $email;
+                    $_SESSION['admin_flash'] = 'Admin account details updated successfully!';
+                } else {
+                    $_SESSION['admin_flash'] = 'Unable to update admin account. That email may already be in use.';
+                }
+            } else {
+                $_SESSION['admin_flash'] = 'Please fill in both administrator name and login email.';
+            }
+        }
+    }
+
+    $returnPage = trim((string) ($_POST['return_page'] ?? 'dashboard'));
+    header('Location: index.php?page=' . urlencode($returnPage));
+    exit;
+}
+
 $page = $_GET['page'] ?? 'dashboard';
 $stationView = trim((string) ($_GET['station'] ?? ''));
 $status = trim((string) ($_GET['status'] ?? ''));
@@ -794,16 +863,22 @@ if (!function_exists('peso')) {
                 <a class="<?= $page === 'reports' ? 'active' : ''; ?>" href="?page=reports"><?= admin_icon('reports'); ?>Reports</a>
             </nav>
         </div>
-        <div class="sidebar-drawer-signout">
+        <div class="sidebar-footer-widget">
             <div class="sidebar-admin-badge">
                 <div class="badge-role-tag">Administrator</div>
-                <strong><?= h((string) ($_SESSION['admin_name'] ?? 'Admin User')); ?></strong>
-                <span><?= h((string) ($_SESSION['admin_email'] ?? ADMIN_LOGIN_EMAIL)); ?></span>
+                <strong><?= h((string) ($adminAccount['admin_name'] ?? $_SESSION['admin_name'] ?? 'Admin User')); ?></strong>
+                <span><?= h((string) ($adminAccount['email'] ?? $_SESSION['admin_email'] ?? ADMIN_LOGIN_EMAIL)); ?></span>
             </div>
+            <button type="button" class="sidebar-account-btn" id="sidebarOpenAccountBtn">
+                <?= admin_icon('user'); ?>
+                <span>Account Settings</span>
+            </button>
             <button type="button" class="pwa-drawer-install-btn" data-pwa-install style="margin-bottom: 12px;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 <span>Install Mobile App</span>
             </button>
+        </div>
+        <div class="sidebar-drawer-signout">
             <form method="post" class="logout-form" style="margin: 0;">
                 <input type="hidden" name="action" value="logout">
                 <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
@@ -827,13 +902,13 @@ if (!function_exists('peso')) {
                 <div class="admin-date-badge"><?= date('l, F j, Y'); ?></div>
             </div>
             <div class="admin-header-actions">
-                <div class="admin-user-badge">
+                <div class="admin-user-badge" id="adminTopbarUserBadge" style="cursor: pointer;" title="Open Account Settings">
                     <div class="admin-user-avatar">
-                        <?= strtoupper(substr((string) ($_SESSION['admin_name'] ?? 'Admin'), 0, 1)); ?>
+                        <?= strtoupper(substr((string) ($adminAccount['admin_name'] ?? $_SESSION['admin_name'] ?? 'Admin'), 0, 1)); ?>
                     </div>
                     <div class="admin-user-info">
-                        <strong><?= h((string) ($_SESSION['admin_name'] ?? 'Admin User')); ?></strong>
-                        <span><?= h((string) ($_SESSION['admin_email'] ?? ADMIN_LOGIN_EMAIL)); ?></span>
+                        <strong><?= h((string) ($adminAccount['admin_name'] ?? $_SESSION['admin_name'] ?? 'Admin User')); ?></strong>
+                        <span><?= h((string) ($adminAccount['email'] ?? $_SESSION['admin_email'] ?? ADMIN_LOGIN_EMAIL)); ?></span>
                     </div>
                 </div>
                 <form method="post" class="logout-form admin-header-logout">
@@ -4815,6 +4890,139 @@ if (!function_exists('peso')) {
         <?php endif; ?>
     </main>
 </div>
+
+<!-- Admin Account Settings Modal -->
+<div class="account-modal-backdrop" id="accountModal" hidden>
+    <div class="account-modal-card admin-themed-modal" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
+        <div class="account-modal-header">
+            <div class="account-modal-title-group">
+                <span class="account-modal-icon"><?= admin_icon('user'); ?></span>
+                <div>
+                    <h2 id="accountModalTitle">Admin Account Settings</h2>
+                    <p>Manage your central administration credentials, profile, and security settings.</p>
+                </div>
+            </div>
+            <button type="button" class="account-modal-close" id="closeAccountModalBtn" aria-label="Close modal">×</button>
+        </div>
+        
+        <form method="post" class="account-settings-form" id="adminAccountForm">
+            <input type="hidden" name="action" value="update_admin_account">
+            <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+            <input type="hidden" name="return_page" value="<?= h($page); ?>">
+            
+            <div class="account-modal-body">
+                <!-- Administrative Identity -->
+                <div class="account-section-divider">
+                    <?= admin_icon('shield'); ?>
+                    <span>Administrative Profile</span>
+                </div>
+                
+                <div class="form-group-item">
+                    <label for="admin_name_input" class="form-field-label">
+                        <span>Administrator Full Name</span>
+                        <span class="required">*</span>
+                    </label>
+                    <input type="text" id="admin_name_input" name="admin_name" value="<?= h((string) ($adminAccount['admin_name'] ?? '')); ?>" required placeholder="e.g. Dr. Ma. Teresa Lim" maxlength="150" class="form-input-field">
+                </div>
+
+                <div class="form-group-item">
+                    <label for="admin_office_input" class="form-field-label">
+                        <span>Department / Office Designation</span>
+                    </label>
+                    <input type="text" id="admin_office_input" name="office_name" value="<?= h((string) ($adminAccount['office_name'] ?? 'Bacolod City Health Department - Central Administration')); ?>" placeholder="e.g. City Health Office - Central Admin" maxlength="255" class="form-input-field">
+                </div>
+
+                <!-- Contact & Account Details -->
+                <div class="account-section-divider">
+                    <?= admin_icon('mail'); ?>
+                    <span>Contact &amp; Recovery Details</span>
+                </div>
+
+                <div class="form-row-grid">
+                    <div class="form-group-item">
+                        <label for="admin_email_input" class="form-field-label">
+                            <span>Admin Login Email</span>
+                            <span class="required">*</span>
+                        </label>
+                        <input type="email" id="admin_email_input" name="email" value="<?= h((string) ($adminAccount['email'] ?? '')); ?>" required placeholder="e.g. admintest@gmail.com" maxlength="150" class="form-input-field">
+                    </div>
+                    
+                    <div class="form-group-item">
+                        <label for="admin_contact_input" class="form-field-label">
+                            <span>Contact Number</span>
+                        </label>
+                        <input type="tel" id="admin_contact_input" name="contact_number" value="<?= h((string) ($adminAccount['contact_number'] ?? '')); ?>" placeholder="e.g. 0917 123 4567" maxlength="30" class="form-input-field">
+                    </div>
+                </div>
+
+                <div class="form-group-item">
+                    <label for="admin_recovery_email_input" class="form-field-label">
+                        <span>Personal Recovery Email</span>
+                    </label>
+                    <input type="email" id="admin_recovery_email_input" name="recovery_email" value="<?= h((string) ($adminAccount['recovery_email'] ?? '')); ?>" placeholder="e.g. personal.admin@gmail.com" maxlength="150" class="form-input-field">
+                    <small class="field-subnote">Personal email used for emergency account recovery and OTP password resets.</small>
+                </div>
+
+                <!-- Network Role (Read-only) -->
+                <div class="account-section-divider">
+                    <?= admin_icon('shield'); ?>
+                    <span>System Role &amp; Access</span>
+                </div>
+                
+                <div class="form-group-item">
+                    <div class="station-readonly-box admin-role-box">
+                        <span class="station-pin-icon admin-role-icon"><?= admin_icon('shield'); ?></span>
+                        <div class="station-info-text">
+                            <strong>Central Health Network Administrator</strong>
+                            <span>Full System Access • All 6 Barangay Stations • City-wide Health Delivery Network</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Security & Password -->
+                <div class="account-section-divider">
+                    <?= admin_icon('lock'); ?>
+                    <span>Security &amp; Password (Optional)</span>
+                </div>
+                
+                <div class="form-row-grid">
+                    <div class="form-group-item">
+                        <label for="admin_new_password_input" class="form-field-label">
+                            <span>New Password</span>
+                        </label>
+                        <div class="input-password-wrap">
+                            <input type="password" id="admin_new_password_input" name="new_password" placeholder="Leave blank to keep current" minlength="6" class="form-input-field">
+                            <button type="button" class="btn-toggle-eye" data-target="admin_new_password_input" aria-label="Toggle password visibility">
+                                <?= admin_icon('eye'); ?>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group-item">
+                        <label for="admin_confirm_password_input" class="form-field-label">
+                            <span>Confirm New Password</span>
+                        </label>
+                        <div class="input-password-wrap">
+                            <input type="password" id="admin_confirm_password_input" name="confirm_password" placeholder="Re-enter new password" minlength="6" class="form-input-field">
+                            <button type="button" class="btn-toggle-eye" data-target="admin_confirm_password_input" aria-label="Toggle password visibility">
+                                <?= admin_icon('eye'); ?>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <p class="form-help-hint">Passwords must be at least 6 characters. Leave blank if you don't wish to change your password.</p>
+            </div>
+            
+            <div class="account-modal-footer">
+                <button type="button" class="ghost-btn" id="cancelAccountModalBtn">Cancel</button>
+                <button type="submit" class="primary-btn admin-primary-btn">
+                    <?= admin_icon('check'); ?>
+                    <span>Save Account Details</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 <?php if ($page === 'appointments'): ?>
 <script>
 (function() {
@@ -5397,6 +5605,87 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+// Admin Account Settings Modal Controller
+(function() {
+    'use strict';
+    const accountModal = document.getElementById('accountModal');
+    const openBtns = [
+        document.getElementById('sidebarOpenAccountBtn'),
+        document.getElementById('adminTopbarUserBadge')
+    ].filter(Boolean);
+
+    const closeBtn = document.getElementById('closeAccountModalBtn');
+    const cancelBtn = document.getElementById('cancelAccountModalBtn');
+
+    function openAccountModal() {
+        if (!accountModal) return;
+        accountModal.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+        const nameInput = document.getElementById('admin_name_input');
+        if (nameInput) {
+            setTimeout(() => nameInput.focus(), 50);
+        }
+    }
+
+    function closeAccountModal() {
+        if (!accountModal) return;
+        accountModal.setAttribute('hidden', '');
+        document.body.style.overflow = '';
+    }
+
+    openBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAccountModal();
+        });
+    });
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeAccountModal();
+        });
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeAccountModal();
+        });
+    }
+
+    if (accountModal) {
+        accountModal.addEventListener('click', (e) => {
+            if (e.target === accountModal) {
+                closeAccountModal();
+            }
+        });
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && accountModal && !accountModal.hasAttribute('hidden')) {
+            closeAccountModal();
+        }
+    });
+
+    // Password visibility toggle
+    document.querySelectorAll('.btn-toggle-eye').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = btn.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            if (!input) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.classList.add('active');
+            } else {
+                input.type = 'password';
+                btn.classList.remove('active');
+            }
+        });
+    });
+})();
 </script>
 <script src="../shared/pwa-install.js" defer></script>
 </body>
