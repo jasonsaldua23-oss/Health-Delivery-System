@@ -1855,6 +1855,29 @@ button, input, select { font: inherit; }
   background: #94a3b8;
 }
 
+.user-edit-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: #2563eb;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+.user-edit-icon-btn:hover {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+  transform: scale(1.05);
+}
+.user-edit-icon-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
 .user-delete-icon-btn {
   display: grid;
   place-items: center;

@@ -4337,6 +4337,10 @@ function fetch_staff_account_by_id(int $id): ?array
 
 function update_staff_account_details(int $staffId, array $data): bool
 {
+    if ($staffId <= 0) {
+        return false;
+    }
+
     $staffName = trim((string) ($data['staff_name'] ?? ''));
     $email = strtolower(trim((string) ($data['email'] ?? '')));
     $password = (string) ($data['password'] ?? '');
@@ -4348,46 +4352,69 @@ function update_staff_account_details(int $staffId, array $data): bool
     $emergencyContact = trim((string) ($data['emergency_contact'] ?? ''));
     $emergencyPhone = trim((string) ($data['emergency_phone'] ?? ''));
 
-    if ($staffId <= 0 || $staffName === '' || $email === '') {
+    if ($staffName === '' || $email === '') {
         return false;
     }
 
-    $stmtCheck = db()->prepare('SELECT id FROM staff_accounts WHERE email = ? AND id <> ? LIMIT 1');
-    $stmtCheck->bind_param('si', $email, $staffId);
-    $stmtCheck->execute();
-    if ($stmtCheck->get_result()->num_rows > 0) {
+    try {
+        $stmtCheck = db()->prepare('SELECT id FROM staff_accounts WHERE email = ? AND id <> ? LIMIT 1');
+        if (!$stmtCheck) {
+            return false;
+        }
+        $stmtCheck->bind_param('si', $email, $staffId);
+        $stmtCheck->execute();
+        if ($stmtCheck->get_result()->num_rows > 0) {
+            $stmtCheck->close();
+            return false;
+        }
+        $stmtCheck->close();
+
+        $birthDateVal = ($birthDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $birthDate)) ? $birthDate : null;
+        $genderVal = $gender !== '' ? $gender : null;
+        $recoveryEmailVal = $recoveryEmail !== '' ? $recoveryEmail : null;
+        $emergencyContactVal = $emergencyContact !== '' ? $emergencyContact : null;
+        $emergencyPhoneVal = $emergencyPhone !== '' ? $emergencyPhone : null;
+        $contactNumberVal = $contactNumber !== '' ? $contactNumber : null;
+        $homeAddressVal = $homeAddress !== '' ? $homeAddress : null;
+
+        if ($password !== '') {
+            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = db()->prepare(
+                'UPDATE staff_accounts 
+                 SET staff_name = ?, email = ?, birth_date = ?, gender = ?, contact_number = ?, home_address = ?, recovery_email = ?, emergency_contact = ?, emergency_phone = ?, password_hash = ? 
+                 WHERE id = ?'
+            );
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('ssssssssssi', $staffName, $email, $birthDateVal, $genderVal, $contactNumberVal, $homeAddressVal, $recoveryEmailVal, $emergencyContactVal, $emergencyPhoneVal, $passwordHash, $staffId);
+        } else {
+            $stmt = db()->prepare(
+                'UPDATE staff_accounts 
+                 SET staff_name = ?, email = ?, birth_date = ?, gender = ?, contact_number = ?, home_address = ?, recovery_email = ?, emergency_contact = ?, emergency_phone = ? 
+                 WHERE id = ?'
+            );
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('sssssssssi', $staffName, $email, $birthDateVal, $genderVal, $contactNumberVal, $homeAddressVal, $recoveryEmailVal, $emergencyContactVal, $emergencyPhoneVal, $staffId);
+        }
+
+        $res = $stmt->execute();
+        $stmt->close();
+        return $res;
+    } catch (Throwable $e) {
+        error_log('Error in update_staff_account_details: ' . $e->getMessage());
         return false;
     }
-
-    $birthDateVal = ($birthDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $birthDate)) ? $birthDate : null;
-    $recoveryEmailVal = $recoveryEmail !== '' ? $recoveryEmail : null;
-    $emergencyContactVal = $emergencyContact !== '' ? $emergencyContact : null;
-    $emergencyPhoneVal = $emergencyPhone !== '' ? $emergencyPhone : null;
-    $contactNumberVal = $contactNumber !== '' ? $contactNumber : null;
-    $homeAddressVal = $homeAddress !== '' ? $homeAddress : null;
-
-    if ($password !== '') {
-        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = db()->prepare(
-            'UPDATE staff_accounts 
-             SET staff_name = ?, email = ?, birth_date = ?, gender = ?, contact_number = ?, home_address = ?, recovery_email = ?, emergency_contact = ?, emergency_phone = ?, password_hash = ? 
-             WHERE id = ?'
-        );
-        $stmt->bind_param('ssssssssssi', $staffName, $email, $birthDateVal, $gender, $contactNumberVal, $homeAddressVal, $recoveryEmailVal, $emergencyContactVal, $emergencyPhoneVal, $passwordHash, $staffId);
-    } else {
-        $stmt = db()->prepare(
-            'UPDATE staff_accounts 
-             SET staff_name = ?, email = ?, birth_date = ?, gender = ?, contact_number = ?, home_address = ?, recovery_email = ?, emergency_contact = ?, emergency_phone = ? 
-             WHERE id = ?'
-        );
-        $stmt->bind_param('sssssssssi', $staffName, $email, $birthDateVal, $gender, $contactNumberVal, $homeAddressVal, $recoveryEmailVal, $emergencyContactVal, $emergencyPhoneVal, $staffId);
-    }
-
-    return $stmt->execute();
 }
 
 function update_admin_account_details(int $adminId, array $data): bool
 {
+    if ($adminId <= 0) {
+        return false;
+    }
+
     $adminName = trim((string) ($data['admin_name'] ?? ''));
     $officeName = trim((string) ($data['office_name'] ?? ''));
     $email = strtolower(trim((string) ($data['email'] ?? '')));
@@ -4395,47 +4422,140 @@ function update_admin_account_details(int $adminId, array $data): bool
     $recoveryEmail = strtolower(trim((string) ($data['recovery_email'] ?? '')));
     $password = (string) ($data['password'] ?? '');
 
-    if ($adminId <= 0 || $adminName === '' || $email === '') {
+    if ($adminName === '' || $email === '') {
         return false;
     }
 
-    $stmtCheck = db()->prepare('SELECT id FROM admin_accounts WHERE email = ? AND id <> ? LIMIT 1');
-    $stmtCheck->bind_param('si', $email, $adminId);
-    $stmtCheck->execute();
-    if ($stmtCheck->get_result()->num_rows > 0) {
+    try {
+        $stmtCheck = db()->prepare('SELECT id FROM admin_accounts WHERE email = ? AND id <> ? LIMIT 1');
+        if (!$stmtCheck) {
+            return false;
+        }
+        $stmtCheck->bind_param('si', $email, $adminId);
+        $stmtCheck->execute();
+        if ($stmtCheck->get_result()->num_rows > 0) {
+            $stmtCheck->close();
+            return false;
+        }
+        $stmtCheck->close();
+
+        $recoveryEmailVal = $recoveryEmail !== '' ? $recoveryEmail : null;
+        $contactNumberVal = $contactNumber !== '' ? $contactNumber : null;
+        $officeNameVal = $officeName !== '' ? $officeName : 'Central City Health Office - Central Admin';
+
+        if ($password !== '') {
+            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = db()->prepare(
+                'UPDATE admin_accounts 
+                 SET admin_name = ?, office_name = ?, email = ?, contact_number = ?, recovery_email = ?, password_hash = ? 
+                 WHERE id = ?'
+            );
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('ssssssi', $adminName, $officeNameVal, $email, $contactNumberVal, $recoveryEmailVal, $passwordHash, $adminId);
+        } else {
+            $stmt = db()->prepare(
+                'UPDATE admin_accounts 
+                 SET admin_name = ?, office_name = ?, email = ?, contact_number = ?, recovery_email = ? 
+                 WHERE id = ?'
+            );
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('sssssi', $adminName, $officeNameVal, $email, $contactNumberVal, $recoveryEmailVal, $adminId);
+        }
+
+        $res = $stmt->execute();
+        $stmt->close();
+        return $res;
+    } catch (Throwable $e) {
+        error_log('Error in update_admin_account_details: ' . $e->getMessage());
+        return false;
+    }
+}
+
+function update_staff_account_by_admin(int $staffId, array $data): bool
+{
+    if ($staffId <= 0) {
         return false;
     }
 
-    $recoveryEmailVal = $recoveryEmail !== '' ? $recoveryEmail : null;
-    $contactNumberVal = $contactNumber !== '' ? $contactNumber : null;
-    $officeNameVal = $officeName !== '' ? $officeName : 'Central City Health Office';
-
-    if ($password !== '') {
-        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = db()->prepare(
-            'UPDATE admin_accounts 
-             SET admin_name = ?, office_name = ?, email = ?, contact_number = ?, recovery_email = ?, password_hash = ? 
-             WHERE id = ?'
-        );
-        $stmt->bind_param('ssssssi', $adminName, $officeNameVal, $email, $contactNumberVal, $recoveryEmailVal, $passwordHash, $adminId);
-    } else {
-        $stmt = db()->prepare(
-            'UPDATE admin_accounts 
-             SET admin_name = ?, office_name = ?, email = ?, contact_number = ?, recovery_email = ? 
-             WHERE id = ?'
-        );
-        $stmt->bind_param('sssssi', $adminName, $officeNameVal, $email, $contactNumberVal, $recoveryEmailVal, $adminId);
+    $stationSlug = trim((string) ($data['station_slug'] ?? ''));
+    $station = fetch_station_by_slug_catalog($stationSlug);
+    if ($station === null) {
+        return false;
     }
 
-    return $stmt->execute();
+    $staffName = trim((string) ($data['staff_name'] ?? ''));
+    $email = strtolower(trim((string) ($data['email'] ?? '')));
+    $password = (string) ($data['password'] ?? '');
+    $contactNumber = trim((string) ($data['contact_number'] ?? ''));
+    $recoveryEmail = strtolower(trim((string) ($data['recovery_email'] ?? '')));
+    $emergencyPhone = trim((string) ($data['emergency_phone'] ?? ''));
+
+    if ($staffName === '' || $email === '') {
+        return false;
+    }
+
+    try {
+        $stmtCheck = db()->prepare('SELECT id FROM staff_accounts WHERE email = ? AND id <> ? LIMIT 1');
+        if (!$stmtCheck) {
+            return false;
+        }
+        $stmtCheck->bind_param('si', $email, $staffId);
+        $stmtCheck->execute();
+        if ($stmtCheck->get_result()->num_rows > 0) {
+            $stmtCheck->close();
+            return false;
+        }
+        $stmtCheck->close();
+
+        $stationName = (string) $station['name'];
+        $contactNumberVal = $contactNumber !== '' ? $contactNumber : null;
+        $recoveryEmailVal = $recoveryEmail !== '' ? $recoveryEmail : null;
+        $emergencyPhoneVal = $emergencyPhone !== '' ? $emergencyPhone : null;
+
+        if ($password !== '') {
+            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = db()->prepare(
+                'UPDATE staff_accounts 
+                 SET station_slug = ?, station_name = ?, staff_name = ?, email = ?, contact_number = ?, recovery_email = ?, emergency_phone = ?, password_hash = ? 
+                 WHERE id = ?'
+            );
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('ssssssssi', $stationSlug, $stationName, $staffName, $email, $contactNumberVal, $recoveryEmailVal, $emergencyPhoneVal, $passwordHash, $staffId);
+        } else {
+            $stmt = db()->prepare(
+                'UPDATE staff_accounts 
+                 SET station_slug = ?, station_name = ?, staff_name = ?, email = ?, contact_number = ?, recovery_email = ?, emergency_phone = ? 
+                 WHERE id = ?'
+            );
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('sssssssi', $stationSlug, $stationName, $staffName, $email, $contactNumberVal, $recoveryEmailVal, $emergencyPhoneVal, $staffId);
+        }
+
+        $res = $stmt->execute();
+        $stmt->close();
+        return $res;
+    } catch (Throwable $e) {
+        error_log('Error in update_staff_account_by_admin: ' . $e->getMessage());
+        return false;
+    }
 }
 
 function fetch_staff_accounts(): array
 {
-    $result = db()->query('SELECT id, station_slug, station_name, staff_name, email, last_active_at, is_logged_in FROM staff_accounts ORDER BY station_name');
+    $result = db()->query('SELECT id, station_slug, station_name, staff_name, email, contact_number, recovery_email, emergency_phone, last_active_at, is_logged_in FROM staff_accounts ORDER BY station_name');
     $rows = [];
-    while ($row = $result->fetch_assoc()) {
-        $rows[] = $row;
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = $row;
+        }
     }
 
     return $rows;
@@ -4452,22 +4572,45 @@ function save_staff_account(array $accountData): bool
     $email = strtolower(trim((string) ($accountData['email'] ?? '')));
     $password = (string) ($accountData['password'] ?? '');
 
-    if ($staffName === '' || $email === '' || $password === '') {
+    if ($staffName === '' || $email === '') {
         return false;
     }
 
-    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-    $stmt = db()->prepare(
-        'INSERT INTO staff_accounts (station_slug, station_name, staff_name, email, password_hash)
-         VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE station_name = VALUES(station_name), staff_name = VALUES(staff_name), email = VALUES(email), password_hash = VALUES(password_hash)'
-    );
+    try {
+        $stationSlug = (string) $station['slug'];
+        $stationName = (string) $station['name'];
 
-    $stationSlug = (string) $station['slug'];
-    $stationName = (string) $station['name'];
-    $stmt->bind_param('sssss', $stationSlug, $stationName, $staffName, $email, $passwordHash);
+        if ($password !== '') {
+            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = db()->prepare(
+                'INSERT INTO staff_accounts (station_slug, station_name, staff_name, email, password_hash)
+                 VALUES (?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE station_slug = VALUES(station_slug), station_name = VALUES(station_name), staff_name = VALUES(staff_name), email = VALUES(email), password_hash = VALUES(password_hash)'
+            );
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('sssss', $stationSlug, $stationName, $staffName, $email, $passwordHash);
+        } else {
+            $defaultHash = default_staff_password_hash();
+            $stmt = db()->prepare(
+                'INSERT INTO staff_accounts (station_slug, station_name, staff_name, email, password_hash)
+                 VALUES (?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE station_slug = VALUES(station_slug), station_name = VALUES(station_name), staff_name = VALUES(staff_name), email = VALUES(email)'
+            );
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('sssss', $stationSlug, $stationName, $staffName, $email, $defaultHash);
+        }
 
-    return $stmt->execute();
+        $res = $stmt->execute();
+        $stmt->close();
+        return $res;
+    } catch (Throwable $e) {
+        error_log('Error in save_staff_account: ' . $e->getMessage());
+        return false;
+    }
 }
 
 function fetch_admin_account_by_email(string $email): ?array

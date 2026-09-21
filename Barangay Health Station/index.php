@@ -402,64 +402,78 @@ if (!is_array($station)) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'update_staff_account')) {
-    if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
-        $staffName = trim((string) ($_POST['staff_name'] ?? ''));
-        $email = strtolower(trim((string) ($_POST['email'] ?? '')));
-        $birthDate = trim((string) ($_POST['birth_date'] ?? ''));
-        $gender = trim((string) ($_POST['gender'] ?? ''));
-        $contactNumber = trim((string) ($_POST['contact_number'] ?? ''));
-        $homeAddress = trim((string) ($_POST['home_address'] ?? ''));
-        $recoveryEmail = strtolower(trim((string) ($_POST['recovery_email'] ?? '')));
-        $emergencyContact = trim((string) ($_POST['emergency_contact'] ?? ''));
-        $emergencyPhone = trim((string) ($_POST['emergency_phone'] ?? ''));
-        $newPassword = (string) ($_POST['new_password'] ?? '');
-        $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
+    try {
+        if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
+            $staffName = trim((string) ($_POST['staff_name'] ?? ''));
+            $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+            $birthDate = trim((string) ($_POST['birth_date'] ?? ''));
+            $gender = trim((string) ($_POST['gender'] ?? ''));
+            $contactNumber = trim((string) ($_POST['contact_number'] ?? ''));
+            $homeAddress = trim((string) ($_POST['home_address'] ?? ''));
+            $recoveryEmail = strtolower(trim((string) ($_POST['recovery_email'] ?? '')));
+            $emergencyContact = trim((string) ($_POST['emergency_contact'] ?? ''));
+            $emergencyPhone = trim((string) ($_POST['emergency_phone'] ?? ''));
+            $newPassword = (string) ($_POST['new_password'] ?? '');
+            $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
-        $hasPasswordChange = $newPassword !== '';
-        $passwordValid = true;
+            $hasPasswordChange = $newPassword !== '';
+            $passwordValid = true;
 
-        if ($hasPasswordChange) {
-            if (strlen($newPassword) < 6) {
-                $_SESSION['staff_flash'] = 'New password must be at least 6 characters long.';
-                $_SESSION['staff_flash_type'] = 'error';
-                $passwordValid = false;
-            } elseif ($newPassword !== $confirmPassword) {
-                $_SESSION['staff_flash'] = 'New password and confirmation password do not match.';
-                $_SESSION['staff_flash_type'] = 'error';
-                $passwordValid = false;
+            if ($hasPasswordChange) {
+                if (strlen($newPassword) < 6) {
+                    $_SESSION['staff_flash'] = 'New password must be at least 6 characters long.';
+                    $_SESSION['staff_flash_type'] = 'error';
+                    $passwordValid = false;
+                } elseif ($newPassword !== $confirmPassword) {
+                    $_SESSION['staff_flash'] = 'New password and confirmation password do not match.';
+                    $_SESSION['staff_flash_type'] = 'error';
+                    $passwordValid = false;
+                }
             }
-        }
 
-        if ($passwordValid) {
-            if ($staffName !== '' && $email !== '') {
-                $staffId = (int) ($staffAccount['id'] ?? 0);
-                $updateData = [
-                    'staff_name' => $staffName,
-                    'email' => $email,
-                    'birth_date' => $birthDate,
-                    'gender' => $gender,
-                    'contact_number' => $contactNumber,
-                    'home_address' => $homeAddress,
-                    'recovery_email' => $recoveryEmail,
-                    'emergency_contact' => $emergencyContact,
-                    'emergency_phone' => $emergencyPhone,
-                    'password' => $hasPasswordChange ? $newPassword : '',
-                ];
+            if ($passwordValid) {
+                if ($staffName !== '' && $email !== '') {
+                    $staffId = (int) ($staffAccount['id'] ?? 0);
+                    $updateData = [
+                        'staff_name' => $staffName,
+                        'email' => $email,
+                        'birth_date' => $birthDate,
+                        'gender' => $gender,
+                        'contact_number' => $contactNumber,
+                        'home_address' => $homeAddress,
+                        'recovery_email' => $recoveryEmail,
+                        'emergency_contact' => $emergencyContact,
+                        'emergency_phone' => $emergencyPhone,
+                        'password' => $hasPasswordChange ? $newPassword : '',
+                    ];
 
-                if ($staffId > 0 && update_staff_account_details($staffId, $updateData)) {
-                    $_SESSION['staff_name'] = $staffName;
-                    $_SESSION['staff_email'] = $email;
-                    $_SESSION['staff_flash'] = 'Account details updated successfully!';
-                    $_SESSION['staff_flash_type'] = 'success';
+                    if ($staffId > 0 && update_staff_account_details($staffId, $updateData)) {
+                        $_SESSION['staff_name'] = $staffName;
+                        $_SESSION['staff_email'] = $email;
+                        $refreshedStaff = fetch_staff_account_by_id($staffId);
+                        if (is_array($refreshedStaff)) {
+                            $_SESSION['staff_station_slug'] = (string) $refreshedStaff['station_slug'];
+                            $_SESSION['staff_station_name'] = (string) $refreshedStaff['station_name'];
+                        }
+                        $_SESSION['staff_flash'] = 'Account details updated successfully!';
+                        $_SESSION['staff_flash_type'] = 'success';
+                    } else {
+                        $_SESSION['staff_flash'] = 'Unable to update account. That work email may already be in use.';
+                        $_SESSION['staff_flash_type'] = 'error';
+                    }
                 } else {
-                    $_SESSION['staff_flash'] = 'Unable to update account. That work email may already be in use.';
+                    $_SESSION['staff_flash'] = 'Please fill in both name and work email.';
                     $_SESSION['staff_flash_type'] = 'error';
                 }
-            } else {
-                $_SESSION['staff_flash'] = 'Please fill in both name and work email.';
-                $_SESSION['staff_flash_type'] = 'error';
             }
+        } else {
+            $_SESSION['staff_flash'] = 'Security verification expired. Please try submitting again.';
+            $_SESSION['staff_flash_type'] = 'error';
         }
+    } catch (Throwable $e) {
+        error_log('Error in update_staff_account handler: ' . $e->getMessage());
+        $_SESSION['staff_flash'] = 'An unexpected error occurred while saving your account. Please try again.';
+        $_SESSION['staff_flash_type'] = 'error';
     }
 
     $returnPage = trim((string) ($_POST['return_page'] ?? 'dashboard'));
@@ -750,7 +764,8 @@ $eventEditId = (int) ($_GET['edit_event'] ?? 0);
 $activateEventId = (int) ($_GET['activate_event'] ?? 0);
 $showEventModal = (($_GET['show_event_modal'] ?? '') === '1') || $eventEditId > 0;
 $flash = (string) ($_SESSION['staff_flash'] ?? '');
-unset($_SESSION['staff_flash']);
+$flashType = (string) ($_SESSION['staff_flash_type'] ?? '');
+unset($_SESSION['staff_flash'], $_SESSION['staff_flash_type']);
 
 $appointments = fetch_appointments([
     'station_slug' => $station['slug'],
@@ -1218,7 +1233,7 @@ for ($i = 0; $i < 6; $i++) {
     <main class="staff-main">
         <?php if ($flash !== ''): ?>
             <?php
-            $isStaffFlashError = (string) ($_SESSION['staff_flash_type'] ?? '') === 'error' || str_contains(strtolower($flash), 'unable') || str_contains(strtolower($flash), 'cannot') || str_contains(strtolower($flash), 'invalid') || str_contains(strtolower($flash), 'not match') || str_contains(strtolower($flash), 'failed');
+            $isStaffFlashError = $flashType === 'error' || str_contains(strtolower($flash), 'unable') || str_contains(strtolower($flash), 'cannot') || str_contains(strtolower($flash), 'invalid') || str_contains(strtolower($flash), 'not match') || str_contains(strtolower($flash), 'failed') || str_contains(strtolower($flash), 'expired');
             ?>
             <div class="flash-toast-wrap" id="staffFlashToast">
                 <div class="flash-banner <?= $isStaffFlashError ? 'error' : 'success'; ?>" role="alert">
@@ -4751,7 +4766,7 @@ for ($i = 0; $i < 6; $i++) {
             <button type="button" class="account-modal-close" id="closeAccountModalBtn" aria-label="Close modal">×</button>
         </div>
         
-        <form method="post" class="account-settings-form" id="staffAccountForm">
+        <form method="post" action="index.php" class="account-settings-form" id="staffAccountForm">
             <input type="hidden" name="action" value="update_staff_account">
             <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
             <input type="hidden" name="return_page" value="<?= h($page); ?>">
@@ -6371,8 +6386,8 @@ function toggleDualStatusFilter(clickedVal, otherVal, paramName, event) {
         const isCameraActive = document.getElementById('cameraStatusBadge')?.classList.contains('is-live');
         const activeEl = document.activeElement;
         const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
-        const staffAccountModal = document.getElementById('staffAccountModal');
-        const isModalOpen = staffAccountModal && staffAccountModal.classList.contains('open');
+        const staffAccountModal = document.getElementById('accountModal');
+        const isModalOpen = staffAccountModal && !staffAccountModal.hasAttribute('hidden');
         const eventModal = document.getElementById('eventModal');
         const isEventModalOpen = eventModal && eventModal.classList.contains('open');
         const unattendedModal = document.getElementById('unattendedModal');

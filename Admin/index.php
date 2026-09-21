@@ -190,51 +190,58 @@ if (!is_array($adminAccount)) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'update_admin_account')) {
-    if (verify_csrf($_POST['csrf_token'] ?? null)) {
-        $adminName = trim((string) ($_POST['admin_name'] ?? ''));
-        $officeName = trim((string) ($_POST['office_name'] ?? ''));
-        $email = strtolower(trim((string) ($_POST['email'] ?? '')));
-        $contactNumber = trim((string) ($_POST['contact_number'] ?? ''));
-        $recoveryEmail = strtolower(trim((string) ($_POST['recovery_email'] ?? '')));
-        $newPassword = (string) ($_POST['new_password'] ?? '');
-        $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
+    try {
+        if (verify_csrf($_POST['csrf_token'] ?? null)) {
+            $adminName = trim((string) ($_POST['admin_name'] ?? ''));
+            $officeName = trim((string) ($_POST['office_name'] ?? ''));
+            $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+            $contactNumber = trim((string) ($_POST['contact_number'] ?? ''));
+            $recoveryEmail = strtolower(trim((string) ($_POST['recovery_email'] ?? '')));
+            $newPassword = (string) ($_POST['new_password'] ?? '');
+            $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
-        $hasPasswordChange = $newPassword !== '';
-        $passwordValid = true;
+            $hasPasswordChange = $newPassword !== '';
+            $passwordValid = true;
 
-        if ($hasPasswordChange) {
-            if (strlen($newPassword) < 6) {
-                $_SESSION['admin_flash'] = 'New password must be at least 6 characters long.';
-                $passwordValid = false;
-            } elseif ($newPassword !== $confirmPassword) {
-                $_SESSION['admin_flash'] = 'New password and confirmation password do not match.';
-                $passwordValid = false;
-            }
-        }
-
-        if ($passwordValid) {
-            if ($adminName !== '' && $email !== '') {
-                $adminId = (int) ($adminAccount['id'] ?? 0);
-                $updateData = [
-                    'admin_name' => $adminName,
-                    'office_name' => $officeName !== '' ? $officeName : 'Bacolod City Health Department - Central Administration',
-                    'email' => $email,
-                    'contact_number' => $contactNumber,
-                    'recovery_email' => $recoveryEmail,
-                    'password' => $hasPasswordChange ? $newPassword : '',
-                ];
-
-                if ($adminId > 0 && update_admin_account_details($adminId, $updateData)) {
-                    $_SESSION['admin_name'] = $adminName;
-                    $_SESSION['admin_email'] = $email;
-                    $_SESSION['admin_flash'] = 'Admin account details updated successfully!';
-                } else {
-                    $_SESSION['admin_flash'] = 'Unable to update admin account. That email may already be in use.';
+            if ($hasPasswordChange) {
+                if (strlen($newPassword) < 6) {
+                    $_SESSION['admin_flash'] = 'New password must be at least 6 characters long.';
+                    $passwordValid = false;
+                } elseif ($newPassword !== $confirmPassword) {
+                    $_SESSION['admin_flash'] = 'New password and confirmation password do not match.';
+                    $passwordValid = false;
                 }
-            } else {
-                $_SESSION['admin_flash'] = 'Please fill in both administrator name and login email.';
             }
+
+            if ($passwordValid) {
+                if ($adminName !== '' && $email !== '') {
+                    $adminId = (int) ($adminAccount['id'] ?? 0);
+                    $updateData = [
+                        'admin_name' => $adminName,
+                        'office_name' => $officeName !== '' ? $officeName : 'Bacolod City Health Department - Central Administration',
+                        'email' => $email,
+                        'contact_number' => $contactNumber,
+                        'recovery_email' => $recoveryEmail,
+                        'password' => $hasPasswordChange ? $newPassword : '',
+                    ];
+
+                    if ($adminId > 0 && update_admin_account_details($adminId, $updateData)) {
+                        $_SESSION['admin_name'] = $adminName;
+                        $_SESSION['admin_email'] = $email;
+                        $_SESSION['admin_flash'] = 'Admin account details updated successfully!';
+                    } else {
+                        $_SESSION['admin_flash'] = 'Unable to update admin account. That email may already be in use.';
+                    }
+                } else {
+                    $_SESSION['admin_flash'] = 'Please fill in both administrator name and login email.';
+                }
+            }
+        } else {
+            $_SESSION['admin_flash'] = 'Security verification expired. Please try submitting again.';
         }
+    } catch (Throwable $e) {
+        error_log('Error in update_admin_account handler: ' . $e->getMessage());
+        $_SESSION['admin_flash'] = 'An unexpected error occurred while saving your account. Please try again.';
     }
 
     $returnPage = trim((string) ($_POST['return_page'] ?? 'dashboard'));
@@ -396,17 +403,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'crea
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'create_staff_account')) {
     $assignedStationSlug = '';
-    if (verify_csrf($_POST['csrf_token'] ?? null)) {
-        $assignedStationSlug = trim((string) ($_POST['station_slug'] ?? ''));
-        $created = save_staff_account([
-            'station_slug' => $assignedStationSlug,
-            'staff_name' => trim((string) ($_POST['staff_name'] ?? '')),
-            'email' => trim((string) ($_POST['email'] ?? '')),
-            'password' => (string) ($_POST['password'] ?? ''),
-        ]);
-        $_SESSION['admin_flash'] = $created
-            ? 'Station staff account saved successfully.'
-            : 'Unable to create staff account. Please verify assigned station and credentials.';
+    try {
+        if (verify_csrf($_POST['csrf_token'] ?? null)) {
+            $assignedStationSlug = trim((string) ($_POST['station_slug'] ?? ''));
+            $created = save_staff_account([
+                'station_slug' => $assignedStationSlug,
+                'staff_name' => trim((string) ($_POST['staff_name'] ?? '')),
+                'email' => trim((string) ($_POST['email'] ?? '')),
+                'password' => (string) ($_POST['password'] ?? ''),
+            ]);
+            $_SESSION['admin_flash'] = $created
+                ? 'Station staff account saved successfully.'
+                : 'Unable to create staff account. Please verify assigned station and credentials.';
+        }
+    } catch (Throwable $e) {
+        error_log('Error creating staff account: ' . $e->getMessage());
+        $_SESSION['admin_flash'] = 'An unexpected error occurred while saving the staff account.';
     }
 
     $redirectUrl = 'index.php?page=users';
@@ -414,6 +426,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'crea
         $redirectUrl .= '&user_panel=staff-list&user_station=' . urlencode($assignedStationSlug);
     } else {
         $redirectUrl .= '&user_panel=staff-stations';
+    }
+    header('Location: ' . $redirectUrl);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'update_staff_account_admin')) {
+    $redirectStation = '';
+    try {
+        if (verify_csrf($_POST['csrf_token'] ?? null)) {
+            $staffId = (int) ($_POST['staff_id'] ?? 0);
+            $stationSlug = trim((string) ($_POST['station_slug'] ?? ''));
+            $staffName = trim((string) ($_POST['staff_name'] ?? ''));
+            $email = strtolower(trim((string) ($_POST['email'] ?? '')));
+            $recoveryEmail = strtolower(trim((string) ($_POST['recovery_email'] ?? '')));
+            $contactNumber = trim((string) ($_POST['contact_number'] ?? ''));
+            $emergencyPhone = trim((string) ($_POST['emergency_phone'] ?? ''));
+            $password = (string) ($_POST['password'] ?? '');
+            $redirectStation = trim((string) ($_POST['user_station_redirect'] ?? $stationSlug));
+
+            if ($staffId > 0 && $staffName !== '' && $email !== '' && $stationSlug !== '') {
+                $updated = update_staff_account_by_admin($staffId, [
+                    'station_slug' => $stationSlug,
+                    'staff_name' => $staffName,
+                    'email' => $email,
+                    'recovery_email' => $recoveryEmail,
+                    'contact_number' => $contactNumber,
+                    'emergency_phone' => $emergencyPhone,
+                    'password' => $password,
+                ]);
+
+                $_SESSION['admin_flash'] = $updated
+                    ? 'Staff account for "' . $staffName . '" updated successfully.'
+                    : 'Unable to update staff account. That work email may already be in use.';
+            } else {
+                $_SESSION['admin_flash'] = 'Please fill in all required fields (Name, Station, Work Email).';
+            }
+        } else {
+            $_SESSION['admin_flash'] = 'Security validation expired. Please try again.';
+        }
+    } catch (Throwable $e) {
+        error_log('Error in update_staff_account_admin: ' . $e->getMessage());
+        $_SESSION['admin_flash'] = 'An unexpected error occurred while saving the staff account.';
+    }
+
+    $redirectUrl = 'index.php?page=users&user_panel=staff-list';
+    if ($redirectStation !== '') {
+        $redirectUrl .= '&user_station=' . urlencode($redirectStation);
     }
     header('Location: ' . $redirectUrl);
     exit;
@@ -3586,6 +3645,18 @@ if (!function_exists('peso')) {
                                                 <span class="user-status-indicator <?= $isStaffActive ? 'active' : 'offline'; ?>">
                                                     <span class="dot"></span> <?= $isStaffActive ? 'Online' : 'Offline'; ?>
                                                 </span>
+                                                <button type="button" 
+                                                        class="user-edit-icon-btn edit-staff-btn" 
+                                                        title="Edit Staff Account"
+                                                        data-staff-id="<?= (int) ($account['id'] ?? 0); ?>"
+                                                        data-staff-name="<?= h($account['staff_name']); ?>"
+                                                        data-station-slug="<?= h($station['slug']); ?>"
+                                                        data-email="<?= h($account['email']); ?>"
+                                                        data-recovery-email="<?= h($account['recovery_email'] ?? ''); ?>"
+                                                        data-contact-number="<?= h($account['contact_number'] ?? ''); ?>"
+                                                        data-emergency-phone="<?= h($account['emergency_phone'] ?? ''); ?>">
+                                                    <?= admin_icon('edit'); ?>
+                                                </button>
                                                 <form method="post" onsubmit="return confirm('Are you sure you want to remove staff account <?= h(addslashes($account['staff_name'])); ?>?');" style="margin:0;">
                                                     <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
                                                     <input type="hidden" name="action" value="delete_user_account">
@@ -3729,6 +3800,121 @@ if (!function_exists('peso')) {
                             <button type="submit" class="modal-submit-btn green-btn" id="userSubmitBtn">
                                 <?= admin_icon('check'); ?>
                                 <span>Create Account</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Edit Staff Account Modal Dialog -->
+            <div id="editStaffModalBackdrop" class="user-modal-backdrop hidden">
+                <div class="user-modal-card" id="editStaffModalCard">
+                    <div class="user-modal-head">
+                        <div class="user-modal-head-info">
+                            <div class="user-modal-head-icon staff">
+                                <?= admin_icon('stethoscope'); ?>
+                            </div>
+                            <div>
+                                <h2>Edit Staff Account</h2>
+                                <p class="muted-text">Update station staff profile, credentials, and recovery contact</p>
+                            </div>
+                        </div>
+                        <button type="button" class="user-modal-close-btn" id="closeEditStaffModalBtn" title="Close dialog">
+                            <?= admin_icon('x'); ?>
+                        </button>
+                    </div>
+
+                    <form method="post" action="index.php" class="user-create-form" id="editStaffForm">
+                        <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                        <input type="hidden" name="action" value="update_staff_account_admin">
+                        <input type="hidden" name="staff_id" id="edit-staff-id" value="0">
+                        <input type="hidden" name="user_station_redirect" id="edit-staff-redirect-station" value="">
+
+                        <div class="user-modal-form-body">
+                            <div class="form-field-group">
+                                <label for="edit-staff-name">
+                                    <span>Staff Full Name</span>
+                                    <div class="field-input-wrapper">
+                                        <span class="field-prefix-icon"><?= admin_icon('user'); ?></span>
+                                        <input type="text" name="staff_name" id="edit-staff-name" placeholder="e.g. Nurse Maria Santos" required maxlength="150">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="form-field-group">
+                                <label for="edit-staff-station">
+                                    <span>Assigned Barangay Station</span>
+                                    <div class="field-input-wrapper">
+                                        <span class="field-prefix-icon"><?= admin_icon('map'); ?></span>
+                                        <select name="station_slug" id="edit-staff-station" required>
+                                            <option value="">Select Barangay Station</option>
+                                            <?php foreach ($healthStationList as $stationOpt): ?>
+                                                <option value="<?= h($stationOpt['slug']); ?>"><?= h($stationOpt['name']); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="form-field-group">
+                                <label for="edit-staff-email">
+                                    <span>Work Email Address</span>
+                                    <div class="field-input-wrapper">
+                                        <span class="field-prefix-icon"><?= admin_icon('mail'); ?></span>
+                                        <input type="email" name="email" id="edit-staff-email" placeholder="e.g. staff-bata@bata.health" required maxlength="150">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="form-field-group">
+                                <label for="edit-staff-recovery-email">
+                                    <span>Personal Recovery Email</span>
+                                    <div class="field-input-wrapper">
+                                        <span class="field-prefix-icon"><?= admin_icon('mail'); ?></span>
+                                        <input type="email" name="recovery_email" id="edit-staff-recovery-email" placeholder="e.g. personal.email@gmail.com" maxlength="150">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="form-field-group">
+                                <label for="edit-staff-contact">
+                                    <span>Contact Number</span>
+                                    <div class="field-input-wrapper">
+                                        <span class="field-prefix-icon"><?= admin_icon('phone'); ?></span>
+                                        <input type="tel" name="contact_number" id="edit-staff-contact" placeholder="e.g. 0917 123 4567" maxlength="30">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="form-field-group">
+                                <label for="edit-staff-emergency-phone">
+                                    <span>Emergency Phone</span>
+                                    <div class="field-input-wrapper">
+                                        <span class="field-prefix-icon"><?= admin_icon('phone'); ?></span>
+                                        <input type="tel" name="emergency_phone" id="edit-staff-emergency-phone" placeholder="e.g. 0918 987 6543" maxlength="30">
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="form-field-group full-width">
+                                <label for="edit-staff-password">
+                                    <span>New Password (Leave blank to keep current)</span>
+                                    <div class="field-input-wrapper user-password-wrap">
+                                        <span class="field-prefix-icon"><?= admin_icon('lock'); ?></span>
+                                        <input type="password" name="password" id="edit-staff-password" placeholder="Leave blank to keep unchanged" minlength="6">
+                                        <button type="button" class="user-pw-toggle" onclick="toggleEditStaffPassword()" title="Toggle visibility">
+                                            <?= admin_icon('eye'); ?>
+                                        </button>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="user-modal-footer">
+                            <button type="button" class="modal-cancel-btn" id="cancelEditStaffModalBtn">Cancel</button>
+                            <button type="submit" class="modal-submit-btn green-btn" id="editStaffSubmitBtn">
+                                <?= admin_icon('check'); ?>
+                                <span>Save Changes</span>
                             </button>
                         </div>
                     </form>
@@ -3917,23 +4103,73 @@ if (!function_exists('peso')) {
                     if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
                     if (cancelModalBtn) cancelModalBtn.addEventListener('click', closeModal);
 
-                    if (modalBackdrop) {
-                        modalBackdrop.addEventListener('click', (e) => {
-                            if (e.target === modalBackdrop) {
-                                closeModal();
+                    // Edit Staff Modal Handlers
+                    const editStaffModalBackdrop = document.getElementById('editStaffModalBackdrop');
+                    const closeEditStaffModalBtn = document.getElementById('closeEditStaffModalBtn');
+                    const cancelEditStaffModalBtn = document.getElementById('cancelEditStaffModalBtn');
+                    const editStaffIdInput = document.getElementById('edit-staff-id');
+                    const editStaffNameInput = document.getElementById('edit-staff-name');
+                    const editStaffStationSelect = document.getElementById('edit-staff-station');
+                    const editStaffEmailInput = document.getElementById('edit-staff-email');
+                    const editStaffRecoveryInput = document.getElementById('edit-staff-recovery-email');
+                    const editStaffContactInput = document.getElementById('edit-staff-contact');
+                    const editStaffEmergencyInput = document.getElementById('edit-staff-emergency-phone');
+                    const editStaffPasswordInput = document.getElementById('edit-staff-password');
+                    const editStaffRedirectStation = document.getElementById('edit-staff-redirect-station');
+
+                    const openEditStaffModal = (btn) => {
+                        if (!editStaffModalBackdrop) return;
+                        if (editStaffIdInput) editStaffIdInput.value = btn.dataset.staffId || '0';
+                        if (editStaffNameInput) editStaffNameInput.value = btn.dataset.staffName || '';
+                        if (editStaffStationSelect) editStaffStationSelect.value = btn.dataset.stationSlug || '';
+                        if (editStaffEmailInput) editStaffEmailInput.value = btn.dataset.email || '';
+                        if (editStaffRecoveryInput) editStaffRecoveryInput.value = btn.dataset.recoveryEmail || '';
+                        if (editStaffContactInput) editStaffContactInput.value = btn.dataset.contactNumber || '';
+                        if (editStaffEmergencyInput) editStaffEmergencyInput.value = btn.dataset.emergencyPhone || '';
+                        if (editStaffPasswordInput) editStaffPasswordInput.value = '';
+                        if (editStaffRedirectStation) editStaffRedirectStation.value = btn.dataset.stationSlug || '';
+                        editStaffModalBackdrop.classList.remove('hidden');
+                    };
+
+                    const closeEditStaffModal = () => {
+                        if (editStaffModalBackdrop) editStaffModalBackdrop.classList.add('hidden');
+                    };
+
+                    document.querySelectorAll('.edit-staff-btn').forEach(btn => {
+                        btn.addEventListener('click', () => openEditStaffModal(btn));
+                    });
+
+                    if (closeEditStaffModalBtn) closeEditStaffModalBtn.addEventListener('click', closeEditStaffModal);
+                    if (cancelEditStaffModalBtn) cancelEditStaffModalBtn.addEventListener('click', closeEditStaffModal);
+                    if (editStaffModalBackdrop) {
+                        editStaffModalBackdrop.addEventListener('click', (e) => {
+                            if (e.target === editStaffModalBackdrop) {
+                                closeEditStaffModal();
                             }
                         });
                     }
 
                     document.addEventListener('keydown', (e) => {
-                        if (e.key === 'Escape' && modalBackdrop && !modalBackdrop.classList.contains('hidden')) {
-                            closeModal();
+                        if (e.key === 'Escape') {
+                            if (modalBackdrop && !modalBackdrop.classList.contains('hidden')) {
+                                closeModal();
+                            }
+                            if (editStaffModalBackdrop && !editStaffModalBackdrop.classList.contains('hidden')) {
+                                closeEditStaffModal();
+                            }
                         }
                     });
                 })();
 
                 function toggleUserPassword() {
                     const pwInput = document.getElementById('user-password-input');
+                    if (pwInput) {
+                        pwInput.type = pwInput.type === 'password' ? 'text' : 'password';
+                    }
+                }
+
+                function toggleEditStaffPassword() {
+                    const pwInput = document.getElementById('edit-staff-password');
                     if (pwInput) {
                         pwInput.type = pwInput.type === 'password' ? 'text' : 'password';
                     }
@@ -4905,7 +5141,7 @@ if (!function_exists('peso')) {
             <button type="button" class="account-modal-close" id="closeAccountModalBtn" aria-label="Close modal">×</button>
         </div>
         
-        <form method="post" class="account-settings-form" id="adminAccountForm">
+        <form method="post" action="index.php" class="account-settings-form" id="adminAccountForm">
             <input type="hidden" name="action" value="update_admin_account">
             <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
             <input type="hidden" name="return_page" value="<?= h($page); ?>">
@@ -5180,10 +5416,12 @@ function toggleDualDateFilter(clickedType, paramName, event) {
         const isUserModalOpen = userModal && userModal.classList.contains('open');
         const reportVisitModal = document.getElementById('reportVisitModal');
         const isReportVisitOpen = reportVisitModal && reportVisitModal.style.display !== 'none';
-        const reportsFilterModal = document.getElementById('reportsFilterModal');
-        const isReportsFilterOpen = reportsFilterModal && reportsFilterModal.style.display !== 'none';
+        const accountModal = document.getElementById('accountModal');
+        const isAccountModalOpen = accountModal && !accountModal.hasAttribute('hidden');
+        const editStaffModal = document.getElementById('editStaffModalBackdrop');
+        const isEditStaffModalOpen = editStaffModal && !editStaffModal.classList.contains('hidden');
 
-        if (isTyping || isUserModalOpen || isReportVisitOpen || isReportsFilterOpen) return;
+        if (isTyping || isUserModalOpen || isReportVisitOpen || isReportsFilterOpen || isAccountModalOpen || isEditStaffModalOpen) return;
 
         try {
             isAdminSyncing = true;
