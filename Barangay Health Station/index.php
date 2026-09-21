@@ -598,6 +598,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
         if (!empty($postData['pulse']) && empty($postData['pulse_rate'])) {
             $postData['pulse_rate'] = $postData['pulse'];
         }
+        if (isset($postData['height'])) {
+            $hVal = trim((string) $postData['height']);
+            if ($hVal !== '' && !preg_match('/(?:cm|centimeters?)$/i', $hVal)) {
+                $postData['height'] = $hVal . ' cm';
+            }
+        }
+        if (isset($postData['weight'])) {
+            $wVal = trim((string) $postData['weight']);
+            if ($wVal !== '' && !preg_match('/(?:kg|kilograms?)$/i', $wVal)) {
+                $postData['weight'] = $wVal . ' kg';
+            }
+        }
         if (!empty($postData['vaccine_type_select'])) {
             if ($postData['vaccine_type_select'] === 'Others') {
                 $postData['vaccine_type'] = trim((string) ($postData['vaccine_type_other'] ?? '')) ?: 'Others';
@@ -2252,14 +2264,14 @@ for ($i = 0; $i < 6; $i++) {
                                     <div class="form-row-grid">
                                         <div class="form-group-item">
                                             <label for="queue_height" class="form-field-label">
-                                                <span>Height (Infant)</span>
+                                                <span>Height (Infant &bull; Centimeters / cm)</span>
                                                 <span class="required">*</span>
                                             </label>
                                             <input type="text" id="queue_height" name="height" value="<?= h((string) ($selectedVitalsAppointment['height'] ?? '')); ?>" placeholder="e.g. 65 cm" required class="form-input-field">
                                         </div>
                                         <div class="form-group-item">
                                             <label for="queue_weight" class="form-field-label">
-                                                <span>Weight (Infant)</span>
+                                                <span>Weight (Infant &bull; Kilograms / kg)</span>
                                                 <span class="required">*</span>
                                             </label>
                                             <input type="text" id="queue_weight" name="weight" value="<?= h((string) ($selectedVitalsAppointment['weight'] ?? '')); ?>" placeholder="e.g. 7.2 kg" required class="form-input-field">
@@ -6076,6 +6088,26 @@ window.openStaffInfantModal = function(infant) {
         dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 8px 0 0 0;">No immunization doses recorded yet for this infant.</p>';
     }
 
+    const formatInfantHeight = (val) => {
+        if (!val) return '';
+        const s = String(val).trim();
+        if (!s) return '';
+        if (/(?:cm|centimeters?)$/i.test(s)) {
+            return s;
+        }
+        return s + ' cm';
+    };
+
+    const formatInfantWeight = (val) => {
+        if (!val) return '';
+        const s = String(val).trim();
+        if (!s) return '';
+        if (/(?:kg|kilograms?)$/i.test(s)) {
+            return s;
+        }
+        return s + ' kg';
+    };
+
     // Timeline rows HTML
     let timelineHtml = '';
     if (infant.appointments && infant.appointments.length > 0) {
@@ -6102,8 +6134,8 @@ window.openStaffInfantModal = function(infant) {
                     <div><strong>PR:</strong> ${staffEscapeHtml(appt.pulse_rate || 'N/A')} bpm</div>
                     <div><strong>RR:</strong> ${staffEscapeHtml(appt.respiration_rate || 'N/A')} cpm</div>
                     <div><strong>BP:</strong> ${staffEscapeHtml(appt.blood_pressure || 'N/A')}</div>
-                    ${appt.height ? `<div><strong>Height:</strong> ${staffEscapeHtml(appt.height)}</div>` : ''}
-                    ${appt.weight ? `<div><strong>Weight:</strong> ${staffEscapeHtml(appt.weight)}</div>` : ''}
+                    ${appt.height ? `<div><strong>Height:</strong> ${staffEscapeHtml(formatInfantHeight(appt.height))}</div>` : ''}
+                    ${appt.weight ? `<div><strong>Weight:</strong> ${staffEscapeHtml(formatInfantWeight(appt.weight))}</div>` : ''}
                 </div>
 
                 ${appt.doctor_notes ? `<div style="font-size: 0.82rem; color: #334155; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px 12px; border-radius: 8px;">
@@ -6177,12 +6209,8 @@ window.openStaffInfantModal = function(infant) {
         </div>
         <p style="font-size: 0.82rem; color: #64748b; margin: 0 0 14px 0;">
             ${isGuardian
-                ? 'This patient is registered as <strong>Guardian</strong>. Biological mother and father details remain distinct and editable.'
-                : isFather
-                    ? 'Account holder is registered as <strong>Parent (Father)</strong>. Biological Father field is uneditable and linked to the account holder. Biological Mother field is editable.'
-                    : isMother
-                        ? 'Account holder is registered as <strong>Parent (Mother)</strong>. Biological Mother field is uneditable and linked to the account holder. Biological Father field is editable.'
-                        : 'This patient is registered as <strong>Parent</strong> (' + staffEscapeHtml(infant.role_label || 'Parent') + ').'}
+                ? 'This patient is registered as <strong>Guardian</strong>. Biological mother and father details can be recorded below if known.'
+                : 'Registered under patient account holder (' + staffEscapeHtml(infant.role_label || 'Parent') + ').'}
         </p>
 
         <form method="post" action="?page=patients&view=profiles" id="staffInfantEditForm">
@@ -6210,24 +6238,12 @@ window.openStaffInfantModal = function(infant) {
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
                 <div>
-                    <label style="display: flex; align-items: center; justify-content: space-between; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">
-                        <span>Biological Mother's Name:</span>
-                        ${isMother ? `<span style="background: #e0f2fe; color: #0369a1; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 6px;">🔒 Locked to Parent</span>` : `<span style="background: #f0fdf4; color: #15803d; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 6px;">✏️ Editable</span>`}
-                    </label>
+                    <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Biological Mother's Name:</label>
                     <input type="text" name="mother_name" value="${staffEscapeHtml(isMother ? (parentName || infant.mother_name || '') : (infant.mother_name || ''))}" ${isMother ? 'readonly' : ''} placeholder="${isGuardian ? 'Biological Mother (optional)' : (isMother ? 'Account Holder (Mother)' : 'e.g. Maria Santos')}" class="form-input-field" style="width: 100%; border: 1.5px solid ${isMother ? '#cbd5e1' : '#94a3b8'}; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; ${isMother ? 'background-color: #f1f5f9; color: #475569; cursor: not-allowed;' : 'background-color: #ffffff;'}">
-                    <span style="font-size: 0.74rem; color: ${isMother ? '#64748b' : '#0284c7'}; margin-top: 3px; display: block;">
-                        ${isMother ? 'Account holder is female (Mother). This field is uneditable.' : (isFather ? 'Account holder is Father; only mother field is editable.' : 'Biological mother of infant.')}
-                    </span>
                 </div>
                 <div>
-                    <label style="display: flex; align-items: center; justify-content: space-between; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">
-                        <span>Biological Father's Name:</span>
-                        ${isFather ? `<span style="background: #e0f2fe; color: #0369a1; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 6px;">🔒 Locked to Parent</span>` : `<span style="background: #f0fdf4; color: #15803d; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 6px;">✏️ Editable</span>`}
-                    </label>
+                    <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Biological Father's Name:</label>
                     <input type="text" name="father_name" value="${staffEscapeHtml(isFather ? (parentName || infant.father_name || '') : (infant.father_name || ''))}" ${isFather ? 'readonly' : ''} placeholder="${isGuardian ? 'Biological Father (optional)' : (isFather ? 'Account Holder (Father)' : 'e.g. Juan Santos')}" class="form-input-field" style="width: 100%; border: 1.5px solid ${isFather ? '#cbd5e1' : '#94a3b8'}; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; ${isFather ? 'background-color: #f1f5f9; color: #475569; cursor: not-allowed;' : 'background-color: #ffffff;'}">
-                    <span style="font-size: 0.74rem; color: ${isFather ? '#64748b' : '#0284c7'}; margin-top: 3px; display: block;">
-                        ${isFather ? 'Account holder is male (Father). This field is uneditable.' : (isMother ? 'Account holder is Mother; only father field is editable.' : 'Biological father of infant.')}
-                    </span>
                 </div>
             </div>
 

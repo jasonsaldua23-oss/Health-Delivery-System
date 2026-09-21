@@ -5764,6 +5764,26 @@ window.renderAdminSelectedInfant = function(index) {
         dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 8px 0 0 0;">No immunization doses recorded yet for this infant.</p>';
     }
 
+    const formatInfantHeight = (val) => {
+        if (!val) return '';
+        const s = String(val).trim();
+        if (!s) return '';
+        if (/(?:cm|centimeters?)$/i.test(s)) {
+            return s;
+        }
+        return s + ' cm';
+    };
+
+    const formatInfantWeight = (val) => {
+        if (!val) return '';
+        const s = String(val).trim();
+        if (!s) return '';
+        if (/(?:kg|kilograms?)$/i.test(s)) {
+            return s;
+        }
+        return s + ' kg';
+    };
+
     // Timeline appointments
     let timelineHtml = '';
     if (infant.appointments && infant.appointments.length > 0) {
@@ -5790,8 +5810,8 @@ window.renderAdminSelectedInfant = function(index) {
                     <div><strong>PR:</strong> ${adminEscapeHtml(appt.pulse_rate || 'N/A')} bpm</div>
                     <div><strong>RR:</strong> ${adminEscapeHtml(appt.respiration_rate || 'N/A')} cpm</div>
                     <div><strong>BP:</strong> ${adminEscapeHtml(appt.blood_pressure || 'N/A')}</div>
-                    ${appt.height ? `<div><strong>Height:</strong> ${adminEscapeHtml(appt.height)}</div>` : ''}
-                    ${appt.weight ? `<div><strong>Weight:</strong> ${adminEscapeHtml(appt.weight)}</div>` : ''}
+                    ${appt.height ? `<div><strong>Height:</strong> ${adminEscapeHtml(formatInfantHeight(appt.height))}</div>` : ''}
+                    ${appt.weight ? `<div><strong>Weight:</strong> ${adminEscapeHtml(formatInfantWeight(appt.weight))}</div>` : ''}
                 </div>
 
                 ${appt.doctor_notes ? `<div style="font-size: 0.82rem; color: #334155; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px 12px; border-radius: 8px;">
