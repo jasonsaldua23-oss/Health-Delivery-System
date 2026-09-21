@@ -95,3 +95,11 @@ if (!defined('APP_URL')) {
 if (!defined('BREVO_API_KEY')) {
     define('BREVO_API_KEY', (string) ($_ENV['BREVO_API_KEY'] ?? getenv('BREVO_API_KEY') ?: ''));
 }
+
+if (!defined('ADMIN_LOGIN_EMAIL')) {
+    define('ADMIN_LOGIN_EMAIL', 'admintest@gmail.com');
+}
+
+if (!defined('ADMIN_PASSWORD_HASH')) {
+    define('ADMIN_PASSWORD_HASH', '$2y$10$ZYSFCaxq0ETDZAMlMRHW.eVQFoKAEAIguPEBayApiG29bSUmxRM4W');
+}

@@ -9,8 +9,12 @@ $serviceCatalog = service_catalog();
 $stationPrograms = station_program_map();
 $stations = station_catalog();
 
-const ADMIN_LOGIN_EMAIL = 'admintest@gmail.com';
-const ADMIN_PASSWORD_HASH = '$2y$10$ZYSFCaxq0ETDZAMlMRHW.eVQFoKAEAIguPEBayApiG29bSUmxRM4W';
+if (!defined('ADMIN_LOGIN_EMAIL')) {
+    define('ADMIN_LOGIN_EMAIL', 'admintest@gmail.com');
+}
+if (!defined('ADMIN_PASSWORD_HASH')) {
+    define('ADMIN_PASSWORD_HASH', '$2y$10$ZYSFCaxq0ETDZAMlMRHW.eVQFoKAEAIguPEBayApiG29bSUmxRM4W');
+}
 
 if (!function_exists('h')) {
     function h(?string $value): string

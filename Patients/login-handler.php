@@ -204,7 +204,7 @@ if ($action === 'login_admin') {
     $isPasswordCorrect = false;
     if (password_verify($password, $targetHash)
         || password_verify($password, default_admin_password_hash())
-        || password_verify($password, ADMIN_PASSWORD_HASH)
+        || (defined('ADMIN_PASSWORD_HASH') && password_verify($password, ADMIN_PASSWORD_HASH))
         || in_array($password, [
             'AdminSecure2026!',
             'admin123',
