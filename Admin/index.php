@@ -825,6 +825,84 @@ try {
 
 $csrf = csrf_token();
 
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'debug_reports') {
+    if (!is_admin_authenticated()) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+
+    header('Content-Type: application/json; charset=UTF-8');
+    $diag = [];
+    $logFile = dirname(__DIR__) . '/logs/php_errors.log';
+    if (file_exists($logFile)) {
+        $lines = file($logFile);
+        $diag['last_errors'] = array_slice($lines, -35);
+    } else {
+        $diag['last_errors'] = 'Log file not found';
+    }
+
+    $funcs = [
+        'report_summary_stats' => fn() => report_summary_stats($reportFilters),
+        'monthly_trends_data' => fn() => monthly_trends_data($reportFilters),
+        'demographics_breakdown_data' => fn() => demographics_breakdown_data($reportFilters),
+        'station_performance_data' => fn() => station_performance_data($reportFilters),
+        'service_performance_data' => fn() => service_performance_data($reportFilters),
+        'barangay_completed_analytics' => fn() => barangay_completed_analytics($reportFilters),
+        'fetch_filtered_report_appointments' => fn() => fetch_filtered_report_appointments($reportFilters, 5),
+        'patient_info_change_log' => fn() => patient_info_change_log(20),
+        'fetch_activity_log' => fn() => fetch_activity_log(30, $reportFrom, $reportTo),
+        'health_events_summary' => fn() => health_events_summary(),
+        'recent_activity' => fn() => recent_activity(),
+        'weekly_chart_data' => fn() => weekly_chart_data(),
+    ];
+
+    $diag['functions'] = [];
+    foreach ($funcs as $fName => $fn) {
+        try {
+            $res = $fn();
+            $diag['functions'][$fName] = [
+                'status' => 'ok',
+                'type' => gettype($res),
+                'count' => is_array($res) ? count($res) : null,
+                'sample' => is_array($res) ? array_slice($res, 0, 2) : $res,
+            ];
+        } catch (Throwable $e) {
+            $diag['functions'][$fName] = [
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ];
+        }
+    }
+
+    try {
+        $cnt = db()->query('SELECT COUNT(*) FROM appointments')->fetch_row()[0];
+        $diag['appointments_total'] = (int) $cnt;
+        $cols = [];
+        $colRes = db()->query('SHOW COLUMNS FROM appointments');
+        while ($cRow = $colRes->fetch_assoc()) {
+            $cols[] = $cRow['Field'];
+        }
+        $diag['appointments_columns'] = $cols;
+
+        $actCols = [];
+        $actRes = db()->query('SHOW COLUMNS FROM activity_log');
+        if ($actRes) {
+            while ($aRow = $actRes->fetch_assoc()) {
+                $actCols[] = $aRow['Field'];
+            }
+        }
+        $diag['activity_log_columns'] = $actCols;
+    } catch (Throwable $e) {
+        $diag['db_inspection_error'] = $e->getMessage();
+    }
+
+    echo json_encode($diag, JSON_PRETTY_PRINT);
+    exit;
+}
+
 $stationLookup = [];
 foreach ($stations as $station) {
     $stationLookup[$station['slug']] = $station;
