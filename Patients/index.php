@@ -1498,6 +1498,447 @@ document.addEventListener('DOMContentLoaded', function () {
         this.value = this.value.replace(/\D/g, '').slice(0, 11);
     });
 
+    // -------------------------------------------------------------
+    // Generic Controller for Forgot Password & Mailer OTP Flow
+    // -------------------------------------------------------------
+    function createForgotPwController(options) {
+        const role = options.role;
+        const theme = options.theme;
+        const loginView = options.loginView;
+        const forgotView = options.forgotView;
+        const requestView = options.requestView;
+        const resetView = options.resetView;
+        const forgotLink = options.forgotLink;
+        const backToLoginBtn = options.backToLoginBtn;
+        const resetBackToLoginBtn = options.resetBackToLoginBtn;
+        const changeEmailBtn = options.changeEmailBtn;
+        const emailInput = options.emailInput;
+        const recoveryEmailInput = options.recoveryEmailInput;
+        const sendOtpBtn = options.sendOtpBtn;
+        const requestForm = options.requestForm;
+        const maskedEmailEl = options.maskedEmailEl;
+        const otpInput = options.otpInput;
+        const timerTextEl = options.timerTextEl;
+        const resendOtpBtn = options.resendOtpBtn;
+        const newPwInput = options.newPwInput;
+        const confirmPwInput = options.confirmPwInput;
+        const resetPwBtn = options.resetPwBtn;
+        const resetForm = options.resetForm;
+        const onOpenForgot = options.onOpenForgot;
+        const onReturnToLogin = options.onReturnToLogin;
+
+        let activeEmail = '';
+        let activeRecoveryEmail = '';
+        let countdownInterval = null;
+
+        function stopCountdown() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+        }
+
+        function startResendCountdown(seconds = 60) {
+            stopCountdown();
+            let remaining = seconds;
+            if (resendOtpBtn) resendOtpBtn.style.display = 'none';
+            if (timerTextEl) {
+                timerTextEl.style.display = 'inline';
+                timerTextEl.innerHTML = `Resend code in <strong>0:${remaining.toString().padStart(2, '0')}</strong>`;
+            }
+
+            countdownInterval = setInterval(() => {
+                remaining--;
+                if (remaining <= 0) {
+                    stopCountdown();
+                    if (timerTextEl) timerTextEl.style.display = 'none';
+                    if (resendOtpBtn) {
+                        resendOtpBtn.style.display = 'inline-block';
+                        resendOtpBtn.disabled = false;
+                    }
+                } else {
+                    if (timerTextEl) {
+                        timerTextEl.innerHTML = `Resend code in <strong>0:${remaining.toString().padStart(2, '0')}</strong>`;
+                    }
+                }
+            }, 1000);
+        }
+
+        function showRequestState() {
+            stopCountdown();
+            if (loginView) {
+                loginView.classList.add('hidden-step');
+                loginView.setAttribute('aria-hidden', 'true');
+            }
+            if (forgotView) {
+                forgotView.classList.remove('hidden-step');
+                forgotView.setAttribute('aria-hidden', 'false');
+            }
+            if (requestView) {
+                requestView.classList.remove('hidden-step');
+                requestView.setAttribute('aria-hidden', 'false');
+            }
+            if (resetView) {
+                resetView.classList.add('hidden-step');
+                resetView.setAttribute('aria-hidden', 'true');
+            }
+            if (onOpenForgot) onOpenForgot();
+            if (emailInput) {
+                setTimeout(() => emailInput.focus(), 150);
+            }
+        }
+
+        function showResetState(email, maskedEmail) {
+            activeEmail = email;
+            if (maskedEmailEl) maskedEmailEl.textContent = maskedEmail || email;
+            if (requestView) {
+                requestView.classList.add('hidden-step');
+                requestView.setAttribute('aria-hidden', 'true');
+            }
+            if (resetView) {
+                resetView.classList.remove('hidden-step');
+                resetView.setAttribute('aria-hidden', 'false');
+            }
+            if (otpInput) {
+                otpInput.value = '';
+                setTimeout(() => otpInput.focus(), 150);
+            }
+            if (newPwInput) newPwInput.value = '';
+            if (confirmPwInput) confirmPwInput.value = '';
+            startResendCountdown(60);
+        }
+
+        function returnToLogin() {
+            stopCountdown();
+            if (forgotView) {
+                forgotView.classList.add('hidden-step');
+                forgotView.setAttribute('aria-hidden', 'true');
+            }
+            if (requestView) {
+                requestView.classList.remove('hidden-step');
+                requestView.setAttribute('aria-hidden', 'false');
+            }
+            if (resetView) {
+                resetView.classList.add('hidden-step');
+                resetView.setAttribute('aria-hidden', 'true');
+            }
+            if (loginView) {
+                loginView.classList.remove('hidden-step');
+                loginView.setAttribute('aria-hidden', 'false');
+            }
+            if (emailInput) emailInput.value = '';
+            if (otpInput) otpInput.value = '';
+            if (newPwInput) newPwInput.value = '';
+            if (confirmPwInput) confirmPwInput.value = '';
+            if (recoveryEmailInput) recoveryEmailInput.value = '';
+            activeEmail = '';
+            activeRecoveryEmail = '';
+            if (onReturnToLogin) onReturnToLogin();
+        }
+
+        forgotLink?.addEventListener('click', function(e) {
+            e.preventDefault();
+            showRequestState();
+        });
+
+        backToLoginBtn?.addEventListener('click', function(e) {
+            e.preventDefault();
+            returnToLogin();
+        });
+
+        resetBackToLoginBtn?.addEventListener('click', function(e) {
+            e.preventDefault();
+            returnToLogin();
+        });
+
+        changeEmailBtn?.addEventListener('click', function(e) {
+            e.preventDefault();
+            stopCountdown();
+            if (resetView) {
+                resetView.classList.add('hidden-step');
+                resetView.setAttribute('aria-hidden', 'true');
+            }
+            if (requestView) {
+                requestView.classList.remove('hidden-step');
+                requestView.setAttribute('aria-hidden', 'false');
+            }
+            if (emailInput) emailInput.focus();
+        });
+
+        otpInput?.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '').slice(0, 6);
+        });
+
+        function handleSendOtp(e) {
+            e.preventDefault();
+            const identifier = (emailInput?.value || '').trim();
+            const recoveryEmail = (recoveryEmailInput?.value || '').trim();
+
+            if (!identifier) {
+                window.showSystemToast?.('Please enter your work email address or username.', { type: 'warning', theme: theme, title: 'Missing Information' });
+                return;
+            }
+            if (recoveryEmailInput && !recoveryEmail) {
+                window.showSystemToast?.('Please enter your personal recovery email.', { type: 'warning', theme: theme, title: 'Missing Information' });
+                return;
+            }
+
+            if (sendOtpBtn) {
+                sendOtpBtn.disabled = true;
+                sendOtpBtn.classList.add('is-loading');
+                sendOtpBtn.textContent = 'Sending Verification Code...';
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'request_password_otp');
+            formData.append('role', role);
+            formData.append('email', identifier);
+            if (recoveryEmail) {
+                formData.append('recovery_email', recoveryEmail);
+            }
+
+            fetch('login-handler.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (sendOtpBtn) {
+                    sendOtpBtn.disabled = false;
+                    sendOtpBtn.classList.remove('is-loading');
+                    sendOtpBtn.textContent = 'Send Verification Code';
+                }
+                if (data.success) {
+                    activeRecoveryEmail = recoveryEmail;
+                    window.showSystemToast?.(data.message || 'Verification code sent to your email.', { type: 'success', theme: theme, title: 'Code Dispatched' });
+                    showResetState(data.email || identifier, data.masked_email || identifier);
+                } else {
+                    window.showSystemToast?.(data.message || 'Unable to send verification code.', { type: 'error', theme: theme, title: 'Request Failed' });
+                }
+            })
+            .catch(() => {
+                if (sendOtpBtn) {
+                    sendOtpBtn.disabled = false;
+                    sendOtpBtn.classList.remove('is-loading');
+                    sendOtpBtn.textContent = 'Send Verification Code';
+                }
+                window.showSystemToast?.('Network error. Please try again.', { type: 'error', theme: theme, title: 'Connection Error' });
+            });
+        }
+
+        requestForm?.addEventListener('submit', handleSendOtp);
+
+        resendOtpBtn?.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!activeEmail) return;
+
+            resendOtpBtn.disabled = true;
+            resendOtpBtn.textContent = 'Resending...';
+
+            const formData = new FormData();
+            formData.append('action', 'request_password_otp');
+            formData.append('role', role);
+            formData.append('email', activeEmail);
+            if (activeRecoveryEmail) {
+                formData.append('recovery_email', activeRecoveryEmail);
+            }
+
+            fetch('login-handler.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                resendOtpBtn.disabled = false;
+                resendOtpBtn.textContent = 'Resend Code';
+                if (data.success) {
+                    window.showSystemToast?.('A fresh verification code was sent to your email.', { type: 'success', theme: theme, title: 'Code Resent' });
+                    startResendCountdown(60);
+                } else {
+                    window.showSystemToast?.(data.message || 'Unable to resend verification code.', { type: 'error', theme: theme, title: 'Resend Failed' });
+                }
+            })
+            .catch(() => {
+                resendOtpBtn.disabled = false;
+                resendOtpBtn.textContent = 'Resend Code';
+                window.showSystemToast?.('Network error during resend.', { type: 'error', theme: theme, title: 'Connection Error' });
+            });
+        });
+
+        resetForm?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const otpVal = (otpInput?.value || '').trim();
+            const newPw = (newPwInput?.value || '').trim();
+            const confirmPw = (confirmPwInput?.value || '').trim();
+
+            if (!otpVal || otpVal.length !== 6) {
+                window.showSystemToast?.('Please enter the 6-digit verification code.', { type: 'warning', theme: theme, title: 'Invalid Code' });
+                otpInput?.focus();
+                return;
+            }
+
+            if (!newPw || newPw.length < 6) {
+                window.showSystemToast?.('New password must be at least 6 characters long.', { type: 'warning', theme: theme, title: 'Password Too Short' });
+                newPwInput?.focus();
+                return;
+            }
+
+            if (newPw !== confirmPw) {
+                window.showSystemToast?.('New password and confirmation password do not match.', { type: 'error', theme: theme, title: 'Mismatch Error' });
+                confirmPwInput?.focus();
+                return;
+            }
+
+            if (resetPwBtn) {
+                resetPwBtn.disabled = true;
+                resetPwBtn.classList.add('is-loading');
+                resetPwBtn.textContent = 'Updating Password...';
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'verify_and_reset_password');
+            formData.append('role', role);
+            formData.append('email', activeEmail);
+            formData.append('otp', otpVal);
+            formData.append('new_password', newPw);
+            formData.append('confirm_password', confirmPw);
+
+            fetch('login-handler.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (resetPwBtn) {
+                    resetPwBtn.disabled = false;
+                    resetPwBtn.classList.remove('is-loading');
+                    resetPwBtn.textContent = 'Reset Password';
+                }
+                if (data.success) {
+                    window.showSystemToast?.(data.message || 'Password reset successfully! You may now sign in.', { type: 'success', theme: theme, title: 'Password Updated' });
+                    returnToLogin();
+                } else {
+                    window.showSystemToast?.(data.message || 'Password reset failed. Please check your verification code.', { type: 'error', theme: theme, title: 'Reset Failed' });
+                }
+            })
+            .catch(() => {
+                if (resetPwBtn) {
+                    resetPwBtn.disabled = false;
+                    resetPwBtn.classList.remove('is-loading');
+                    resetPwBtn.textContent = 'Reset Password';
+                }
+                window.showSystemToast?.('Network error. Please try again.', { type: 'error', theme: theme, title: 'Connection Error' });
+            });
+        });
+
+        return {
+            resetToLogin: returnToLogin,
+            stopTimer: stopCountdown
+        };
+    }
+
+    // Initialize Forgot Password for Patient Portal
+    const patientForgotCtrl = createForgotPwController({
+        role: 'patient',
+        theme: 'patient',
+        loginView: loginStep,
+        forgotView: document.getElementById('patientForgotStep'),
+        requestView: document.getElementById('patientForgotRequestView'),
+        resetView: document.getElementById('patientForgotResetView'),
+        forgotLink: document.getElementById('patientForgotPwLink'),
+        backToLoginBtn: document.getElementById('patientBackToLoginBtn'),
+        resetBackToLoginBtn: document.getElementById('patientResetBackToLoginBtn'),
+        changeEmailBtn: document.getElementById('patientChangeEmailBtn'),
+        emailInput: document.getElementById('patientForgotEmail'),
+        sendOtpBtn: document.getElementById('patientSendOtpBtn'),
+        requestForm: document.getElementById('patientForgotRequestForm'),
+        maskedEmailEl: document.getElementById('patientMaskedEmail'),
+        otpInput: document.getElementById('patientOtpInput'),
+        timerTextEl: document.getElementById('patientTimerText'),
+        resendOtpBtn: document.getElementById('patientResendOtpBtn'),
+        newPwInput: document.getElementById('patientNewPassword'),
+        confirmPwInput: document.getElementById('patientConfirmPassword'),
+        resetPwBtn: document.getElementById('patientResetPasswordBtn'),
+        resetForm: document.getElementById('patientForgotResetForm'),
+        onOpenForgot: () => showPatientStep('forgot'),
+        onReturnToLogin: () => showPatientStep('login')
+    });
+
+    // Initialize Forgot Password for Volunteer / Staff Portal
+    const volunteerForgotCtrl = createForgotPwController({
+        role: 'staff',
+        theme: 'volunteer',
+        loginView: document.getElementById('volunteerLoginView'),
+        forgotView: document.getElementById('volunteerForgotView'),
+        requestView: document.getElementById('volunteerForgotRequestView'),
+        resetView: document.getElementById('volunteerForgotResetView'),
+        forgotLink: document.getElementById('volunteerForgotPwLink'),
+        backToLoginBtn: document.getElementById('volunteerBackToLoginBtn'),
+        resetBackToLoginBtn: document.getElementById('volunteerResetBackToLoginBtn'),
+        changeEmailBtn: document.getElementById('volunteerChangeEmailBtn'),
+        emailInput: document.getElementById('volunteerForgotEmail'),
+        recoveryEmailInput: document.getElementById('volunteerForgotRecoveryEmail'),
+        sendOtpBtn: document.getElementById('volunteerSendOtpBtn'),
+        requestForm: document.getElementById('volunteerForgotRequestForm'),
+        maskedEmailEl: document.getElementById('volunteerMaskedEmail'),
+        otpInput: document.getElementById('volunteerOtpInput'),
+        timerTextEl: document.getElementById('volunteerTimerText'),
+        resendOtpBtn: document.getElementById('volunteerResendOtpBtn'),
+        newPwInput: document.getElementById('volunteerNewPassword'),
+        confirmPwInput: document.getElementById('volunteerConfirmPassword'),
+        resetPwBtn: document.getElementById('volunteerResetPasswordBtn'),
+        resetForm: document.getElementById('volunteerForgotResetForm'),
+        onOpenForgot: () => {
+            const t = document.getElementById('volunteerModalTitle');
+            const s = document.getElementById('volunteerModalSubtitle');
+            if (t) t.textContent = 'Forgot Password';
+            if (s) s.textContent = 'Health Center Staff Password Recovery';
+        },
+        onReturnToLogin: () => {
+            const t = document.getElementById('volunteerModalTitle');
+            const s = document.getElementById('volunteerModalSubtitle');
+            if (t) t.textContent = 'Volunteer Login';
+            if (s) s.textContent = 'Health Center Staff Portal';
+        }
+    });
+
+    // Initialize Forgot Password for Admin Portal
+    const adminForgotCtrl = createForgotPwController({
+        role: 'admin',
+        theme: 'admin',
+        loginView: document.getElementById('adminLoginView'),
+        forgotView: document.getElementById('adminForgotView'),
+        requestView: document.getElementById('adminForgotRequestView'),
+        resetView: document.getElementById('adminForgotResetView'),
+        forgotLink: document.getElementById('adminForgotPwLink'),
+        backToLoginBtn: document.getElementById('adminBackToLoginBtn'),
+        resetBackToLoginBtn: document.getElementById('adminResetBackToLoginBtn'),
+        changeEmailBtn: document.getElementById('adminChangeEmailBtn'),
+        emailInput: document.getElementById('adminForgotEmail'),
+        sendOtpBtn: document.getElementById('adminSendOtpBtn'),
+        requestForm: document.getElementById('adminForgotRequestForm'),
+        maskedEmailEl: document.getElementById('adminMaskedEmail'),
+        otpInput: document.getElementById('adminOtpInput'),
+        timerTextEl: document.getElementById('adminTimerText'),
+        resendOtpBtn: document.getElementById('adminResendOtpBtn'),
+        newPwInput: document.getElementById('adminNewPassword'),
+        confirmPwInput: document.getElementById('adminConfirmPassword'),
+        resetPwBtn: document.getElementById('adminResetPasswordBtn'),
+        resetForm: document.getElementById('adminForgotResetForm'),
+        onOpenForgot: () => {
+            const t = document.getElementById('adminModalTitle');
+            const s = document.getElementById('adminModalSubtitle');
+            if (t) t.textContent = 'Forgot Password';
+            if (s) s.textContent = 'System Administration Password Recovery';
+        },
+        onReturnToLogin: () => {
+            const t = document.getElementById('adminModalTitle');
+            const s = document.getElementById('adminModalSubtitle');
+            if (t) t.textContent = 'Admin Login';
+            if (s) s.textContent = 'System Administration Portal';
+        }
+    });
+
     function setActivePortal(portal) {
         document.querySelectorAll('.portal-card').forEach((button) => {
             const isMatch = button.dataset.portal === portal;
@@ -1540,12 +1981,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function openPatientModal() {
+        if (!patientModal) return;
         patientModal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
         showPatientStep('choice');
     }
 
     function closePatientModal() {
+        if (!patientModal) return;
         patientModal.classList.add('hidden');
         document.body.style.overflow = 'auto';
         patientForgotCtrl?.resetToLogin();
@@ -1553,24 +1996,28 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function openVolunteerModal() {
+        if (!volunteerModal) return;
         volunteerForgotCtrl?.resetToLogin();
         volunteerModal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     }
 
     function closeVolunteerModal() {
+        if (!volunteerModal) return;
         volunteerModal.classList.add('hidden');
         document.body.style.overflow = 'auto';
         volunteerForgotCtrl?.resetToLogin();
     }
 
     function openAdminModal() {
+        if (!adminModal) return;
         adminForgotCtrl?.resetToLogin();
         adminModal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     }
 
     function closeAdminModal() {
+        if (!adminModal) return;
         adminModal.classList.add('hidden');
         document.body.style.overflow = 'auto';
         adminForgotCtrl?.resetToLogin();
@@ -1612,6 +2059,16 @@ document.addEventListener('DOMContentLoaded', function () {
             closeAdminModal();
         }
     });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            if (patientModal && !patientModal.classList.contains('hidden')) closePatientModal();
+            if (volunteerModal && !volunteerModal.classList.contains('hidden')) closeVolunteerModal();
+            if (adminModal && !adminModal.classList.contains('hidden')) closeAdminModal();
+            if (privacyConsentModal && !privacyConsentModal.classList.contains('hidden')) closePrivacyModal();
+        }
+    });
+
 
     firstTimerBtn?.addEventListener('click', function() {
         showPatientStep('firstTimer');
@@ -2053,491 +2510,6 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(() => {
             window.location.href = '../Admin/index.php?page=dashboard';
         });
-    });
-
-    // -------------------------------------------------------------
-    // Generic Controller for Forgot Password & Mailer OTP Flow
-    // -------------------------------------------------------------
-    function createForgotPwController(options) {
-        const role = options.role;
-        const theme = options.theme;
-        const loginView = options.loginView;
-        const forgotView = options.forgotView;
-        const requestView = options.requestView;
-        const resetView = options.resetView;
-        const forgotLink = options.forgotLink;
-        const backToLoginBtn = options.backToLoginBtn;
-        const resetBackToLoginBtn = options.resetBackToLoginBtn;
-        const changeEmailBtn = options.changeEmailBtn;
-        const emailInput = options.emailInput;
-        const sendOtpBtn = options.sendOtpBtn;
-        const requestForm = options.requestForm;
-        const maskedEmailEl = options.maskedEmailEl;
-        const otpInput = options.otpInput;
-        const timerTextEl = options.timerTextEl;
-        const resendOtpBtn = options.resendOtpBtn;
-        const newPwInput = options.newPwInput;
-        const confirmPwInput = options.confirmPwInput;
-        const resetPwBtn = options.resetPwBtn;
-        const resetForm = options.resetForm;
-        const onOpenForgot = options.onOpenForgot;
-        const onReturnToLogin = options.onReturnToLogin;
-
-        let activeEmail = '';
-        let timerInterval = null;
-        let remainingSeconds = 60;
-
-        function startResendCountdown(seconds = 60) {
-            clearInterval(timerInterval);
-            remainingSeconds = seconds;
-            if (resendOtpBtn) resendOtpBtn.style.display = 'none';
-            if (timerTextEl) timerTextEl.style.display = 'inline';
-
-            function updateTimer() {
-                const mins = Math.floor(remainingSeconds / 60);
-                const secs = remainingSeconds % 60;
-                const formatted = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-                if (timerTextEl) {
-                    timerTextEl.innerHTML = `Resend code in <strong>${formatted}</strong>`;
-                }
-                if (remainingSeconds <= 0) {
-                    clearInterval(timerInterval);
-                    if (timerTextEl) timerTextEl.style.display = 'none';
-                    if (resendOtpBtn) resendOtpBtn.style.display = 'inline';
-                }
-                remainingSeconds--;
-            }
-
-            updateTimer();
-            timerInterval = setInterval(updateTimer, 1000);
-        }
-
-        function stopCountdown() {
-            clearInterval(timerInterval);
-        }
-
-        function showRequestState() {
-            stopCountdown();
-            if (loginView) {
-                loginView.classList.add('hidden-step');
-                loginView.setAttribute('aria-hidden', 'true');
-            }
-            if (forgotView) {
-                forgotView.classList.remove('hidden-step');
-                forgotView.setAttribute('aria-hidden', 'false');
-            }
-            if (requestView) {
-                requestView.classList.remove('hidden-step');
-                requestView.setAttribute('aria-hidden', 'false');
-            }
-            if (resetView) {
-                resetView.classList.add('hidden-step');
-                resetView.setAttribute('aria-hidden', 'true');
-            }
-            if (onOpenForgot) onOpenForgot();
-            if (emailInput) {
-                setTimeout(() => emailInput.focus(), 150);
-            }
-        }
-
-        function showResetState(email, maskedEmail) {
-            activeEmail = email;
-            if (maskedEmailEl) maskedEmailEl.textContent = maskedEmail || email;
-            if (requestView) {
-                requestView.classList.add('hidden-step');
-                requestView.setAttribute('aria-hidden', 'true');
-            }
-            if (resetView) {
-                resetView.classList.remove('hidden-step');
-                resetView.setAttribute('aria-hidden', 'false');
-            }
-            if (otpInput) {
-                otpInput.value = '';
-                setTimeout(() => otpInput.focus(), 150);
-            }
-            if (newPwInput) newPwInput.value = '';
-            if (confirmPwInput) confirmPwInput.value = '';
-            startResendCountdown(60);
-        }
-
-        function returnToLogin() {
-            stopCountdown();
-            if (forgotView) {
-                forgotView.classList.add('hidden-step');
-                forgotView.setAttribute('aria-hidden', 'true');
-            }
-            if (requestView) {
-                requestView.classList.remove('hidden-step');
-                requestView.setAttribute('aria-hidden', 'false');
-            }
-            if (resetView) {
-                resetView.classList.add('hidden-step');
-                resetView.setAttribute('aria-hidden', 'true');
-            }
-            if (loginView) {
-                loginView.classList.remove('hidden-step');
-                loginView.setAttribute('aria-hidden', 'false');
-            }
-            if (otpInput) otpInput.value = '';
-            if (newPwInput) newPwInput.value = '';
-            if (confirmPwInput) confirmPwInput.value = '';
-            if (recoveryEmailInput) recoveryEmailInput.value = '';
-            activeEmail = '';
-            activeRecoveryEmail = '';
-            if (onReturnToLogin) onReturnToLogin();
-        }
-
-        function startResendCountdown(seconds) {
-            stopCountdown();
-            let remaining = seconds;
-            if (resendOtpBtn) resendOtpBtn.style.display = 'none';
-            if (timerTextEl) {
-                timerTextEl.style.display = 'inline';
-                timerTextEl.innerHTML = `Resend code in <strong>0:${remaining.toString().padStart(2, '0')}</strong>`;
-            }
-
-            countdownInterval = setInterval(() => {
-                remaining--;
-                if (remaining <= 0) {
-                    stopCountdown();
-                    if (timerTextEl) timerTextEl.style.display = 'none';
-                    if (resendOtpBtn) {
-                        resendOtpBtn.style.display = 'inline-block';
-                        resendOtpBtn.disabled = false;
-                    }
-                } else {
-                    if (timerTextEl) {
-                        timerTextEl.innerHTML = `Resend code in <strong>0:${remaining.toString().padStart(2, '0')}</strong>`;
-                    }
-                }
-            }, 1000);
-        }
-
-        function stopCountdown() {
-            if (countdownInterval) {
-                clearInterval(countdownInterval);
-                countdownInterval = null;
-            }
-        }
-
-        forgotLink?.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (loginView) {
-                loginView.classList.add('hidden-step');
-                loginView.setAttribute('aria-hidden', 'true');
-            }
-            if (resetView) {
-                resetView.classList.add('hidden-step');
-                resetView.setAttribute('aria-hidden', 'true');
-            }
-            if (forgotView) {
-                forgotView.classList.remove('hidden-step');
-                forgotView.setAttribute('aria-hidden', 'false');
-            }
-            if (requestView) {
-                requestView.classList.remove('hidden-step');
-                requestView.setAttribute('aria-hidden', 'false');
-            }
-            onOpenForgot?.();
-            if (emailInput) emailInput.focus();
-        });
-
-        backToLoginBtn?.addEventListener('click', function(e) {
-            e.preventDefault();
-            returnToLogin();
-        });
-
-        resetBackToLoginBtn?.addEventListener('click', function(e) {
-            e.preventDefault();
-            returnToLogin();
-        });
-
-        changeEmailBtn?.addEventListener('click', function(e) {
-            e.preventDefault();
-            stopCountdown();
-            if (resetView) {
-                resetView.classList.add('hidden-step');
-                resetView.setAttribute('aria-hidden', 'true');
-            }
-            if (requestView) {
-                requestView.classList.remove('hidden-step');
-                requestView.setAttribute('aria-hidden', 'false');
-            }
-            if (emailInput) emailInput.focus();
-        });
-
-        otpInput?.addEventListener('input', function() {
-            this.value = this.value.replace(/\D/g, '').slice(0, 6);
-        });
-
-        function handleSendOtp(e) {
-            e.preventDefault();
-            const identifier = (emailInput?.value || '').trim();
-            const recoveryEmail = (recoveryEmailInput?.value || '').trim();
-
-            if (!identifier) {
-                window.showSystemToast?.('Please enter your work email address or username.', { type: 'warning', theme: theme, title: 'Missing Information' });
-                return;
-            }
-            if (recoveryEmailInput && !recoveryEmail) {
-                window.showSystemToast?.('Please enter your personal recovery email.', { type: 'warning', theme: theme, title: 'Missing Information' });
-                return;
-            }
-
-            if (sendOtpBtn) {
-                sendOtpBtn.disabled = true;
-                sendOtpBtn.classList.add('is-loading');
-                sendOtpBtn.textContent = 'Sending Verification Code...';
-            }
-
-            const formData = new FormData();
-            formData.append('action', 'request_password_otp');
-            formData.append('role', role);
-            formData.append('email', identifier);
-            if (recoveryEmail) {
-                formData.append('recovery_email', recoveryEmail);
-            }
-
-            fetch('login-handler.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (sendOtpBtn) {
-                    sendOtpBtn.disabled = false;
-                    sendOtpBtn.classList.remove('is-loading');
-                    sendOtpBtn.textContent = 'Send Verification Code';
-                }
-                if (data.success) {
-                    activeRecoveryEmail = recoveryEmail;
-                    window.showSystemToast?.(data.message || 'Verification code sent to your email.', { type: 'success', theme: theme, title: 'Code Dispatched' });
-                    showResetState(data.email || identifier, data.masked_email || identifier);
-                } else {
-                    window.showSystemToast?.(data.message || 'Unable to send verification code.', { type: 'error', theme: theme, title: 'Request Failed' });
-                }
-            })
-            .catch(() => {
-                if (sendOtpBtn) {
-                    sendOtpBtn.disabled = false;
-                    sendOtpBtn.classList.remove('is-loading');
-                    sendOtpBtn.textContent = 'Send Verification Code';
-                }
-                window.showSystemToast?.('Network error. Please try again.', { type: 'error', theme: theme, title: 'Connection Error' });
-            });
-        }
-
-        requestForm?.addEventListener('submit', handleSendOtp);
-
-        resendOtpBtn?.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (!activeEmail) return;
-
-            resendOtpBtn.disabled = true;
-            resendOtpBtn.textContent = 'Resending...';
-
-            const formData = new FormData();
-            formData.append('action', 'request_password_otp');
-            formData.append('role', role);
-            formData.append('email', activeEmail);
-            if (activeRecoveryEmail) {
-                formData.append('recovery_email', activeRecoveryEmail);
-            }
-
-            fetch('login-handler.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                resendOtpBtn.disabled = false;
-                resendOtpBtn.textContent = 'Resend Code';
-                if (data.success) {
-                    window.showSystemToast?.('A fresh verification code was sent to your email.', { type: 'success', theme: theme, title: 'Code Resent' });
-                    startResendCountdown(60);
-                } else {
-                    window.showSystemToast?.(data.message || 'Unable to resend verification code.', { type: 'error', theme: theme, title: 'Resend Failed' });
-                }
-            })
-            .catch(() => {
-                resendOtpBtn.disabled = false;
-                resendOtpBtn.textContent = 'Resend Code';
-                window.showSystemToast?.('Network error during resend.', { type: 'error', theme: theme, title: 'Connection Error' });
-            });
-        });
-
-        resetForm?.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const otpVal = (otpInput?.value || '').trim();
-            const newPw = (newPwInput?.value || '').trim();
-            const confirmPw = (confirmPwInput?.value || '').trim();
-
-            if (!otpVal || otpVal.length !== 6) {
-                window.showSystemToast?.('Please enter the 6-digit verification code.', { type: 'warning', theme: theme, title: 'Invalid Code' });
-                otpInput?.focus();
-                return;
-            }
-
-            if (!newPw || newPw.length < 6) {
-                window.showSystemToast?.('New password must be at least 6 characters long.', { type: 'warning', theme: theme, title: 'Password Too Short' });
-                newPwInput?.focus();
-                return;
-            }
-
-            if (newPw !== confirmPw) {
-                window.showSystemToast?.('New password and confirmation password do not match.', { type: 'error', theme: theme, title: 'Mismatch Error' });
-                confirmPwInput?.focus();
-                return;
-            }
-
-            if (resetPwBtn) {
-                resetPwBtn.disabled = true;
-                resetPwBtn.classList.add('is-loading');
-                resetPwBtn.textContent = 'Updating Password...';
-            }
-
-            const formData = new FormData();
-            formData.append('action', 'verify_and_reset_password');
-            formData.append('role', role);
-            formData.append('email', activeEmail);
-            formData.append('otp', otpVal);
-            formData.append('new_password', newPw);
-            formData.append('confirm_password', confirmPw);
-
-            fetch('login-handler.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (resetPwBtn) {
-                    resetPwBtn.disabled = false;
-                    resetPwBtn.classList.remove('is-loading');
-                    resetPwBtn.textContent = 'Reset Password';
-                }
-                if (data.success) {
-                    window.showSystemToast?.(data.message || 'Password reset successfully! You may now sign in.', { type: 'success', theme: theme, title: 'Password Updated' });
-                    returnToLogin();
-                } else {
-                    window.showSystemToast?.(data.message || 'Password reset failed. Please check your verification code.', { type: 'error', theme: theme, title: 'Reset Failed' });
-                }
-            })
-            .catch(() => {
-                if (resetPwBtn) {
-                    resetPwBtn.disabled = false;
-                    resetPwBtn.classList.remove('is-loading');
-                    resetPwBtn.textContent = 'Reset Password';
-                }
-                window.showSystemToast?.('Network error. Please try again.', { type: 'error', theme: theme, title: 'Connection Error' });
-            });
-        });
-
-        return {
-            resetToLogin: returnToLogin,
-            stopTimer: stopCountdown
-        };
-    }
-
-    // Initialize Forgot Password for Patient Portal
-    const patientForgotCtrl = createForgotPwController({
-        role: 'patient',
-        theme: 'patient',
-        loginView: loginStep,
-        forgotView: document.getElementById('patientForgotStep'),
-        requestView: document.getElementById('patientForgotRequestView'),
-        resetView: document.getElementById('patientForgotResetView'),
-        forgotLink: document.getElementById('patientForgotPwLink'),
-        backToLoginBtn: document.getElementById('patientBackToLoginBtn'),
-        resetBackToLoginBtn: document.getElementById('patientResetBackToLoginBtn'),
-        changeEmailBtn: document.getElementById('patientChangeEmailBtn'),
-        emailInput: document.getElementById('patientForgotEmail'),
-        sendOtpBtn: document.getElementById('patientSendOtpBtn'),
-        requestForm: document.getElementById('patientForgotRequestForm'),
-        maskedEmailEl: document.getElementById('patientMaskedEmail'),
-        otpInput: document.getElementById('patientOtpInput'),
-        timerTextEl: document.getElementById('patientTimerText'),
-        resendOtpBtn: document.getElementById('patientResendOtpBtn'),
-        newPwInput: document.getElementById('patientNewPassword'),
-        confirmPwInput: document.getElementById('patientConfirmPassword'),
-        resetPwBtn: document.getElementById('patientResetPasswordBtn'),
-        resetForm: document.getElementById('patientForgotResetForm'),
-        onOpenForgot: () => showPatientStep('forgot'),
-        onReturnToLogin: () => showPatientStep('login')
-    });
-
-    // Initialize Forgot Password for Volunteer / Staff Portal
-    const volunteerForgotCtrl = createForgotPwController({
-        role: 'staff',
-        theme: 'volunteer',
-        loginView: document.getElementById('volunteerLoginView'),
-        forgotView: document.getElementById('volunteerForgotView'),
-        requestView: document.getElementById('volunteerForgotRequestView'),
-        resetView: document.getElementById('volunteerForgotResetView'),
-        forgotLink: document.getElementById('volunteerForgotPwLink'),
-        backToLoginBtn: document.getElementById('volunteerBackToLoginBtn'),
-        resetBackToLoginBtn: document.getElementById('volunteerResetBackToLoginBtn'),
-        changeEmailBtn: document.getElementById('volunteerChangeEmailBtn'),
-        emailInput: document.getElementById('volunteerForgotEmail'),
-        recoveryEmailInput: document.getElementById('volunteerForgotRecoveryEmail'),
-        sendOtpBtn: document.getElementById('volunteerSendOtpBtn'),
-        requestForm: document.getElementById('volunteerForgotRequestForm'),
-        maskedEmailEl: document.getElementById('volunteerMaskedEmail'),
-        otpInput: document.getElementById('volunteerOtpInput'),
-        timerTextEl: document.getElementById('volunteerTimerText'),
-        resendOtpBtn: document.getElementById('volunteerResendOtpBtn'),
-        newPwInput: document.getElementById('volunteerNewPassword'),
-        confirmPwInput: document.getElementById('volunteerConfirmPassword'),
-        resetPwBtn: document.getElementById('volunteerResetPasswordBtn'),
-        resetForm: document.getElementById('volunteerForgotResetForm'),
-        onOpenForgot: () => {
-            const t = document.getElementById('volunteerModalTitle');
-            const s = document.getElementById('volunteerModalSubtitle');
-            if (t) t.textContent = 'Forgot Password';
-            if (s) s.textContent = 'Health Center Staff Password Recovery';
-        },
-        onReturnToLogin: () => {
-            const t = document.getElementById('volunteerModalTitle');
-            const s = document.getElementById('volunteerModalSubtitle');
-            if (t) t.textContent = 'Volunteer Login';
-            if (s) s.textContent = 'Health Center Staff Portal';
-        }
-    });
-
-    // Initialize Forgot Password for Admin Portal
-    const adminForgotCtrl = createForgotPwController({
-        role: 'admin',
-        theme: 'admin',
-        loginView: document.getElementById('adminLoginView'),
-        forgotView: document.getElementById('adminForgotView'),
-        requestView: document.getElementById('adminForgotRequestView'),
-        resetView: document.getElementById('adminForgotResetView'),
-        forgotLink: document.getElementById('adminForgotPwLink'),
-        backToLoginBtn: document.getElementById('adminBackToLoginBtn'),
-        resetBackToLoginBtn: document.getElementById('adminResetBackToLoginBtn'),
-        changeEmailBtn: document.getElementById('adminChangeEmailBtn'),
-        emailInput: document.getElementById('adminForgotEmail'),
-        sendOtpBtn: document.getElementById('adminSendOtpBtn'),
-        requestForm: document.getElementById('adminForgotRequestForm'),
-        maskedEmailEl: document.getElementById('adminMaskedEmail'),
-        otpInput: document.getElementById('adminOtpInput'),
-        timerTextEl: document.getElementById('adminTimerText'),
-        resendOtpBtn: document.getElementById('adminResendOtpBtn'),
-        newPwInput: document.getElementById('adminNewPassword'),
-        confirmPwInput: document.getElementById('adminConfirmPassword'),
-        resetPwBtn: document.getElementById('adminResetPasswordBtn'),
-        resetForm: document.getElementById('adminForgotResetForm'),
-        onOpenForgot: () => {
-            const t = document.getElementById('adminModalTitle');
-            const s = document.getElementById('adminModalSubtitle');
-            if (t) t.textContent = 'Forgot Password';
-            if (s) s.textContent = 'System Administration Password Recovery';
-        },
-        onReturnToLogin: () => {
-            const t = document.getElementById('adminModalTitle');
-            const s = document.getElementById('adminModalSubtitle');
-            if (t) t.textContent = 'Admin Login';
-            if (s) s.textContent = 'System Administration Portal';
-        }
     });
 
     document.querySelectorAll('.toggle-password').forEach((toggle) => {
