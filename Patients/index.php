@@ -2431,20 +2431,35 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('email', email);
         formData.append('password', password);
         
+        const submitBtn = document.getElementById('loginSubmitBtn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Signing in...';
+        }
+
         fetch('login-handler.php', {
             method: 'POST',
             body: formData
         })
         .then(response => response.json())
         .then(data => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
+            }
             if (data.success) {
-                window.location.href = 'dashboard.php';
+                window.location.href = data.redirect || 'dashboard.php';
             } else {
                 window.showSystemToast?.(data.message || 'Login failed. Please check your credentials.', { type: 'error', theme: 'patient', title: 'Login Failed' });
             }
         })
-        .catch(() => {
-            window.location.href = 'dashboard.php';
+        .catch(err => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
+            }
+            console.error('Patient login error:', err);
+            window.showSystemToast?.('Unable to connect to the login service. Please verify your connection.', { type: 'error', theme: 'patient', title: 'Connection Error' });
         });
     });
 
@@ -2463,20 +2478,35 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('email', email);
         formData.append('password', password);
 
+        const submitBtn = document.getElementById('volunteerSignInBtn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Signing in...';
+        }
+
         fetch('login-handler.php', {
             method: 'POST',
             body: formData
         })
         .then(response => response.json())
         .then(data => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
+            }
             if (data.success) {
                 window.location.href = data.redirect || '../Barangay Health Station/index.php';
             } else {
                 window.showSystemToast?.(data.message || 'Staff login failed. Please check your credentials.', { type: 'error', theme: 'volunteer', title: 'Authentication Failed' });
             }
         })
-        .catch(() => {
-            window.location.href = '../Barangay Health Station/index.php';
+        .catch(err => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
+            }
+            console.error('Staff login error:', err);
+            window.showSystemToast?.('Unable to connect to the login service. Please verify your connection.', { type: 'error', theme: 'volunteer', title: 'Connection Error' });
         });
     });
 
@@ -2495,20 +2525,35 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('username', username);
         formData.append('password', password);
 
+        const submitBtn = document.getElementById('adminSignInBtn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Signing in...';
+        }
+
         fetch('login-handler.php', {
             method: 'POST',
             body: formData
         })
         .then(response => response.json())
         .then(data => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
+            }
             if (data.success) {
                 window.location.href = data.redirect || '../Admin/index.php?page=dashboard';
             } else {
                 window.showSystemToast?.(data.message || 'Invalid admin credentials.', { type: 'error', theme: 'admin', title: 'Authentication Failed' });
             }
         })
-        .catch(() => {
-            window.location.href = '../Admin/index.php?page=dashboard';
+        .catch(err => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
+            }
+            console.error('Admin login error:', err);
+            window.showSystemToast?.('Unable to connect to the login service. Please check your network connection.', { type: 'error', theme: 'admin', title: 'Connection Error' });
         });
     });
 
@@ -2533,6 +2578,23 @@ document.addEventListener('DOMContentLoaded', function () {
             selector.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     }
+
+    // Auto-open requested portal modal based on URL hash
+    function handleInitialHash() {
+        const hash = (window.location.hash || '').toLowerCase();
+        if (hash === '#admin' || hash === '#portal-admin') {
+            setActivePortal('admin');
+            openAdminModal();
+        } else if (hash === '#staff' || hash === '#volunteer' || hash === '#portal-staff' || hash === '#portal-volunteer') {
+            setActivePortal('volunteer');
+            openVolunteerModal();
+        } else if (hash === '#patient' || hash === '#portal-patient') {
+            setActivePortal('patient');
+            openPatientModal();
+        }
+    }
+    handleInitialHash();
+    window.addEventListener('hashchange', handleInitialHash);
 });
 </script>
 <script src="../shared/pwa-install.js" defer></script>
