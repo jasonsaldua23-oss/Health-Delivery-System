@@ -102,12 +102,16 @@ if (!function_exists('render_patient_profile_body')) {
     {
         ob_start();
         $patInitials = strtoupper(substr((string) ($prof['first_name'] ?? 'P'), 0, 1) . substr((string) ($prof['last_name'] ?? 'U'), 0, 1));
-        $patHasPhoto = !empty($prof['photo_path']);
+        $patPhotoUrl = resolve_patient_photo_url((string) ($prof['photo_path'] ?? ''), 'staff');
         ?>
         <!-- Patient Identity & Demographics Header -->
         <div class="patient-profile-header-card">
             <div class="patient-profile-avatar-box">
-                <div class="patient-profile-initials-lg"><?= h($patInitials); ?></div>
+                <?php if ($patPhotoUrl !== ''): ?>
+                    <img src="<?= h($patPhotoUrl); ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:14px;display:block;" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'patient-profile-initials-lg\'><?= addslashes(h($patInitials)); ?></div>';">
+                <?php else: ?>
+                    <div class="patient-profile-initials-lg"><?= h($patInitials); ?></div>
+                <?php endif; ?>
                 <span class="patient-avatar-emblem-badge" title="Registered Health Record">
                     <?= staff_icon('shield'); ?>
                 </span>
@@ -2541,16 +2545,12 @@ for ($i = 0; $i < 6; $i++) {
                                                     <?php foreach ($infantSubProfiles as $infant): ?>
                                                         <?php
                                                         $infPhotoRaw = (string) ($infant['latest_photo'] ?: $infant['photo_path'] ?: '');
-                                                        if ($infPhotoRaw !== '' && !str_starts_with($infPhotoRaw, 'http') && !str_starts_with($infPhotoRaw, 'data:') && !str_starts_with($infPhotoRaw, '/')) {
-                                                            $infPhotoSrc = '../Patients/' . ltrim(str_replace('../Patients/', '', $infPhotoRaw), '/');
-                                                        } else {
-                                                            $infPhotoSrc = $infPhotoRaw;
-                                                        }
+                                                        $infPhotoSrc = resolve_patient_photo_url($infPhotoRaw, 'staff');
                                                         ?>
                                                         <div class="infant-popup-card-item" onclick="openStaffInfantModal(<?= htmlspecialchars(json_encode($infant), ENT_QUOTES, 'UTF-8'); ?>)" title="Click to view full record and details">
                                                             <div class="infant-popup-avatar">
                                                                 <?php if ($infPhotoSrc !== ''): ?>
-                                                                    <img src="<?= h($infPhotoSrc); ?>" alt="Infant Photo">
+                                                                    <img src="<?= h($infPhotoSrc); ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" onerror="this.onerror=null; this.parentElement.innerHTML='<?= addslashes(staff_icon('baby')); ?>';">
                                                                 <?php else: ?>
                                                                     <?= staff_icon('baby'); ?>
                                                                 <?php endif; ?>
@@ -3873,8 +3873,11 @@ for ($i = 0; $i < 6; $i++) {
                                          data-is-verified-today="<?= $patHasPhotoVerifiedToday ? '1' : '0'; ?>"
                                          style="<?= $matchesCurrentFilter ? 'display:flex;' : 'display:none;'; ?>">
                                         <div class="capture-pat-avatar">
-                                            <?php if ($patHasPhoto): ?>
-                                                <img src="../Patients/<?= h((string) $pat['photo_path']); ?>" alt="<?= h(full_name($pat)); ?>">
+                                            <?php 
+                                            $capPhotoUrl = resolve_patient_photo_url((string) ($pat['photo_path'] ?? ''), 'staff');
+                                            if ($capPhotoUrl !== ''): 
+                                            ?>
+                                                <img src="<?= h($capPhotoUrl); ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'capture-pat-init\'><?= addslashes(h($initials)); ?></div>';">
                                             <?php else: ?>
                                                 <div class="capture-pat-init"><?= h($initials); ?></div>
                                             <?php endif; ?>
@@ -4686,11 +4689,15 @@ for ($i = 0; $i < 6; $i++) {
                                     <!-- Compact Patient Identity Header Strip -->
                                     <div class="patient-modal-banner">
                                         <div class="patient-modal-avatar-wrap">
-                                            <?php if ((string) ($selectedRemarksAppointment['photo_path'] ?? '') !== ''): ?>
-                                                <img src="../Patients/<?= h((string) $selectedRemarksAppointment['photo_path']); ?>" alt="<?= h(full_name($selectedRemarksAppointment)); ?> photo" class="patient-modal-thumb">
+                                            <?php 
+                                            $remPhotoUrl = resolve_patient_photo_url((string) ($selectedRemarksAppointment['photo_path'] ?? ''), 'staff');
+                                            $remInitials = strtoupper(substr((string) ($selectedRemarksAppointment['first_name'] ?? 'P'), 0, 1) . substr((string) ($selectedRemarksAppointment['last_name'] ?? 'U'), 0, 1));
+                                            if ($remPhotoUrl !== ''): 
+                                            ?>
+                                                <img src="<?= h($remPhotoUrl); ?>" alt="" class="patient-modal-thumb" style="object-fit:cover;" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'patient-modal-initials\'><?= addslashes(h($remInitials)); ?></div>';">
                                             <?php else: ?>
                                                 <div class="patient-modal-initials">
-                                                    <?= strtoupper(substr((string) ($selectedRemarksAppointment['first_name'] ?? 'P'), 0, 1) . substr((string) ($selectedRemarksAppointment['last_name'] ?? 'U'), 0, 1)); ?>
+                                                    <?= h($remInitials); ?>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
@@ -6010,6 +6017,38 @@ function staffEscapeHtml(str) {
     });
 }
 
+function resolveStaffPhotoUrl(raw) {
+    if (!raw) return '';
+    let s = String(raw).trim();
+    if (!s) return '';
+    if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:image/')) {
+        return s;
+    }
+    s = s.replace(/\\/g, '/');
+    s = s.replace(/^(\.\.\/)?(Patients\/)?/i, '');
+    s = s.replace(/^\/+/, '');
+    if (!s.startsWith('uploads/') && !s.startsWith('assets/')) {
+        s = 'uploads/' + s;
+    }
+    return '../Patients/' + s;
+}
+
+window.previewPhotoInModal = function(src) {
+    if (!src) return;
+    let overlay = document.getElementById('staffPhotoPreviewOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'staffPhotoPreviewOverlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:999999;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:20px;';
+        overlay.onclick = function() { overlay.style.display = 'none'; };
+        overlay.innerHTML = '<div style="position:relative;max-width:90vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;gap:12px;" onclick="event.stopPropagation();"><img id="staffPhotoPreviewImg" src="" style="max-width:100%;max-height:80vh;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);border:3px solid #ffffff;object-fit:contain;"><button type="button" onclick="document.getElementById(\'staffPhotoPreviewOverlay\').style.display=\'none\';" style="background:#ffffff;color:#0f172a;border:none;padding:8px 20px;border-radius:999px;font-weight:700;font-size:0.88rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.25);">✕ Close Preview</button></div>';
+        document.body.appendChild(overlay);
+    }
+    const img = document.getElementById('staffPhotoPreviewImg');
+    if (img) img.src = src;
+    overlay.style.display = 'flex';
+};
+
 window.openStaffInfantModal = function(infant) {
     if (!infant) return;
     const modal = document.getElementById('staffInfantModalBackdrop');
@@ -6021,11 +6060,12 @@ window.openStaffInfantModal = function(infant) {
     
     let photoHtml = '';
     const photoRaw = (infant.latest_photo || infant.photo_path || '').trim();
-    if (photoRaw) {
-        const photoSrc = (photoRaw.startsWith('http') || photoRaw.startsWith('data:') || photoRaw.startsWith('/')) ? photoRaw : `../Patients/${photoRaw.replace(/^\.\.\/Patients\//, '')}`;
-        photoHtml = `<img src="${staffEscapeHtml(photoSrc)}" alt="Infant Photo" style="width: 100%; height: 100%; object-fit: cover;">`;
+    const photoSrc = resolveStaffPhotoUrl(photoRaw);
+    const babySvg = `<?= addslashes(staff_icon('baby')); ?>`;
+    if (photoSrc) {
+        photoHtml = `<img src="${staffEscapeHtml(photoSrc)}" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null; this.parentElement.innerHTML='${babySvg}';">`;
     } else {
-        photoHtml = `<?= staff_icon('baby'); ?>`;
+        photoHtml = babySvg;
     }
 
     // Aggregate vaccine counts and latest dates from vaccine_counts, vaccine_doses, and appointments
@@ -6116,8 +6156,8 @@ window.openStaffInfantModal = function(infant) {
             const apptCode = appt.appointment_code || appt.reference_code || ('#' + (idx + 1));
             const apptDate = appt.preferred_date ? new Date(appt.preferred_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
             const vacType = appt.vaccine_type || 'Immunization Consultation';
-            const apptPhotoRaw = (appt.photo_path || infant.latest_photo || infant.photo_path || '').trim();
-            const apptPhotoSrc = apptPhotoRaw ? ((apptPhotoRaw.startsWith('http') || apptPhotoRaw.startsWith('data:') || apptPhotoRaw.startsWith('/')) ? apptPhotoRaw : `../Patients/${apptPhotoRaw.replace(/^\.\.\/Patients\//, '')}`) : '';
+            const apptPhotoRaw = (appt.photo_path || '').trim();
+            const apptPhotoSrc = resolveStaffPhotoUrl(apptPhotoRaw);
             
             timelineHtml += `
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
@@ -6142,9 +6182,19 @@ window.openStaffInfantModal = function(infant) {
                     <strong>Doctor's Notes:</strong> ${staffEscapeHtml(appt.doctor_notes)}
                 </div>` : ''}
 
-                ${apptPhotoSrc ? `<div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
-                    <img src="${staffEscapeHtml(apptPhotoSrc)}" alt="Visit Photo" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid #cbd5e1;">
-                    <span style="font-size: 0.78rem; color: #64748b;">Visit Verification Photo Captured</span>
+                ${apptPhotoSrc ? `
+                <div class="appt-photo-preview-wrap" style="display: flex; align-items: center; gap: 12px; margin-top: 6px; padding: 8px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; width: fit-content;">
+                    <img src="${staffEscapeHtml(apptPhotoSrc)}" alt="Visit Verification Photo" 
+                         style="width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1.5px solid #cbd5e1; cursor: pointer; display: block; box-shadow: 0 1px 3px rgba(0,0,0,0.08);"
+                         onclick="window.previewPhotoInModal('${staffEscapeHtml(apptPhotoSrc)}')"
+                         title="Click to zoom and preview photo"
+                         onerror="this.onerror=null; const p = this.closest('.appt-photo-preview-wrap'); if (p) p.style.display='none';">
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 0.82rem; font-weight: 700; color: #0f172a;">Visit Verification Photo Captured</span>
+                        <button type="button" onclick="window.previewPhotoInModal('${staffEscapeHtml(apptPhotoSrc)}')" style="background: none; border: none; padding: 0; color: #0284c7; font-size: 0.75rem; font-weight: 600; cursor: pointer; text-align: left; text-decoration: underline; margin-top: 2px;">
+                            🔍 View full photo
+                        </button>
+                    </div>
                 </div>` : ''}
             </div>`;
         });

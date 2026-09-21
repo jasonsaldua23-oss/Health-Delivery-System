@@ -1447,8 +1447,11 @@ if (!function_exists('peso')) {
                 <section class="panel-card patient-hero-card">
                     <div class="patient-hero-main">
                         <div class="patient-hero-avatar">
-                            <?php if (!empty($patientProfile['photo_path'])): ?>
-                                <img src="../Patients/<?= h((string) $patientProfile['photo_path']); ?>" alt="<?= h($patientFullName); ?>">
+                            <?php 
+                            $resolvedAdminPatPhoto = resolve_patient_photo_url((string) ($patientProfile['photo_path'] ?? ''), 'admin');
+                            if ($resolvedAdminPatPhoto !== ''): 
+                            ?>
+                                <img src="<?= h($resolvedAdminPatPhoto); ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" onerror="this.onerror=null; this.parentElement.innerHTML='<span><?= addslashes(h($initials)); ?></span>';">
                             <?php else: ?>
                                 <span><?= h($initials); ?></span>
                             <?php endif; ?>
@@ -1636,8 +1639,11 @@ if (!function_exists('peso')) {
                             <div class="report-modal-body clinical-modal-body">
                                 <!-- Patient Overview Strip -->
                                 <div class="clinical-patient-overview-strip">
-                                    <?php if (!empty($selectedAdminVisit['photo_path'])): ?>
-                                        <img class="clinical-photo-modern" src="../Patients/<?= h((string) $selectedAdminVisit['photo_path']); ?>" alt="<?= h(full_name($selectedAdminVisit)); ?> photo">
+                                    <?php 
+                                    $resolvedAdminVisitPhoto = resolve_patient_photo_url((string) ($selectedAdminVisit['photo_path'] ?? ''), 'admin');
+                                    if ($resolvedAdminVisitPhoto !== ''): 
+                                    ?>
+                                        <img class="clinical-photo-modern" src="<?= h($resolvedAdminVisitPhoto); ?>" alt="" style="object-fit:cover;" onerror="this.onerror=null; this.style.display='none';">
                                     <?php endif; ?>
                                     <div class="clinical-overview-meta">
                                         <h3><?= h(full_name($selectedAdminVisit)); ?></h3>
@@ -2505,9 +2511,12 @@ if (!function_exists('peso')) {
                             <!-- Middle: Patient Profile & Information -->
                             <div class="queue-card-main">
                                 <div class="queue-patient-row">
-                                    <div class="queue-avatar-circle" style="<?= $hasPatientPhoto ? 'background:transparent;border:none;' : ''; ?>">
-                                        <?php if ($hasPatientPhoto): ?>
-                                            <img src="../Patients/<?= h((string) $appointment['photo_path']); ?>" alt="<?= h($patientName); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">
+                                    <?php 
+                                    $resolvedApptPhoto = resolve_patient_photo_url((string) ($appointment['photo_path'] ?? ''), 'admin');
+                                    ?>
+                                    <div class="queue-avatar-circle" style="<?= $resolvedApptPhoto !== '' ? 'background:transparent;border:none;' : ''; ?>">
+                                        <?php if ($resolvedApptPhoto !== ''): ?>
+                                            <img src="<?= h($resolvedApptPhoto); ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px;display:block;" onerror="this.onerror=null; this.parentElement.innerHTML='<?= addslashes(h($initials)); ?>';">
                                         <?php else: ?>
                                             <?= h($initials); ?>
                                         <?php endif; ?>
@@ -5660,6 +5669,38 @@ function adminEscapeHtml(str) {
     });
 }
 
+function resolveAdminPhotoUrl(raw) {
+    if (!raw) return '';
+    let s = String(raw).trim();
+    if (!s) return '';
+    if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:image/')) {
+        return s;
+    }
+    s = s.replace(/\\/g, '/');
+    s = s.replace(/^(\.\.\/)?(Patients\/)?/i, '');
+    s = s.replace(/^\/+/, '');
+    if (!s.startsWith('uploads/') && !s.startsWith('assets/')) {
+        s = 'uploads/' + s;
+    }
+    return '../Patients/' + s;
+}
+
+window.previewAdminPhotoInModal = function(src) {
+    if (!src) return;
+    let overlay = document.getElementById('adminPhotoPreviewOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'adminPhotoPreviewOverlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:999999;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:20px;';
+        overlay.onclick = function() { overlay.style.display = 'none'; };
+        overlay.innerHTML = '<div style="position:relative;max-width:90vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;gap:12px;" onclick="event.stopPropagation();"><img id="adminPhotoPreviewImg" src="" style="max-width:100%;max-height:80vh;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);border:3px solid #ffffff;object-fit:contain;"><button type="button" onclick="document.getElementById(\'adminPhotoPreviewOverlay\').style.display=\'none\';" style="background:#ffffff;color:#0f172a;border:none;padding:8px 20px;border-radius:999px;font-weight:700;font-size:0.88rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.25);">✕ Close Preview</button></div>';
+        document.body.appendChild(overlay);
+    }
+    const img = document.getElementById('adminPhotoPreviewImg');
+    if (img) img.src = src;
+    overlay.style.display = 'flex';
+};
+
 window.openAdminInfantViewer = function(data) {
     if (!data || !data.infants || data.infants.length === 0) return;
     currentAdminInfantData = data;
@@ -5697,11 +5738,12 @@ window.renderAdminSelectedInfant = function(index) {
 
     let photoHtml = '';
     const photoRaw = (infant.latest_photo || infant.photo_path || '').trim();
-    if (photoRaw) {
-        const photoSrc = (photoRaw.startsWith('http') || photoRaw.startsWith('data:') || photoRaw.startsWith('/')) ? photoRaw : `../Patients/${photoRaw.replace(/^\.\.\/Patients\//, '')}`;
-        photoHtml = `<img src="${adminEscapeHtml(photoSrc)}" alt="Infant Photo" style="width: 100%; height: 100%; object-fit: cover;">`;
+    const photoSrc = resolveAdminPhotoUrl(photoRaw);
+    const babySvg = `<?= addslashes(admin_icon('baby')); ?>`;
+    if (photoSrc) {
+        photoHtml = `<img src="${adminEscapeHtml(photoSrc)}" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null; this.parentElement.innerHTML='${babySvg}';">`;
     } else {
-        photoHtml = `<?= admin_icon('baby'); ?>`;
+        photoHtml = babySvg;
     }
 
     // Aggregate vaccine counts and latest dates from vaccine_counts, vaccine_doses, and appointments
@@ -5792,8 +5834,8 @@ window.renderAdminSelectedInfant = function(index) {
             const apptCode = appt.appointment_code || appt.reference_code || ('#' + (idx + 1));
             const apptDate = appt.preferred_date ? new Date(appt.preferred_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
             const vacType = appt.vaccine_type || 'Immunization Consultation';
-            const apptPhotoRaw = (appt.photo_path || infant.latest_photo || infant.photo_path || '').trim();
-            const apptPhotoSrc = apptPhotoRaw ? ((apptPhotoRaw.startsWith('http') || apptPhotoRaw.startsWith('data:') || apptPhotoRaw.startsWith('/')) ? apptPhotoRaw : `../Patients/${apptPhotoRaw.replace(/^\.\.\/Patients\//, '')}`) : '';
+            const apptPhotoRaw = (appt.photo_path || '').trim();
+            const apptPhotoSrc = resolveAdminPhotoUrl(apptPhotoRaw);
             
             timelineHtml += `
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
@@ -5818,9 +5860,19 @@ window.renderAdminSelectedInfant = function(index) {
                     <strong>Doctor's Clinical Notes:</strong> ${adminEscapeHtml(appt.doctor_notes)}
                 </div>` : ''}
 
-                ${apptPhotoSrc ? `<div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
-                    <img src="${adminEscapeHtml(apptPhotoSrc)}" alt="Visit Photo" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid #cbd5e1;">
-                    <span style="font-size: 0.78rem; color: #64748b;">Consultation Verification Photo Recorded</span>
+                ${apptPhotoSrc ? `
+                <div class="appt-photo-preview-wrap" style="display: flex; align-items: center; gap: 12px; margin-top: 6px; padding: 8px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; width: fit-content;">
+                    <img src="${adminEscapeHtml(apptPhotoSrc)}" alt="Visit Verification Photo" 
+                         style="width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1.5px solid #cbd5e1; cursor: pointer; display: block; box-shadow: 0 1px 3px rgba(0,0,0,0.08);"
+                         onclick="window.previewAdminPhotoInModal('${adminEscapeHtml(apptPhotoSrc)}')"
+                         title="Click to zoom and preview photo"
+                         onerror="this.onerror=null; const p = this.closest('.appt-photo-preview-wrap'); if (p) p.style.display='none';">
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 0.82rem; font-weight: 700; color: #0f172a;">Consultation Verification Photo Recorded</span>
+                        <button type="button" onclick="window.previewAdminPhotoInModal('${adminEscapeHtml(apptPhotoSrc)}')" style="background: none; border: none; padding: 0; color: #7c3aed; font-size: 0.75rem; font-weight: 600; cursor: pointer; text-align: left; text-decoration: underline; margin-top: 2px;">
+                            🔍 View full photo
+                        </button>
+                    </div>
                 </div>` : ''}
             </div>`;
         });

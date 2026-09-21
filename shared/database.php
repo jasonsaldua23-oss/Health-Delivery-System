@@ -2448,6 +2448,53 @@ function save_patient_photo_for_patient_id(string $patientId, string $capturedPh
     return $stmt->execute();
 }
 
+/**
+ * Normalizes and resolves a patient or infant photo URL for web display.
+ * Handles relative paths, leading slashes, Windows backslashes, missing 'uploads/' prefix,
+ * and verifies that relative local files actually exist on disk before returning.
+ */
+function resolve_patient_photo_url(?string $rawPath, string $context = 'staff'): string
+{
+    $raw = trim((string) $rawPath);
+    if ($raw === '') {
+        return '';
+    }
+
+    if (str_starts_with($raw, 'data:image/') || str_starts_with($raw, 'http://') || str_starts_with($raw, 'https://')) {
+        return $raw;
+    }
+
+    // Normalize slashes
+    $clean = str_replace('\\', '/', $raw);
+
+    // Strip leading ../, Patients/, or leading slash
+    $clean = preg_replace('#^(\.\./)?(Patients/)?#i', '', $clean);
+    $clean = ltrim($clean, '/');
+
+    if ($clean === '') {
+        return '';
+    }
+
+    // Ensure uploads/ prefix if not an asset
+    if (!str_starts_with($clean, 'uploads/') && !str_starts_with($clean, 'assets/')) {
+        $clean = 'uploads/' . $clean;
+    }
+
+    // Check disk existence for local file
+    $diskPath = dirname(__DIR__) . '/Patients/' . $clean;
+    if (!file_exists($diskPath) || !is_file($diskPath)) {
+        return '';
+    }
+
+    if ($context === 'staff' || $context === 'admin') {
+        return '../Patients/' . $clean;
+    } elseif ($context === 'patient') {
+        return $clean;
+    }
+
+    return '../Patients/' . $clean;
+}
+
 function appointment_time_slots(): array
 {
     return [
@@ -3807,12 +3854,39 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 } catch (Throwable $e) {}
             }
 
-            $latestPhoto = !empty($inf['photos']) ? $inf['photos'][0] : $latestAccountPhoto;
+            // Resolve the latest valid photo for this infant from their own appointments
+            $latestPhoto = '';
+            foreach ($inf['photos'] as $pCandidate) {
+                if (resolve_patient_photo_url((string) $pCandidate, 'staff') !== '') {
+                    $latestPhoto = (string) $pCandidate;
+                    break;
+                }
+            }
+            if ($latestPhoto === '' && !empty($inf['photos'])) {
+                $firstP = (string) $inf['photos'][0];
+                if (str_starts_with($firstP, 'http') || str_starts_with($firstP, 'data:')) {
+                    $latestPhoto = $firstP;
+                }
+            }
 
             $infAppts = $inf['appointments'];
             foreach ($infAppts as &$ia) {
-                if (empty($ia['photo_path']) && $latestPhoto !== '') {
-                    $ia['photo_path'] = $latestPhoto;
+                $iaPhoto = trim((string) ($ia['photo_path'] ?? ''));
+                if ($iaPhoto !== '') {
+                    $resolvedIa = resolve_patient_photo_url($iaPhoto, 'staff');
+                    if ($resolvedIa === '' && !str_starts_with($iaPhoto, 'http') && !str_starts_with($iaPhoto, 'data:')) {
+                        // File not on disk; clear so a broken image thumbnail is never displayed
+                        $ia['photo_path'] = '';
+                    } else {
+                        // Normalize slashes and uploads prefix
+                        $norm = str_replace('\\', '/', $iaPhoto);
+                        $norm = preg_replace('#^(\.\./)?(Patients/)?#i', '', $norm);
+                        $norm = ltrim($norm, '/');
+                        if (!str_starts_with($norm, 'uploads/') && !str_starts_with($norm, 'assets/')) {
+                            $norm = 'uploads/' . $norm;
+                        }
+                        $ia['photo_path'] = $norm;
+                    }
                 }
             }
             unset($ia);
