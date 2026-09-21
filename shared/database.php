@@ -3488,14 +3488,53 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
         $stmt3->execute();
         $savedProfiles = $stmt3->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        // Step 1: Track which infants have been or are currently being served
+        // An infant profile is ONLY created and visible if the infant is being served or has been served:
+        // at least one appointment is 'Serving' or 'Completed', or historical records in immunized_infants.
+        $infantHasServedOrServing = [];
+
+        foreach ($immInfants as $imm) {
+            $rFirst = trim((string) ($imm['first_name'] ?? ''));
+            $rLast = trim((string) ($imm['last_name'] ?? ''));
+            $rDob = trim((string) ($imm['birth_date'] ?? ''));
+            if ($rFirst !== '' && $rLast !== '') {
+                $k = strtolower($rFirst . '_' . $rLast . '_' . $rDob);
+                $infantHasServedOrServing[$k] = true;
+            }
+        }
+
+        foreach ($appts as $appt) {
+            $rec = appointment_recipient_details($appt);
+            if ($rec['is_self']) {
+                continue;
+            }
+            $rFirst = trim((string) ($rec['recipient_first_name'] ?: $appt['recipient_first_name'] ?: ''));
+            $rLast = trim((string) ($rec['recipient_last_name'] ?: $appt['recipient_last_name'] ?: ''));
+            $rDob = trim((string) ($rec['recipient_birth_date'] ?: $appt['recipient_birth_date'] ?: ''));
+            if ($rFirst === '' || $rLast === '') {
+                continue;
+            }
+            $k = strtolower($rFirst . '_' . $rLast . '_' . $rDob);
+            $apptStatus = trim((string) ($appt['status'] ?? ''));
+            if (in_array($apptStatus, ['Serving', 'Completed'], true)) {
+                $infantHasServedOrServing[$k] = true;
+            }
+        }
+
         $groupedInfants = [];
 
+        // Step 2: Populate saved profiles ONLY for infants that are being served or were served
         foreach ($savedProfiles as $sp) {
             $k = strtolower(trim($sp['first_name']) . '_' . trim($sp['last_name']) . '_' . trim($sp['birth_date']));
+            
+            // If the infant has never been served yet, do not display the profile
+            if (empty($infantHasServedOrServing[$k])) {
+                continue;
+            }
+
             $spRel = (string) ($sp['relationship'] ?? 'Child');
             $roleInfo = resolve_infant_guardian_role_details($spRel, $parentName, $parentGender);
 
-            // Clean up if a guardian was previously wrongly assigned as mother or father
             $spMother = (string) ($sp['mother_name'] ?? '');
             $spFather = (string) ($sp['father_name'] ?? '');
             $spGuardian = (string) ($sp['guardian_name'] ?? '');
@@ -3509,6 +3548,12 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 }
                 if ($spGuardian === '') {
                     $spGuardian = $parentName;
+                }
+            } else {
+                if (strcasecmp($parentGender, 'Male') === 0 && $spFather === '') {
+                    $spFather = $parentName;
+                } elseif (strcasecmp($parentGender, 'Female') === 0 && $spMother === '') {
+                    $spMother = $parentName;
                 }
             }
 
@@ -3531,6 +3576,7 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
             ];
         }
 
+        // Step 3: Process appointments for eligible infants
         foreach ($appts as $appt) {
             $rec = appointment_recipient_details($appt);
             if ($rec['is_self']) {
@@ -3548,10 +3594,26 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
             }
 
             $k = strtolower($rFirst . '_' . $rLast . '_' . $rDob);
+
+            // Don't create or show the profile if the infant is not being served yet
+            if (empty($infantHasServedOrServing[$k])) {
+                continue;
+            }
+
             $roleInfo = resolve_infant_guardian_role_details($rRel, $parentName, $parentGender);
             $rGender = trim((string) ($rec['recipient_gender'] ?? $appt['recipient_gender'] ?? $appt['gender'] ?? 'Not specified'));
             if ($rGender === '') {
                 $rGender = 'Not specified';
+            }
+
+            $defMother = $roleInfo['default_mother'];
+            $defFather = $roleInfo['default_father'];
+            if (!$roleInfo['is_guardian']) {
+                if (strcasecmp($parentGender, 'Male') === 0) {
+                    $defFather = $parentName;
+                } elseif (strcasecmp($parentGender, 'Female') === 0) {
+                    $defMother = $parentName;
+                }
             }
 
             if (!isset($groupedInfants[$k])) {
@@ -3563,8 +3625,8 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                     'birth_date' => $rDob ?: date('Y-m-d'),
                     'gender' => $rGender,
                     'relationship' => $roleInfo['relationship'],
-                    'mother_name' => $roleInfo['default_mother'],
-                    'father_name' => $roleInfo['default_father'],
+                    'mother_name' => $defMother,
+                    'father_name' => $defFather,
                     'guardian_name' => $roleInfo['guardian_name'],
                 ]);
 
@@ -3576,8 +3638,8 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                     'birth_date' => $rDob,
                     'gender' => $rGender,
                     'relationship' => $roleInfo['relationship'],
-                    'mother_name' => $roleInfo['default_mother'],
-                    'father_name' => $roleInfo['default_father'],
+                    'mother_name' => $defMother,
+                    'father_name' => $defFather,
                     'guardian_name' => $roleInfo['guardian_name'],
                     'custom_notes' => '',
                     'role_info' => $roleInfo,
@@ -3589,11 +3651,28 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 if ($groupedInfants[$k]['gender'] === 'Not specified' && $rGender !== 'Not specified') {
                     $groupedInfants[$k]['gender'] = $rGender;
                 }
-                // Update role info if appointment has more specific relationship
                 if ($rRel !== '' && strcasecmp($rRel, 'Child') !== 0) {
                     $groupedInfants[$k]['role_info'] = $roleInfo;
                     $groupedInfants[$k]['relationship'] = $roleInfo['relationship'];
                 }
+            }
+
+            // Exclude appointments that have gone into "no show", cancelled, or unserved expired from infant records
+            $apptStatus = trim((string) ($appt['status'] ?? ''));
+            $isNoShow = (
+                strcasecmp($apptStatus, 'No Show') === 0 ||
+                strcasecmp($apptStatus, 'no show') === 0 ||
+                strcasecmp($apptStatus, 'noshow') === 0 ||
+                stripos($apptStatus, 'no show') !== false
+            );
+            $isCancelled = (strcasecmp($apptStatus, 'Cancelled') === 0);
+            $isUnserved = (strcasecmp($apptStatus, 'Unserved') === 0 || stripos($apptStatus, 'unserved') !== false);
+            $prefDate = (string) ($appt['preferred_date'] ?? '');
+            $isExpiredUnserved = ($prefDate !== '' && $prefDate < date('Y-m-d') && !in_array($apptStatus, ['Serving', 'Completed'], true));
+
+            if ($isNoShow || $isCancelled || $isUnserved || $isExpiredUnserved) {
+                // Do not add no show / unserved appointments into records and profile of infant
+                continue;
             }
 
             $groupedInfants[$k]['appointments'][] = $appt;
@@ -3627,6 +3706,16 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
             $k = strtolower($rFirst . '_' . $rLast . '_' . $rDob);
             $roleInfo = resolve_infant_guardian_role_details($rRel, $parentName, $parentGender);
 
+            $defMother = $roleInfo['default_mother'];
+            $defFather = $roleInfo['default_father'];
+            if (!$roleInfo['is_guardian']) {
+                if (strcasecmp($parentGender, 'Male') === 0) {
+                    $defFather = $parentName;
+                } elseif (strcasecmp($parentGender, 'Female') === 0) {
+                    $defMother = $parentName;
+                }
+            }
+
             if (!isset($groupedInfants[$k])) {
                 $profId = save_or_update_infant_profile([
                     'patient_id' => $patientId,
@@ -3636,8 +3725,8 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                     'birth_date' => $rDob ?: date('Y-m-d'),
                     'gender' => $imm['gender'] ?? 'Not specified',
                     'relationship' => $roleInfo['relationship'],
-                    'mother_name' => $roleInfo['default_mother'],
-                    'father_name' => $roleInfo['default_father'],
+                    'mother_name' => $defMother,
+                    'father_name' => $defFather,
                     'guardian_name' => $roleInfo['guardian_name'],
                 ]);
 
@@ -3649,8 +3738,8 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                     'birth_date' => $rDob,
                     'gender' => $imm['gender'] ?? 'Not specified',
                     'relationship' => $roleInfo['relationship'],
-                    'mother_name' => $roleInfo['default_mother'],
-                    'father_name' => $roleInfo['default_father'],
+                    'mother_name' => $defMother,
+                    'father_name' => $defFather,
                     'guardian_name' => $roleInfo['guardian_name'],
                     'custom_notes' => '',
                     'role_info' => $roleInfo,
@@ -3736,6 +3825,16 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
 
             $rInfo = $inf['role_info'] ?? resolve_infant_guardian_role_details((string) $inf['relationship'], $parentName, $parentGender);
 
+            $mName = $inf['mother_name'] ?: $rInfo['default_mother'];
+            $fName = $inf['father_name'] ?: $rInfo['default_father'];
+            if (!$rInfo['is_guardian'] && $parentName !== '') {
+                if (strcasecmp($parentGender, 'Male') === 0 || stripos((string) $inf['relationship'], 'father') !== false) {
+                    $fName = $parentName;
+                } elseif (strcasecmp($parentGender, 'Female') === 0 || stripos((string) $inf['relationship'], 'mother') !== false) {
+                    $mName = $parentName;
+                }
+            }
+
             $infants[] = [
                 'id' => $inf['profile_id'],
                 'infant_key' => $k,
@@ -3752,10 +3851,11 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 'is_guardian' => $rInfo['is_guardian'],
                 'role_type' => $rInfo['role_type'],
                 'role_label' => $rInfo['role_label'],
-                'mother_name' => $inf['mother_name'],
-                'father_name' => $inf['father_name'],
+                'mother_name' => $mName,
+                'father_name' => $fName,
                 'guardian_name' => $inf['guardian_name'],
                 'parent_name' => $parentName,
+                'parent_gender' => $parentGender,
                 'custom_notes' => $inf['custom_notes'],
                 'photo_path' => $latestPhoto,
                 'latest_photo' => $latestPhoto,

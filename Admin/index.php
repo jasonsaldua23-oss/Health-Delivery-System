@@ -1864,7 +1864,7 @@ if (!function_exists('peso')) {
                                                 <a class="patient-action-btn history" href="?page=patients&service_history=<?= h((string) $patient['patient_id']); ?>" title="View Completed Service History">
                                                     <?= admin_icon('history'); ?>
                                                 </a>
-                                                <?php if ($isParent): ?>
+                                                <?php if (!empty($adminInfants)): ?>
                                                     <button type="button" class="patient-action-btn infant is-active" onclick="openAdminInfantViewer(<?= htmlspecialchars(json_encode([
                                                         'patient_name' => full_name($patient),
                                                         'patient_id' => (string) $patient['patient_id'],
@@ -1873,7 +1873,7 @@ if (!function_exists('peso')) {
                                                         <?= admin_icon('baby'); ?>
                                                     </button>
                                                 <?php else: ?>
-                                                    <button type="button" class="patient-action-btn infant is-disabled" disabled title="Not a parent or guardian">
+                                                    <button type="button" class="patient-action-btn infant is-disabled" disabled title="No served infant records on file">
                                                         <?= admin_icon('baby'); ?>
                                                     </button>
                                                 <?php endif; ?>

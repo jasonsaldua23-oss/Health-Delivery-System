@@ -635,18 +635,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'save
 
     $savedId = null;
     if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
+        $patientId = trim((string) ($_POST['patient_id'] ?? ''));
+        $motherName = trim((string) ($_POST['mother_name'] ?? ''));
+        $fatherName = trim((string) ($_POST['father_name'] ?? ''));
+        $guardianName = trim((string) ($_POST['guardian_name'] ?? ''));
+        $relationship = trim((string) ($_POST['relationship'] ?? ''));
+
+        // Server-side enforcement: If account holder is registered as parent,
+        // lock their biological field to the account holder's full name.
+        if ($patientId !== '') {
+            $parentProfile = fetch_patient_profile_by_patient_id($patientId);
+            if ($parentProfile) {
+                $pFullName = fullName($parentProfile);
+                $pGender = strtolower(trim((string) ($parentProfile['gender'] ?? '')));
+                $relLower = strtolower($relationship);
+                $isGuardianAcc = (stripos($relLower, 'guardian') !== false);
+                if (!$isGuardianAcc && $pFullName !== '') {
+                    if ($pGender === 'male' || $pGender === 'm' || stripos($relLower, 'father') !== false) {
+                        $fatherName = $pFullName;
+                    } elseif ($pGender === 'female' || $pGender === 'f' || stripos($relLower, 'mother') !== false) {
+                        $motherName = $pFullName;
+                    }
+                }
+            }
+        }
+
         $data = [
             'id' => !empty($_POST['infant_id']) ? (int) $_POST['infant_id'] : null,
-            'patient_id' => trim((string) ($_POST['patient_id'] ?? '')),
+            'patient_id' => $patientId,
             'first_name' => trim((string) ($_POST['first_name'] ?? '')),
             'middle_name' => trim((string) ($_POST['middle_name'] ?? '')),
             'last_name' => trim((string) ($_POST['last_name'] ?? '')),
             'birth_date' => trim((string) ($_POST['birth_date'] ?? '')),
             'gender' => trim((string) ($_POST['gender'] ?? '')),
-            'mother_name' => trim((string) ($_POST['mother_name'] ?? '')),
-            'father_name' => trim((string) ($_POST['father_name'] ?? '')),
-            'guardian_name' => trim((string) ($_POST['guardian_name'] ?? '')),
-            'relationship' => trim((string) ($_POST['relationship'] ?? '')),
+            'mother_name' => $motherName,
+            'father_name' => $fatherName,
+            'guardian_name' => $guardianName,
+            'relationship' => $relationship,
             'station_slug' => (string) ($station['slug'] ?? ''),
             'notes' => trim((string) ($_POST['notes'] ?? '')),
         ];
@@ -2468,7 +2493,7 @@ for ($i = 0; $i < 6; $i++) {
                                             </div>
                                         </div>
                                         <div class="pat-card-right" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                                            <?php if ($hasInfantBookings): ?>
+                                            <?php if (!empty($infantSubProfiles)): ?>
                                                 <button type="button" class="patient-infant-toggle-btn" id="infantToggleBtn_<?= h($prof['key']); ?>" onclick="togglePatientInfantsTray('<?= h($prof['key']); ?>')" title="Registered Infant Sub-Profiles (<?= count($infantSubProfiles); ?>)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 10px 14px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.28); transition: transform 0.15s, background 0.15s;">
                                                     <?= staff_icon('baby'); ?>
                                                 </button>
@@ -2485,7 +2510,7 @@ for ($i = 0; $i < 6; $i++) {
                                         </div>
                                     </article>
 
-                                    <?php if ($hasInfantBookings && !empty($infantSubProfiles)): ?>
+                                    <?php if (!empty($infantSubProfiles)): ?>
                                         <div id="infantsTray_<?= h($prof['key']); ?>" class="patient-infant-subprofile-popup" style="display: none;">
                                             <div class="infant-popup-inner">
                                                 <div class="infant-popup-header">
@@ -6097,6 +6122,14 @@ window.openStaffInfantModal = function(infant) {
     }
 
     const isGuardian = Boolean(infant.is_guardian);
+    const isParent = !isGuardian;
+    const parentGender = String(infant.parent_gender || '').trim().toLowerCase();
+    const parentName = String(infant.parent_name || '').trim();
+    const rel = String(infant.relationship || infant.role_label || '').trim().toLowerCase();
+
+    const isFather = isParent && (parentGender === 'male' || parentGender === 'm' || rel.includes('father'));
+    const isMother = isParent && (parentGender === 'female' || parentGender === 'f' || rel.includes('mother'));
+
     const roleBadgeHtml = isGuardian
         ? `<span style="background: #fef3c7; color: #92400e; border: 1.5px solid #fde68a; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">Registered Guardian</span>`
         : `<span style="background: #e0f2fe; color: #0369a1; border: 1.5px solid #bae6fd; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">${staffEscapeHtml(infant.role_label || 'Registered Parent')}</span>`;
@@ -6144,8 +6177,12 @@ window.openStaffInfantModal = function(infant) {
         </div>
         <p style="font-size: 0.82rem; color: #64748b; margin: 0 0 14px 0;">
             ${isGuardian
-                ? 'This patient is registered as <strong>Guardian</strong>. Biological mother and father details remain distinct.'
-                : 'This patient is registered as <strong>Parent</strong> (' + staffEscapeHtml(infant.role_label || 'Parent') + ').'}
+                ? 'This patient is registered as <strong>Guardian</strong>. Biological mother and father details remain distinct and editable.'
+                : isFather
+                    ? 'Account holder is registered as <strong>Parent (Father)</strong>. Biological Father field is uneditable and linked to the account holder. Biological Mother field is editable.'
+                    : isMother
+                        ? 'Account holder is registered as <strong>Parent (Mother)</strong>. Biological Mother field is uneditable and linked to the account holder. Biological Father field is editable.'
+                        : 'This patient is registered as <strong>Parent</strong> (' + staffEscapeHtml(infant.role_label || 'Parent') + ').'}
         </p>
 
         <form method="post" action="?page=patients&view=profiles" id="staffInfantEditForm">
@@ -6173,12 +6210,24 @@ window.openStaffInfantModal = function(infant) {
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
                 <div>
-                    <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Biological Mother's Name:</label>
-                    <input type="text" name="mother_name" value="${staffEscapeHtml(infant.mother_name || '')}" placeholder="${isGuardian ? 'Biological Mother (optional)' : 'e.g. Maria Santos'}" class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem;">
+                    <label style="display: flex; align-items: center; justify-content: space-between; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                        <span>Biological Mother's Name:</span>
+                        ${isMother ? `<span style="background: #e0f2fe; color: #0369a1; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 6px;">🔒 Locked to Parent</span>` : `<span style="background: #f0fdf4; color: #15803d; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 6px;">✏️ Editable</span>`}
+                    </label>
+                    <input type="text" name="mother_name" value="${staffEscapeHtml(isMother ? (parentName || infant.mother_name || '') : (infant.mother_name || ''))}" ${isMother ? 'readonly' : ''} placeholder="${isGuardian ? 'Biological Mother (optional)' : (isMother ? 'Account Holder (Mother)' : 'e.g. Maria Santos')}" class="form-input-field" style="width: 100%; border: 1.5px solid ${isMother ? '#cbd5e1' : '#94a3b8'}; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; ${isMother ? 'background-color: #f1f5f9; color: #475569; cursor: not-allowed;' : 'background-color: #ffffff;'}">
+                    <span style="font-size: 0.74rem; color: ${isMother ? '#64748b' : '#0284c7'}; margin-top: 3px; display: block;">
+                        ${isMother ? 'Account holder is female (Mother). This field is uneditable.' : (isFather ? 'Account holder is Father; only mother field is editable.' : 'Biological mother of infant.')}
+                    </span>
                 </div>
                 <div>
-                    <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Biological Father's Name:</label>
-                    <input type="text" name="father_name" value="${staffEscapeHtml(infant.father_name || '')}" placeholder="${isGuardian ? 'Biological Father (optional)' : 'e.g. Juan Santos'}" class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem;">
+                    <label style="display: flex; align-items: center; justify-content: space-between; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                        <span>Biological Father's Name:</span>
+                        ${isFather ? `<span style="background: #e0f2fe; color: #0369a1; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 6px;">🔒 Locked to Parent</span>` : `<span style="background: #f0fdf4; color: #15803d; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 6px;">✏️ Editable</span>`}
+                    </label>
+                    <input type="text" name="father_name" value="${staffEscapeHtml(isFather ? (parentName || infant.father_name || '') : (infant.father_name || ''))}" ${isFather ? 'readonly' : ''} placeholder="${isGuardian ? 'Biological Father (optional)' : (isFather ? 'Account Holder (Father)' : 'e.g. Juan Santos')}" class="form-input-field" style="width: 100%; border: 1.5px solid ${isFather ? '#cbd5e1' : '#94a3b8'}; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; ${isFather ? 'background-color: #f1f5f9; color: #475569; cursor: not-allowed;' : 'background-color: #ffffff;'}">
+                    <span style="font-size: 0.74rem; color: ${isFather ? '#64748b' : '#0284c7'}; margin-top: 3px; display: block;">
+                        ${isFather ? 'Account holder is male (Father). This field is uneditable.' : (isMother ? 'Account holder is Mother; only father field is editable.' : 'Biological father of infant.')}
+                    </span>
                 </div>
             </div>
 
@@ -6252,8 +6301,8 @@ window.openStaffInfantModal = function(infant) {
                         const infantIdInput = infantForm.querySelector('input[name="infant_id"]');
                         if (infantIdInput) infantIdInput.value = String(data.infant_id);
                     }
-                    if (formData.has('mother_name')) infant.mother_name = formData.get('mother_name');
-                    if (formData.has('father_name')) infant.father_name = formData.get('father_name');
+                    if (formData.has('mother_name') && !isMother) infant.mother_name = formData.get('mother_name');
+                    if (formData.has('father_name') && !isFather) infant.father_name = formData.get('father_name');
                     if (formData.has('guardian_name')) infant.guardian_name = formData.get('guardian_name');
                     if (formData.has('notes')) {
                         infant.custom_notes = formData.get('notes');
