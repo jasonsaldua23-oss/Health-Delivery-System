@@ -267,9 +267,12 @@ if (!function_exists('render_patient_profile_body')) {
                     <?php endif; ?>
 
                     <!-- Specific Consultation Photo Capture if taken during this visit -->
-                    <?php if (!empty($appt['photo_path'])): ?>
+                    <?php 
+                    $apptPhotoUrl = resolve_patient_photo_url((string) ($appt['photo_path'] ?? ''), 'staff');
+                    if ($apptPhotoUrl !== ''): 
+                    ?>
                         <div class="history-visit-photo-card">
-                            <img src="../Patients/<?= h((string) $appt['photo_path']); ?>" alt="Visit Photo on <?= h((string) $appt['preferred_date']); ?>" class="history-visit-photo-thumb">
+                            <img src="<?= h($apptPhotoUrl); ?>" alt="Visit Photo on <?= h((string) $appt['preferred_date']); ?>" class="history-visit-photo-thumb" onclick="if(window.previewPhotoInModal)window.previewPhotoInModal('<?= h(addslashes($apptPhotoUrl)); ?>')" style="cursor:pointer;" title="Click to view full photo">
                             <div class="history-visit-photo-info">
                                 <span class="photo-info-label"><?= staff_icon('camera'); ?> Consultation Photo Captured</span>
                                 <span class="photo-info-date">Record #<?= h($apptCode); ?> • <?= h(date('M j, Y', strtotime((string) $appt['preferred_date']))); ?></span>
@@ -981,17 +984,57 @@ foreach ($patientRecordEntries as $record) {
 
         // Sort appointments chronologically descending (latest first)
         usort($patientAllCompleted, static function(array $a, array $b): int {
-            $tA = strtotime((string) ($a['preferred_date'] ?? '1970-01-01'));
-            $tB = strtotime((string) ($b['preferred_date'] ?? '1970-01-01'));
-            return $tB <=> $tA;
+            $tA = strtotime((string) ($a['preferred_date'] ?? '1970-01-01')) ?: 0;
+            $tB = strtotime((string) ($b['preferred_date'] ?? '1970-01-01')) ?: 0;
+            if ($tB !== $tA) {
+                return $tB <=> $tA;
+            }
+            return ((int) ($b['id'] ?? 0)) <=> ((int) ($a['id'] ?? 0));
         });
 
-        // Resolve patient photo if available in any completed record
+        // Resolve patient photo from their very recent appointment regardless of service
         $patPhoto = '';
+        // 1. Look for very recent appointment where patient was the recipient (self / not infant)
         foreach ($patientAllCompleted as $cAppt) {
             if (!empty($cAppt['photo_path'])) {
-                $patPhoto = (string) $cAppt['photo_path'];
-                break;
+                $rec = appointment_recipient_details($cAppt);
+                if ($rec['is_self']) {
+                    $patPhoto = (string) $cAppt['photo_path'];
+                    break;
+                }
+            }
+        }
+        // 2. If no self appointment has a photo, check any completed appointment of this patient regardless of service
+        if ($patPhoto === '') {
+            foreach ($patientAllCompleted as $cAppt) {
+                if (!empty($cAppt['photo_path'])) {
+                    $patPhoto = (string) $cAppt['photo_path'];
+                    break;
+                }
+            }
+        }
+        // 3. Fallback: check any station appointment of this patient with a photo (including ongoing/serving)
+        if ($patPhoto === '') {
+            $allPatAppts = array_values(array_filter(
+                $allStationAppointments,
+                static function(array $item) use ($pId, $pFirst, $pLast): bool {
+                    $itemId = trim((string) ($item['patient_id'] ?? ''));
+                    if ($pId !== '' && $itemId !== '' && strcasecmp($pId, $itemId) === 0) return true;
+                    return strcasecmp(trim((string) ($item['first_name'] ?? '')), $pFirst) === 0
+                        && strcasecmp(trim((string) ($item['last_name'] ?? '')), $pLast) === 0;
+                }
+            ));
+            usort($allPatAppts, static function(array $a, array $b): int {
+                $tA = strtotime((string) ($a['preferred_date'] ?? '1970-01-01')) ?: 0;
+                $tB = strtotime((string) ($b['preferred_date'] ?? '1970-01-01')) ?: 0;
+                if ($tB !== $tA) return $tB <=> $tA;
+                return ((int) ($b['id'] ?? 0)) <=> ((int) ($a['id'] ?? 0));
+            });
+            foreach ($allPatAppts as $aAppt) {
+                if (!empty($aAppt['photo_path'])) {
+                    $patPhoto = (string) $aAppt['photo_path'];
+                    break;
+                }
             }
         }
         if ($patPhoto === '' && !empty($record['photo_path'])) {
@@ -2474,9 +2517,14 @@ for ($i = 0; $i < 6; $i++) {
                                 ?>
                                 <div class="patient-profile-card-wrapper" id="profileItem_<?= h($prof['key']); ?>">
                                     <article class="modern-patient-record-card patient-profile-card is-completed" id="profileCard_<?= h($prof['key']); ?>">
+                                        <?php $cardPatPhoto = resolve_patient_photo_url((string) ($prof['photo_path'] ?? ''), 'staff'); ?>
                                         <div class="pat-card-left">
-                                            <div class="pat-card-avatar done">
-                                                <?= h($patInitials); ?>
+                                            <div class="pat-card-avatar done" style="<?= $cardPatPhoto !== '' ? 'overflow: hidden; padding: 0;' : ''; ?>">
+                                                <?php if ($cardPatPhoto !== ''): ?>
+                                                    <img src="<?= h($cardPatPhoto); ?>" alt="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px; display: block;" onerror="this.onerror=null; this.parentElement.innerHTML='<?= addslashes(h($patInitials)); ?><span class=\'pat-card-avatar-shield\' title=\'Registered Patient Profile\'><?= addslashes(staff_icon('shield')); ?></span>';">
+                                                <?php else: ?>
+                                                    <?= h($patInitials); ?>
+                                                <?php endif; ?>
                                                 <span class="pat-card-avatar-shield" title="Registered Patient Profile">
                                                     <?= staff_icon('shield'); ?>
                                                 </span>

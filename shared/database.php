@@ -2323,12 +2323,16 @@ function fetch_patient_current_profile_row(string $patientId): ?array
         return null;
     }
 
-    $stmt = db()->prepare('SELECT * FROM patient_profiles WHERE UPPER(patient_id) = ? LIMIT 1');
-    $stmt->bind_param('s', $patientId);
-    $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc();
+    try {
+        $stmt = db()->prepare('SELECT * FROM patient_profiles WHERE UPPER(patient_id) = ? LIMIT 1');
+        $stmt->bind_param('s', $patientId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
 
-    return $row ?: null;
+        return $row ?: null;
+    } catch (Throwable $e) {
+        return null;
+    }
 }
 
 function update_patient_profile_info(string $patientId, array $data): bool
@@ -2423,16 +2427,8 @@ function save_patient_photo_for_appointment(int $appointmentId, string $captured
 
     $stmt = db()->prepare('UPDATE appointments SET photo_path = ? WHERE id = ?');
     $stmt->bind_param('si', $photoPath, $appointmentId);
-    $saved = $stmt->execute();
 
-    if ($saved && !empty($appointment['patient_id'])) {
-        $pId = (string) $appointment['patient_id'];
-        $syncStmt = db()->prepare('UPDATE appointments SET photo_path = ? WHERE patient_id = ? AND (photo_path IS NULL OR photo_path = "")');
-        $syncStmt->bind_param('ss', $photoPath, $pId);
-        $syncStmt->execute();
-    }
-
-    return $saved;
+    return $stmt->execute();
 }
 
 function save_patient_photo_for_patient_id(string $patientId, string $capturedPhotoData): bool
@@ -3134,12 +3130,26 @@ function fetch_patient_profile_by_patient_id(string $patientId): ?array
     $profile = $profileRow ?? ($visits[0] ?? []);
     $birthDate = (string) ($profile['birth_date'] ?? '');
     
-    // Always get the photo from their latest appointment
+    // Resolve patient profile photo from their very recent appointment regardless of service
     $photoPath = '';
+    // Check non-cancelled visits where the patient was the recipient (self / not an infant)
     foreach ($visits as $visit) {
         if (!empty($visit['photo_path']) && trim((string) $visit['photo_path']) !== '') {
-            $photoPath = (string) $visit['photo_path'];
-            break;
+            $vRec = appointment_recipient_details($visit);
+            if ($vRec['is_self']) {
+                $photoPath = (string) $visit['photo_path'];
+                break;
+            }
+        }
+    }
+
+    // If no self-recipient appointment has a photo, check any visit of this patient regardless of service
+    if ($photoPath === '') {
+        foreach ($visits as $visit) {
+            if (!empty($visit['photo_path']) && trim((string) $visit['photo_path']) !== '') {
+                $photoPath = (string) $visit['photo_path'];
+                break;
+            }
         }
     }
 
@@ -3488,6 +3498,14 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
     }
 
     $infants = [];
+    $parentProfile = null;
+    $parentName = '';
+    $parentGender = '';
+    $appts = [];
+    $immInfants = [];
+    $savedProfiles = [];
+    $db = null;
+
     try {
         $db = db();
         ensure_infant_profiles_table($db);
@@ -3497,33 +3515,10 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
         $parentName = $parentProfile ? fullName($parentProfile) : '';
         $parentGender = $parentProfile['gender'] ?? '';
 
-        $appts = [];
         $stmt = $db->prepare("SELECT * FROM appointments WHERE patient_id = ? AND (service_slug LIKE '%immuniz%' OR service_slug LIKE '%vaccin%' OR service_name LIKE '%immuniz%' OR service_name LIKE '%vaccin%') ORDER BY preferred_date DESC, id DESC");
         $stmt->bind_param('s', $patientId);
         $stmt->execute();
         $appts = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-        if ($parentName === '' && !empty($appts)) {
-            $parentName = trim(($appts[0]['first_name'] ?? '') . ' ' . ($appts[0]['last_name'] ?? ''));
-            if ($parentGender === '') {
-                $parentGender = $appts[0]['gender'] ?? '';
-            }
-        }
-
-        if (!empty($stationAppointments)) {
-            $existingIds = array_column($appts, 'id');
-            foreach ($stationAppointments as $stAppt) {
-                if (strcasecmp((string)($stAppt['patient_id'] ?? ''), $patientId) === 0) {
-                    $stId = (int) ($stAppt['id'] ?? 0);
-                    if ($stId > 0 && !in_array($stId, $existingIds, true)) {
-                        $isImm = is_vaccination_service((string) ($stAppt['service_slug'] ?? ''), (string) ($stAppt['service_name'] ?? ''));
-                        if ($isImm) {
-                            $appts[] = $stAppt;
-                        }
-                    }
-                }
-            }
-        }
 
         $stmt2 = $db->prepare("SELECT * FROM immunized_infants WHERE patient_id = ? ORDER BY created_at DESC");
         $stmt2->bind_param('s', $patientId);
@@ -3534,7 +3529,49 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
         $stmt3->bind_param('s', $patientId);
         $stmt3->execute();
         $savedProfiles = $stmt3->get_result()->fetch_all(MYSQLI_ASSOC);
+    } catch (Throwable $e) {
+        $db = null;
+    }
 
+    if ($parentName === '' && !empty($appts)) {
+        $parentName = trim(($appts[0]['first_name'] ?? '') . ' ' . ($appts[0]['last_name'] ?? ''));
+        if ($parentGender === '') {
+            $parentGender = $appts[0]['gender'] ?? '';
+        }
+    }
+
+    if (!empty($stationAppointments)) {
+        $existingIds = array_column($appts, 'id');
+        foreach ($stationAppointments as $stAppt) {
+            if (strcasecmp((string)($stAppt['patient_id'] ?? ''), $patientId) === 0) {
+                $stId = (int) ($stAppt['id'] ?? 0);
+                if ($stId > 0 && !in_array($stId, $existingIds, true)) {
+                    $isImm = is_vaccination_service((string) ($stAppt['service_slug'] ?? ''), (string) ($stAppt['service_name'] ?? ''));
+                    if ($isImm) {
+                        $appts[] = $stAppt;
+                    }
+                }
+            }
+        }
+    }
+
+    if ($parentName === '' && !empty($appts)) {
+        $parentName = trim(($appts[0]['first_name'] ?? '') . ' ' . ($appts[0]['last_name'] ?? ''));
+        if ($parentGender === '') {
+            $parentGender = $appts[0]['gender'] ?? '';
+        }
+    }
+
+    usort($appts, static function(array $a, array $b): int {
+        $tA = strtotime((string) ($a['preferred_date'] ?? '1970-01-01')) ?: 0;
+        $tB = strtotime((string) ($b['preferred_date'] ?? '1970-01-01')) ?: 0;
+        if ($tB !== $tA) {
+            return $tB <=> $tA;
+        }
+        return ((int) ($b['id'] ?? 0)) <=> ((int) ($a['id'] ?? 0));
+    });
+
+    try {
         // Step 1: Track which infants have been or are currently being served
         // An infant profile is ONLY created and visible if the infant is being served or has been served:
         // at least one appointment is 'Serving' or 'Completed', or historical records in immunized_infants.
@@ -3664,18 +3701,25 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
             }
 
             if (!isset($groupedInfants[$k])) {
-                $profId = save_or_update_infant_profile([
-                    'patient_id' => $patientId,
-                    'first_name' => $rFirst,
-                    'middle_name' => $rMiddle,
-                    'last_name' => $rLast,
-                    'birth_date' => $rDob ?: date('Y-m-d'),
-                    'gender' => $rGender,
-                    'relationship' => $roleInfo['relationship'],
-                    'mother_name' => $defMother,
-                    'father_name' => $defFather,
-                    'guardian_name' => $roleInfo['guardian_name'],
-                ]);
+                $profId = 0;
+                if ($db !== null) {
+                    try {
+                        $profId = save_or_update_infant_profile([
+                            'patient_id' => $patientId,
+                            'first_name' => $rFirst,
+                            'middle_name' => $rMiddle,
+                            'last_name' => $rLast,
+                            'birth_date' => $rDob ?: date('Y-m-d'),
+                            'gender' => $rGender,
+                            'relationship' => $roleInfo['relationship'],
+                            'mother_name' => $defMother,
+                            'father_name' => $defFather,
+                            'guardian_name' => $roleInfo['guardian_name'],
+                        ]) ?? 0;
+                    } catch (Throwable $e) {
+                        $profId = 0;
+                    }
+                }
 
                 $groupedInfants[$k] = [
                     'profile_id' => $profId,
@@ -3764,18 +3808,25 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
             }
 
             if (!isset($groupedInfants[$k])) {
-                $profId = save_or_update_infant_profile([
-                    'patient_id' => $patientId,
-                    'first_name' => $rFirst,
-                    'middle_name' => $rMiddle,
-                    'last_name' => $rLast,
-                    'birth_date' => $rDob ?: date('Y-m-d'),
-                    'gender' => $imm['gender'] ?? 'Not specified',
-                    'relationship' => $roleInfo['relationship'],
-                    'mother_name' => $defMother,
-                    'father_name' => $defFather,
-                    'guardian_name' => $roleInfo['guardian_name'],
-                ]);
+                $profId = 0;
+                if ($db !== null) {
+                    try {
+                        $profId = save_or_update_infant_profile([
+                            'patient_id' => $patientId,
+                            'first_name' => $rFirst,
+                            'middle_name' => $rMiddle,
+                            'last_name' => $rLast,
+                            'birth_date' => $rDob ?: date('Y-m-d'),
+                            'gender' => $imm['gender'] ?? 'Not specified',
+                            'relationship' => $roleInfo['relationship'],
+                            'mother_name' => $defMother,
+                            'father_name' => $defFather,
+                            'guardian_name' => $roleInfo['guardian_name'],
+                        ]) ?? 0;
+                    } catch (Throwable $e) {
+                        $profId = 0;
+                    }
+                }
 
                 $groupedInfants[$k] = [
                     'profile_id' => $profId,
@@ -3818,38 +3869,18 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
             }
         }
 
-        // Fetch the very recent picture taken by the account holder in their recent immunization appointment
-        $latestAccountPhoto = '';
-        try {
-            $stmtPhoto = $db->prepare("SELECT photo_path FROM appointments 
-                WHERE patient_id = ? 
-                  AND (service_slug LIKE '%immuniz%' OR service_slug LIKE '%vaccin%' OR service_name LIKE '%immuniz%' OR service_name LIKE '%vaccin%') 
-                  AND photo_path IS NOT NULL AND photo_path != '' 
-                ORDER BY preferred_date DESC, id DESC LIMIT 1");
-            $stmtPhoto->bind_param('s', $patientId);
-            $stmtPhoto->execute();
-            $photoRow = $stmtPhoto->get_result()->fetch_assoc();
-            if ($photoRow && !empty($photoRow['photo_path'])) {
-                $latestAccountPhoto = (string) $photoRow['photo_path'];
-            }
-        } catch (Throwable $e) {}
-
-        // If no immunization photo found on account, fallback to any appointment photo, then profile photo
-        if ($latestAccountPhoto === '') {
-            try {
-                $stmtPhoto = $db->prepare("SELECT photo_path FROM appointments WHERE patient_id = ? AND photo_path IS NOT NULL AND photo_path != '' ORDER BY preferred_date DESC, id DESC LIMIT 1");
-                $stmtPhoto->bind_param('s', $patientId);
-                $stmtPhoto->execute();
-                $photoRow = $stmtPhoto->get_result()->fetch_assoc();
-                if ($photoRow && !empty($photoRow['photo_path'])) {
-                    $latestAccountPhoto = (string) $photoRow['photo_path'];
+        // Sort each infant's appointments chronologically descending (newest first)
+        foreach ($groupedInfants as $k => &$infRef) {
+            usort($infRef['appointments'], static function(array $a, array $b): int {
+                $tA = strtotime((string) ($a['preferred_date'] ?? '1970-01-01')) ?: 0;
+                $tB = strtotime((string) ($b['preferred_date'] ?? '1970-01-01')) ?: 0;
+                if ($tB !== $tA) {
+                    return $tB <=> $tA;
                 }
-            } catch (Throwable $e) {}
+                return ((int) ($b['id'] ?? 0)) <=> ((int) ($a['id'] ?? 0));
+            });
         }
-
-        if ($latestAccountPhoto === '' && !empty($parentProfile['photo_path'])) {
-            $latestAccountPhoto = (string) $parentProfile['photo_path'];
-        }
+        unset($infRef);
 
         foreach ($groupedInfants as $k => $inf) {
             $nameParts = array_filter([$inf['first_name'], $inf['middle_name'], $inf['last_name']]);
@@ -3871,56 +3902,48 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 } catch (Throwable $e) {}
             }
 
-            // Resolve the latest valid photo for this infant from their own immunization appointments
-            $latestPhoto = '';
-            foreach ($inf['photos'] as $pCandidate) {
-                if (resolve_patient_photo_url((string) $pCandidate, 'staff') !== '') {
-                    $latestPhoto = (string) $pCandidate;
-                    break;
+            // Normalization helper for appointment photo paths
+            $normalizePhotoPath = static function(?string $raw): string {
+                $s = trim((string) $raw);
+                if ($s === '') return '';
+                if (str_starts_with($s, 'http://') || str_starts_with($s, 'https://') || str_starts_with($s, 'data:')) {
+                    return $s;
                 }
-            }
-            if ($latestPhoto === '' && !empty($inf['photos'])) {
-                $firstP = (string) $inf['photos'][0];
-                if (str_starts_with($firstP, 'http') || str_starts_with($firstP, 'data:')) {
-                    $latestPhoto = $firstP;
+                $clean = str_replace('\\', '/', $s);
+                $clean = preg_replace('#^(\.\./)?(Patients/)?#i', '', $clean);
+                $clean = ltrim($clean, '/');
+                if (!str_starts_with($clean, 'uploads/') && !str_starts_with($clean, 'assets/')) {
+                    $clean = 'uploads/' . $clean;
                 }
-            }
+                return $clean;
+            };
 
-            // If individual appointments did not have a valid photo on disk, use the account holder's recent immunization appointment photo
-            if ($latestPhoto === '' || resolve_patient_photo_url($latestPhoto, 'staff') === '') {
-                if ($latestAccountPhoto !== '' && resolve_patient_photo_url($latestAccountPhoto, 'staff') !== '') {
-                    $latestPhoto = $latestAccountPhoto;
-                }
-            }
-
+            // 1. Process each appointment in this infant's history.
+            // As required: "That image taken by the account holder will be the infant's pictures for their history that's seen in their sub-profiles."
+            // Each appointment ONLY gets the image captured specifically for that certain appointment. Never inherit across visits!
             $infAppts = $inf['appointments'];
             foreach ($infAppts as &$ia) {
                 $iaPhoto = trim((string) ($ia['photo_path'] ?? ''));
                 if ($iaPhoto !== '') {
-                    $resolvedIa = resolve_patient_photo_url($iaPhoto, 'staff');
-                    if ($resolvedIa === '' && !str_starts_with($iaPhoto, 'http') && !str_starts_with($iaPhoto, 'data:')) {
-                        // If file not found on disk, fallback to the account holder's recent immunization appointment photo
-                        if ($latestPhoto !== '') {
-                            $ia['photo_path'] = $latestPhoto;
-                        } else {
-                            $ia['photo_path'] = '';
-                        }
-                    } else {
-                        // Normalize slashes and uploads prefix
-                        $norm = str_replace('\\', '/', $iaPhoto);
-                        $norm = preg_replace('#^(\.\./)?(Patients/)?#i', '', $norm);
-                        $norm = ltrim($norm, '/');
-                        if (!str_starts_with($norm, 'uploads/') && !str_starts_with($norm, 'assets/')) {
-                            $norm = 'uploads/' . $norm;
-                        }
-                        $ia['photo_path'] = $norm;
-                    }
-                } elseif ($latestPhoto !== '') {
-                    // Appointment record has no photo captured, inherit the account holder's photo taken when they went for that immunization appointment
-                    $ia['photo_path'] = $latestPhoto;
+                    $ia['photo_path'] = $normalizePhotoPath($iaPhoto);
+                } else {
+                    $ia['photo_path'] = '';
                 }
             }
             unset($ia);
+
+            // 2. Resolve the infant's top profile picture beside the name section.
+            // As required: "Then as for the picture like a 'Profile picture', the image taken in their very recent immunization appointment will be the one displayed.
+            // It means, the profile image above beside the name section, changes every-time they take a photo on their newest immunization appointment."
+            // Because appointments are sorted newest first, the first appointment for this infant with a valid photo is their profile picture.
+            $latestInfantPhoto = '';
+            foreach ($infAppts as $iaCandidate) {
+                $candPhoto = trim((string) ($iaCandidate['photo_path'] ?? ''));
+                if ($candPhoto !== '') {
+                    $latestInfantPhoto = $candPhoto;
+                    break;
+                }
+            }
 
             $vaccineCounts = [];
             foreach ($inf['vaccine_doses'] as $dose) {
@@ -3962,8 +3985,8 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 'parent_name' => $parentName,
                 'parent_gender' => $parentGender,
                 'custom_notes' => $inf['custom_notes'],
-                'photo_path' => $latestPhoto,
-                'latest_photo' => $latestPhoto,
+                'photo_path' => $latestInfantPhoto,
+                'latest_photo' => $latestInfantPhoto,
                 'vaccine_counts' => $vaccineCounts,
                 'vaccine_doses' => $inf['vaccine_doses'],
                 'total_doses' => count($inf['vaccine_doses']),
