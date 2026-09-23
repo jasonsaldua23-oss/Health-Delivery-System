@@ -732,7 +732,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'save
                 $pGender = strtolower(trim((string) ($parentProfile['gender'] ?? '')));
                 $relLower = strtolower($relationship);
                 $isGuardianAcc = (stripos($relLower, 'guardian') !== false);
-                if (!$isGuardianAcc && $pFullName !== '') {
+                if ($isGuardianAcc && $pFullName !== '') {
+                    $guardianName = $pFullName;
+                } elseif (!$isGuardianAcc && $pFullName !== '') {
                     if ($pGender === 'male' || $pGender === 'm' || stripos($relLower, 'father') !== false) {
                         $fatherName = $pFullName;
                     } elseif ($pGender === 'female' || $pGender === 'f' || stripos($relLower, 'mother') !== false) {
@@ -2763,11 +2765,12 @@ for ($i = 0; $i < 6; $i++) {
                                                         $infPhotoSrc = resolve_patient_photo_url($infPhotoRaw, 'staff');
                                                         ?>
                                                         <div class="infant-popup-card-item" onclick="openStaffInfantModal(<?= htmlspecialchars(json_encode($infant), ENT_QUOTES, 'UTF-8'); ?>)" title="Click to view full record and details">
-                                                            <div class="infant-popup-avatar">
+                                                            <div class="infant-popup-avatar" style="position: relative; width: 40px; height: 40px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #e0f2fe; color: #0284c7; flex-shrink: 0; border: 2px solid #7dd3fc;">
                                                                 <?php if ($infPhotoSrc !== ''): ?>
-                                                                    <img src="<?= h($infPhotoSrc); ?>" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" onerror="this.onerror=null; this.parentElement.innerHTML='<?= addslashes(staff_icon('baby')); ?>';">
+                                                                    <img src="<?= h($infPhotoSrc); ?>" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; z-index: 1;" onerror="this.style.display='none';">
+                                                                    <span class="infant-avatar-fallback" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; position: absolute; inset: 0; z-index: 0;"><?= staff_icon('baby'); ?></span>
                                                                 <?php else: ?>
-                                                                    <?= staff_icon('baby'); ?>
+                                                                    <span class="infant-avatar-fallback" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;"><?= staff_icon('baby'); ?></span>
                                                                 <?php endif; ?>
                                                             </div>
                                                             <div class="infant-popup-info">
@@ -6355,7 +6358,7 @@ window.openStaffInfantModal = function(infant) {
     const photoSrc = resolveStaffPhotoUrl(photoRaw);
     const babySvg = `<?= addslashes(staff_icon('baby')); ?>`;
     if (photoSrc) {
-        photoHtml = `<img src="${staffEscapeHtml(photoSrc)}" alt="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null; this.parentElement.style.display='flex'; this.parentElement.style.alignItems='center'; this.parentElement.style.justifyContent='center'; this.parentElement.innerHTML='${babySvg}';">`;
+        photoHtml = `<img src="${staffEscapeHtml(photoSrc)}" alt="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer;" onclick="window.previewPhotoInModal('${staffEscapeHtml(photoSrc)}')" title="Click to view full photo" onerror="this.onerror=null; this.parentElement.style.display='flex'; this.parentElement.style.alignItems='center'; this.parentElement.style.justifyContent='center'; this.parentElement.innerHTML='${babySvg}';">`;
     } else {
         photoHtml = `<div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">${babySvg}</div>`;
     }
@@ -6475,17 +6478,14 @@ window.openStaffInfantModal = function(infant) {
                 </div>` : ''}
 
                 ${apptPhotoSrc ? `
-                <div class="appt-photo-preview-wrap" style="display: flex; align-items: center; gap: 12px; margin-top: 6px; padding: 8px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; width: fit-content;">
+                <div class="appt-photo-preview-wrap" style="display: flex; align-items: center; gap: 12px; margin-top: 6px; padding: 8px 12px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; width: fit-content; cursor: pointer; transition: all 0.15s ease;"
+                     onclick="window.previewPhotoInModal('${staffEscapeHtml(apptPhotoSrc)}')"
+                     title="Click to view full photo">
                     <img src="${staffEscapeHtml(apptPhotoSrc)}" alt="Visit Verification Photo" 
                          style="width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1.5px solid #cbd5e1; cursor: pointer; display: block; box-shadow: 0 1px 3px rgba(0,0,0,0.08);"
-                         onclick="window.previewPhotoInModal('${staffEscapeHtml(apptPhotoSrc)}')"
-                         title="Click to zoom and preview photo"
                          onerror="this.onerror=null; const p = this.closest('.appt-photo-preview-wrap'); if (p) p.style.display='none';">
                     <div style="display: flex; flex-direction: column;">
                         <span style="font-size: 0.82rem; font-weight: 700; color: #0f172a;">Visit Verification Photo Captured</span>
-                        <button type="button" onclick="window.previewPhotoInModal('${staffEscapeHtml(apptPhotoSrc)}')" style="background: none; border: none; padding: 0; color: #0284c7; font-size: 0.75rem; font-weight: 600; cursor: pointer; text-align: left; text-decoration: underline; margin-top: 2px;">
-                            🔍 View full photo
-                        </button>
                     </div>
                 </div>` : ''}
             </div>`;
@@ -6571,8 +6571,8 @@ window.openStaffInfantModal = function(infant) {
             ${isGuardian ? `
             <div style="margin-bottom: 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 14px;">
                 <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #92400e; margin-bottom: 5px;">Registered Guardian's Name:</label>
-                <input type="text" name="guardian_name" value="${staffEscapeHtml(infant.guardian_name || infant.parent_name || '')}" placeholder="e.g. Legal Guardian Name" class="form-input-field" style="width: 100%; border: 1.5px solid #fcd34d; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; background: #ffffff;">
-                <span style="font-size: 0.76rem; color: #b45309; display: block; margin-top: 4px;">Account holder is confirmed as Guardian. Biological parents can be recorded separately below if known.</span>
+                <input type="text" name="guardian_name" value="${staffEscapeHtml(parentName || infant.guardian_name || '')}" readonly placeholder="Account Holder (Guardian)" class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; background-color: #f1f5f9; color: #475569; cursor: not-allowed;">
+                <span style="font-size: 0.76rem; color: #b45309; display: block; margin-top: 4px;">Account holder is confirmed as Registered Guardian (${staffEscapeHtml(parentName || 'Account Holder')}). Automatically encoded and uneditable. Biological parents can be recorded separately below if known.</span>
             </div>
             ` : `
             <input type="hidden" name="guardian_name" value="${staffEscapeHtml(infant.guardian_name || '')}">

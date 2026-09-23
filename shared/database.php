@@ -4060,7 +4060,7 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 'role_label' => $rInfo['role_label'],
                 'mother_name' => $mName,
                 'father_name' => $fName,
-                'guardian_name' => $inf['guardian_name'],
+                'guardian_name' => $rInfo['is_guardian'] ? ($parentName ?: $inf['guardian_name']) : $inf['guardian_name'],
                 'parent_name' => $parentName,
                 'parent_gender' => $parentGender,
                 'custom_notes' => $inf['custom_notes'],

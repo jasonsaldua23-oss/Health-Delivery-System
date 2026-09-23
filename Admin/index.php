@@ -5796,7 +5796,7 @@ window.renderAdminSelectedInfant = function(index) {
     const photoSrc = resolveAdminPhotoUrl(photoRaw);
     const babySvg = `<?= addslashes(admin_icon('baby')); ?>`;
     if (photoSrc) {
-        photoHtml = `<img src="${adminEscapeHtml(photoSrc)}" alt="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null; this.parentElement.style.display='flex'; this.parentElement.style.alignItems='center'; this.parentElement.style.justifyContent='center'; this.parentElement.innerHTML='${babySvg}';">`;
+        photoHtml = `<img src="${adminEscapeHtml(photoSrc)}" alt="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer;" onclick="window.previewAdminPhotoInModal('${adminEscapeHtml(photoSrc)}')" title="Click to view full photo" onerror="this.onerror=null; this.parentElement.style.display='flex'; this.parentElement.style.alignItems='center'; this.parentElement.style.justifyContent='center'; this.parentElement.innerHTML='${babySvg}';">`;
     } else {
         photoHtml = `<div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">${babySvg}</div>`;
     }
@@ -5916,17 +5916,14 @@ window.renderAdminSelectedInfant = function(index) {
                 </div>` : ''}
 
                 ${apptPhotoSrc ? `
-                <div class="appt-photo-preview-wrap" style="display: flex; align-items: center; gap: 12px; margin-top: 6px; padding: 8px 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; width: fit-content;">
+                <div class="appt-photo-preview-wrap" style="display: flex; align-items: center; gap: 12px; margin-top: 6px; padding: 8px 12px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; width: fit-content; cursor: pointer; transition: all 0.15s ease;"
+                     onclick="window.previewAdminPhotoInModal('${adminEscapeHtml(apptPhotoSrc)}')"
+                     title="Click to view full photo">
                     <img src="${adminEscapeHtml(apptPhotoSrc)}" alt="Visit Verification Photo" 
                          style="width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1.5px solid #cbd5e1; cursor: pointer; display: block; box-shadow: 0 1px 3px rgba(0,0,0,0.08);"
-                         onclick="window.previewAdminPhotoInModal('${adminEscapeHtml(apptPhotoSrc)}')"
-                         title="Click to zoom and preview photo"
                          onerror="this.onerror=null; const p = this.closest('.appt-photo-preview-wrap'); if (p) p.style.display='none';">
                     <div style="display: flex; flex-direction: column;">
                         <span style="font-size: 0.82rem; font-weight: 700; color: #0f172a;">Consultation Verification Photo Recorded</span>
-                        <button type="button" onclick="window.previewAdminPhotoInModal('${adminEscapeHtml(apptPhotoSrc)}')" style="background: none; border: none; padding: 0; color: #7c3aed; font-size: 0.75rem; font-weight: 600; cursor: pointer; text-align: left; text-decoration: underline; margin-top: 2px;">
-                            🔍 View full photo
-                        </button>
                     </div>
                 </div>` : ''}
             </div>`;
