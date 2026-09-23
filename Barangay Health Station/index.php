@@ -97,6 +97,35 @@ if (!function_exists('staff_icon')) {
     }
 }
 
+if (!function_exists('format_vital_reading')) {
+    function format_vital_reading(?string $value, string $unit): string
+    {
+        $val = trim((string) $value);
+        if ($val === '') {
+            return '';
+        }
+        $cleanUnit = preg_quote($unit, '/');
+        if (preg_match('/' . $cleanUnit . '$/i', $val) || ($unit === '°C' && preg_match('/(?:°C|C|deg\s*C)$/i', $val))) {
+            return $val;
+        }
+        return $val . ' ' . $unit;
+    }
+}
+
+if (!function_exists('extract_vital_numeric')) {
+    function extract_vital_numeric(?string $value, bool $allowSlash = false): string
+    {
+        $val = trim((string) $value);
+        if ($val === '') {
+            return '';
+        }
+        if ($allowSlash) {
+            return preg_replace('/[^0-9\/]/', '', $val);
+        }
+        return preg_replace('/[^0-9.]/', '', $val);
+    }
+}
+
 if (!function_exists('render_patient_profile_body')) {
     function render_patient_profile_body(array $prof, array $station, string $programFilter = '', string $patientDateFilter = ''): string
     {
@@ -202,21 +231,31 @@ if (!function_exists('render_patient_profile_body')) {
                     <div class="history-vitals-strip">
                         <div class="vitals-micro-item">
                             <span class="vitals-micro-lbl"><?= staff_icon('pulse'); ?> Temp</span>
-                            <strong><?= h((string) (($appt['body_temperature'] ?? '') !== '' ? $appt['body_temperature'] . ' °C' : 'N/A')); ?></strong>
+                            <strong><?= h((string) (($appt['body_temperature'] ?? '') !== '' ? format_vital_reading($appt['body_temperature'], '°C') : 'N/A')); ?></strong>
                         </div>
                         <div class="vitals-micro-item">
                             <span class="vitals-micro-lbl"><?= staff_icon('stethoscope'); ?> BP</span>
-                            <strong><?= h((string) (($appt['blood_pressure'] ?? '') !== '' ? $appt['blood_pressure'] : 'N/A')); ?></strong>
+                            <strong><?= h((string) (($appt['blood_pressure'] ?? '') !== '' ? format_vital_reading($appt['blood_pressure'], 'mmHg') : 'N/A')); ?></strong>
                         </div>
                         <div class="vitals-micro-item">
                             <span class="vitals-micro-lbl"><?= staff_icon('heart'); ?> Pulse</span>
-                            <strong><?= h((string) (($appt['pulse_rate'] ?? '') !== '' ? $appt['pulse_rate'] . ' bpm' : 'N/A')); ?></strong>
+                            <strong><?= h((string) (($appt['pulse_rate'] ?? '') !== '' ? format_vital_reading($appt['pulse_rate'], 'bpm') : 'N/A')); ?></strong>
                         </div>
                         <div class="vitals-micro-item">
                             <span class="vitals-micro-lbl"><?= staff_icon('sparkle'); ?> Resp</span>
-                            <strong><?= h((string) (($appt['respiration_rate'] ?? '') !== '' ? $appt['respiration_rate'] . ' cpm' : 'N/A')); ?></strong>
+                            <strong><?= h((string) (($appt['respiration_rate'] ?? '') !== '' ? format_vital_reading($appt['respiration_rate'], 'cpm') : 'N/A')); ?></strong>
                         </div>
                     </div>
+                    <?php if (!empty($appt['height']) || !empty($appt['weight'])): ?>
+                        <div class="history-measurements-strip" style="display: flex; gap: 10px; margin-top: 6px; padding: 6px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 0.8rem; color: #166534;">
+                            <?php if (!empty($appt['height'])): ?>
+                                <span><strong>Height:</strong> <?= h(format_vital_reading((string) $appt['height'], 'cm')); ?></span>
+                            <?php endif; ?>
+                            <?php if (!empty($appt['weight'])): ?>
+                                <span><strong>Weight:</strong> <?= h(format_vital_reading((string) $appt['weight'], 'kg')); ?></span>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
 
                     <?php
                     $rec = appointment_recipient_details($appt);
@@ -616,17 +655,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
         if (!empty($postData['pulse']) && empty($postData['pulse_rate'])) {
             $postData['pulse_rate'] = $postData['pulse'];
         }
+        if (isset($postData['body_temperature'])) {
+            $postData['body_temperature'] = preg_replace('/[^0-9.]/', '', trim((string) $postData['body_temperature']));
+        }
+        if (isset($postData['pulse_rate'])) {
+            $postData['pulse_rate'] = preg_replace('/[^0-9]/', '', trim((string) $postData['pulse_rate']));
+        }
+        if (isset($postData['respiration_rate'])) {
+            $postData['respiration_rate'] = preg_replace('/[^0-9]/', '', trim((string) $postData['respiration_rate']));
+        }
+        if (isset($postData['blood_pressure'])) {
+            $postData['blood_pressure'] = preg_replace('/[^0-9\/]/', '', trim((string) $postData['blood_pressure']));
+        }
         if (isset($postData['height'])) {
-            $hVal = trim((string) $postData['height']);
-            if ($hVal !== '' && !preg_match('/(?:cm|centimeters?)$/i', $hVal)) {
-                $postData['height'] = $hVal . ' cm';
-            }
+            $hVal = preg_replace('/[^0-9.]/', '', trim((string) $postData['height']));
+            $postData['height'] = ($hVal !== '') ? ($hVal . ' cm') : '';
         }
         if (isset($postData['weight'])) {
-            $wVal = trim((string) $postData['weight']);
-            if ($wVal !== '' && !preg_match('/(?:kg|kilograms?)$/i', $wVal)) {
-                $postData['weight'] = $wVal . ' kg';
-            }
+            $wVal = preg_replace('/[^0-9.]/', '', trim((string) $postData['weight']));
+            $postData['weight'] = ($wVal !== '') ? ($wVal . ' kg') : '';
         }
         if (!empty($postData['vaccine_type_select'])) {
             if ($postData['vaccine_type_select'] === 'Others') {
@@ -2282,16 +2329,46 @@ for ($i = 0; $i < 6; $i++) {
                                     <div class="form-group-item">
                                         <label for="queue_body_temp" class="form-field-label">
                                             <span>Body Temperature</span>
-                                             <span class="required">*</span>
+                                            <span class="required">*</span>
                                         </label>
-                                        <input type="text" id="queue_body_temp" name="body_temperature" value="<?= h((string) ($selectedVitalsAppointment['body_temperature'] ?? '')); ?>" placeholder="e.g. 36.5 °C" required class="form-input-field">
+                                        <div class="vital-input-group">
+                                            <input type="text"
+                                                   id="queue_body_temp"
+                                                   name="body_temperature"
+                                                   value="<?= h(extract_vital_numeric($selectedVitalsAppointment['body_temperature'] ?? '')); ?>"
+                                                   placeholder="e.g. 36.5"
+                                                   required
+                                                   autocomplete="off"
+                                                   inputmode="decimal"
+                                                   data-vital-mode="decimal"
+                                                   class="form-input-field vital-numeric-input"
+                                                   oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');"
+                                                   onkeydown="handleVitalNumericKeydown(event, 'decimal');">
+                                            <span class="vital-unit-addon">°C</span>
+                                        </div>
+                                        <small class="field-subnote">Numbers only. Unit (°C) is automatically set by the system.</small>
                                     </div>
                                     <div class="form-group-item">
                                         <label for="queue_pulse_rate" class="form-field-label">
                                             <span>Pulse Rate (PR)</span>
                                             <span class="required">*</span>
                                         </label>
-                                        <input type="text" id="queue_pulse_rate" name="pulse_rate" value="<?= h((string) ($selectedVitalsAppointment['pulse_rate'] ?? '')); ?>" placeholder="e.g. 78 bpm" required class="form-input-field">
+                                        <div class="vital-input-group">
+                                            <input type="text"
+                                                   id="queue_pulse_rate"
+                                                   name="pulse_rate"
+                                                   value="<?= h(extract_vital_numeric($selectedVitalsAppointment['pulse_rate'] ?? '')); ?>"
+                                                   placeholder="e.g. 78"
+                                                   required
+                                                   autocomplete="off"
+                                                   inputmode="numeric"
+                                                   data-vital-mode="integer"
+                                                   class="form-input-field vital-numeric-input"
+                                                   oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                                                   onkeydown="handleVitalNumericKeydown(event, 'integer');">
+                                            <span class="vital-unit-addon">bpm</span>
+                                        </div>
+                                        <small class="field-subnote">Numbers only. Unit (bpm) is automatically set by the system.</small>
                                     </div>
                                 </div>
 
@@ -2301,14 +2378,44 @@ for ($i = 0; $i < 6; $i++) {
                                             <span>Respiration Rate (RR)</span>
                                             <span class="required">*</span>
                                         </label>
-                                        <input type="text" id="queue_resp_rate" name="respiration_rate" value="<?= h((string) ($selectedVitalsAppointment['respiration_rate'] ?? '')); ?>" placeholder="e.g. 18 cpm" required class="form-input-field">
+                                        <div class="vital-input-group">
+                                            <input type="text"
+                                                   id="queue_resp_rate"
+                                                   name="respiration_rate"
+                                                   value="<?= h(extract_vital_numeric($selectedVitalsAppointment['respiration_rate'] ?? '')); ?>"
+                                                   placeholder="e.g. 18"
+                                                   required
+                                                   autocomplete="off"
+                                                   inputmode="numeric"
+                                                   data-vital-mode="integer"
+                                                   class="form-input-field vital-numeric-input"
+                                                   oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                                                   onkeydown="handleVitalNumericKeydown(event, 'integer');">
+                                            <span class="vital-unit-addon">cpm</span>
+                                        </div>
+                                        <small class="field-subnote">Numbers only. Unit (cpm) is automatically set by the system.</small>
                                     </div>
                                     <div class="form-group-item">
                                         <label for="queue_blood_pres" class="form-field-label">
                                             <span>Blood Pressure (BP)</span>
                                             <span class="required">*</span>
                                         </label>
-                                        <input type="text" id="queue_blood_pres" name="blood_pressure" value="<?= h((string) ($selectedVitalsAppointment['blood_pressure'] ?? '')); ?>" placeholder="e.g. 120/80 mmHg" required class="form-input-field">
+                                        <div class="vital-input-group">
+                                            <input type="text"
+                                                   id="queue_blood_pres"
+                                                   name="blood_pressure"
+                                                   value="<?= h(extract_vital_numeric($selectedVitalsAppointment['blood_pressure'] ?? '', true)); ?>"
+                                                   placeholder="e.g. 120/80"
+                                                   required
+                                                   autocomplete="off"
+                                                   inputmode="numeric"
+                                                   data-vital-mode="bp"
+                                                   class="form-input-field vital-numeric-input"
+                                                   oninput="this.value = this.value.replace(/[^0-9\/]/g, '').replace(/(\/.*?)\/.*/g, '$1');"
+                                                   onkeydown="handleVitalNumericKeydown(event, 'bp');">
+                                            <span class="vital-unit-addon">mmHg</span>
+                                        </div>
+                                        <small class="field-subnote">Numbers and slash only (e.g. 120/80). Unit (mmHg) is automatically set.</small>
                                     </div>
                                 </div>
 
@@ -2323,17 +2430,47 @@ for ($i = 0; $i < 6; $i++) {
                                     <div class="form-row-grid">
                                         <div class="form-group-item">
                                             <label for="queue_height" class="form-field-label">
-                                                <span>Height (Infant &bull; Centimeters / cm)</span>
+                                                <span>Height (Infant &bull; Centimeters)</span>
                                                 <span class="required">*</span>
                                             </label>
-                                            <input type="text" id="queue_height" name="height" value="<?= h((string) ($selectedVitalsAppointment['height'] ?? '')); ?>" placeholder="e.g. 65 cm" required class="form-input-field">
+                                            <div class="vital-input-group is-immunization-metric">
+                                                <input type="text"
+                                                       id="queue_height"
+                                                       name="height"
+                                                       value="<?= h(extract_vital_numeric($selectedVitalsAppointment['height'] ?? '')); ?>"
+                                                       placeholder="e.g. 65"
+                                                       required
+                                                       autocomplete="off"
+                                                       inputmode="decimal"
+                                                       data-vital-mode="decimal"
+                                                       class="form-input-field vital-numeric-input"
+                                                       oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');"
+                                                       onkeydown="handleVitalNumericKeydown(event, 'decimal');">
+                                                <span class="vital-unit-addon">cm</span>
+                                            </div>
+                                            <small class="field-subnote">Numbers only. Unit (cm) is automatically set by the system.</small>
                                         </div>
                                         <div class="form-group-item">
                                             <label for="queue_weight" class="form-field-label">
-                                                <span>Weight (Infant &bull; Kilograms / kg)</span>
+                                                <span>Weight (Infant &bull; Kilograms)</span>
                                                 <span class="required">*</span>
                                             </label>
-                                            <input type="text" id="queue_weight" name="weight" value="<?= h((string) ($selectedVitalsAppointment['weight'] ?? '')); ?>" placeholder="e.g. 7.2 kg" required class="form-input-field">
+                                            <div class="vital-input-group is-immunization-metric">
+                                                <input type="text"
+                                                       id="queue_weight"
+                                                       name="weight"
+                                                       value="<?= h(extract_vital_numeric($selectedVitalsAppointment['weight'] ?? '')); ?>"
+                                                       placeholder="e.g. 7.2"
+                                                       required
+                                                       autocomplete="off"
+                                                       inputmode="decimal"
+                                                       data-vital-mode="decimal"
+                                                       class="form-input-field vital-numeric-input"
+                                                       oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');"
+                                                       onkeydown="handleVitalNumericKeydown(event, 'decimal');">
+                                                <span class="vital-unit-addon">kg</span>
+                                            </div>
+                                            <small class="field-subnote">Numbers only. Unit (kg) is automatically set by the system.</small>
                                         </div>
                                     </div>
                                 <?php endif; ?>
@@ -3006,30 +3143,53 @@ for ($i = 0; $i < 6; $i++) {
                                             <span class="vital-box-icon"><?= staff_icon('pulse'); ?></span>
                                             <span class="vital-box-label">Body Temp</span>
                                         </div>
-                                        <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['body_temperature'] ?? '') !== '' ? $selectedRemarksAppointment['body_temperature'] : 'Not recorded')); ?></strong>
+                                        <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['body_temperature'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['body_temperature'], '°C') : 'Not recorded')); ?></strong>
                                     </div>
                                     <div class="vital-display-box is-readonly">
                                         <div class="vital-box-header">
                                             <span class="vital-box-icon"><?= staff_icon('heart'); ?></span>
                                             <span class="vital-box-label">Pulse Rate (PR)</span>
                                         </div>
-                                        <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['pulse_rate'] ?? '') !== '' ? $selectedRemarksAppointment['pulse_rate'] : 'Not recorded')); ?></strong>
+                                        <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['pulse_rate'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['pulse_rate'], 'bpm') : 'Not recorded')); ?></strong>
                                     </div>
                                     <div class="vital-display-box is-readonly">
                                         <div class="vital-box-header">
                                             <span class="vital-box-icon"><?= staff_icon('sparkle'); ?></span>
                                             <span class="vital-box-label">Respiration (RR)</span>
                                         </div>
-                                        <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['respiration_rate'] ?? '') !== '' ? $selectedRemarksAppointment['respiration_rate'] : 'Not recorded')); ?></strong>
+                                        <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['respiration_rate'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['respiration_rate'], 'cpm') : 'Not recorded')); ?></strong>
                                     </div>
                                     <div class="vital-display-box is-readonly">
                                         <div class="vital-box-header">
                                             <span class="vital-box-icon"><?= staff_icon('stethoscope'); ?></span>
                                             <span class="vital-box-label">Blood Pressure</span>
                                         </div>
-                                        <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['blood_pressure'] ?? '') !== '' ? $selectedRemarksAppointment['blood_pressure'] : 'Not recorded')); ?></strong>
+                                        <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['blood_pressure'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['blood_pressure'], 'mmHg') : 'Not recorded')); ?></strong>
                                     </div>
                                 </div>
+
+                                <?php if (!empty($selectedRemarksAppointment['height']) || !empty($selectedRemarksAppointment['weight'])): ?>
+                                    <div class="vitals-display-grid readonly-vitals-grid" style="margin-top: 10px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                                        <?php if (!empty($selectedRemarksAppointment['height'])): ?>
+                                            <div class="vital-display-box is-readonly" style="background:#f0fdf4; border-color:#86efac;">
+                                                <div class="vital-box-header">
+                                                    <span class="vital-box-icon" style="color:#16a34a;"><?= staff_icon('baby'); ?></span>
+                                                    <span class="vital-box-label" style="color:#166534;">Recipient Height</span>
+                                                </div>
+                                                <strong class="vital-box-val" style="color:#14532d;"><?= h(format_vital_reading($selectedRemarksAppointment['height'], 'cm')); ?></strong>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($selectedRemarksAppointment['weight'])): ?>
+                                            <div class="vital-display-box is-readonly" style="background:#f0fdf4; border-color:#86efac;">
+                                                <div class="vital-box-header">
+                                                    <span class="vital-box-icon" style="color:#16a34a;"><?= staff_icon('baby'); ?></span>
+                                                    <span class="vital-box-label" style="color:#166534;">Recipient Weight</span>
+                                                </div>
+                                                <strong class="vital-box-val" style="color:#14532d;"><?= h(format_vital_reading($selectedRemarksAppointment['weight'], 'kg')); ?></strong>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
 
                                 <?php if (!empty($selectedRemarksAppointment['vaccine_type']) || is_vaccination_service((string) ($selectedRemarksAppointment['service_slug'] ?? ''), (string) ($selectedRemarksAppointment['service_name'] ?? ''))): ?>
                                     <div class="vaccine-summary-card" style="margin-top: 14px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
@@ -3258,30 +3418,53 @@ for ($i = 0; $i < 6; $i++) {
                                         <span class="vital-box-icon"><?= staff_icon('pulse'); ?></span>
                                         <span class="vital-box-label">Body Temp</span>
                                     </div>
-                                    <strong class="vital-box-val"><?= h((string) (($selectedViewAppointment['body_temperature'] ?? '') !== '' ? $selectedViewAppointment['body_temperature'] : 'N/A')); ?></strong>
+                                    <strong class="vital-box-val"><?= h((string) (($selectedViewAppointment['body_temperature'] ?? '') !== '' ? format_vital_reading($selectedViewAppointment['body_temperature'], '°C') : 'N/A')); ?></strong>
                                 </div>
                                 <div class="vital-display-box">
                                     <div class="vital-box-header">
                                         <span class="vital-box-icon"><?= staff_icon('heart'); ?></span>
                                         <span class="vital-box-label">Pulse Rate</span>
                                     </div>
-                                    <strong class="vital-box-val"><?= h((string) (($selectedViewAppointment['pulse_rate'] ?? '') !== '' ? $selectedViewAppointment['pulse_rate'] : 'N/A')); ?></strong>
+                                    <strong class="vital-box-val"><?= h((string) (($selectedViewAppointment['pulse_rate'] ?? '') !== '' ? format_vital_reading($selectedViewAppointment['pulse_rate'], 'bpm') : 'N/A')); ?></strong>
                                 </div>
                                 <div class="vital-display-box">
                                     <div class="vital-box-header">
                                         <span class="vital-box-icon"><?= staff_icon('sparkle'); ?></span>
                                         <span class="vital-box-label">Respiration</span>
                                     </div>
-                                    <strong class="vital-box-val"><?= h((string) (($selectedViewAppointment['respiration_rate'] ?? '') !== '' ? $selectedViewAppointment['respiration_rate'] : 'N/A')); ?></strong>
+                                    <strong class="vital-box-val"><?= h((string) (($selectedViewAppointment['respiration_rate'] ?? '') !== '' ? format_vital_reading($selectedViewAppointment['respiration_rate'], 'cpm') : 'N/A')); ?></strong>
                                 </div>
                                 <div class="vital-display-box">
                                     <div class="vital-box-header">
                                         <span class="vital-box-icon"><?= staff_icon('stethoscope'); ?></span>
                                         <span class="vital-box-label">Blood Pressure</span>
                                     </div>
-                                    <strong class="vital-box-val"><?= h((string) (($selectedViewAppointment['blood_pressure'] ?? '') !== '' ? $selectedViewAppointment['blood_pressure'] : 'N/A')); ?></strong>
+                                    <strong class="vital-box-val"><?= h((string) (($selectedViewAppointment['blood_pressure'] ?? '') !== '' ? format_vital_reading($selectedViewAppointment['blood_pressure'], 'mmHg') : 'N/A')); ?></strong>
                                 </div>
                             </div>
+
+                            <?php if (!empty($selectedViewAppointment['height']) || !empty($selectedViewAppointment['weight'])): ?>
+                                <div class="vitals-display-grid" style="margin-top: 10px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                                    <?php if (!empty($selectedViewAppointment['height'])): ?>
+                                        <div class="vital-display-box" style="background:#f0fdf4; border-color:#86efac;">
+                                            <div class="vital-box-header">
+                                                <span class="vital-box-icon" style="color:#16a34a;"><?= staff_icon('baby'); ?></span>
+                                                <span class="vital-box-label" style="color:#166534;">Recipient Height</span>
+                                            </div>
+                                            <strong class="vital-box-val" style="color:#14532d;"><?= h(format_vital_reading($selectedViewAppointment['height'], 'cm')); ?></strong>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($selectedViewAppointment['weight'])): ?>
+                                        <div class="vital-display-box" style="background:#f0fdf4; border-color:#86efac;">
+                                            <div class="vital-box-header">
+                                                <span class="vital-box-icon" style="color:#16a34a;"><?= staff_icon('baby'); ?></span>
+                                                <span class="vital-box-label" style="color:#166534;">Recipient Weight</span>
+                                            </div>
+                                            <strong class="vital-box-val" style="color:#14532d;"><?= h(format_vital_reading($selectedViewAppointment['weight'], 'kg')); ?></strong>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
 
                             <?php if (!empty($selectedViewAppointment['vaccine_type']) || is_vaccination_service((string) ($selectedViewAppointment['service_slug'] ?? ''), (string) ($selectedViewAppointment['service_name'] ?? ''))): ?>
                                 <div class="vaccine-summary-card" style="margin-top: 14px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
@@ -4893,28 +5076,28 @@ for ($i = 0; $i < 6; $i++) {
                                                 <span class="vital-box-icon"><?= staff_icon('pulse'); ?></span>
                                                 <span class="vital-box-label">Body Temp</span>
                                             </div>
-                                            <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['body_temperature'] ?? '') !== '' ? $selectedRemarksAppointment['body_temperature'] : 'Not recorded')); ?></strong>
+                                            <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['body_temperature'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['body_temperature'], '°C') : 'Not recorded')); ?></strong>
                                         </div>
                                         <div class="vital-display-box is-readonly">
                                             <div class="vital-box-header">
                                                 <span class="vital-box-icon"><?= staff_icon('heart'); ?></span>
                                                 <span class="vital-box-label">Pulse Rate (PR)</span>
                                             </div>
-                                            <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['pulse_rate'] ?? '') !== '' ? $selectedRemarksAppointment['pulse_rate'] : 'Not recorded')); ?></strong>
+                                            <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['pulse_rate'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['pulse_rate'], 'bpm') : 'Not recorded')); ?></strong>
                                         </div>
                                         <div class="vital-display-box is-readonly">
                                             <div class="vital-box-header">
                                                 <span class="vital-box-icon"><?= staff_icon('sparkle'); ?></span>
                                                 <span class="vital-box-label">Respiration (RR)</span>
                                             </div>
-                                            <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['respiration_rate'] ?? '') !== '' ? $selectedRemarksAppointment['respiration_rate'] : 'Not recorded')); ?></strong>
+                                            <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['respiration_rate'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['respiration_rate'], 'cpm') : 'Not recorded')); ?></strong>
                                         </div>
                                         <div class="vital-display-box is-readonly">
                                             <div class="vital-box-header">
                                                 <span class="vital-box-icon"><?= staff_icon('stethoscope'); ?></span>
                                                 <span class="vital-box-label">Blood Pressure</span>
                                             </div>
-                                            <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['blood_pressure'] ?? '') !== '' ? $selectedRemarksAppointment['blood_pressure'] : 'Not recorded')); ?></strong>
+                                            <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['blood_pressure'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['blood_pressure'], 'mmHg') : 'Not recorded')); ?></strong>
                                         </div>
                                     </div>
 
@@ -6904,6 +7087,76 @@ window.dismissStaffToast = function() {
             });
         }, { passive: true });
     }
+})();
+
+// Numeric Vitals Input Enforcement & Keydown / Paste Filtering
+function handleVitalNumericKeydown(event, mode) {
+    const controlKeys = [
+        'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+        'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+        'Home', 'End'
+    ];
+    if (controlKeys.includes(event.key)) {
+        return;
+    }
+    if (event.ctrlKey || event.metaKey) {
+        return;
+    }
+    // Digits 0-9
+    if (event.key >= '0' && event.key <= '9') {
+        return;
+    }
+    // Decimal point for decimal inputs
+    if (mode === 'decimal' && event.key === '.') {
+        if (!event.target.value.includes('.')) {
+            return;
+        }
+    }
+    // Slash for blood pressure (e.g. 120/80)
+    if (mode === 'bp' && (event.key === '/' || event.key === '-')) {
+        if (!event.target.value.includes('/')) {
+            if (event.key === '-') {
+                event.preventDefault();
+                event.target.value = event.target.value + '/';
+                return;
+            }
+            return;
+        }
+    }
+    // Block any other key (alphabetical letters, symbols, spaces)
+    event.preventDefault();
+}
+
+window.handleVitalNumericKeydown = handleVitalNumericKeydown;
+
+(function() {
+    function sanitizeVitalInputValue(input) {
+        const mode = input.getAttribute('data-vital-mode') || 'decimal';
+        let val = input.value;
+        if (mode === 'integer') {
+            val = val.replace(/[^0-9]/g, '');
+        } else if (mode === 'bp') {
+            val = val.replace(/[^0-9\/]/g, '').replace(/(\/.*?)\/.*/g, '$1');
+        } else {
+            val = val.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+        }
+        if (input.value !== val) {
+            input.value = val;
+        }
+    }
+
+    document.addEventListener('input', function(e) {
+        const input = e.target.closest('.vital-numeric-input');
+        if (input) {
+            sanitizeVitalInputValue(input);
+        }
+    }, true);
+
+    document.addEventListener('paste', function(e) {
+        const input = e.target.closest('.vital-numeric-input');
+        if (!input) return;
+        setTimeout(() => sanitizeVitalInputValue(input), 0);
+    }, true);
 })();
 </script>
 <script src="../shared/pwa-install.js" defer></script>

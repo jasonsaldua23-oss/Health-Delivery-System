@@ -106,6 +106,21 @@ if (!function_exists('status_class')) {
     }
 }
 
+if (!function_exists('format_vital_reading')) {
+    function format_vital_reading(?string $value, string $unit): string
+    {
+        $val = trim((string) $value);
+        if ($val === '') {
+            return '';
+        }
+        $cleanUnit = preg_quote($unit, '/');
+        if (preg_match('/' . $cleanUnit . '$/i', $val) || ($unit === '°C' && preg_match('/(?:°C|C|deg\s*C)$/i', $val))) {
+            return $val;
+        }
+        return $val . ' ' . $unit;
+    }
+}
+
 if (!function_exists('csrf_token')) {
     function csrf_token(): string
     {
@@ -1692,6 +1707,18 @@ if (!function_exists('peso')) {
                                                     <strong class="vital-value" style="color: #1e3a8a; font-size: 1.05rem;"><?= h((string) $selectedAdminVisit['vaccine_type']); ?></strong>
                                                 </div>
                                             <?php endif; ?>
+                                            <?php if (!empty($selectedAdminVisit['height'])): ?>
+                                                <div class="vital-metric-card" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
+                                                    <span class="vital-label" style="color: #166534; font-weight: 700;">Recipient Height</span>
+                                                    <strong class="vital-value" style="color: #14532d; font-size: 1.05rem;"><?= h(format_vital_reading($selectedAdminVisit['height'], 'cm')); ?></strong>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($selectedAdminVisit['weight'])): ?>
+                                                <div class="vital-metric-card" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
+                                                    <span class="vital-label" style="color: #166534; font-weight: 700;">Recipient Weight</span>
+                                                    <strong class="vital-value" style="color: #14532d; font-size: 1.05rem;"><?= h(format_vital_reading($selectedAdminVisit['weight'], 'kg')); ?></strong>
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 <?php endif; ?>
@@ -1702,19 +1729,19 @@ if (!function_exists('peso')) {
                                     <div class="clinical-vitals-grid">
                                         <div class="vital-metric-card">
                                             <span class="vital-label">Body Temperature</span>
-                                            <strong class="vital-value"><?= !empty($selectedAdminVisit['body_temperature']) ? h((string) $selectedAdminVisit['body_temperature']) . ' &deg;C' : '<em class="not-set">Not recorded</em>'; ?></strong>
+                                            <strong class="vital-value"><?= !empty($selectedAdminVisit['body_temperature']) ? h(format_vital_reading((string) $selectedAdminVisit['body_temperature'], '°C')) : '<em class="not-set">Not recorded</em>'; ?></strong>
                                         </div>
                                         <div class="vital-metric-card">
                                             <span class="vital-label">Pulse Rate</span>
-                                            <strong class="vital-value"><?= !empty($selectedAdminVisit['pulse_rate']) ? h((string) $selectedAdminVisit['pulse_rate']) . ' bpm' : '<em class="not-set">Not recorded</em>'; ?></strong>
+                                            <strong class="vital-value"><?= !empty($selectedAdminVisit['pulse_rate']) ? h(format_vital_reading((string) $selectedAdminVisit['pulse_rate'], 'bpm')) : '<em class="not-set">Not recorded</em>'; ?></strong>
                                         </div>
                                         <div class="vital-metric-card">
                                             <span class="vital-label">Respiration Rate</span>
-                                            <strong class="vital-value"><?= !empty($selectedAdminVisit['respiration_rate']) ? h((string) $selectedAdminVisit['respiration_rate']) . ' cpm' : '<em class="not-set">Not recorded</em>'; ?></strong>
+                                            <strong class="vital-value"><?= !empty($selectedAdminVisit['respiration_rate']) ? h(format_vital_reading((string) $selectedAdminVisit['respiration_rate'], 'cpm')) : '<em class="not-set">Not recorded</em>'; ?></strong>
                                         </div>
                                         <div class="vital-metric-card">
                                             <span class="vital-label">Blood Pressure</span>
-                                            <strong class="vital-value"><?= !empty($selectedAdminVisit['blood_pressure']) ? h((string) $selectedAdminVisit['blood_pressure']) : '<em class="not-set">Not recorded</em>'; ?></strong>
+                                            <strong class="vital-value"><?= !empty($selectedAdminVisit['blood_pressure']) ? h(format_vital_reading((string) $selectedAdminVisit['blood_pressure'], 'mmHg')) : '<em class="not-set">Not recorded</em>'; ?></strong>
                                         </div>
                                         <?php if (!$admRec['is_immunization'] && !empty($selectedAdminVisit['vaccine_type'])): ?>
                                             <div class="vital-metric-card" style="grid-column: 1 / -1; background: #eff6ff; border: 1px solid #bfdbfe;">

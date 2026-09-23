@@ -2847,6 +2847,35 @@ function save_appointment_clinical_details(int $appointmentId, array $data, ?str
     return $ok;
 }
 
+if (!function_exists('format_vital_reading')) {
+    function format_vital_reading(?string $value, string $unit): string
+    {
+        $val = trim((string) $value);
+        if ($val === '') {
+            return '';
+        }
+        $cleanUnit = preg_quote($unit, '/');
+        if (preg_match('/' . $cleanUnit . '$/i', $val) || ($unit === '°C' && preg_match('/(?:°C|C|deg\s*C)$/i', $val))) {
+            return $val;
+        }
+        return $val . ' ' . $unit;
+    }
+}
+
+if (!function_exists('extract_vital_numeric')) {
+    function extract_vital_numeric(?string $value, bool $allowSlash = false): string
+    {
+        $val = trim((string) $value);
+        if ($val === '') {
+            return '';
+        }
+        if ($allowSlash) {
+            return preg_replace('/[^0-9\/]/', '', $val);
+        }
+        return preg_replace('/[^0-9.]/', '', $val);
+    }
+}
+
 function appointment_has_vitals(array $appointment): bool
 {
     foreach (['body_temperature', 'pulse_rate', 'respiration_rate', 'blood_pressure'] as $field) {

@@ -1549,6 +1549,55 @@ button { border: 0; cursor: pointer; }
   margin-top: 2px;
 }
 
+.vital-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.vital-input-group .vital-numeric-input {
+  padding-right: 68px !important;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.vital-unit-addon {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: 0.3px;
+  transition: all 0.2s ease;
+}
+
+.vital-input-group:focus-within .vital-unit-addon {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.vital-input-group.is-immunization-metric:focus-within .vital-unit-addon {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+
 .gender-radio-options {
   display: flex;
   gap: 10px;
