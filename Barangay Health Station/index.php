@@ -682,17 +682,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
                 $postData['vaccine_type'] = trim((string) $postData['vaccine_type_select']);
             }
         }
-        if (save_appointment_clinical_details($appointmentId, $postData, (string) $station['slug'])) {
-            if (($_POST['action'] ?? '') === 'save_vitals') {
-                $_SESSION['staff_flash'] = 'Vital signs recorded successfully.';
-            } elseif (($_POST['action'] ?? '') === 'save_clinical_remarks') {
-                $_SESSION['staff_flash'] = 'Clinical remarks & doctor notes saved.';
+        try {
+            if (save_appointment_clinical_details($appointmentId, $postData, (string) ($station['slug'] ?? ''))) {
+                if (($_POST['action'] ?? '') === 'save_vitals') {
+                    $_SESSION['staff_flash'] = 'Vital signs recorded successfully.';
+                } elseif (($_POST['action'] ?? '') === 'save_clinical_remarks') {
+                    $_SESSION['staff_flash'] = 'Clinical remarks & doctor notes saved.';
+                } else {
+                    $_SESSION['staff_flash'] = 'Clinical details saved successfully.';
+                }
+                log_activity('staff', (string) ($staffAccount['email'] ?? ''), 'clinical_details_saved', 'appointment', (string) $appointmentId, '', '', (string) ($station['slug'] ?? ''));
             } else {
-                $_SESSION['staff_flash'] = 'Clinical details saved successfully.';
+                $_SESSION['staff_flash'] = 'Unable to update that appointment record.';
             }
-            log_activity('staff', $staffAccount['email'], 'clinical_details_saved', 'appointment', (string) $appointmentId, '', '', $station['slug']);
-        } else {
-            $_SESSION['staff_flash'] = 'Unable to update that appointment record.';
+        } catch (Throwable $e) {
+            error_log('Error saving vitals: ' . $e->getMessage());
+            $_SESSION['staff_flash'] = 'An unexpected error occurred while saving: ' . $e->getMessage();
         }
     }
 

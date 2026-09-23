@@ -1813,6 +1813,7 @@ function db(): mysqli
             || !db_column_exists($connection, 'staff_accounts', 'recovery_email')
             || !db_column_exists($connection, 'upcoming_events', 'status') 
             || !db_column_exists($connection, 'appointments', 'vaccine_type') 
+            || !db_column_exists($connection, 'appointments', 'chest_xray') 
             || !db_column_exists($connection, 'appointments', 'reminder_sms_sent')
             || !db_column_exists($connection, 'station_service_assignments', 'daily_capacity')) {
             run_database_migrations($connection, false);
@@ -2828,23 +2829,54 @@ function save_appointment_clinical_details(int $appointmentId, array $data, ?str
     $chestXray = array_key_exists('chest_xray', $data) ? trim((string) $data['chest_xray']) : (string) ($appointment['chest_xray'] ?? '');
     $doctorNotes = array_key_exists('doctor_notes', $data) ? trim((string) $data['doctor_notes']) : (string) ($appointment['doctor_notes'] ?? '');
 
-    $stmt = db()->prepare(
-        'UPDATE appointments
-         SET body_temperature = ?, pulse_rate = ?, respiration_rate = ?, blood_pressure = ?, height = ?, weight = ?, vaccine_type = ?, chest_xray = ?, doctor_notes = ?
-         WHERE id = ?'
-    );
-    $stmt->bind_param('sssssssssi', $bodyTemperature, $pulseRate, $respirationRate, $bloodPressure, $height, $weight, $vaccineType, $chestXray, $doctorNotes, $appointmentId);
+    // Ensure chest_xray column exists on-the-fly if missing from database
+    try {
+        if (!db_column_exists(db(), 'appointments', 'chest_xray')) {
+            db()->query('ALTER TABLE appointments ADD COLUMN chest_xray VARCHAR(255) DEFAULT NULL AFTER vaccine_type');
+        }
+    } catch (Throwable $e) {}
 
-    $ok = $stmt->execute();
-    if ($ok && $vaccineType !== '') {
-        try {
-            $uStmt = db()->prepare('UPDATE immunized_infants SET vaccine_type = ? WHERE appointment_id = ?');
-            $uStmt->bind_param('si', $vaccineType, $appointmentId);
-            $uStmt->execute();
-        } catch (Throwable $e) {}
+    $hasChestXray = db_column_exists(db(), 'appointments', 'chest_xray');
+
+    try {
+        if ($hasChestXray) {
+            $stmt = db()->prepare(
+                'UPDATE appointments
+                 SET body_temperature = ?, pulse_rate = ?, respiration_rate = ?, blood_pressure = ?, height = ?, weight = ?, vaccine_type = ?, chest_xray = ?, doctor_notes = ?
+                 WHERE id = ?'
+            );
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('sssssssssi', $bodyTemperature, $pulseRate, $respirationRate, $bloodPressure, $height, $weight, $vaccineType, $chestXray, $doctorNotes, $appointmentId);
+        } else {
+            $stmt = db()->prepare(
+                'UPDATE appointments
+                 SET body_temperature = ?, pulse_rate = ?, respiration_rate = ?, blood_pressure = ?, height = ?, weight = ?, vaccine_type = ?, doctor_notes = ?
+                 WHERE id = ?'
+            );
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('ssssssssi', $bodyTemperature, $pulseRate, $respirationRate, $bloodPressure, $height, $weight, $vaccineType, $doctorNotes, $appointmentId);
+        }
+
+        $ok = $stmt->execute();
+        if ($ok && $vaccineType !== '') {
+            try {
+                $uStmt = db()->prepare('UPDATE immunized_infants SET vaccine_type = ? WHERE appointment_id = ?');
+                if ($uStmt) {
+                    $uStmt->bind_param('si', $vaccineType, $appointmentId);
+                    $uStmt->execute();
+                }
+            } catch (Throwable $e) {}
+        }
+
+        return (bool) $ok;
+    } catch (Throwable $e) {
+        error_log('save_appointment_clinical_details error: ' . $e->getMessage());
+        return false;
     }
-
-    return $ok;
 }
 
 if (!function_exists('format_vital_reading')) {
