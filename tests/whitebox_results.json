@@ -719,7 +719,7 @@
             "desc": "Verify patient ID generation format and algorithm",
             "inputs": "patient_id omitted",
             "expected": "Patient ID is generated from email\/time and uppercased substring",
-            "actual": "Generated 6-character uppercase alphanumeric ID: F31339",
+            "actual": "Generated 6-character uppercase alphanumeric ID: 396CE1",
             "result": "Pass",
             "remarks": "6-character ID generated"
         },
