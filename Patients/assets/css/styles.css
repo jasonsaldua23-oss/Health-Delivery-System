@@ -3043,3 +3043,42 @@ select#immunization_relationship:focus {
     pointer-events: none;
     opacity: 0.8;
 }
+
+/* Form Inline Field Error Styling */
+.field-error-text {
+    display: block;
+    color: #dc2626;
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-top: 4px;
+    line-height: 1.35;
+    animation: fieldErrorFadeIn 0.2s ease-in-out;
+}
+
+@keyframes fieldErrorFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-2px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.input-has-error {
+    border-color: #ef4444 !important;
+    background-color: #fff8f8 !important;
+}
+
+.input-has-error:focus {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.gender-options.input-has-error {
+    border: 1px solid #ef4444 !important;
+    border-radius: 10px;
+    padding: 6px 10px;
+    background-color: #fff8f8;
+}

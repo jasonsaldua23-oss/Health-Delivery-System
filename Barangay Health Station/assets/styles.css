@@ -9583,6 +9583,40 @@ section h4 svg {
   color: #ffffff;
 }
 
+/* Staff Vitals Inline Field Error Styling */
+.field-error-text {
+  display: block;
+  color: #dc2626;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-top: 4px;
+  line-height: 1.35;
+  animation: fieldErrorFadeIn 0.2s ease-in-out;
+}
+
+@keyframes fieldErrorFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.form-input-field.input-has-error,
+select.input-has-error {
+  border-color: #ef4444 !important;
+  background-color: #fff8f8 !important;
+}
+
+.form-input-field.input-has-error:focus,
+select.input-has-error:focus {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
 
 
 

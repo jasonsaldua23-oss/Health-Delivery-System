@@ -682,6 +682,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
                 $postData['vaccine_type'] = trim((string) $postData['vaccine_type_select']);
             }
         }
+        if (($_POST['action'] ?? '') === 'save_vitals') {
+            if (empty($postData['body_temperature']) || empty($postData['pulse_rate']) || empty($postData['respiration_rate']) || empty($postData['blood_pressure'])) {
+                $_SESSION['staff_flash'] = 'Please fill out all required vital signs before saving.';
+                $returnUrl = trim((string) ($_POST['return_url'] ?? ''));
+                header('Location: ' . ($returnUrl !== '' ? $returnUrl : 'index.php?page=queue'));
+                exit;
+            }
+        }
         try {
             if (save_appointment_clinical_details($appointmentId, $postData, (string) ($station['slug'] ?? ''))) {
                 if (($_POST['action'] ?? '') === 'save_vitals') {
@@ -2236,7 +2244,7 @@ for ($i = 0; $i < 6; $i++) {
                             <a class="account-modal-close" href="<?= h($vitalsReturnUrl); ?>" onclick="return window.closeClinicalModal(event, '<?= h($vitalsReturnUrl); ?>');" aria-label="Close modal">×</a>
                         </div>
 
-                        <form method="post" class="account-settings-form">
+                        <form method="post" class="account-settings-form" id="staffVitalsForm" novalidate>
                             <input type="hidden" name="action" value="save_vitals">
                             <input type="hidden" name="return_url" value="<?= h($vitalsReturnUrl); ?>">
                             <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
@@ -6284,12 +6292,22 @@ window.handleStaffVaccineSelectChange = function(selectElem) {
     if (!selectElem) return;
     const otherWrap = document.getElementById('queue_vaccine_other_wrap');
     const otherInput = document.getElementById('queue_vaccine_other');
+    if (selectElem.value.trim() !== '') {
+        selectElem.classList.remove('input-has-error');
+        const err = selectElem.closest('.form-group-item')?.querySelector('.field-error-text');
+        if (err) err.remove();
+    }
     if (otherWrap) {
         if (selectElem.value === 'Others') {
             otherWrap.style.display = 'block';
             if (otherInput) otherInput.focus();
         } else {
             otherWrap.style.display = 'none';
+            if (otherInput) {
+                otherInput.classList.remove('input-has-error');
+                const err = otherWrap.querySelector('.field-error-text');
+                if (err) err.remove();
+            }
         }
     }
 };
@@ -7161,6 +7179,189 @@ window.handleVitalNumericKeydown = handleVitalNumericKeydown;
         const input = e.target.closest('.vital-numeric-input');
         if (!input) return;
         setTimeout(() => sanitizeVitalInputValue(input), 0);
+    }, true);
+})();
+
+// Staff Vitals Encoding Inline Error Handling & Validation
+(function() {
+    function setStaffVitalsError(inputEl, message) {
+        if (!inputEl) return;
+        const container = inputEl.closest('.form-group-item') || inputEl.parentElement;
+        if (!container) return;
+
+        inputEl.classList.add('input-has-error');
+
+        let errEl = container.querySelector('.field-error-text');
+        if (!errEl) {
+            errEl = document.createElement('span');
+            errEl.className = 'field-error-text';
+            const vitalGroup = inputEl.closest('.vital-input-group');
+            const subnote = container.querySelector('.field-subnote, small');
+            if (vitalGroup && vitalGroup.parentElement === container) {
+                vitalGroup.after(errEl);
+            } else if (subnote && subnote.parentElement === container) {
+                subnote.after(errEl);
+            } else if (inputEl.parentElement === container) {
+                inputEl.after(errEl);
+            } else {
+                container.appendChild(errEl);
+            }
+        }
+        errEl.textContent = message;
+    }
+
+    function clearStaffVitalsError(inputEl) {
+        if (!inputEl) return;
+        const container = inputEl.closest('.form-group-item') || inputEl.parentElement;
+        if (!container) return;
+
+        inputEl.classList.remove('input-has-error');
+        const errEl = container.querySelector('.field-error-text');
+        if (errEl) {
+            errEl.remove();
+        }
+    }
+
+    function clearAllStaffVitalsErrors(form) {
+        if (!form) return;
+        form.querySelectorAll('.input-has-error').forEach(el => el.classList.remove('input-has-error'));
+        form.querySelectorAll('.field-error-text').forEach(el => el.remove());
+    }
+
+    // Attach submit listener to staff vitals form
+    document.addEventListener('submit', function(e) {
+        const form = e.target;
+        if (!form || (form.id !== 'staffVitalsForm' && !form.querySelector('input[name="action"][value="save_vitals"]'))) {
+            return;
+        }
+
+        clearAllStaffVitalsErrors(form);
+
+        let hasErrors = false;
+        let firstInvalidField = null;
+
+        function markVitalError(el, msg) {
+            setStaffVitalsError(el, msg);
+            if (!firstInvalidField) firstInvalidField = el;
+            hasErrors = true;
+        }
+
+        // 1. Body Temperature (Required)
+        const tempInput = form.querySelector('[name="body_temperature"]');
+        if (tempInput) {
+            const tempVal = tempInput.value.trim();
+            if (!tempVal) {
+                markVitalError(tempInput, 'Body temperature is required.');
+            } else if (parseFloat(tempVal) < 30 || parseFloat(tempVal) > 45) {
+                markVitalError(tempInput, 'Please enter a realistic body temperature (°C).');
+            }
+        }
+
+        // 2. Pulse Rate (Required)
+        const pulseInput = form.querySelector('[name="pulse_rate"]');
+        if (pulseInput) {
+            const pulseVal = pulseInput.value.trim();
+            if (!pulseVal) {
+                markVitalError(pulseInput, 'Pulse rate is required.');
+            }
+        }
+
+        // 3. Respiration Rate (Required)
+        const respInput = form.querySelector('[name="respiration_rate"]');
+        if (respInput) {
+            const respVal = respInput.value.trim();
+            if (!respVal) {
+                markVitalError(respInput, 'Respiration rate is required.');
+            }
+        }
+
+        // 4. Blood Pressure (Required)
+        const bpInput = form.querySelector('[name="blood_pressure"]');
+        if (bpInput) {
+            const bpVal = bpInput.value.trim();
+            if (!bpVal) {
+                markVitalError(bpInput, 'Blood pressure is required.');
+            } else if (!/^\d{2,3}\/\d{2,3}$/.test(bpVal)) {
+                markVitalError(bpInput, 'Please enter blood pressure in systolic/diastolic format (e.g. 120/80).');
+            }
+        }
+
+        // 5. Height (Infant Immunization)
+        const heightInput = form.querySelector('[name="height"]');
+        if (heightInput) {
+            const heightVal = heightInput.value.trim();
+            if (!heightVal) {
+                markVitalError(heightInput, 'Height is required for infant immunization.');
+            }
+        }
+
+        // 6. Weight (Infant Immunization)
+        const weightInput = form.querySelector('[name="weight"]');
+        if (weightInput) {
+            const weightVal = weightInput.value.trim();
+            if (!weightVal) {
+                markVitalError(weightInput, 'Weight is required for infant immunization.');
+            }
+        }
+
+        // 7. Vaccine Type Select (Infant Immunization)
+        const vaccineSelect = form.querySelector('[name="vaccine_type_select"]');
+        if (vaccineSelect) {
+            const vacVal = vaccineSelect.value.trim();
+            if (!vacVal) {
+                markVitalError(vaccineSelect, 'Please select a vaccine type.');
+            } else if (vacVal === 'Others') {
+                const vacOtherInput = form.querySelector('[name="vaccine_type_other"]');
+                if (vacOtherInput && !vacOtherInput.value.trim()) {
+                    markVitalError(vacOtherInput, 'Please specify the vaccine type.');
+                }
+            }
+        }
+
+        // 8. Vaccine Type (Adult Immunization)
+        const vaccineTypeInput = form.querySelector('[name="vaccine_type"]');
+        if (vaccineTypeInput) {
+            const vtVal = vaccineTypeInput.value.trim();
+            if (!vtVal) {
+                markVitalError(vaccineTypeInput, 'Vaccine type is required.');
+            }
+        }
+
+        // 9. Chest X-Ray (TB DOTS)
+        const xrayInput = form.querySelector('[name="chest_xray"]');
+        if (xrayInput) {
+            const xrayVal = xrayInput.value.trim();
+            if (!xrayVal) {
+                markVitalError(xrayInput, 'Chest X-ray screening result is required.');
+            }
+        }
+
+        if (hasErrors) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            if (firstInvalidField) {
+                firstInvalidField.focus();
+                firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return false;
+        }
+    }, true);
+
+    // Live clearing on input / change
+    document.addEventListener('input', function(e) {
+        const form = e.target.closest('#staffVitalsForm');
+        if (!form) return;
+        if (e.target.value.trim() !== '') {
+            clearStaffVitalsError(e.target);
+        }
+    }, true);
+
+    document.addEventListener('change', function(e) {
+        const form = e.target.closest('#staffVitalsForm');
+        if (!form) return;
+        if (e.target.value.trim() !== '') {
+            clearStaffVitalsError(e.target);
+        }
     }, true);
 })();
 </script>

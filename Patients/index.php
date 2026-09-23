@@ -2160,6 +2160,7 @@ document.addEventListener('DOMContentLoaded', function () {
         patientModal.classList.add('hidden');
         document.body.style.overflow = 'auto';
         patientForgotCtrl?.resetToLogin();
+        clearAllFirstTimerErrors();
         showPatientStep('choice');
     }
 
@@ -2450,101 +2451,184 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Inline Error Handling Helpers for Patient Account Creation Modal
+    function setFirstTimerFieldError(inputEl, message) {
+        if (!inputEl) return;
+        const container = inputEl.closest('.field-group') || inputEl.parentElement;
+        if (!container) return;
+
+        inputEl.classList.add('input-has-error');
+
+        let errEl = container.querySelector('.field-error-text');
+        if (!errEl) {
+            errEl = document.createElement('span');
+            errEl.className = 'field-error-text';
+            const pwWrapper = inputEl.closest('.password-field') || inputEl.closest('.input-with-icon');
+            const smallNote = container.querySelector('small');
+            if (pwWrapper && pwWrapper.parentElement === container) {
+                pwWrapper.after(errEl);
+            } else if (smallNote && smallNote.parentElement === container) {
+                smallNote.after(errEl);
+            } else if (inputEl.parentElement === container) {
+                inputEl.after(errEl);
+            } else {
+                container.appendChild(errEl);
+            }
+        }
+        errEl.textContent = message;
+    }
+
+    function clearFirstTimerFieldError(inputEl) {
+        if (!inputEl) return;
+        const container = inputEl.closest('.field-group') || inputEl.parentElement;
+        if (!container) return;
+
+        inputEl.classList.remove('input-has-error');
+        const errEl = container.querySelector('.field-error-text');
+        if (errEl) {
+            errEl.remove();
+        }
+    }
+
+    function clearAllFirstTimerErrors() {
+        if (!firstTimerForm) return;
+        firstTimerForm.querySelectorAll('.input-has-error').forEach(el => el.classList.remove('input-has-error'));
+        firstTimerForm.querySelectorAll('.field-error-text').forEach(el => el.remove());
+    }
+
+    const firstTimerFirstName = document.getElementById('firstName');
+    const firstTimerLastName = document.getElementById('lastName');
+    const firstTimerBirthdate = document.getElementById('regBirthdate');
+    const firstTimerGenderWrap = document.querySelector('#firstTimerForm .gender-options');
+    const firstTimerGenderRadios = document.querySelectorAll('input[name="gender"]');
+    const firstTimerPhone = document.getElementById('regPhone');
+    const firstTimerEmail = document.getElementById('regEmail');
+    const firstTimerPassword = document.getElementById('regPassword');
+
+    firstTimerFirstName?.addEventListener('input', function() {
+        if (this.value.trim() !== '') clearFirstTimerFieldError(this);
+    });
+    firstTimerLastName?.addEventListener('input', function() {
+        if (this.value.trim() !== '') clearFirstTimerFieldError(this);
+    });
+    firstTimerBirthdate?.addEventListener('input', function() {
+        if (this.value.trim() !== '') clearFirstTimerFieldError(this);
+    });
+    firstTimerBirthdate?.addEventListener('change', function() {
+        if (this.value.trim() !== '') clearFirstTimerFieldError(this);
+    });
+    firstTimerGenderRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (firstTimerGenderWrap) clearFirstTimerFieldError(firstTimerGenderWrap);
+        });
+    });
+    firstTimerPhone?.addEventListener('input', function() {
+        if (this.value.trim() !== '') clearFirstTimerFieldError(this);
+    });
+    firstTimerEmail?.addEventListener('input', function() {
+        if (this.value.trim() !== '') clearFirstTimerFieldError(this);
+    });
+    firstTimerPassword?.addEventListener('input', function() {
+        if (this.value.trim().length >= 6) clearFirstTimerFieldError(this);
+    });
+    regBarangaySelect?.addEventListener('change', function() {
+        if (this.value.trim() !== '') clearFirstTimerFieldError(this);
+    });
+    regPurokSelect?.addEventListener('change', function() {
+        if (this.value.trim() !== '') clearFirstTimerFieldError(this);
+    });
+
     firstTimerForm?.addEventListener('submit', function (event) {
         event.preventDefault();
-        const firstName = (document.getElementById('firstName')?.value || '').trim();
-        const lastName = (document.getElementById('lastName')?.value || '').trim();
-        const birthdate = (document.getElementById('regBirthdate')?.value || '').trim();
+        clearAllFirstTimerErrors();
+
+        const firstName = (firstTimerFirstName?.value || '').trim();
+        const lastName = (firstTimerLastName?.value || '').trim();
+        const birthdate = (firstTimerBirthdate?.value || '').trim();
         const genderChecked = document.querySelector('input[name="gender"]:checked');
-        const phone = (document.getElementById('regPhone')?.value || '').trim();
-        const email = (document.getElementById('regEmail')?.value || '').trim();
-        const password = (document.getElementById('regPassword')?.value || '').trim();
-        const barangay = (document.getElementById('regBarangay')?.value || '').trim();
-        const purok = (document.getElementById('regPurok')?.value || '').trim();
-        const street = (document.getElementById('regStreet')?.value || '').trim();
+        const phone = (firstTimerPhone?.value || '').trim();
+        const email = (firstTimerEmail?.value || '').trim();
+        const password = (firstTimerPassword?.value || '').trim();
+        const barangay = (regBarangaySelect?.value || '').trim();
+        const purok = (regPurokSelect?.value || '').trim();
+
+        let hasErrors = false;
+        let firstInvalidField = null;
+
+        function markFieldError(el, msg) {
+            setFirstTimerFieldError(el, msg);
+            if (!firstInvalidField) firstInvalidField = el;
+            hasErrors = true;
+        }
 
         if (!firstName) {
-            window.showSystemToast?.('Please enter your first name.', { type: 'error', theme: 'patient', title: 'Missing Information' });
-            document.getElementById('firstName')?.focus();
-            return;
+            markFieldError(firstTimerFirstName, 'First name is required.');
         }
 
         if (!lastName) {
-            window.showSystemToast?.('Please enter your last name.', { type: 'error', theme: 'patient', title: 'Missing Information' });
-            document.getElementById('lastName')?.focus();
-            return;
+            markFieldError(firstTimerLastName, 'Last name is required.');
         }
 
         if (!birthdate) {
-            window.showSystemToast?.('Please select your date of birth.', { type: 'error', theme: 'patient', title: 'Missing Information' });
-            document.getElementById('regBirthdate')?.focus();
-            return;
-        }
+            markFieldError(firstTimerBirthdate, 'Date of birth is required.');
+        } else {
+            const birthDateObj = new Date(birthdate + 'T00:00:00');
+            const todayObj = new Date();
+            todayObj.setHours(0, 0, 0, 0);
+            const minBirthDateObj = new Date('1900-01-01T00:00:00');
 
-        const birthDateObj = new Date(birthdate + 'T00:00:00');
-        const todayObj = new Date();
-        todayObj.setHours(0, 0, 0, 0);
-
-        if (isNaN(birthDateObj.getTime())) {
-            window.showSystemToast?.('Please enter a valid date of birth.', { type: 'error', theme: 'patient', title: 'Invalid Birthdate' });
-            document.getElementById('regBirthdate')?.focus();
-            return;
-        }
-
-        if (birthDateObj >= todayObj) {
-            window.showSystemToast?.('Date of birth cannot be today or a future date. Please select a valid birthdate.', { type: 'error', theme: 'patient', title: 'Invalid Birthdate' });
-            document.getElementById('regBirthdate')?.focus();
-            return;
-        }
-
-        const minBirthDateObj = new Date('1900-01-01T00:00:00');
-        if (birthDateObj < minBirthDateObj) {
-            window.showSystemToast?.('Please enter a valid date of birth.', { type: 'error', theme: 'patient', title: 'Invalid Birthdate' });
-            document.getElementById('regBirthdate')?.focus();
-            return;
+            if (isNaN(birthDateObj.getTime())) {
+                markFieldError(firstTimerBirthdate, 'Please enter a valid date of birth.');
+            } else if (birthDateObj >= todayObj) {
+                markFieldError(firstTimerBirthdate, 'Date of birth cannot be today or a future date.');
+            } else if (birthDateObj < minBirthDateObj) {
+                markFieldError(firstTimerBirthdate, 'Please enter a valid date of birth (after 1900).');
+            }
         }
 
         if (!genderChecked) {
-            window.showSystemToast?.('Please select your gender.', { type: 'error', theme: 'patient', title: 'Missing Information' });
-            return;
+            markFieldError(firstTimerGenderWrap, 'Please select your gender.');
         }
 
-        // Contact number must start with 09 and be exactly 11 digits
         if (!phone) {
-            window.showSystemToast?.('Please enter your contact number.', { type: 'error', theme: 'patient', title: 'Missing Information' });
-            document.getElementById('regPhone')?.focus();
-            return;
+            markFieldError(firstTimerPhone, 'Contact number is required.');
+        } else if (!/^09\d{9}$/.test(phone)) {
+            markFieldError(firstTimerPhone, 'Contact number must start with 09 and be 11 digits (e.g. 09XXXXXXXXX).');
         }
 
-        if (!/^09\d{9}$/.test(phone)) {
-            window.showSystemToast?.('Please enter a valid 11-digit contact number starting with 09 (format: 09XXXXXXXXX).', { type: 'error', theme: 'patient', title: 'Invalid Contact Number' });
-            document.getElementById('regPhone')?.focus();
-            return;
+        if (!email) {
+            markFieldError(firstTimerEmail, 'Email address is required.');
+        } else {
+            const emailCheck = validateEmailMisspelling(email);
+            if (!emailCheck.valid) {
+                markFieldError(firstTimerEmail, emailCheck.message);
+            }
         }
 
-        // Email validation & misspelling check
-        const emailCheck = validateEmailMisspelling(email);
-        if (!emailCheck.valid) {
-            window.showSystemToast?.(emailCheck.message, { type: 'error', theme: 'patient', title: 'Invalid Email Address' });
-            document.getElementById('regEmail')?.focus();
-            return;
-        }
-
-        if (password.length < 6) {
-            window.showSystemToast?.('Password must be at least 6 characters long.', { type: 'error', theme: 'patient', title: 'Invalid Password' });
-            document.getElementById('regPassword')?.focus();
-            return;
+        if (!password) {
+            markFieldError(firstTimerPassword, 'Password is required.');
+        } else if (password.length < 6) {
+            markFieldError(firstTimerPassword, 'Password must be at least 6 characters long.');
         }
 
         if (!barangay) {
-            window.showSystemToast?.('Please select your barangay.', { type: 'error', theme: 'patient', title: 'Missing Information' });
-            document.getElementById('regBarangay')?.focus();
-            return;
+            markFieldError(regBarangaySelect, 'Please select your barangay.');
         }
 
         if (!purok) {
-            window.showSystemToast?.('Please select your purok / zone.', { type: 'error', theme: 'patient', title: 'Missing Information' });
-            document.getElementById('regPurok')?.focus();
+            markFieldError(regPurokSelect, 'Please select your purok / zone.');
+        }
+
+        if (hasErrors) {
+            if (firstInvalidField) {
+                if (typeof firstInvalidField.focus === 'function') {
+                    firstInvalidField.focus();
+                } else if (firstInvalidField.querySelector && firstInvalidField.querySelector('input')) {
+                    firstInvalidField.querySelector('input').focus();
+                }
+                firstInvalidField.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+            }
+            window.showSystemToast?.('Please fill out all required fields marked below.', { type: 'error', theme: 'patient', title: 'Missing Information' });
             return;
         }
 
