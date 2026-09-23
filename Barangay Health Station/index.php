@@ -91,6 +91,8 @@ if (!function_exists('staff_icon')) {
             'alert-circle' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v4m0 4h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'reports' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M3 3v18h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m19 9-5 5-4-4-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'download' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'pause' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><rect x="6" y="4" width="4" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><rect x="14" y="4" width="4" height="16" rx="1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'play' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><polygon points="5 3 19 12 5 21 5 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
         ];
 
         return $icons[$name] ?? '';
@@ -557,13 +559,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appointment_id'], $_P
             }
         }
 
+        $targetAppt = fetch_appointment_by_id($apptId);
+        $oldStatus = is_array($targetAppt) ? (string) ($targetAppt['status'] ?? '') : '';
+
         update_appointment_status($apptId, $newStatus, (string) $station['slug']);
-        $_SESSION['staff_flash'] = match ($newStatus) {
-            'Confirmed' => 'Appointment confirmed and moved to Queue Management.',
-            'Serving' => 'Patient is now being served.',
-            'Completed' => 'Patient completed and added to records.',
-            default => 'Appointment status updated.',
-        };
+        if ($oldStatus === 'On Hold' && $newStatus === 'Serving') {
+            $_SESSION['staff_flash'] = 'Appointment resumed and transferred back to Active & Ongoing Consultations.';
+        } elseif ($newStatus === 'On Hold') {
+            $_SESSION['staff_flash'] = 'Appointment placed on hold. It can be continued another day.';
+        } else {
+            $_SESSION['staff_flash'] = match ($newStatus) {
+                'Confirmed' => 'Appointment confirmed and moved to Queue Management.',
+                'Serving' => 'Patient is now being served.',
+                'Completed' => 'Patient completed and added to records.',
+                default => 'Appointment status updated.',
+            };
+        }
     }
 
     header('Location: ' . $_SERVER['REQUEST_URI']);
@@ -991,11 +1002,11 @@ $photosVerifiedTotal = count(array_filter(
 ));
 $stationClinicalAppointments = array_values(array_filter(
     $allStationAppointments,
-    static fn(array $item): bool => in_array((string) ($item['status'] ?? ''), ['Confirmed', 'Serving', 'Completed'], true)
+    static fn(array $item): bool => in_array((string) ($item['status'] ?? ''), ['Confirmed', 'Serving', 'On Hold', 'Completed'], true)
 ));
 $patientDateFilteredAppointments = $patientDateFilter === '' ? $stationClinicalAppointments : array_values(array_filter(
     $stationClinicalAppointments,
-    static fn(array $item): bool => (string) ($item['preferred_date'] ?? '') === $patientDateFilter
+    static fn(array $item): bool => (string) ($item['preferred_date'] ?? '') === $patientDateFilter || in_array((string) ($item['status'] ?? ''), ['Serving', 'On Hold'], true)
 ));
 if ($patientSearch !== '') {
     $st = strtolower($patientSearch);
@@ -1016,12 +1027,20 @@ $recentStationAppointments = array_values(array_filter(
     $patientDateFilteredAppointments,
     static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Serving' && !appointment_has_completed_clinical_details($item)
 ));
+$holdStationAppointments = array_values(array_filter(
+    $patientDateFilteredAppointments,
+    static fn(array $item): bool => (string) ($item['status'] ?? '') === 'On Hold'
+));
 $patientStationRecords = array_values(array_filter(
     $patientDateFilteredAppointments,
     static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Completed' && appointment_has_completed_clinical_details($item)
 ));
 $patientRecentEntries = $programFilter === '' ? $recentStationAppointments : array_values(array_filter(
     $recentStationAppointments,
+    static fn(array $item): bool => (string) ($item['service_slug'] ?? '') === $programFilter
+));
+$patientHoldEntries = $programFilter === '' ? $holdStationAppointments : array_values(array_filter(
+    $holdStationAppointments,
     static fn(array $item): bool => (string) ($item['service_slug'] ?? '') === $programFilter
 ));
 $patientRecordEntries = ($programFilter === '' || $view === 'profiles') ? $patientStationRecords : array_values(array_filter(
@@ -1178,8 +1197,9 @@ $appointmentsTotalCount = $programFilter === '' ? count($allStationAppointments)
     static fn(array $item): bool => (string) ($item['service_slug'] ?? '') === $programFilter
 ));
 $patientsOngoingCount = count($patientRecentEntries);
+$patientsHoldCount = count($patientHoldEntries);
 $patientsRecordedCount = count($patientRecordEntries);
-$patientsTotalCount = $patientsOngoingCount + $patientsRecordedCount;
+$patientsTotalCount = $patientsOngoingCount + $patientsHoldCount + $patientsRecordedCount;
 
 // Synchronize and load unattended appointments & queue audit data
 sync_unattended_records((string) $station['slug']);
@@ -2832,13 +2852,18 @@ for ($i = 0; $i < 6; $i++) {
                             $recentStationAppointments,
                             static fn(array $item): bool => (string) ($item['service_slug'] ?? '') === $program['slug']
                         ));
+                        $serviceHoldEntries = array_values(array_filter(
+                            $holdStationAppointments,
+                            static fn(array $item): bool => (string) ($item['service_slug'] ?? '') === $program['slug']
+                        ));
                         $serviceRecordEntries = array_values(array_filter(
                             $patientStationRecords,
                             static fn(array $item): bool => (string) ($item['service_slug'] ?? '') === $program['slug']
                         ));
                         $ongoingCount = count($serviceRecentEntries);
+                        $holdCount = count($serviceHoldEntries);
                         $completedCount = count($serviceRecordEntries);
-                        $displayTotal = $ongoingCount + $completedCount;
+                        $displayTotal = $ongoingCount + $holdCount + $completedCount;
                         ?>
                         <a class="service-card queue-service-card" href="?page=patients&program=<?= h($program['slug']); ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>">
                             <div class="service-card-top">
@@ -2849,6 +2874,9 @@ for ($i = 0; $i < 6; $i++) {
                             <p><?= h($program['description']); ?></p>
                             <div class="service-queue-stats">
                                 <div class="queue-stat-mini serving"><span><?= staff_icon('edit'); ?></span><strong><?= $ongoingCount; ?></strong><small>Ongoing</small></div>
+                                <?php if ($holdCount > 0): ?>
+                                    <div class="queue-stat-mini hold" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a;"><span><?= staff_icon('pause'); ?></span><strong><?= $holdCount; ?></strong><small>On Hold</small></div>
+                                <?php endif; ?>
                                 <div class="queue-stat-mini completed"><span><?= staff_icon('check'); ?></span><strong><?= $completedCount; ?></strong><small>Completed</small></div>
                                 <div class="queue-stat-mini total"><span><?= staff_icon('users'); ?></span><strong><?= $displayTotal; ?></strong><small>Total</small></div>
                             </div>
@@ -2916,15 +2944,25 @@ for ($i = 0; $i < 6; $i++) {
                     </form>
                 </section>
 
-                <!-- Modern 3-KPI Stat Cards -->
-                <section class="appt-metrics-grid" style="margin-bottom: 28px;">
+                <!-- Modern 4-KPI Stat Cards -->
+                <section class="appt-metrics-grid cols-4" style="margin-bottom: 28px;">
                     <article class="appt-metric-card pending">
                         <div class="appt-metric-icon">
-                            <?= staff_icon('edit'); ?>
+                            <?= staff_icon('pulse'); ?>
                         </div>
                         <div class="appt-metric-content">
-                            <span class="appt-metric-label">Ongoing / Awaiting Remarks</span>
+                            <span class="appt-metric-label">Ongoing / Serving</span>
                             <strong class="appt-metric-val"><?= number_format($patientsOngoingCount); ?></strong>
+                        </div>
+                    </article>
+
+                    <article class="appt-metric-card hold">
+                        <div class="appt-metric-icon">
+                            <?= staff_icon('pause'); ?>
+                        </div>
+                        <div class="appt-metric-content">
+                            <span class="appt-metric-label">Appointments On Hold</span>
+                            <strong class="appt-metric-val"><?= number_format($patientsHoldCount); ?></strong>
                         </div>
                     </article>
 
@@ -3011,10 +3049,97 @@ for ($i = 0; $i < 6; $i++) {
                                         <span class="status-pill status-queue-serving">
                                             ⚡ Serving Now
                                         </span>
+                                        <form method="post" style="margin:0; display:inline-block;" onsubmit="return confirm('Put this consultation on hold? You can resume it anytime to continue.');">
+                                            <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                                            <input type="hidden" name="appointment_id" value="<?= h((string) $appointment['id']); ?>">
+                                            <input type="hidden" name="new_status" value="On Hold">
+                                            <button type="submit" class="hold-btn" title="Put consultation on hold (pause)">
+                                                <?= staff_icon('pause'); ?>
+                                                <span>Hold</span>
+                                            </button>
+                                        </form>
                                         <a class="remarks-btn is-active" href="?page=patients&program=<?= h($programFilter); ?><?= $patientSearch !== '' ? '&patient_search=' . urlencode($patientSearch) : ''; ?>&appointment_remarks=<?= h($apptCode); ?>" title="Encode doctor remarks & clinical assessment">
                                             <?= staff_icon('edit'); ?>
                                             <span>Remarks</span>
                                         </a>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </section>
+
+                <!-- Section: Appointments On Hold -->
+                <section class="patient-section-wrapper" style="margin-top: 28px;">
+                    <div class="patient-section-header">
+                        <div class="section-title-group">
+                            <span class="sec-icon-pill hold"><?= staff_icon('pause'); ?></span>
+                            <div>
+                                <h2>Appointments On Hold</h2>
+                                <p>Paused consultations awaiting resumption for <?= h($currentProgramTitle); ?>. These appointments can be continued another day.</p>
+                            </div>
+                        </div>
+                        <span class="patient-section-counter hold-counter"><?= count($patientHoldEntries); ?> on hold</span>
+                    </div>
+
+                    <div class="patient-cards-stack">
+                        <?php if ($patientHoldEntries === []): ?>
+                            <div class="panel-card empty-state appt-empty-box">
+                                <div class="appt-empty-icon hold-empty-icon"><?= staff_icon('pause'); ?></div>
+                                <h3><?= $patientSearch !== '' ? 'No matching appointments on hold' : 'No appointments on hold'; ?></h3>
+                                <p><?= $patientSearch !== '' ? 'No paused appointments match your search criteria.' : 'There are currently no consultations placed on hold for this service.'; ?></p>
+                            </div>
+                        <?php else: ?>
+                            <?php foreach ($patientHoldEntries as $appointment): ?>
+                                <?php
+                                $patInitials = strtoupper(substr((string) ($appointment['first_name'] ?? 'P'), 0, 1) . substr((string) ($appointment['last_name'] ?? 'U'), 0, 1));
+                                $apptCode = (string) ($appointment['appointment_code'] ?? $appointment['reference_code'] ?? '');
+                                $patHasPhoto = !empty($appointment['photo_path']);
+                                ?>
+                                <article class="modern-patient-record-card is-hold">
+                                    <div class="pat-card-left">
+                                        <div class="pat-card-avatar" style="<?= $patHasPhoto ? 'background:transparent;' : ''; ?>">
+                                            <?php if ($patHasPhoto): ?>
+                                                <img src="../Patients/<?= h((string) $appointment['photo_path']); ?>" alt="<?= h(full_name($appointment)); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">
+                                            <?php else: ?>
+                                                <?= h($patInitials); ?>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="pat-card-info">
+                                            <div class="pat-card-title-row">
+                                                <h3><?= h(full_name($appointment)); ?></h3>
+                                                <?php if ($apptCode !== ''): ?>
+                                                    <span class="appt-code-badge">#<?= h($apptCode); ?></span>
+                                                <?php endif; ?>
+                                                <?php if ($patHasPhoto): ?>
+                                                    <span class="photo-status-badge verified" style="position:static;transform:none;font-size:0.7rem;padding:2px 8px;">✓ Photo Verified</span>
+                                                <?php else: ?>
+                                                    <span class="photo-status-badge missing" style="position:static;transform:none;font-size:0.7rem;padding:2px 8px;">⚠️ Needs Photo</span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="pat-card-meta-row">
+                                                <span class="pat-meta-pill service"><?= staff_icon('stethoscope'); ?> <?= h((string) $appointment['service_name']); ?></span>
+                                                <span class="pat-meta-pill date"><?= staff_icon('calendar'); ?> <?= h(date('M j, Y', strtotime((string) $appointment['preferred_date']))); ?></span>
+                                                <?php if (!empty($appointment['contact_number'])): ?>
+                                                    <span class="pat-meta-pill phone"><?= staff_icon('phone'); ?> <?= h((string) $appointment['contact_number']); ?></span>
+                                                <?php endif; ?>
+                                                <span class="pat-meta-pill demo"><?= h(age_label($appointment)); ?> • <?= h((string) ($appointment['gender'] ?? '')); ?></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="pat-card-right">
+                                        <span class="status-pill status-queue-hold">
+                                            ⏸️ On Hold
+                                        </span>
+                                        <form method="post" style="margin:0; display:inline-block;">
+                                            <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                                            <input type="hidden" name="appointment_id" value="<?= h((string) $appointment['id']); ?>">
+                                            <input type="hidden" name="new_status" value="Serving">
+                                            <button type="submit" class="resume-btn" title="Resume consultation and return to Active &amp; Ongoing">
+                                                <?= staff_icon('play'); ?>
+                                                <span>Resume</span>
+                                            </button>
+                                        </form>
                                     </div>
                                 </article>
                             <?php endforeach; ?>

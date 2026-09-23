@@ -4288,7 +4288,8 @@ function update_appointment_status(int $appointmentId, string $newStatus, ?strin
     $allowedTransitions = [
         'Pending' => ['Confirmed', 'Cancelled'],
         'Confirmed' => ['Serving', 'Cancelled'],
-        'Serving' => ['Completed'],
+        'Serving' => ['Completed', 'On Hold'],
+        'On Hold' => ['Serving', 'Cancelled'],
         'Completed' => [],
         'Cancelled' => [],
     ];
@@ -4359,6 +4360,7 @@ function update_appointment_status(int $appointmentId, string $newStatus, ?strin
             $notifMsg = match ($newStatus) {
                 'Confirmed' => "Appointment Confirmed: Your appointment for {$serviceName} on {$dateFormatted}{$timeFormatted} has been confirmed.",
                 'Serving' => "Queue Update: You are now being served for {$serviceName}.",
+                'On Hold' => "Queue Update: Your consultation for {$serviceName} has been placed on hold and will be resumed soon.",
                 'Completed' => "Appointment Completed: Your consultation for {$serviceName} has been completed and recorded.",
                 'Cancelled' => "Appointment Cancelled: Your appointment request for {$serviceName} on {$dateFormatted} was cancelled.",
                 default => "Your appointment status was updated to {$newStatus}.",

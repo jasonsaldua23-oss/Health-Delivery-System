@@ -4379,6 +4379,19 @@ button { border: 0; cursor: pointer; }
   gap: 16px;
   margin-bottom: 24px;
 }
+.appt-metrics-grid.cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 1024px) {
+  .appt-metrics-grid.cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .appt-metrics-grid.cols-4 {
+    grid-template-columns: 1fr;
+  }
+}
 
 .appt-metric-card {
   display: flex;
@@ -4399,6 +4412,10 @@ button { border: 0; cursor: pointer; }
 .appt-metric-card.pending {
   background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%);
   border-color: #fde68a;
+}
+.appt-metric-card.hold {
+  background: linear-gradient(135deg, #ffffff 0%, #fff7ed 100%);
+  border-color: #fed7aa;
 }
 .appt-metric-card.cancelled {
   background: linear-gradient(135deg, #ffffff 0%, #fef2f2 100%);
@@ -4421,6 +4438,11 @@ button { border: 0; cursor: pointer; }
   background: #fef3c7;
   color: #d97706;
   border: 1px solid #fde68a;
+}
+.appt-metric-card.hold .appt-metric-icon {
+  background: #ffedd5;
+  color: #ea580c;
+  border: 1px solid #fed7aa;
 }
 .appt-metric-card.cancelled .appt-metric-icon {
   background: #fee2e2;
@@ -5114,6 +5136,19 @@ button { border: 0; cursor: pointer; }
   padding: 5px 13px;
   border-radius: 999px;
 }
+.status-pill.status-queue-hold,
+.status-pill.on-hold {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 5px 13px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
 
 .queue-actions-wrap {
   display: flex;
@@ -5562,6 +5597,101 @@ button { border: 0; cursor: pointer; }
   opacity: 0.65;
   box-shadow: none;
   transform: none;
+}
+
+.hold-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 12px;
+  background: #fffbeb;
+  color: #b45309;
+  border: 1.5px solid #fde68a;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.12);
+  white-space: nowrap;
+}
+.hold-btn svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.2;
+  color: #b45309;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.hold-btn:hover {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  border-color: #f59e0b;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.35);
+}
+.hold-btn:hover svg {
+  color: #ffffff;
+  transform: scale(1.15);
+}
+.hold-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2);
+}
+
+.resume-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.28);
+  white-space: nowrap;
+}
+.resume-btn svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.2;
+  transition: transform 0.2s ease;
+}
+.resume-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4);
+  color: #ffffff;
+}
+.resume-btn:hover svg {
+  transform: scale(1.15);
+}
+.resume-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+}
+
+.modern-patient-record-card.is-hold {
+  border-left: 4px solid #f59e0b;
+}
+.sec-icon-pill.hold {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+.patient-section-counter.hold-counter {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+.appt-empty-icon.hold-empty-icon {
+  background: #fffbeb;
+  color: #d97706;
 }
 
 .appt-date-input-wrap {
