@@ -6698,7 +6698,7 @@ window.openStaffInfantModal = function(infant) {
                 : 'Registered under patient account holder (' + staffEscapeHtml(infant.role_label || 'Parent') + ').'}
         </p>
 
-        <form method="post" action="?page=patients&view=profiles" id="staffInfantEditForm">
+        <form method="post" action="index.php?page=patients&view=profiles" id="staffInfantEditForm" onsubmit="event.preventDefault(); window.saveStaffInfantProfile(document.getElementById('saveInfantProfileBtn')); return false;">
             <input type="hidden" name="action" value="save_infant_profile">
             <input type="hidden" name="csrf_token" value="${csrfToken}">
             <input type="hidden" name="return_url" value="${staffEscapeHtml(curUrl)}">
@@ -6739,7 +6739,7 @@ window.openStaffInfantModal = function(infant) {
 
             <div id="staffInfantSaveAlert" style="display: none; margin-bottom: 14px; padding: 10px 14px; border-radius: 10px; font-size: 0.86rem; font-weight: 600;"></div>
 
-            <button type="submit" class="primary-btn blue-btn" id="saveInfantProfileBtn" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 9px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
+            <button type="button" class="primary-btn blue-btn" id="saveInfantProfileBtn" onclick="window.saveStaffInfantProfile(this)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 9px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
                 <?= staff_icon('check'); ?>
                 <span>Save Infant Profile Details</span>
             </button>
@@ -6761,117 +6761,130 @@ window.openStaffInfantModal = function(infant) {
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 
-    // Handle form submission via AJAX so modal remains open on profile
+    // Store active editing context
+    window.currentStaffEditingInfant = infant;
+    window.currentStaffEditingIsMother = isMother;
+    window.currentStaffEditingIsFather = isFather;
+};
+
+// Global function to save infant profile via AJAX while keeping modal open
+window.saveStaffInfantProfile = function(btn) {
     const infantForm = document.getElementById('staffInfantEditForm');
-    if (infantForm) {
-        infantForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const submitBtn = document.getElementById('saveInfantProfileBtn') || infantForm.querySelector('button[type="submit"]');
-            const alertBox = document.getElementById('staffInfantSaveAlert');
-            const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+    if (!infantForm) return;
+
+    const submitBtn = btn || document.getElementById('saveInfantProfileBtn') || infantForm.querySelector('button');
+    const alertBox = document.getElementById('staffInfantSaveAlert');
+    const originalBtnHtml = `<?= staff_icon('check'); ?> <span>Save Infant Profile Details</span>`;
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.75';
+        submitBtn.innerHTML = `<?= staff_icon('pulse'); ?> <span>Saving Changes...</span>`;
+    }
+    if (alertBox) {
+        alertBox.style.display = 'none';
+    }
+
+    const formData = new FormData(infantForm);
+    formData.append('ajax', '1');
+
+    fetch('index.php?page=patients&view=profiles', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+        }
+
+        if (data && data.success) {
+            const currentInfant = window.currentStaffEditingInfant || {};
+            if (data.infant_id) {
+                currentInfant.id = data.infant_id;
+                const infantIdInput = infantForm.querySelector('input[name="infant_id"]');
+                if (infantIdInput) infantIdInput.value = String(data.infant_id);
+            }
+            if (formData.has('mother_name') && !window.currentStaffEditingIsMother) {
+                currentInfant.mother_name = formData.get('mother_name');
+            }
+            if (formData.has('father_name') && !window.currentStaffEditingIsFather) {
+                currentInfant.father_name = formData.get('father_name');
+            }
+            if (formData.has('guardian_name')) {
+                currentInfant.guardian_name = formData.get('guardian_name');
+            }
+            if (formData.has('notes')) {
+                currentInfant.custom_notes = formData.get('notes');
+                currentInfant.notes = formData.get('notes');
+            }
 
             if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.style.opacity = '0.75';
-                submitBtn.innerHTML = `<?= staff_icon('pulse'); ?> <span>Saving Changes...</span>`;
+                submitBtn.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
+                submitBtn.innerHTML = `<?= staff_icon('check'); ?> <span>✓ Saved Successfully</span>`;
+                setTimeout(() => {
+                    submitBtn.style.background = 'linear-gradient(135deg, #0284c7, #0369a1)';
+                    submitBtn.innerHTML = originalBtnHtml;
+                }, 2500);
+            }
+
+            if (alertBox) {
+                alertBox.style.display = 'flex';
+                alertBox.style.alignItems = 'center';
+                alertBox.style.gap = '8px';
+                alertBox.style.background = '#f0fdf4';
+                alertBox.style.border = '1.5px solid #86efac';
+                alertBox.style.color = '#15803d';
+                alertBox.innerHTML = `<span>✓</span> <span>Infant profile details saved successfully! You can review or continue editing, and close the profile when you are finished.</span>`;
+            }
+
+            if (window.showSystemToast) {
+                window.showSystemToast('Infant profile details saved successfully.', { type: 'success', theme: 'volunteer', title: 'Changes Saved' });
+            }
+            // CRITICAL: Modal remains open on profile! Do NOT close modal.
+        } else {
+            if (submitBtn) {
+                submitBtn.innerHTML = originalBtnHtml;
             }
             if (alertBox) {
-                alertBox.style.display = 'none';
+                alertBox.style.display = 'flex';
+                alertBox.style.alignItems = 'center';
+                alertBox.style.gap = '8px';
+                alertBox.style.background = '#fef2f2';
+                alertBox.style.border = '1.5px solid #fca5a5';
+                alertBox.style.color = '#991b1b';
+                alertBox.innerHTML = `<span>⚠️</span> <span>${(data && data.message) ? data.message : 'Unable to save infant profile details. Please try again.'}</span>`;
             }
-
-            const formData = new FormData(infantForm);
-            formData.append('ajax', '1');
-
-            fetch(infantForm.getAttribute('action') || window.location.href, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.style.opacity = '1';
-                }
-
-                if (data && data.success) {
-                    if (data.infant_id) {
-                        infant.id = data.infant_id;
-                        const infantIdInput = infantForm.querySelector('input[name="infant_id"]');
-                        if (infantIdInput) infantIdInput.value = String(data.infant_id);
-                    }
-                    if (formData.has('mother_name') && !isMother) infant.mother_name = formData.get('mother_name');
-                    if (formData.has('father_name') && !isFather) infant.father_name = formData.get('father_name');
-                    if (formData.has('guardian_name')) infant.guardian_name = formData.get('guardian_name');
-                    if (formData.has('notes')) {
-                        infant.custom_notes = formData.get('notes');
-                        infant.notes = formData.get('notes');
-                    }
-
-                    if (submitBtn) {
-                        submitBtn.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
-                        submitBtn.innerHTML = `<?= staff_icon('check'); ?> <span>Saved Successfully</span>`;
-                        setTimeout(() => {
-                            submitBtn.style.background = 'linear-gradient(135deg, #0284c7, #0369a1)';
-                            submitBtn.innerHTML = originalBtnHtml;
-                        }, 2500);
-                    }
-
-                    if (alertBox) {
-                        alertBox.style.display = 'flex';
-                        alertBox.style.alignItems = 'center';
-                        alertBox.style.gap = '8px';
-                        alertBox.style.background = '#f0fdf4';
-                        alertBox.style.border = '1.5px solid #86efac';
-                        alertBox.style.color = '#15803d';
-                        alertBox.innerHTML = `<span>✓</span> <span>Infant profile details saved successfully! You can review or continue editing, and close when finished.</span>`;
-                    }
-
-                    if (window.showSystemToast) {
-                        window.showSystemToast('Infant profile details saved successfully.', { type: 'success', theme: 'volunteer', title: 'Changes Saved' });
-                    }
-                } else {
-                    if (submitBtn) {
-                        submitBtn.innerHTML = originalBtnHtml;
-                    }
-                    if (alertBox) {
-                        alertBox.style.display = 'flex';
-                        alertBox.style.alignItems = 'center';
-                        alertBox.style.gap = '8px';
-                        alertBox.style.background = '#fef2f2';
-                        alertBox.style.border = '1.5px solid #fca5a5';
-                        alertBox.style.color = '#991b1b';
-                        alertBox.innerHTML = `<span>⚠️</span> <span>${(data && data.message) ? data.message : 'Unable to save infant profile details. Please try again.'}</span>`;
-                    }
-                    if (window.showSystemToast) {
-                        window.showSystemToast((data && data.message) ? data.message : 'Unable to save infant profile details.', { type: 'error', theme: 'volunteer', title: 'Save Failed' });
-                    }
-                }
-            })
-            .catch(err => {
-                console.error('Error saving infant profile:', err);
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.style.opacity = '1';
-                    submitBtn.innerHTML = originalBtnHtml;
-                }
-                if (alertBox) {
-                    alertBox.style.display = 'flex';
-                    alertBox.style.alignItems = 'center';
-                    alertBox.style.gap = '8px';
-                    alertBox.style.background = '#fef2f2';
-                    alertBox.style.border = '1.5px solid #fca5a5';
-                    alertBox.style.color = '#991b1b';
-                    alertBox.innerHTML = `<span>⚠️</span> <span>Network error while saving. Please try again.</span>`;
-                }
-                if (window.showSystemToast) {
-                    window.showSystemToast('Network error while saving infant profile details.', { type: 'error', theme: 'volunteer', title: 'Network Error' });
-                }
-            });
-        });
-    }
+            if (window.showSystemToast) {
+                window.showSystemToast((data && data.message) ? data.message : 'Unable to save infant profile details.', { type: 'error', theme: 'volunteer', title: 'Save Failed' });
+            }
+        }
+    })
+    .catch(err => {
+        console.error('Error saving infant profile:', err);
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.innerHTML = originalBtnHtml;
+        }
+        if (alertBox) {
+            alertBox.style.display = 'flex';
+            alertBox.style.alignItems = 'center';
+            alertBox.style.gap = '8px';
+            alertBox.style.background = '#fef2f2';
+            alertBox.style.border = '1.5px solid #fca5a5';
+            alertBox.style.color = '#991b1b';
+            alertBox.innerHTML = `<span>⚠️</span> <span>Network error while saving. Please try again.</span>`;
+        }
+        if (window.showSystemToast) {
+            window.showSystemToast('Network error while saving infant profile details.', { type: 'error', theme: 'volunteer', title: 'Network Error' });
+        }
+    });
 };
 
 window.closeStaffInfantModal = function() {

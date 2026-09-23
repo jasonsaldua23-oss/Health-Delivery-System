@@ -6689,13 +6689,21 @@ function fetch_patient_appointment_notifications(string $patientId, string $pati
         $pId = trim($patientId);
         $pEmail = trim($patientEmail);
 
+        if ($pId === '' && $pEmail === '') {
+            return [];
+        }
+
         $sql = 'SELECT n.*, a.station_name, a.service_name, a.preferred_date, a.follow_up_date, a.follow_up_time, a.follow_up_notes, a.first_name, a.last_name 
                 FROM ' . DB_TABLE_APPOINTMENT_NOTIFICATIONS . ' n
                 LEFT JOIN appointments a ON a.id = n.appointment_id
-                WHERE n.patient_id = ? OR (n.patient_id = ? AND ? != "") OR a.patient_id = ? OR (a.email = ? AND ? != "")
+                WHERE (
+                    (TRIM(UPPER(n.patient_id)) = TRIM(UPPER(?)) AND ? != "")
+                    OR (TRIM(UPPER(a.patient_id)) = TRIM(UPPER(?)) AND ? != "")
+                    OR ((a.patient_id IS NULL OR TRIM(a.patient_id) = "") AND LOWER(TRIM(a.email)) = LOWER(TRIM(?)) AND ? != "")
+                )
                 ORDER BY n.id DESC LIMIT 30';
         $stmt = $connection->prepare($sql);
-        $stmt->bind_param('ssssss', $pId, $pEmail, $pEmail, $pId, $pEmail, $pEmail);
+        $stmt->bind_param('ssssss', $pId, $pId, $pId, $pId, $pEmail, $pEmail);
         $stmt->execute();
         $res = $stmt->get_result();
         while ($row = $res->fetch_assoc()) {
@@ -6717,21 +6725,21 @@ function fetch_patient_upcoming_follow_ups(string $patientId, string $patientEma
         $connection = db();
         $pId = trim($patientId);
         $pEmail = trim($patientEmail);
-        $pName = trim($patientName);
+
+        if ($pId === '' && $pEmail === '') {
+            return [];
+        }
 
         $sql = 'SELECT * FROM appointments 
-                WHERE (TRIM(UPPER(patient_id)) = TRIM(UPPER(?)) 
-                   OR (email = ? AND ? != "") 
-                   OR (? != "" AND (
-                       CONCAT(first_name, " ", last_name) LIKE ? 
-                       OR CONCAT_WS(" ", first_name, NULLIF(middle_name, ""), last_name) LIKE ?
-                   )))
-                  AND follow_up_date IS NOT NULL 
-                  AND follow_up_date >= CURDATE()
+                WHERE (
+                    (TRIM(UPPER(patient_id)) = TRIM(UPPER(?)) AND ? != "") 
+                    OR ((patient_id IS NULL OR TRIM(patient_id) = "") AND LOWER(TRIM(email)) = LOWER(TRIM(?)) AND ? != "")
+                )
+                AND follow_up_date IS NOT NULL 
+                AND follow_up_date >= CURDATE()
                 ORDER BY follow_up_date ASC';
         $stmt = $connection->prepare($sql);
-        $likeName = '%' . $pName . '%';
-        $stmt->bind_param('ssssss', $pId, $pEmail, $pEmail, $pName, $likeName, $likeName);
+        $stmt->bind_param('ssss', $pId, $pId, $pEmail, $pEmail);
         $stmt->execute();
         $res = $stmt->get_result();
         while ($row = $res->fetch_assoc()) {
@@ -6753,21 +6761,19 @@ function fetch_patient_appointments(string $patientId, string $patientEmail = ''
         $connection = db();
         $pId = trim($patientId);
         $pEmail = trim($patientEmail);
-        $pName = trim($patientName);
-        $pPhone = trim($patientPhone);
+
+        if ($pId === '' && $pEmail === '') {
+            return [];
+        }
 
         $sql = 'SELECT * FROM appointments 
-                WHERE (TRIM(UPPER(patient_id)) = TRIM(UPPER(?)) 
-                   OR (email = ? AND ? != "") 
-                   OR (contact_number = ? AND ? != "") 
-                   OR (? != "" AND (
-                       CONCAT(first_name, " ", last_name) LIKE ? 
-                       OR CONCAT_WS(" ", first_name, NULLIF(middle_name, ""), last_name) LIKE ?
-                   )))
+                WHERE (
+                    (TRIM(UPPER(patient_id)) = TRIM(UPPER(?)) AND ? != "") 
+                    OR ((patient_id IS NULL OR TRIM(patient_id) = "") AND LOWER(TRIM(email)) = LOWER(TRIM(?)) AND ? != "")
+                )
                 ORDER BY created_at DESC, id DESC';
         $stmt = $connection->prepare($sql);
-        $likeName = '%' . $pName . '%';
-        $stmt->bind_param('ssssssss', $pId, $pEmail, $pEmail, $pPhone, $pPhone, $pName, $likeName, $likeName);
+        $stmt->bind_param('ssss', $pId, $pId, $pEmail, $pEmail);
         $stmt->execute();
         $res = $stmt->get_result();
         while ($row = $res->fetch_assoc()) {

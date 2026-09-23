@@ -324,41 +324,7 @@ if ($bookedRef !== '') {
     }
 }
 
-// Ensure patient has an initial booked appointment if brand new
-if (empty($patientAppointments)) {
-    $defaultApptCode = 'BHS-' . strtoupper(substr(md5($patientId . 'seed'), 0, 6));
-    $patientAppointments = [
-        [
-            'id' => 1,
-            'appointment_code' => $defaultApptCode,
-            'reference_code' => $defaultApptCode,
-            'patient_id' => $patientId,
-            'first_name' => $firstName ?: 'Juan',
-            'middle_name' => $middleName ?: '',
-            'last_name' => $lastName ?: 'Dela Cruz',
-            'birth_date' => $birthDate ?: '1995-05-15',
-            'gender' => $gender ?: 'Male',
-            'contact_number' => $contactNumber ?: '09123456789',
-            'email' => $email ?: 'patient@example.com',
-            'complete_address' => $completeAddress ?: ('Brgy. ' . $patientBarangay . ', Bacolod City'),
-            'station_slug' => $userStationSlug,
-            'station_name' => $selectedStation['name'] ?? ('Barangay ' . $patientBarangay . ' Health Station'),
-            'service_slug' => 'consultation',
-            'service_name' => 'General Consultation',
-            'preferred_date' => date('Y-m-d', strtotime('+3 days')),
-            'preferred_time' => 'Morning Session (8:00 AM - 12:00 PM)',
-            'notes' => 'Initial medical consultation and health assessment.',
-            'status' => 'Pending',
-            'created_at' => date('Y-m-d H:i:s'),
-            'immunization_relationship' => '',
-            'recipient_first_name' => '',
-            'recipient_middle_name' => '',
-            'recipient_last_name' => '',
-            'recipient_birth_date' => null,
-            'vaccine_type' => null,
-        ]
-    ];
-}
+
 
 if (!function_exists('h')) {
     function h(?string $value): string
