@@ -775,6 +775,7 @@ function create_appointments_table(mysqli $connection, string $engine = 'InnoDB'
             height VARCHAR(50) DEFAULT NULL,
             weight VARCHAR(50) DEFAULT NULL,
             vaccine_type VARCHAR(150) DEFAULT NULL,
+            chest_xray VARCHAR(255) DEFAULT NULL,
             doctor_notes TEXT DEFAULT NULL,
             reminder_sms_sent TINYINT(1) NOT NULL DEFAULT 0,
             reminder_sent_at TIMESTAMP NULL DEFAULT NULL,
@@ -1445,6 +1446,13 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
         try {
             $connection->query('ALTER TABLE appointments ADD COLUMN vaccine_type VARCHAR(150) DEFAULT NULL AFTER blood_pressure');
             $log[] = 'Added appointments.vaccine_type';
+        } catch (Throwable $e) {}
+    }
+
+    if (!db_column_exists($connection, 'appointments', 'chest_xray')) {
+        try {
+            $connection->query('ALTER TABLE appointments ADD COLUMN chest_xray VARCHAR(255) DEFAULT NULL AFTER vaccine_type');
+            $log[] = 'Added appointments.chest_xray';
         } catch (Throwable $e) {}
     }
 
@@ -2817,14 +2825,15 @@ function save_appointment_clinical_details(int $appointmentId, array $data, ?str
     $height = array_key_exists('height', $data) ? trim((string) $data['height']) : (string) ($appointment['height'] ?? '');
     $weight = array_key_exists('weight', $data) ? trim((string) $data['weight']) : (string) ($appointment['weight'] ?? '');
     $vaccineType = array_key_exists('vaccine_type', $data) ? trim((string) $data['vaccine_type']) : (string) ($appointment['vaccine_type'] ?? '');
+    $chestXray = array_key_exists('chest_xray', $data) ? trim((string) $data['chest_xray']) : (string) ($appointment['chest_xray'] ?? '');
     $doctorNotes = array_key_exists('doctor_notes', $data) ? trim((string) $data['doctor_notes']) : (string) ($appointment['doctor_notes'] ?? '');
 
     $stmt = db()->prepare(
         'UPDATE appointments
-         SET body_temperature = ?, pulse_rate = ?, respiration_rate = ?, blood_pressure = ?, height = ?, weight = ?, vaccine_type = ?, doctor_notes = ?
+         SET body_temperature = ?, pulse_rate = ?, respiration_rate = ?, blood_pressure = ?, height = ?, weight = ?, vaccine_type = ?, chest_xray = ?, doctor_notes = ?
          WHERE id = ?'
     );
-    $stmt->bind_param('ssssssssi', $bodyTemperature, $pulseRate, $respirationRate, $bloodPressure, $height, $weight, $vaccineType, $doctorNotes, $appointmentId);
+    $stmt->bind_param('sssssssssi', $bodyTemperature, $pulseRate, $respirationRate, $bloodPressure, $height, $weight, $vaccineType, $chestXray, $doctorNotes, $appointmentId);
 
     $ok = $stmt->execute();
     if ($ok && $vaccineType !== '') {
@@ -4448,6 +4457,18 @@ function is_vaccination_service(string $serviceSlug, string $serviceName = ''): 
         || stripos($slug, 'immuniz') !== false
         || stripos($name, 'vaccin') !== false
         || stripos($name, 'immuniz') !== false;
+}
+
+function is_tb_service(string $serviceSlug, string $serviceName = ''): bool
+{
+    $slug = strtolower(trim($serviceSlug));
+    $name = strtolower(trim($serviceName));
+
+    return $slug === 'tb'
+        || stripos($slug, 'tb') !== false
+        || stripos($slug, 'tuberculo') !== false
+        || stripos($name, 'tb') !== false
+        || stripos($name, 'tuberculo') !== false;
 }
 
 function purge_expired_upcoming_events(?mysqli $conn = null): int

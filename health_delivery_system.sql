@@ -148,6 +148,10 @@ CREATE TABLE IF NOT EXISTS appointments (
     pulse_rate      VARCHAR(30) DEFAULT NULL,
     respiration_rate VARCHAR(30) DEFAULT NULL,
     blood_pressure  VARCHAR(30) DEFAULT NULL,
+    height          VARCHAR(50) DEFAULT NULL,
+    weight          VARCHAR(50) DEFAULT NULL,
+    vaccine_type    VARCHAR(150) DEFAULT NULL,
+    chest_xray      VARCHAR(255) DEFAULT NULL,
     doctor_notes    TEXT DEFAULT NULL,
     photo_path      VARCHAR(255) DEFAULT NULL,
 

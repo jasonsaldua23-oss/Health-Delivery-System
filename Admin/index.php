@@ -1594,6 +1594,11 @@ if (!function_exists('peso')) {
                                                                 </div>
                                                             <?php endif; ?>
                                                         <?php endif; ?>
+                                                        <?php if (!empty($visit['chest_xray'])): ?>
+                                                            <div style="font-size: 0.75rem; color: #7e22ce; margin-top: 2px; font-weight: 600;">
+                                                                🩻 Chest X-Ray: <strong><?= h((string) $visit['chest_xray']); ?></strong>
+                                                            </div>
+                                                        <?php endif; ?>
                                                     </td>
                                                     <td><?= h((string) $visit['station_name']); ?></td>
                                                     <td style="font-family:monospace;font-weight:700;color:#3b82f6;">
@@ -1715,6 +1720,12 @@ if (!function_exists('peso')) {
                                             <div class="vital-metric-card" style="grid-column: 1 / -1; background: #eff6ff; border: 1px solid #bfdbfe;">
                                                 <span class="vital-label" style="color: #1e40af; font-weight: 700;">Type of Vaccine Administered</span>
                                                 <strong class="vital-value" style="color: #1e3a8a; font-size: 1.05rem;"><?= h((string) $selectedAdminVisit['vaccine_type']); ?></strong>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($selectedAdminVisit['chest_xray']) || is_tb_service((string) ($selectedAdminVisit['service_slug'] ?? ''), (string) ($selectedAdminVisit['service_name'] ?? ''))): ?>
+                                            <div class="vital-metric-card" style="grid-column: 1 / -1; background: #faf5ff; border: 1px solid #d8b4fe;">
+                                                <span class="vital-label" style="color: #7e22ce; font-weight: 700;">Chest X-Ray Result (TB DOTS)</span>
+                                                <strong class="vital-value" style="color: #581c87; font-size: 1.05rem;"><?= !empty($selectedAdminVisit['chest_xray']) ? h((string) $selectedAdminVisit['chest_xray']) : '<em class="not-set">Not recorded</em>'; ?></strong>
                                             </div>
                                         <?php endif; ?>
                                     </div>
@@ -5054,6 +5065,10 @@ if (!function_exists('peso')) {
                                     <span class="vital-label" style="color: #1e40af; font-weight: 700;">Type of Vaccine Administered</span>
                                     <strong class="vital-value" id="reportVisitVaccine" style="color: #1e3a8a; font-size: 1.05rem;">-</strong>
                                 </div>
+                                <div class="vital-metric-card" id="reportVisitXrayCard" style="display:none; grid-column: 1 / -1; background: #faf5ff; border: 1px solid #d8b4fe;">
+                                    <span class="vital-label" style="color: #7e22ce; font-weight: 700;">Chest X-Ray Result (TB DOTS)</span>
+                                    <strong class="vital-value" id="reportVisitXray" style="color: #581c87; font-size: 1.05rem;">-</strong>
+                                </div>
                             </div>
                         </div>
 
@@ -5181,6 +5196,18 @@ if (!function_exists('peso')) {
                             vaccineCard.style.display = 'block';
                         } else {
                             vaccineCard.style.display = 'none';
+                        }
+                    }
+
+                    // Chest X-Ray
+                    const xrayCard = document.getElementById('reportVisitXrayCard');
+                    const xrayEl = document.getElementById('reportVisitXray');
+                    if (xrayCard && xrayEl) {
+                        if (data.chest_xray && data.chest_xray.trim()) {
+                            xrayEl.textContent = data.chest_xray;
+                            xrayCard.style.display = 'block';
+                        } else {
+                            xrayCard.style.display = 'none';
                         }
                     }
                     

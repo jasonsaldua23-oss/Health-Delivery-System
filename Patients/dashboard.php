@@ -304,33 +304,7 @@ $displayedNotifications = filter_patient_notifications_for_bubble($patientNotifi
 $upcomingFollowUps = fetch_patient_upcoming_follow_ups($patientId, $patientEmailVal, $patientName);
 $patientAppointments = fetch_patient_appointments($patientId, $patientEmailVal, $patientName, $contactNumber);
 
-// Resolve patient profile photo from their very recent appointment regardless of service
-$patientProfilePhoto = '';
-// 1. Prioritize appointment where patient was the recipient (self / not infant)
-foreach ($patientAppointments as $pa) {
-    if (!empty($pa['photo_path'])) {
-        $pRec = appointment_recipient_details($pa);
-        if ($pRec['is_self']) {
-            $pResolved = resolve_patient_photo_url((string) $pa['photo_path'], 'patient');
-            if ($pResolved !== '') {
-                $patientProfilePhoto = $pResolved;
-                break;
-            }
-        }
-    }
-}
-// 2. If none found with is_self, check any appointment regardless of service
-if ($patientProfilePhoto === '') {
-    foreach ($patientAppointments as $pa) {
-        if (!empty($pa['photo_path'])) {
-            $pResolved = resolve_patient_photo_url((string) $pa['photo_path'], 'patient');
-            if ($pResolved !== '') {
-                $patientProfilePhoto = $pResolved;
-                break;
-            }
-        }
-    }
-}
+
 
 $bookedRef = trim((string) ($_GET['booked'] ?? ''));
 $justBookedAppt = null;
@@ -3927,12 +3901,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
     </div>
 
     <div class="drawer-user-card">
-        <div class="drawer-user-avatar" style="<?= $patientProfilePhoto !== '' ? 'overflow: hidden; padding: 0;' : ''; ?>">
-            <?php if ($patientProfilePhoto !== ''): ?>
-                <img src="<?= h($patientProfilePhoto); ?>" alt="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;" onerror="this.onerror=null; this.parentElement.innerHTML='<?= strtoupper(substr(h($patientName) ?: 'P', 0, 1)); ?>';">
-            <?php else: ?>
-                <?= strtoupper(substr($patientName ?: 'P', 0, 1)); ?>
-            <?php endif; ?>
+        <div class="drawer-user-avatar">
+            <?= strtoupper(substr($patientName ?: 'P', 0, 1)); ?>
         </div>
         <div class="drawer-user-info">
             <strong><?= h($patientName); ?></strong>
@@ -4011,20 +3981,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
 <main class="dashboard-shell">
     <section class="dashboard-hero">
         <div class="container dashboard-hero-inner">
-            <div class="dashboard-greeting" style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-                <?php if ($patientProfilePhoto !== ''): ?>
-                    <div class="dashboard-greeting-avatar" style="width: 60px; height: 60px; border-radius: 50%; overflow: hidden; border: 3px solid rgba(255,255,255,0.85); box-shadow: 0 4px 14px rgba(0,0,0,0.12); flex-shrink: 0;">
-                        <img src="<?= h($patientProfilePhoto); ?>" alt="<?= h($patientName); ?>" style="width: 100%; height: 100%; object-fit: cover; display: block;">
-                    </div>
-                <?php endif; ?>
-                <div>
-                    <div class="dashboard-tagline">
-                        <span class="inline-icon"><?= iconSvg('sparkle'); ?></span>
-                        <span>Your Health, Our Priority</span>
-                    </div>
-                    <h1 style="margin: 2px 0 0 0;">Welcome, <?= h($patientName); ?></h1>
-                    <p style="margin: 2px 0 0 0;">Brgy. <?= h($patientBarangay); ?>, Bacolod City</p>
+            <div class="dashboard-greeting">
+                <div class="dashboard-tagline">
+                    <span class="inline-icon"><?= iconSvg('sparkle'); ?></span>
+                    <span>Your Health, Our Priority</span>
                 </div>
+                <h1>Welcome, <?= h($patientName); ?></h1>
+                <p>Brgy. <?= h($patientBarangay); ?>, Bacolod City</p>
             </div>
             <div class="dashboard-hero-actions">
                 <!-- Notification Bell Icon Button & Dropdown Popover -->

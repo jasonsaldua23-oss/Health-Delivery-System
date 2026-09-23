@@ -251,6 +251,17 @@ if (!function_exists('render_patient_profile_body')) {
                         </div>
                     <?php endif; ?>
 
+                    <?php if (!empty($appt['chest_xray']) || is_tb_service((string) ($appt['service_slug'] ?? ''), (string) ($appt['service_name'] ?? ''))): ?>
+                        <div class="profile-xray-badge-box" style="margin-top: 10px; background: #faf5ff; border: 1px solid #d8b4fe; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="color: #9333ea;"><?= staff_icon('pulse'); ?></span>
+                                <span style="color: #7e22ce; font-size: 0.84rem; font-weight: 600;">Chest X-Ray Result:</span>
+                                <strong style="color: #581c87; font-size: 0.9rem; font-weight: 700;"><?= h((string) (!empty($appt['chest_xray']) ? $appt['chest_xray'] : 'Not yet recorded')); ?></strong>
+                            </div>
+                            <span style="background: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 700;">TB DOTS</span>
+                        </div>
+                    <?php endif; ?>
+
                     <!-- Doctor's Notes -->
                     <?php if (!empty($appt['doctor_notes'])): ?>
                         <div class="history-doc-notes-box">
@@ -2303,6 +2314,7 @@ for ($i = 0; $i < 6; $i++) {
 
                                 <?php
                                 $isVaccination = is_vaccination_service((string) ($selectedVitalsAppointment['service_slug'] ?? ''), (string) ($selectedVitalsAppointment['service_name'] ?? ''));
+                                $isTbService = is_tb_service((string) ($selectedVitalsAppointment['service_slug'] ?? ''), (string) ($selectedVitalsAppointment['service_name'] ?? ''));
                                 $vitRec = appointment_recipient_details($selectedVitalsAppointment);
                                 $isNonSelf = $vitRec['is_immunization'] && !in_array(strtolower($vitRec['relationship']), ['myself', 'self', 'me'], true);
                                 ?>
@@ -2377,6 +2389,19 @@ for ($i = 0; $i < 6; $i++) {
                                             <small style="display: block; margin-top: 6px; color: #15803d; font-size: 0.82rem;">Encode the specific brand, antigen, or formulation administered during this adult visit.</small>
                                         </div>
                                     <?php endif; ?>
+                                <?php endif; ?>
+
+                                <?php if ($isTbService): ?>
+                                    <!-- TB DOTS Protocol: Chest X-Ray Result Input -->
+                                    <div class="form-group-item full-width" style="margin-top: 18px; background: #faf5ff; border: 1.5px solid #d8b4fe; border-radius: 14px; padding: 16px 18px;">
+                                        <label for="queue_chest_xray" class="form-field-label" style="color: #6b21a8; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                                            <span style="display:inline-flex;color:#9333ea;"><?= staff_icon('pulse'); ?></span>
+                                            <span>Chest X-Ray Result</span>
+                                            <span class="required" style="color: #dc2626;">*</span>
+                                        </label>
+                                        <input type="text" id="queue_chest_xray" name="chest_xray" value="<?= h((string) ($selectedVitalsAppointment['chest_xray'] ?? '')); ?>" placeholder="e.g. Normal / Clear, Suggestive of Active PTB, Cavitary Lesions, Fibrotic Changes..." required class="form-input-field" style="border-color: #d8b4fe; background: #ffffff; font-size: 0.95rem;">
+                                        <small style="display: block; margin-top: 6px; color: #7e22ce; font-size: 0.82rem;">Required screening record for TB DOTS patient triage, treatment enrollment, and clinical history.</small>
+                                    </div>
                                 <?php endif; ?>
                             </div>
 
@@ -3021,6 +3046,21 @@ for ($i = 0; $i < 6; $i++) {
                                     </div>
                                 <?php endif; ?>
 
+                                <?php if (!empty($selectedRemarksAppointment['chest_xray']) || is_tb_service((string) ($selectedRemarksAppointment['service_slug'] ?? ''), (string) ($selectedRemarksAppointment['service_name'] ?? ''))): ?>
+                                    <div class="xray-summary-card" style="margin-top: 14px; background: #faf5ff; border: 1.5px solid #d8b4fe; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <div style="width: 38px; height: 38px; border-radius: 10px; background: #f3e8ff; color: #9333ea; display: grid; place-items: center; font-size: 1.2rem;">
+                                                <?= staff_icon('pulse'); ?>
+                                            </div>
+                                            <div>
+                                                <small style="color: #7e22ce; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; display: block;">Chest X-Ray Result</small>
+                                                <strong style="color: #581c87; font-size: 1.05rem; font-weight: 700;"><?= h((string) (($selectedRemarksAppointment['chest_xray'] ?? '') !== '' ? $selectedRemarksAppointment['chest_xray'] : 'Not yet recorded')); ?></strong>
+                                            </div>
+                                        </div>
+                                        <span style="background: #e9d5ff; color: #6b21a8; font-size: 0.76rem; font-weight: 700; padding: 4px 10px; border-radius: 999px;">TB DOTS Screening</span>
+                                    </div>
+                                <?php endif; ?>
+
                                 <div class="account-section-divider">
                                     <?= staff_icon('edit'); ?>
                                     <span>Doctor's Clinical Notes &amp; Findings</span>
@@ -3255,6 +3295,21 @@ for ($i = 0; $i < 6; $i++) {
                                         </div>
                                     </div>
                                     <span style="background: #bbf7d0; color: #166534; font-size: 0.76rem; font-weight: 700; padding: 4px 10px; border-radius: 999px;">Vaccine Record</span>
+                                </div>
+                            <?php endif; ?>
+
+                            <?php if (!empty($selectedViewAppointment['chest_xray']) || is_tb_service((string) ($selectedViewAppointment['service_slug'] ?? ''), (string) ($selectedViewAppointment['service_name'] ?? ''))): ?>
+                                <div class="xray-summary-card" style="margin-top: 14px; background: #faf5ff; border: 1.5px solid #d8b4fe; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div style="width: 38px; height: 38px; border-radius: 10px; background: #f3e8ff; color: #9333ea; display: grid; place-items: center; font-size: 1.2rem;">
+                                            <?= staff_icon('pulse'); ?>
+                                        </div>
+                                        <div>
+                                            <small style="color: #7e22ce; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; display: block;">Chest X-Ray Result</small>
+                                            <strong style="color: #581c87; font-size: 1.05rem; font-weight: 700;"><?= h((string) (($selectedViewAppointment['chest_xray'] ?? '') !== '' ? $selectedViewAppointment['chest_xray'] : 'Not yet recorded')); ?></strong>
+                                        </div>
+                                    </div>
+                                    <span style="background: #e9d5ff; color: #6b21a8; font-size: 0.76rem; font-weight: 700; padding: 4px 10px; border-radius: 999px;">TB DOTS Screening</span>
                                 </div>
                             <?php endif; ?>
 
