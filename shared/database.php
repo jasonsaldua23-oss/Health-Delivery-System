@@ -3902,18 +3902,27 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 } catch (Throwable $e) {}
             }
 
-            // Normalization helper for appointment photo paths
-            $normalizePhotoPath = static function(?string $raw): string {
+            // Normalization helper for appointment photo paths.
+            // Rejects external URLs (http/https/data:) since all legitimate photos are local uploads.
+            // This prevents AI-generated or external placeholder images from appearing.
+            $uploadsDir = dirname(__DIR__) . '/Patients/';
+            $normalizePhotoPath = static function(?string $raw) use ($uploadsDir): string {
                 $s = trim((string) $raw);
                 if ($s === '') return '';
+                // Reject external URLs and data URIs — all real photos are local uploads
                 if (str_starts_with($s, 'http://') || str_starts_with($s, 'https://') || str_starts_with($s, 'data:')) {
-                    return $s;
+                    return '';
                 }
                 $clean = str_replace('\\', '/', $s);
                 $clean = preg_replace('#^(\.\./)?(Patients/)?#i', '', $clean);
                 $clean = ltrim($clean, '/');
                 if (!str_starts_with($clean, 'uploads/') && !str_starts_with($clean, 'assets/')) {
                     $clean = 'uploads/' . $clean;
+                }
+                // Verify the file actually exists on disk
+                $diskPath = $uploadsDir . $clean;
+                if (!file_exists($diskPath) || !is_file($diskPath)) {
+                    return '';
                 }
                 return $clean;
             };

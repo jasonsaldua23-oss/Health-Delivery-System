@@ -6069,8 +6069,9 @@ function resolveStaffPhotoUrl(raw) {
     if (!raw) return '';
     let s = String(raw).trim();
     if (!s) return '';
+    // Reject external URLs and data URIs — all real photos are local uploads
     if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:image/')) {
-        return s;
+        return '';
     }
     s = s.replace(/\\/g, '/');
     s = s.replace(/^(\.\.\/)?(Patients\/)?/i, '');
@@ -6111,9 +6112,9 @@ window.openStaffInfantModal = function(infant) {
     const photoSrc = resolveStaffPhotoUrl(photoRaw);
     const babySvg = `<?= addslashes(staff_icon('baby')); ?>`;
     if (photoSrc) {
-        photoHtml = `<img src="${staffEscapeHtml(photoSrc)}" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null; this.parentElement.innerHTML='${babySvg}';">`;
+        photoHtml = `<img src="${staffEscapeHtml(photoSrc)}" alt="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null; this.parentElement.style.display='flex'; this.parentElement.style.alignItems='center'; this.parentElement.style.justifyContent='center'; this.parentElement.innerHTML='${babySvg}';">`;
     } else {
-        photoHtml = babySvg;
+        photoHtml = `<div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">${babySvg}</div>`;
     }
 
     // Aggregate vaccine counts and latest dates from vaccine_counts, vaccine_doses, and appointments
@@ -6267,7 +6268,7 @@ window.openStaffInfantModal = function(infant) {
     body.innerHTML = `
     <!-- Header Demographic Card -->
     <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1.5px solid #bae6fd; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 18px; margin-bottom: 22px; flex-wrap: wrap;">
-        <div style="width: 72px; height: 72px; border-radius: 50%; background: #ffffff; border: 3px solid #38bdf8; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; color: #0284c7; font-size: 1.6rem; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2);">
+        <div style="width: 72px; height: 72px; border-radius: 50%; background: #ffffff; border: 3px solid #38bdf8; position: relative; overflow: hidden; flex-shrink: 0; color: #0284c7; font-size: 1.6rem; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2);">
             ${photoHtml}
         </div>
         <div style="flex: 1; min-width: 220px;">
