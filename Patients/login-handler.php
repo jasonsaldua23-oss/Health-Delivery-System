@@ -320,7 +320,7 @@ if ($action === 'register_patient') {
         exit;
     }
 
-    if ($firstName === '' || $lastName === '' || $email === '' || $barangay === '' || $purok === '' || $gender === '') {
+    if ($firstName === '' || $middleName === '' || $lastName === '' || $email === '' || $barangay === '' || $purok === '' || $gender === '') {
         echo json_encode(['success' => false, 'message' => 'Please fill in all required fields.'], JSON_THROW_ON_ERROR);
         exit;
     }

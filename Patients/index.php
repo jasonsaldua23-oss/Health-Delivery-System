@@ -1262,7 +1262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                             </div>
                             <div class="field-group">
                                 <label for="middleName">Middle Name</label>
-                                <input id="middleName" name="middle_name" type="text" value="" placeholder="">
+                                <input id="middleName" name="middle_name" type="text" value="" placeholder="" required>
                             </div>
                         </div>
 
@@ -2497,6 +2497,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const firstTimerFirstName = document.getElementById('firstName');
+    const firstTimerMiddleName = document.getElementById('middleName');
     const firstTimerLastName = document.getElementById('lastName');
     const firstTimerBirthdate = document.getElementById('regBirthdate');
     const firstTimerGenderWrap = document.querySelector('#firstTimerForm .gender-options');
@@ -2506,6 +2507,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const firstTimerPassword = document.getElementById('regPassword');
 
     firstTimerFirstName?.addEventListener('input', function() {
+        if (this.value.trim() !== '') clearFirstTimerFieldError(this);
+    });
+    firstTimerMiddleName?.addEventListener('input', function() {
         if (this.value.trim() !== '') clearFirstTimerFieldError(this);
     });
     firstTimerLastName?.addEventListener('input', function() {
@@ -2543,6 +2547,7 @@ document.addEventListener('DOMContentLoaded', function () {
         clearAllFirstTimerErrors();
 
         const firstName = (firstTimerFirstName?.value || '').trim();
+        const middleName = (firstTimerMiddleName?.value || '').trim();
         const lastName = (firstTimerLastName?.value || '').trim();
         const birthdate = (firstTimerBirthdate?.value || '').trim();
         const genderChecked = document.querySelector('input[name="gender"]:checked');
@@ -2563,6 +2568,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!firstName) {
             markFieldError(firstTimerFirstName, 'First name is required.');
+        }
+
+        if (!middleName) {
+            markFieldError(firstTimerMiddleName, 'Middle name is required.');
         }
 
         if (!lastName) {
