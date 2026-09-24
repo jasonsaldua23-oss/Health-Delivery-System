@@ -484,12 +484,12 @@ function service_is_scheduled_on_date(string $stationSlug, string $serviceSlug, 
 function station_seed_rows(): array
 {
     return [
-        ['barangay' => 'Alijis', 'slug' => 'alijis', 'services' => 7, 'phone' => '(034) 123-4501', 'color' => 'rose', 'image' => 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=900&q=80'],
-        ['barangay' => 'Bata', 'slug' => 'bata', 'services' => 7, 'phone' => '(034) 123-4502', 'color' => 'violet', 'image' => 'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=900&q=80'],
-        ['barangay' => 'Cabug', 'slug' => 'cabug', 'services' => 5, 'phone' => '(034) 123-4503', 'color' => 'cyan', 'image' => 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=900&q=80'],
+        ['barangay' => 'Alijis', 'slug' => 'alijis', 'services' => 7, 'phone' => '(034) 123-4501', 'color' => 'rose', 'image' => '../assets/images/stations/alijis.jpg'],
+        ['barangay' => 'Bata', 'slug' => 'bata', 'services' => 7, 'phone' => '(034) 123-4502', 'color' => 'violet', 'image' => '../assets/images/stations/bata.jpg'],
+        ['barangay' => 'Cabug', 'slug' => 'cabug', 'services' => 5, 'phone' => '(034) 123-4503', 'color' => 'cyan', 'image' => '../assets/images/stations/cabug.jpg'],
         ['barangay' => 'City Health', 'slug' => 'city-health', 'services' => 11, 'phone' => '(034) 123-4500', 'color' => 'blue', 'image' => 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=900&q=80'],
-        ['barangay' => 'Estefania', 'slug' => 'estefania', 'services' => 8, 'phone' => '(034) 123-4504', 'color' => 'gold', 'image' => 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=900&q=80'],
-        ['barangay' => 'Granada', 'slug' => 'granada', 'services' => 7, 'phone' => '(034) 123-4505', 'color' => 'mint', 'image' => 'https://images.unsplash.com/photo-1512678080530-7760d81faba6?auto=format&fit=crop&w=900&q=80'],
+        ['barangay' => 'Estefania', 'slug' => 'estefania', 'services' => 8, 'phone' => '(034) 123-4504', 'color' => 'gold', 'image' => '../assets/images/stations/estefania.jpg'],
+        ['barangay' => 'Granada', 'slug' => 'granada', 'services' => 7, 'phone' => '(034) 123-4505', 'color' => 'mint', 'image' => '../assets/images/stations/granada.jpg'],
         ['barangay' => 'Handumanan', 'slug' => 'handumanan', 'services' => 6, 'phone' => '(034) 123-4506', 'color' => 'blue', 'image' => 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=900&q=80'],
         ['barangay' => 'Mandalagan', 'slug' => 'mandalagan', 'services' => 7, 'phone' => '(034) 123-4507', 'color' => 'mint', 'image' => 'https://images.unsplash.com/photo-1587351021759-3e566b3db4f1?auto=format&fit=crop&w=900&q=80'],
         ['barangay' => 'Mansilingan', 'slug' => 'mansilingan', 'services' => 8, 'phone' => '(034) 123-4508', 'color' => 'gold', 'image' => 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=900&q=80'],
@@ -517,6 +517,12 @@ function fetch_all_station_definitions(): array
             if ($res) {
                 while ($row = $res->fetch_assoc()) {
                     $slug = (string) $row['slug'];
+                    $seedRow = $bySlug[$slug] ?? null;
+                    $dbImage = trim((string) ($row['image'] ?? ''));
+                    $image = (!empty($seedRow['image']) && ($dbImage === '' || str_contains($dbImage, 'unsplash.com')))
+                        ? $seedRow['image']
+                        : ($dbImage ?: ($seedRow['image'] ?? 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=900&q=80'));
+
                     $bySlug[$slug] = [
                         'barangay' => (string) $row['barangay'],
                         'slug' => $slug,
@@ -525,7 +531,7 @@ function fetch_all_station_definitions(): array
                         'detail_location' => (string) $row['location'],
                         'phone' => (string) $row['phone'],
                         'color' => (string) ($row['color'] ?: 'mint'),
-                        'image' => (string) ($row['image'] ?: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=900&q=80'),
+                        'image' => $image,
                         'hours' => (string) ($row['hours'] ?: 'Mon-Sat, 8AM-5PM'),
                         'full_hours' => (string) ($row['hours'] ?: 'Monday - Saturday, 8:00 AM - 5:00 PM'),
                         'services' => 0,
