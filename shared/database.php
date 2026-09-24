@@ -83,6 +83,42 @@ function station_program_map(): array
     ];
 }
 
+function canonical_service_slug(string $slug): string
+{
+    $s = strtolower(trim($slug));
+    return match ($s) {
+        'medical-consultation', 'general-consultation' => 'consultation',
+        'immunization-services', 'national-immunization-program' => 'immunization',
+        'prenatal-care', 'pre-natal' => 'prenatal',
+        'family-planning' => 'family',
+        'tb-dots' => 'tb',
+        'senior-citizen', 'senior-care' => 'senior',
+        'wellness-checkup' => 'checkup',
+        'dental-services' => 'dental',
+        'pharmacy-services' => 'pharmacy',
+        'nutrition-program' => 'nutrition',
+        default => $s,
+    };
+}
+
+function service_slug_aliases(string $serviceSlug): array
+{
+    $slug = strtolower(trim($serviceSlug));
+    return match ($slug) {
+        'consultation', 'medical-consultation', 'general-consultation' => ['consultation', 'medical-consultation', 'general-consultation'],
+        'immunization', 'immunization-services', 'national-immunization-program' => ['immunization', 'immunization-services', 'national-immunization-program'],
+        'prenatal', 'prenatal-care', 'pre-natal' => ['prenatal', 'prenatal-care', 'pre-natal'],
+        'family', 'family-planning' => ['family', 'family-planning'],
+        'tb', 'tb-dots' => ['tb', 'tb-dots'],
+        'senior', 'senior-citizen', 'senior-care' => ['senior', 'senior-citizen', 'senior-care'],
+        'checkup', 'wellness-checkup' => ['checkup', 'wellness-checkup'],
+        'dental', 'dental-services' => ['dental', 'dental-services'],
+        'pharmacy', 'pharmacy-services' => ['pharmacy', 'pharmacy-services'],
+        'nutrition', 'nutrition-program' => ['nutrition', 'nutrition-program'],
+        default => [$slug],
+    };
+}
+
 function bacolod_purok_catalog(): array
 {
     return [
@@ -2972,9 +3008,19 @@ function fetch_appointments(array $filters = []): array
     }
 
     if (!empty($filters['service_slug'])) {
-        $sql .= ' AND service_slug = ?';
-        $params[] = $filters['service_slug'];
-        $types .= 's';
+        $slugs = service_slug_aliases((string) $filters['service_slug']);
+        if (count($slugs) === 1) {
+            $sql .= ' AND service_slug = ?';
+            $params[] = $slugs[0];
+            $types .= 's';
+        } else {
+            $inClause = implode(',', array_fill(0, count($slugs), '?'));
+            $sql .= " AND service_slug IN ({$inClause})";
+            foreach ($slugs as $s) {
+                $params[] = $s;
+                $types .= 's';
+            }
+        }
     }
 
     if (!empty($filters['status'])) {
@@ -4390,19 +4436,33 @@ function update_appointment_status(int $appointmentId, string $newStatus, ?strin
     return $result;
 }
 
-function fetch_station_counts(string $status = 'Pending'): array
+function fetch_station_counts(string $status = 'Pending', string $dateFilter = 'both'): array
 {
-    $sql = 'SELECT station_slug, station_name, COUNT(*) AS total FROM appointments';
+    $sql = 'SELECT station_slug, MAX(station_name) AS station_name, COUNT(*) AS total FROM appointments WHERE 1=1';
+    $params = [];
+    $types = '';
+
     if ($status === 'all') {
-        $sql .= ' WHERE status <> "Cancelled"';
-    } elseif ($status !== '') {
-        $sql .= ' WHERE status = ?';
+        $sql .= ' AND status <> "Cancelled"';
+    } elseif ($status !== '' && $status !== 'any') {
+        $sql .= ' AND status = ?';
+        $params[] = $status;
+        $types .= 's';
     }
-    $sql .= ' GROUP BY station_slug, station_name ORDER BY station_name';
+
+    if ($dateFilter === 'today') {
+        $sql .= ' AND preferred_date = CURDATE()';
+    } elseif ($dateFilter === 'upcoming') {
+        $sql .= ' AND preferred_date > CURDATE()';
+    } elseif ($dateFilter === 'both' || $dateFilter === 'all') {
+        $sql .= ' AND preferred_date >= CURDATE()';
+    }
+
+    $sql .= ' GROUP BY station_slug ORDER BY station_slug';
 
     $stmt = db()->prepare($sql);
-    if ($status !== '' && $status !== 'all') {
-        $stmt->bind_param('s', $status);
+    if ($params !== []) {
+        $stmt->bind_param($types, ...$params);
     }
     $stmt->execute();
     $result = $stmt->get_result();

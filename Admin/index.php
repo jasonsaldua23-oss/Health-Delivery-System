@@ -165,8 +165,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'station_counts') {
         exit;
     }
 
+    $dateParam = trim((string) ($_GET['date'] ?? 'both'));
     header('Content-Type: application/json; charset=UTF-8');
-    echo json_encode(fetch_station_counts(), JSON_THROW_ON_ERROR);
+    echo json_encode(fetch_station_counts('Pending', $dateParam), JSON_THROW_ON_ERROR);
     exit;
 }
 
@@ -719,7 +720,7 @@ if ($page === 'reports' && (($_GET['export'] ?? '') === 'csv')) {
 // 1. Stats and Station Counts
 try {
     $stats = appointment_stats();
-    $stationCounts = fetch_station_counts('Pending');
+    $stationCounts = fetch_station_counts('Pending', 'both');
     $stationQueueCounts = fetch_station_queue_counts();
 } catch (Throwable $e) {
     error_log('Admin stats error: ' . $e->getMessage());
@@ -2091,7 +2092,7 @@ if (!function_exists('peso')) {
                         <?php
                         $serviceAppointments = array_values(array_filter(
                             $allStationAppointments,
-                            static fn(array $item): bool => (string) ($item['service_slug'] ?? '') === $program['slug']
+                            static fn(array $item): bool => canonical_service_slug((string) ($item['service_slug'] ?? '')) === $program['slug']
                         ));
                         $servicePendingCount = count(array_filter($serviceAppointments, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Pending'));
                         $serviceCancelledCount = count(array_filter($serviceAppointments, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Cancelled'));
@@ -2322,7 +2323,7 @@ if (!function_exists('peso')) {
                     <a class="station-admin-card" href="?page=appointments&station=<?= h($station['slug']); ?>">
                         <div class="station-admin-image" style="background-image:url('<?= h($station['image']); ?>')">
                             <span class="station-count badge-<?= h($station['color']); ?>" data-station="<?= h($station['slug']); ?>">
-                                <?= h((string) $count); ?> Pending Queue<?= $count === 1 ? '' : 's'; ?>
+                                <?= h((string) $count); ?> Appointment Request<?= $count === 1 ? '' : 's'; ?>
                             </span>
                         </div>
                         <div class="station-admin-body">
@@ -5413,7 +5414,7 @@ if (!function_exists('peso')) {
 (function() {
     const updateStationCounts = async () => {
         try {
-            const response = await fetch('?page=appointments&ajax=station_counts');
+            const response = await fetch('?page=appointments&ajax=station_counts&date=both');
             if (!response.ok) {
                 return;
             }
@@ -5428,11 +5429,11 @@ if (!function_exists('peso')) {
 
             document.querySelectorAll('.station-count[data-station]').forEach(element => {
                 const station = element.dataset.station;
-                if (!station || counts[station] === undefined) {
+                if (!station) {
                     return;
                 }
-                const count = counts[station];
-                element.textContent = `${count} Appointment${count === 1 ? '' : 's'}`;
+                const count = counts[station] || 0;
+                element.textContent = `${count} Appointment Request${count === 1 ? '' : 's'}`;
             });
         } catch (error) {
             console.error('Unable to refresh station appointment counts:', error);
