@@ -4462,6 +4462,8 @@ function fetch_station_counts(string $status = 'Pending', string $dateFilter = '
         }
     }
 
+    $sql .= ' AND status NOT IN ("Confirmed", "Serving", "Completed")';
+
     $sql .= ' GROUP BY station_slug ORDER BY station_slug';
 
     $stmt = db()->prepare($sql);

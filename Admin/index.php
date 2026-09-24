@@ -781,6 +781,16 @@ try {
 try {
     $appointments = fetch_appointments(['station_slug' => $stationView, 'service_slug' => $programFilter, 'status' => $status, 'search' => $search, 'date' => $dateFilter]);
     $allStationAppointments = $stationView !== '' ? fetch_appointments(['station_slug' => $stationView, 'date' => $dateFilter]) : [];
+    if ($page === 'appointments') {
+        $appointments = array_values(array_filter(
+            $appointments,
+            static fn(array $item): bool => !in_array((string) ($item['status'] ?? ''), ['Confirmed', 'Serving', 'Completed'], true)
+        ));
+        $allStationAppointments = array_values(array_filter(
+            $allStationAppointments,
+            static fn(array $item): bool => !in_array((string) ($item['status'] ?? ''), ['Confirmed', 'Serving', 'Completed'], true)
+        ));
+    }
     $allUpcomingEvents = fetch_upcoming_events();
     $countAllEvents = count($allUpcomingEvents);
     $countActiveEvents = count(array_filter($allUpcomingEvents, static fn(array $e): bool => (string) ($e['status'] ?? '') === 'active'));
@@ -2106,10 +2116,11 @@ if (!function_exists('peso')) {
                         $serviceAppointments = array_values(array_filter(
                             $allStationAppointments,
                             static fn(array $item): bool => canonical_service_slug((string) ($item['service_slug'] ?? '')) === $program['slug']
+                                && !in_array((string) ($item['status'] ?? ''), ['Confirmed', 'Serving', 'Completed'], true)
                         ));
                         $servicePendingCount = count(array_filter($serviceAppointments, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Pending' && ((string) ($item['preferred_date'] ?? '')) >= date('Y-m-d')));
                         $serviceCancelledCount = count(array_filter($serviceAppointments, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Cancelled'));
-                        $serviceTotalCount = count($serviceAppointments);
+                        $serviceTotalCount = $servicePendingCount;
                         $serviceMeta = $serviceCatalog[$program['slug']] ?? null;
                         ?>
                         <a class="service-card queue-service-card" href="?page=appointments&station=<?= h($stationView); ?>&program=<?= h($program['slug']); ?>&status=<?= h($status); ?>&date=<?= h($dateFilter); ?>">
@@ -2134,7 +2145,7 @@ if (!function_exists('peso')) {
                 $currentProgramTitle = $currentProgramMeta['title'] ?? ucfirst($programFilter);
                 $pendingApptCount = count(array_filter($appointmentsPageRows, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Pending' && ((string) ($item['preferred_date'] ?? '')) >= date('Y-m-d')));
                 $cancelledApptCount = count(array_filter($appointmentsPageRows, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Cancelled'));
-                $totalApptCount = count($appointmentsPageRows);
+                $totalApptCount = $pendingApptCount;
                 ?>
                 <!-- Service Detail Top Toolbar & Breadcrumb -->
                 <div class="appt-detail-topbar">
@@ -2342,8 +2353,7 @@ if (!function_exists('peso')) {
                         <div class="station-admin-body">
                             <h3><?= h($station['name']); ?></h3>
                             <p><?= h($station['detail_location']); ?></p>
-                            <span><?= h($station['phone']); ?></span>
-                            <small><?= h($station['full_hours']); ?></small>
+                            <small>Open from Monday to Friday</small>
                         </div>
                     </a>
                 <?php endforeach; ?>
@@ -2373,8 +2383,7 @@ if (!function_exists('peso')) {
                         <div class="station-admin-body">
                             <h3><?= h($station['name']); ?></h3>
                             <p><?= h($station['detail_location']); ?></p>
-                            <span><?= h($station['phone']); ?></span>
-                            <small><?= h($station['full_hours']); ?></small>
+                            <small>Open from Monday to Friday</small>
                         </div>
                     </a>
                 <?php endforeach; ?>
@@ -2673,8 +2682,7 @@ if (!function_exists('peso')) {
                             <div class="station-admin-body">
                                 <h3><?= h($station['name']); ?></h3>
                                 <p><?= h($station['detail_location']); ?></p>
-                                <span><?= h($station['phone']); ?></span>
-                                <small><?= h($station['full_hours']); ?></small>
+                                <small>Open from Monday to Friday</small>
                             </div>
                         </a>
                     <?php endforeach; ?>
@@ -4832,13 +4840,13 @@ if (!function_exists('peso')) {
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Appt #</th>
-                                    <th>Patient Name</th>
-                                    <th>Age / Gender</th>
-                                    <th>Health Station</th>
-                                    <th>Service</th>
-                                    <th>Date</th>
-                                    <th>Status</th>
+                                    <th style="text-align:center;">Appt #</th>
+                                    <th style="text-align:center;">Patient Name</th>
+                                    <th style="text-align:center;">Age / Gender</th>
+                                    <th style="text-align:center;">Health Station</th>
+                                    <th style="text-align:center;">Service</th>
+                                    <th style="text-align:center;">Date</th>
+                                    <th style="text-align:center;">Status</th>
                                     <th style="text-align:center;">Action</th>
                                 </tr>
                             </thead>
@@ -4848,21 +4856,22 @@ if (!function_exists('peso')) {
                                         $apptBirth = (string) ($appt['birth_date'] ?? '');
                                         $apptAge = $apptBirth !== '' ? (int) date_diff(new DateTimeImmutable($apptBirth), new DateTimeImmutable('today'))->y : 0;
                                         $statusClass = strtolower(str_replace(' ', '-', (string) ($appt['status'] ?? 'pending')));
+                                        $cleanStationName = trim(str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', (string) ($appt['station_name'] ?? '')));
                                     ?>
                                     <tr>
-                                        <td style="font-family:monospace;font-weight:700;color:#3b82f6;">
+                                        <td style="text-align:center;font-family:monospace;font-weight:700;color:#3b82f6;">
                                             #<?= h((string) ($appt['appointment_code'] ?: $appt['reference_code'])); ?>
                                         </td>
-                                        <td>
+                                        <td style="text-align:center;">
                                             <strong><?= h(full_name($appt)); ?></strong>
                                         </td>
-                                        <td><?= $apptAge; ?>y / <?= h((string) ($appt['gender'] ?? '')); ?></td>
-                                        <td><?= h((string) $appt['station_name']); ?></td>
-                                        <td><span class="report-service-tag"><?= h((string) $appt['service_name']); ?></span></td>
-                                        <td>
+                                        <td style="text-align:center;"><?= $apptAge; ?>y / <?= h((string) ($appt['gender'] ?? '')); ?></td>
+                                        <td style="text-align:center;"><?= h($cleanStationName); ?></td>
+                                        <td style="text-align:center;"><span class="report-service-tag"><?= h((string) $appt['service_name']); ?></span></td>
+                                        <td style="text-align:center;white-space:nowrap;">
                                             <div><?= h(date('M j, Y', strtotime((string) $appt['preferred_date']))); ?></div>
                                         </td>
-                                        <td>
+                                        <td style="text-align:center;">
                                             <span class="status-pill status-<?= h($statusClass); ?>"><?= h((string) $appt['status']); ?></span>
                                         </td>
                                         <td style="text-align:center;">
