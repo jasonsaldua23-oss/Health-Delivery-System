@@ -4456,6 +4456,10 @@ function fetch_station_counts(string $status = 'Pending', string $dateFilter = '
         $sql .= ' AND preferred_date > CURDATE()';
     } elseif ($dateFilter === 'both' || $dateFilter === 'all') {
         $sql .= ' AND preferred_date >= CURDATE()';
+    } else {
+        if ($status === 'Pending') {
+            $sql .= ' AND preferred_date >= CURDATE()';
+        }
     }
 
     $sql .= ' GROUP BY station_slug ORDER BY station_slug';
@@ -5896,6 +5900,9 @@ function barangay_completed_analytics(array $filters = []): array
             $result = [];
             foreach ($stations as $st) {
                 $slug = $st['slug'];
+                if ($slug === 'city-health' || ($st['station_slug'] ?? '') === 'city-health' || stripos($st['name'] ?? '', 'City Health Office') !== false || stripos($st['name'] ?? '', 'Bacolod City Health') !== false) {
+                    continue;
+                }
                 $data = $stationData[$slug] ?? null;
                 $completedTotal = $data ? $data['completed_total'] : 0;
                 $uniquePatients = $data ? $data['unique_patients_total'] : 0;
@@ -5937,6 +5944,9 @@ function barangay_completed_analytics(array $filters = []): array
 
     $result = [];
     foreach ($stations as $st) {
+        if ($st['slug'] === 'city-health' || ($st['station_slug'] ?? '') === 'city-health' || stripos($st['name'] ?? '', 'City Health Office') !== false || stripos($st['name'] ?? '', 'Bacolod City Health') !== false) {
+            continue;
+        }
         $shortName = str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', $st['name']);
         $result[] = [
             'station_slug' => $st['slug'],

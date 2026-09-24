@@ -165,6 +165,12 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'station_counts') {
         exit;
     }
 
+    try {
+        sync_unattended_records();
+    } catch (Throwable $e) {
+        error_log('Sync unattended records in station_counts ajax error: ' . $e->getMessage());
+    }
+
     $dateParam = trim((string) ($_GET['date'] ?? 'both'));
     header('Content-Type: application/json; charset=UTF-8');
     echo json_encode(fetch_station_counts('Pending', $dateParam), JSON_THROW_ON_ERROR);
@@ -719,6 +725,7 @@ if ($page === 'reports' && (($_GET['export'] ?? '') === 'csv')) {
 
 // 1. Stats and Station Counts
 try {
+    sync_unattended_records();
     $stats = appointment_stats();
     $stationCounts = fetch_station_counts('Pending', 'both');
     $stationQueueCounts = fetch_station_queue_counts();
@@ -844,6 +851,12 @@ try {
     $stationPerformance  = station_performance_data($reportFilters);
     $servicePerformance  = service_performance_data($reportFilters);
     $barangayCompletedStats = barangay_completed_analytics($reportFilters);
+    $barangayCompletedStats = array_values(array_filter(
+        $barangayCompletedStats,
+        static fn(array $st): bool => ($st['station_slug'] ?? $st['slug'] ?? '') !== 'city-health'
+            && stripos($st['station_name'] ?? $st['name'] ?? '', 'City Health Office') === false
+            && stripos($st['barangay_name'] ?? '', 'City Health') === false
+    ));
     $recentCompletedFilters = $reportFilters;
     $recentCompletedFilters['status'] = 'Completed';
     $reportAppointmentsList = fetch_filtered_report_appointments($recentCompletedFilters, 5);
@@ -2075,7 +2088,7 @@ if (!function_exists('peso')) {
             <section class="page-header">
                 <a class="back-admin" href="?page=appointments"><?= admin_icon('arrow-left'); ?>Back to All Health Centers</a>
                 <h1><?= h($station['name'] ?? ucfirst($stationView)); ?></h1>
-                <p><?= $adminCanConfirmHere ? 'Review and confirm Bacolod City Health bookings before they move to queue' : 'Select a service to view and manage appointment requests for this health center'; ?></p>
+                <p><?= $adminCanConfirmHere ? 'Review and confirm Bacolod City Health bookings before they move to queue' : 'Select a service to view and manage appointments for this health center'; ?></p>
             </section>
             <?php if ($station !== null && $programFilter === ''): ?>
                 <section class="appt-filter-card" style="margin-bottom: 22px;">
@@ -2094,7 +2107,7 @@ if (!function_exists('peso')) {
                             $allStationAppointments,
                             static fn(array $item): bool => canonical_service_slug((string) ($item['service_slug'] ?? '')) === $program['slug']
                         ));
-                        $servicePendingCount = count(array_filter($serviceAppointments, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Pending'));
+                        $servicePendingCount = count(array_filter($serviceAppointments, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Pending' && ((string) ($item['preferred_date'] ?? '')) >= date('Y-m-d')));
                         $serviceCancelledCount = count(array_filter($serviceAppointments, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Cancelled'));
                         $serviceTotalCount = count($serviceAppointments);
                         $serviceMeta = $serviceCatalog[$program['slug']] ?? null;
@@ -2119,7 +2132,7 @@ if (!function_exists('peso')) {
                 <?php
                 $currentProgramMeta = $serviceCatalog[$programFilter] ?? null;
                 $currentProgramTitle = $currentProgramMeta['title'] ?? ucfirst($programFilter);
-                $pendingApptCount = count(array_filter($appointmentsPageRows, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Pending'));
+                $pendingApptCount = count(array_filter($appointmentsPageRows, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Pending' && ((string) ($item['preferred_date'] ?? '')) >= date('Y-m-d')));
                 $cancelledApptCount = count(array_filter($appointmentsPageRows, static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Cancelled'));
                 $totalApptCount = count($appointmentsPageRows);
                 ?>
@@ -2323,7 +2336,7 @@ if (!function_exists('peso')) {
                     <a class="station-admin-card" href="?page=appointments&station=<?= h($station['slug']); ?>">
                         <div class="station-admin-image" style="background-image:url('<?= h($station['image']); ?>')">
                             <span class="station-count badge-<?= h($station['color']); ?>" data-station="<?= h($station['slug']); ?>">
-                                <?= h((string) $count); ?> Appointment Request<?= $count === 1 ? '' : 's'; ?>
+                                <?= (int) $count === 1 ? '1 Appointment' : (int) $count . ' Appointments'; ?>
                             </span>
                         </div>
                         <div class="station-admin-body">
@@ -4826,7 +4839,7 @@ if (!function_exists('peso')) {
                                     <th>Service</th>
                                     <th>Date</th>
                                     <th>Status</th>
-                                    <th>Action</th>
+                                    <th style="text-align:center;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -4842,7 +4855,6 @@ if (!function_exists('peso')) {
                                         </td>
                                         <td>
                                             <strong><?= h(full_name($appt)); ?></strong>
-                                            <small style="color:#64748b;"><?= h((string) $appt['contact_number']); ?></small>
                                         </td>
                                         <td><?= $apptAge; ?>y / <?= h((string) ($appt['gender'] ?? '')); ?></td>
                                         <td><?= h((string) $appt['station_name']); ?></td>
@@ -4853,8 +4865,8 @@ if (!function_exists('peso')) {
                                         <td>
                                             <span class="status-pill status-<?= h($statusClass); ?>"><?= h((string) $appt['status']); ?></span>
                                         </td>
-                                        <td>
-                                            <button type="button" class="patient-action-btn view" title="View Consultation Details" data-record="<?= htmlspecialchars(json_encode($appt), ENT_QUOTES, 'UTF-8'); ?>" onclick="openReportVisitModal(this)">
+                                        <td style="text-align:center;">
+                                            <button type="button" class="patient-action-btn view" title="View Consultation Details" data-record="<?= htmlspecialchars(json_encode($appt), ENT_QUOTES, 'UTF-8'); ?>" onclick="openReportVisitModal(this)" style="margin:0 auto;">
                                                 <?= admin_icon('eye'); ?>
                                             </button>
                                         </td>
@@ -5433,7 +5445,7 @@ if (!function_exists('peso')) {
                     return;
                 }
                 const count = counts[station] || 0;
-                element.textContent = `${count} Appointment Request${count === 1 ? '' : 's'}`;
+                element.textContent = `${count} Appointment${count === 1 ? '' : 's'}`;
             });
         } catch (error) {
             console.error('Unable to refresh station appointment counts:', error);
@@ -5441,7 +5453,13 @@ if (!function_exists('peso')) {
     };
 
     updateStationCounts();
-    window.setInterval(updateStationCounts, 30000);
+    window.setInterval(updateStationCounts, 3000);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            updateStationCounts();
+        }
+    });
+    window.addEventListener('focus', updateStationCounts);
 })();
 </script>
 <?php endif; ?>
@@ -5549,6 +5567,7 @@ function toggleDualDateFilter(clickedType, paramName, event) {
         'table.data-table',
         '.stat-grid',
         '.stat-cards',
+        '.station-admin-grid',
         '.station-queue-grid',
         '.admin-overview-grid',
         '.reports-table-wrap',
