@@ -495,11 +495,11 @@ function station_seed_rows(): array
         ['barangay' => 'Mansilingan', 'slug' => 'mansilingan', 'services' => 8, 'phone' => '(034) 123-4508', 'color' => 'gold', 'image' => '../assets/images/stations/mansilingan.jpg'],
         ['barangay' => 'Pahanocoy', 'slug' => 'pahanocoy', 'services' => 5, 'phone' => '(034) 123-4509', 'color' => 'cyan', 'image' => '../assets/images/stations/pahanocoy.jpg'],
         ['barangay' => 'Singcang', 'slug' => 'singcang', 'services' => 7, 'phone' => '(034) 123-4510', 'color' => 'rose', 'image' => '../assets/images/stations/singcang.jpg'],
-        ['barangay' => 'Sum-Ag', 'slug' => 'sum-ag', 'services' => 6, 'phone' => '(034) 123-4511', 'color' => 'blue', 'image' => 'https://images.unsplash.com/photo-1516549655669-df83a0774514?auto=format&fit=crop&w=900&q=80'],
-        ['barangay' => 'Taculing', 'slug' => 'taculing', 'services' => 7, 'phone' => '(034) 123-4512', 'color' => 'violet', 'image' => 'https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=900&q=80'],
-        ['barangay' => 'Villamonte', 'slug' => 'villamonte', 'services' => 7, 'phone' => '(034) 123-4513', 'color' => 'rose', 'image' => 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=900&q=80'],
-        ['barangay' => 'Villa Esperanza', 'slug' => 'villa-esperanza', 'services' => 5, 'phone' => '(034) 123-4514', 'color' => 'gold', 'image' => 'https://images.unsplash.com/photo-1504439468489-c8920d796a29?auto=format&fit=crop&w=900&q=80'],
-        ['barangay' => 'Vista Alegre', 'slug' => 'vista-alegre', 'services' => 6, 'phone' => '(034) 123-4515', 'color' => 'mint', 'image' => 'https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?auto=format&fit=crop&w=900&q=80'],
+        ['barangay' => 'Sum-Ag', 'slug' => 'sum-ag', 'services' => 6, 'phone' => '(034) 123-4511', 'color' => 'blue', 'image' => '../assets/images/stations/sum-ag.jpg'],
+        ['barangay' => 'Taculing', 'slug' => 'taculing', 'services' => 7, 'phone' => '(034) 123-4512', 'color' => 'violet', 'image' => '../assets/images/stations/taculing.jpg'],
+        ['barangay' => 'Villamonte', 'slug' => 'villamonte', 'services' => 7, 'phone' => '(034) 123-4513', 'color' => 'rose', 'image' => '../assets/images/stations/villamonte.jpg'],
+        ['barangay' => 'Villa Esperanza', 'slug' => 'villa-esperanza', 'services' => 5, 'phone' => '(034) 123-4514', 'color' => 'gold', 'image' => '../assets/images/stations/villa-esperanza.jpg'],
+        ['barangay' => 'Vista Alegre', 'slug' => 'vista-alegre', 'services' => 6, 'phone' => '(034) 123-4515', 'color' => 'mint', 'image' => '../assets/images/stations/vista-alegre.jpg'],
     ];
 }
 

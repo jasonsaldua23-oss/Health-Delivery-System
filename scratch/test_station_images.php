@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../shared/bootstrap.php';
 require_once __DIR__ . '/../shared/database.php';
 
-echo "Testing station images implementation (all 10 updated stations)...\n";
+echo "Testing station images implementation (all 15 Barangay Health Stations)...\n";
 
 $stations = station_catalog();
 $stationMap = [];
@@ -14,7 +14,8 @@ foreach ($stations as $st) {
 
 $expectedSlugs = [
     'alijis', 'bata', 'cabug', 'estefania', 'granada',
-    'handumanan', 'mandalagan', 'mansilingan', 'pahanocoy', 'singcang'
+    'handumanan', 'mandalagan', 'mansilingan', 'pahanocoy', 'singcang',
+    'sum-ag', 'taculing', 'villamonte', 'villa-esperanza', 'vista-alegre'
 ];
 
 foreach ($expectedSlugs as $slug) {
@@ -51,4 +52,4 @@ foreach ($expectedSlugs as $slug) {
     }
 }
 
-echo "\nAll 10 stations successfully verified with exact 900x600 replacement images!\n";
+echo "\nAll 15 Barangay Health Stations successfully verified with exact 900x600 replacement images!\n";
