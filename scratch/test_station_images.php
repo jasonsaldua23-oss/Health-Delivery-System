@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../shared/bootstrap.php';
 require_once __DIR__ . '/../shared/database.php';
 
-echo "Testing station images implementation...\n";
+echo "Testing station images implementation (all 10 updated stations)...\n";
 
 $stations = station_catalog();
 $stationMap = [];
@@ -12,7 +12,10 @@ foreach ($stations as $st) {
     $stationMap[$st['slug']] = $st;
 }
 
-$expectedSlugs = ['alijis', 'bata', 'cabug', 'estefania', 'granada'];
+$expectedSlugs = [
+    'alijis', 'bata', 'cabug', 'estefania', 'granada',
+    'handumanan', 'mandalagan', 'mansilingan', 'pahanocoy', 'singcang'
+];
 
 foreach ($expectedSlugs as $slug) {
     if (!isset($stationMap[$slug])) {
@@ -28,7 +31,6 @@ foreach ($expectedSlugs as $slug) {
         exit(1);
     }
 
-    // Check if file exists relative to Admin directory
     $adminPath = __DIR__ . '/../Admin/' . $image;
     $realAdminPath = realpath($adminPath);
     if ($realAdminPath === false || !file_exists($realAdminPath)) {
@@ -36,7 +38,6 @@ foreach ($expectedSlugs as $slug) {
         exit(1);
     }
 
-    // Check dimensions
     $size = getimagesize($realAdminPath);
     if ($size === false) {
         echo "FAILED: Cannot read image size of {$realAdminPath}\n";
@@ -50,4 +51,4 @@ foreach ($expectedSlugs as $slug) {
     }
 }
 
-echo "\nAll 5 stations successfully configured with exact 900x600 replacement images!\n";
+echo "\nAll 10 stations successfully verified with exact 900x600 replacement images!\n";
