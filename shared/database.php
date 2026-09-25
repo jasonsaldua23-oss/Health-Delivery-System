@@ -7573,6 +7573,21 @@ function fetch_unattended_appointments(array $filters = []): array
         $where[] = "preferred_date = '{$safeDate}'";
     }
 
+    if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+        $safeFrom = $connection->real_escape_string((string) $filters['from_date']);
+        $safeTo = $connection->real_escape_string((string) $filters['to_date']);
+        $where[] = "preferred_date BETWEEN '{$safeFrom}' AND '{$safeTo}'";
+    } elseif (!empty($filters['timeframe'])) {
+        $tf = strtolower(trim((string) $filters['timeframe']));
+        if ($tf === 'today') {
+            $where[] = "(preferred_date = CURDATE() OR DATE(created_at) = CURDATE())";
+        } elseif ($tf === 'week') {
+            $where[] = "YEARWEEK(preferred_date, 1) = YEARWEEK(CURDATE(), 1)";
+        } elseif ($tf === 'month') {
+            $where[] = "(MONTH(preferred_date) = MONTH(CURDATE()) AND YEAR(preferred_date) = YEAR(CURDATE()))";
+        }
+    }
+
     if (!empty($filters['search'])) {
         $search = $connection->real_escape_string((string) $filters['search']);
         $where[] = "(first_name LIKE '%{$search}%' OR last_name LIKE '%{$search}%' OR reference_code LIKE '%{$search}%' OR appointment_code LIKE '%{$search}%' OR contact_number LIKE '%{$search}%' OR service_name LIKE '%{$search}%')";
@@ -7609,6 +7624,21 @@ function fetch_unattended_queue(array $filters = []): array
         $where[] = "preferred_date = '{$safeDate}'";
     }
 
+    if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+        $safeFrom = $connection->real_escape_string((string) $filters['from_date']);
+        $safeTo = $connection->real_escape_string((string) $filters['to_date']);
+        $where[] = "preferred_date BETWEEN '{$safeFrom}' AND '{$safeTo}'";
+    } elseif (!empty($filters['timeframe'])) {
+        $tf = strtolower(trim((string) $filters['timeframe']));
+        if ($tf === 'today') {
+            $where[] = "(preferred_date = CURDATE() OR DATE(created_at) = CURDATE())";
+        } elseif ($tf === 'week') {
+            $where[] = "YEARWEEK(preferred_date, 1) = YEARWEEK(CURDATE(), 1)";
+        } elseif ($tf === 'month') {
+            $where[] = "(MONTH(preferred_date) = MONTH(CURDATE()) AND YEAR(preferred_date) = YEAR(CURDATE()))";
+        }
+    }
+
     if (!empty($filters['search'])) {
         $search = $connection->real_escape_string((string) $filters['search']);
         $where[] = "(first_name LIKE '%{$search}%' OR last_name LIKE '%{$search}%' OR reference_code LIKE '%{$search}%' OR appointment_code LIKE '%{$search}%' OR contact_number LIKE '%{$search}%' OR service_name LIKE '%{$search}%')";
@@ -7630,24 +7660,41 @@ function fetch_unattended_queue(array $filters = []): array
     return $rows;
 }
 
-function count_unattended_records(string $stationSlug = ''): array
+function count_unattended_records(string $stationSlug = '', array $filters = []): array
 {
     $connection = db();
-    $filter = '';
+    $where = [];
     if ($stationSlug !== '') {
         $safeSlug = $connection->real_escape_string($stationSlug);
-        $filter = " WHERE station_slug = '{$safeSlug}'";
+        $where[] = "station_slug = '{$safeSlug}'";
     }
+
+    if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+        $safeFrom = $connection->real_escape_string((string) $filters['from_date']);
+        $safeTo = $connection->real_escape_string((string) $filters['to_date']);
+        $where[] = "preferred_date BETWEEN '{$safeFrom}' AND '{$safeTo}'";
+    } elseif (!empty($filters['timeframe'])) {
+        $tf = strtolower(trim((string) $filters['timeframe']));
+        if ($tf === 'today') {
+            $where[] = "(preferred_date = CURDATE() OR DATE(created_at) = CURDATE())";
+        } elseif ($tf === 'week') {
+            $where[] = "YEARWEEK(preferred_date, 1) = YEARWEEK(CURDATE(), 1)";
+        } elseif ($tf === 'month') {
+            $where[] = "(MONTH(preferred_date) = MONTH(CURDATE()) AND YEAR(preferred_date) = YEAR(CURDATE()))";
+        }
+    }
+
+    $filterSql = $where !== [] ? (' WHERE ' . implode(' AND ', $where)) : '';
 
     $apptsCount = 0;
     $queueCount = 0;
 
-    $res1 = $connection->query("SELECT COUNT(*) AS total FROM " . DB_TABLE_UNATTENDED_APPOINTMENTS . $filter);
+    $res1 = $connection->query("SELECT COUNT(*) AS total FROM " . DB_TABLE_UNATTENDED_APPOINTMENTS . $filterSql);
     if ($res1 instanceof mysqli_result && ($r1 = $res1->fetch_assoc())) {
         $apptsCount = (int) $r1['total'];
     }
 
-    $res2 = $connection->query("SELECT COUNT(*) AS total FROM " . DB_TABLE_UNATTENDED_QUEUE . $filter);
+    $res2 = $connection->query("SELECT COUNT(*) AS total FROM " . DB_TABLE_UNATTENDED_QUEUE . $filterSql);
     if ($res2 instanceof mysqli_result && ($r2 = $res2->fetch_assoc())) {
         $queueCount = (int) $r2['total'];
     }
@@ -7656,6 +7703,109 @@ function count_unattended_records(string $stationSlug = ''): array
         'appointments' => $apptsCount,
         'queue' => $queueCount,
         'total' => $apptsCount + $queueCount,
+    ];
+}
+
+function fetch_unattended_station_summary(array $filters = []): array
+{
+    $connection = db();
+    $stations = station_catalog();
+
+    $whereAppt = [];
+    $whereQueue = [];
+
+    if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
+        $safeFrom = $connection->real_escape_string((string) $filters['from_date']);
+        $safeTo = $connection->real_escape_string((string) $filters['to_date']);
+        $whereAppt[] = "preferred_date BETWEEN '{$safeFrom}' AND '{$safeTo}'";
+        $whereQueue[] = "preferred_date BETWEEN '{$safeFrom}' AND '{$safeTo}'";
+    } elseif (!empty($filters['timeframe'])) {
+        $tf = strtolower(trim((string) $filters['timeframe']));
+        if ($tf === 'today') {
+            $whereAppt[] = "(preferred_date = CURDATE() OR DATE(created_at) = CURDATE())";
+            $whereQueue[] = "(preferred_date = CURDATE() OR DATE(created_at) = CURDATE())";
+        } elseif ($tf === 'week') {
+            $whereAppt[] = "YEARWEEK(preferred_date, 1) = YEARWEEK(CURDATE(), 1)";
+            $whereQueue[] = "YEARWEEK(preferred_date, 1) = YEARWEEK(CURDATE(), 1)";
+        } elseif ($tf === 'month') {
+            $whereAppt[] = "(MONTH(preferred_date) = MONTH(CURDATE()) AND YEAR(preferred_date) = YEAR(CURDATE()))";
+            $whereQueue[] = "(MONTH(preferred_date) = MONTH(CURDATE()) AND YEAR(preferred_date) = YEAR(CURDATE()))";
+        }
+    }
+
+    $sqlAppts = "SELECT station_slug, COUNT(*) AS count_appts FROM " . DB_TABLE_UNATTENDED_APPOINTMENTS;
+    if ($whereAppt !== []) {
+        $sqlAppts .= " WHERE " . implode(" AND ", $whereAppt);
+    }
+    $sqlAppts .= " GROUP BY station_slug";
+
+    $apptCountsByStation = [];
+    $resA = $connection->query($sqlAppts);
+    if ($resA instanceof mysqli_result) {
+        while ($row = $resA->fetch_assoc()) {
+            $apptCountsByStation[(string) $row['station_slug']] = (int) $row['count_appts'];
+        }
+    }
+
+    $sqlQueue = "SELECT station_slug, COUNT(*) AS count_queue FROM " . DB_TABLE_UNATTENDED_QUEUE;
+    if ($whereQueue !== []) {
+        $sqlQueue .= " WHERE " . implode(" AND ", $whereQueue);
+    }
+    $sqlQueue .= " GROUP BY station_slug";
+
+    $queueCountsByStation = [];
+    $resQ = $connection->query($sqlQueue);
+    if ($resQ instanceof mysqli_result) {
+        while ($row = $resQ->fetch_assoc()) {
+            $queueCountsByStation[(string) $row['station_slug']] = (int) $row['count_queue'];
+        }
+    }
+
+    $summaryList = [];
+    $totalAppts = 0;
+    $totalQueue = 0;
+
+    foreach ($stations as $st) {
+        $slug = (string) $st['slug'];
+        $cAppts = $apptCountsByStation[$slug] ?? 0;
+        $cQueue = $queueCountsByStation[$slug] ?? 0;
+        $cTotal = $cAppts + $cQueue;
+
+        $totalAppts += $cAppts;
+        $totalQueue += $cQueue;
+
+        $summaryList[] = [
+            'station_slug' => $slug,
+            'slug' => $slug,
+            'station_name' => (string) $st['name'],
+            'name' => (string) $st['name'],
+            'barangay' => (string) $st['barangay'],
+            'color' => (string) ($st['color'] ?? 'mint'),
+            'unattended_appointments' => $cAppts,
+            'unserved_queue' => $cQueue,
+            'unattended_queue' => $cQueue,
+            'total' => $cTotal,
+        ];
+    }
+
+    // Sort by total descending so stations needing the most attention appear first
+    usort($summaryList, static function(array $a, array $b): int {
+        if ($b['total'] !== $a['total']) {
+            return $b['total'] <=> $a['total'];
+        }
+        return strcasecmp($a['station_name'], $b['station_name']);
+    });
+
+    return [
+        'stations' => $summaryList,
+        'totals' => [
+            'appointments' => $totalAppts,
+            'queue' => $totalQueue,
+            'total' => $totalAppts + $totalQueue,
+        ],
+        'total_unattended_appointments' => $totalAppts,
+        'total_unserved_queue' => $totalQueue,
+        'grand_total' => $totalAppts + $totalQueue,
     ];
 }
 

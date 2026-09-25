@@ -8355,6 +8355,273 @@ textarea.event-form-textarea {
     color: #1e293b;
 }
 
+/* Admin Reports Stations Unattended Summary Section */
+.admin-unattended-summary-section {
+    background: #ffffff;
+    border: 1.5px solid #dbeafe;
+    border-radius: 20px;
+    padding: 26px 28px;
+    margin-top: 28px;
+    box-shadow: 0 4px 16px rgba(30, 64, 175, 0.05);
+}
+
+.admin-unattended-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.admin-unattended-title-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.admin-unattended-icon-badge {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1.5px solid #bfdbfe;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.admin-unattended-title-group h3 {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 3px;
+    line-height: 1.25;
+}
+
+.admin-unattended-title-group p {
+    font-size: 0.88rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.admin-unattended-kpis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.admin-unattended-kpi-card {
+    border-radius: 16px;
+    padding: 20px 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+    transition: all 0.2s ease;
+}
+
+.admin-unattended-kpi-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}
+
+.admin-unattended-kpi-card.amber {
+    background: #fffdf5;
+    border: 1.5px solid #fde68a;
+}
+
+.admin-unattended-kpi-card.orange {
+    background: #fffaf5;
+    border: 1.5px solid #fed7aa;
+}
+
+.admin-unattended-kpi-card.blue {
+    background: #eff6ff;
+    border: 1.5px solid #bfdbfe;
+}
+
+.admin-unattended-kpi-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.admin-unattended-kpi-card.amber .admin-unattended-kpi-icon {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.admin-unattended-kpi-card.orange .admin-unattended-kpi-icon {
+    background: #ffedd5;
+    color: #c2410c;
+}
+
+.admin-unattended-kpi-card.blue .admin-unattended-kpi-icon {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.admin-unattended-kpi-content h4 {
+    font-size: 1.7rem;
+    font-weight: 800;
+    margin: 0;
+    line-height: 1.15;
+}
+
+.admin-unattended-kpi-card.amber .admin-unattended-kpi-content h4 {
+    color: #92400e;
+}
+
+.admin-unattended-kpi-card.orange .admin-unattended-kpi-content h4 {
+    color: #9a3412;
+}
+
+.admin-unattended-kpi-card.blue .admin-unattended-kpi-content h4 {
+    color: #1e40af;
+}
+
+.admin-unattended-kpi-content span {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #475569;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.admin-unattended-kpi-content small {
+    font-size: 0.76rem;
+    color: #64748b;
+    display: block;
+}
+
+/* Stations Breakdown Table */
+.admin-stations-table-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.admin-stations-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    text-align: left;
+}
+
+.admin-stations-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 18px;
+    border-bottom: 1.5px solid #e2e8f0;
+}
+
+.admin-stations-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.admin-stations-table tr:last-child td {
+    border-bottom: none;
+}
+
+.admin-stations-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.admin-stations-table tfoot tr {
+    background: #f1f5f9;
+    font-weight: 800;
+    border-top: 2px solid #cbd5e1;
+}
+
+.admin-stations-table tfoot td {
+    padding: 14px 18px;
+    color: #0f172a;
+    font-size: 0.95rem;
+}
+
+.station-identity-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.station-badge-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    font-size: 0.88rem;
+    flex-shrink: 0;
+}
+
+.station-name-copy strong {
+    display: block;
+    color: #0f172a;
+    font-size: 0.92rem;
+}
+
+.station-name-copy small {
+    color: #64748b;
+    font-size: 0.78rem;
+}
+
+.count-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.count-pill.amber {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.count-pill.orange {
+    background: #ffedd5;
+    color: #9a3412;
+    border: 1px solid #fed7aa;
+}
+
+.count-pill.blue {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.count-pill.green {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+
+.count-pill.gray {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+
 
 
 

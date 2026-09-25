@@ -673,6 +673,10 @@ $reportAgeGroup = trim((string) ($_GET['age_group'] ?? ''));
 $reportStation  = trim((string) ($_GET['station_slug'] ?? ''));
 $reportService  = trim((string) ($_GET['service_slug'] ?? ''));
 $reportStatus   = trim((string) ($_GET['status_filter'] ?? ''));
+$unattendedAdminPeriod = trim((string) ($_GET['unattended_period'] ?? 'all'));
+if (!in_array($unattendedAdminPeriod, ['all', 'today', 'week', 'month'], true)) {
+    $unattendedAdminPeriod = 'all';
+}
 
 $reportFilters = [
     'report_period' => $reportPeriod,
@@ -683,6 +687,7 @@ $reportFilters = [
     'station_slug'  => $reportStation,
     'service_slug'  => $reportService,
     'status'        => $reportStatus,
+    'unattended_period' => $unattendedAdminPeriod,
 ];
 
 // Handle CSV export for reports if requested
@@ -873,6 +878,12 @@ try {
     $infoChangeLog       = patient_info_change_log(20);
     $activityLog         = fetch_activity_log(30, $reportFrom, $reportTo);
     $healthEventsSummary = health_events_summary();
+
+    $unattendedAdminSummaryFilters = [];
+    if ($unattendedAdminPeriod !== 'all') {
+        $unattendedAdminSummaryFilters['timeframe'] = $unattendedAdminPeriod;
+    }
+    $unattendedStationSummary = fetch_unattended_station_summary($unattendedAdminSummaryFilters);
 } catch (Throwable $e) {
     error_log('Admin reports analytics error: ' . $e->getMessage());
     $reportStats = ['total_patients' => 0, 'services_rendered' => 0, 'total_bookings' => 0, 'completed_count' => 0, 'cancelled_count' => 0, 'confirmed_count' => 0, 'pending_count' => 0, 'serving_count' => 0, 'avg_daily' => 0.0, 'utilization_pct' => 0, 'cancellation_pct' => 0, 'day_count' => 1];
@@ -885,6 +896,7 @@ try {
     $infoChangeLog = [];
     $activityLog = [];
     $healthEventsSummary = [];
+    $unattendedStationSummary = ['stations' => [], 'totals' => ['appointments' => 0, 'queue' => 0, 'total' => 0]];
 }
 
 $csrf = csrf_token();
@@ -4823,6 +4835,171 @@ if (!function_exists('peso')) {
                         <div class="empty-state">No trend records found for this period.</div>
                     <?php endif; ?>
                 </article>
+            </section>
+
+            <!-- All Stations Operational Audit: Unattended & Unserved Appointments -->
+            <section class="panel-card admin-unattended-summary-section">
+                <div class="admin-unattended-header">
+                    <div class="admin-unattended-title-group">
+                        <div class="admin-unattended-icon-badge">
+                            <?= admin_icon('clock'); ?>
+                        </div>
+                        <div>
+                            <h3>Health Stations Audit: Unattended &amp; Unserved Appointments</h3>
+                            <p>Operational audit tracking unattended appointment requests and unserved queue records across all stations</p>
+                        </div>
+                    </div>
+                    <div class="admin-unattended-actions">
+                        <form method="get" class="admin-unattended-period-form" style="display:flex;align-items:center;gap:8px;">
+                            <input type="hidden" name="page" value="reports">
+                            <?php foreach ($reportFilters as $rfk => $rfv): ?>
+                                <?php if ($rfk !== 'unattended_period' && $rfv !== '' && $rfv !== null): ?>
+                                    <input type="hidden" name="<?= h($rfk); ?>" value="<?= h($rfv); ?>">
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                            <label for="unattendedPeriodSelect" style="font-size:0.82rem;font-weight:700;color:#475569;white-space:nowrap;">Audit Scope:</label>
+                            <select name="unattended_period" id="unattendedPeriodSelect" class="form-input" style="padding:6px 12px;font-size:0.84rem;border-radius:10px;" onchange="this.form.submit()">
+                                <option value="all" <?= $unattendedAdminPeriod === 'all' ? 'selected' : ''; ?>>All Records (All-Time)</option>
+                                <option value="today" <?= $unattendedAdminPeriod === 'today' ? 'selected' : ''; ?>>Today</option>
+                                <option value="week" <?= $unattendedAdminPeriod === 'week' ? 'selected' : ''; ?>>This Week</option>
+                                <option value="month" <?= $unattendedAdminPeriod === 'month' ? 'selected' : ''; ?>>This Month</option>
+                            </select>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 3 KPI Cards for City-wide Totals -->
+                <div class="admin-unattended-kpis-grid">
+                    <div class="admin-unattended-kpi-card amber">
+                        <div class="admin-unattended-kpi-icon">
+                            <?= admin_icon('clock'); ?>
+                        </div>
+                        <div class="admin-unattended-kpi-content">
+                            <span>Total Unattended Requests</span>
+                            <h4><?= number_format($unattendedStationSummary['totals']['appointments']); ?></h4>
+                            <small>Booked visits passed date without action</small>
+                        </div>
+                    </div>
+
+                    <div class="admin-unattended-kpi-card orange">
+                        <div class="admin-unattended-kpi-icon">
+                            <?= admin_icon('users'); ?>
+                        </div>
+                        <div class="admin-unattended-kpi-content">
+                            <span>Total Unserved Queue</span>
+                            <h4><?= number_format($unattendedStationSummary['totals']['queue']); ?></h4>
+                            <small>Queued patients left uncompleted at day end</small>
+                        </div>
+                    </div>
+
+                    <div class="admin-unattended-kpi-card blue">
+                        <div class="admin-unattended-kpi-icon">
+                            <?= admin_icon('shield'); ?>
+                        </div>
+                        <div class="admin-unattended-kpi-content">
+                            <span>City-Wide Attention Items</span>
+                            <h4><?= number_format($unattendedStationSummary['totals']['total']); ?></h4>
+                            <small>Across all 11 stations &amp; central center</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stations Breakdown Table -->
+                <div class="admin-stations-table-card">
+                    <table class="admin-stations-table">
+                        <thead>
+                            <tr>
+                                <th>Health Station &amp; Barangay</th>
+                                <th style="text-align:center;">Unattended Requests</th>
+                                <th style="text-align:center;">Unserved Queue</th>
+                                <th style="text-align:center;">Total Items</th>
+                                <th style="text-align:center;">Status</th>
+                                <th style="text-align:center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($unattendedStationSummary['stations'] as $stRow): ?>
+                                <?php
+                                $apptsNum = (int) $stRow['unattended_appointments'];
+                                $queueNum = (int) $stRow['unattended_queue'];
+                                $totalNum = (int) $stRow['total'];
+                                $stSlug = (string) $stRow['slug'];
+                                $stName = (string) $stRow['name'];
+                                ?>
+                                <tr>
+                                    <td>
+                                        <div class="station-meta-cell">
+                                            <strong><?= h($stName); ?></strong>
+                                            <small><?= h((string) $stRow['barangay']); ?></small>
+                                        </div>
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <?php if ($apptsNum > 0): ?>
+                                            <span class="admin-badge-count amber"><?= number_format($apptsNum); ?></span>
+                                        <?php else: ?>
+                                            <span class="admin-badge-count zero">0</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <?php if ($queueNum > 0): ?>
+                                            <span class="admin-badge-count orange"><?= number_format($queueNum); ?></span>
+                                        <?php else: ?>
+                                            <span class="admin-badge-count zero">0</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <strong><?= number_format($totalNum); ?></strong>
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <?php if ($totalNum === 0): ?>
+                                            <span class="status-pill status-completed">✓ All Clear</span>
+                                        <?php elseif ($totalNum <= 5): ?>
+                                            <span class="status-pill" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;">⚡ Needs Review</span>
+                                        <?php else: ?>
+                                            <span class="status-pill" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;">⚠ High Attention</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
+                                            <a href="?page=appointments&station=<?= urlencode($stSlug); ?>" class="dash-hero-btn secondary" style="font-size:0.75rem;padding:4px 9px;border-radius:8px;" title="View appointments for <?= h($stName); ?>">
+                                                <span>Appts</span>
+                                            </a>
+                                            <a href="?page=queue&station=<?= urlencode($stSlug); ?>" class="dash-hero-btn secondary" style="font-size:0.75rem;padding:4px 9px;border-radius:8px;" title="View queue for <?= h($stName); ?>">
+                                                <span>Queue</span>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr class="admin-stations-total-row" style="background:#f8fafc;font-weight:800;border-top:2px solid #cbd5e1;">
+                                <td style="padding:14px 18px;font-size:0.95rem;color:#0f172a;">
+                                    <strong>City-Wide Totals (All Stations)</strong>
+                                </td>
+                                <td style="text-align:center;padding:14px 18px;color:#b45309;font-size:1.05rem;">
+                                    <strong><?= number_format($unattendedStationSummary['totals']['appointments']); ?></strong>
+                                </td>
+                                <td style="text-align:center;padding:14px 18px;color:#c2410c;font-size:1.05rem;">
+                                    <strong><?= number_format($unattendedStationSummary['totals']['queue']); ?></strong>
+                                </td>
+                                <td style="text-align:center;padding:14px 18px;color:#1e40af;font-size:1.15rem;">
+                                    <strong><?= number_format($unattendedStationSummary['totals']['total']); ?></strong>
+                                </td>
+                                <td style="text-align:center;padding:14px 18px;">
+                                    <?php if ($unattendedStationSummary['totals']['total'] === 0): ?>
+                                        <span class="status-pill status-completed">✓ All Stations Clear</span>
+                                    <?php else: ?>
+                                        <span class="status-pill" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;">⚡ Follow-up Required</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="text-align:center;padding:14px 18px;color:#64748b;font-size:0.8rem;">
+                                    <span><?= count($unattendedStationSummary['stations']); ?> Stations</span>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </section>
 
             <!-- Recent Appointment Records Table -->
