@@ -690,7 +690,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
             if ($postData['vaccine_type_select'] === 'Others') {
                 $postData['vaccine_type'] = trim((string) ($postData['vaccine_type_other'] ?? '')) ?: 'Others';
             } else {
-                $postData['vaccine_type'] = trim((string) $postData['vaccine_type_select']);
+                $chosenVac = trim((string) $postData['vaccine_type_select']);
+                // Check dose limitation for infant immunization
+                $limits = get_standard_vaccine_dose_limits();
+                $canonicalVac = normalize_standard_vaccine_name($chosenVac) ?: $chosenVac;
+                if (isset($limits[$canonicalVac])) {
+                    $apptForCheck = fetch_appointment_by_id($appointmentId);
+                    if ($apptForCheck !== null) {
+                        $pastCounts = fetch_infant_vaccine_counts_for_appointment($apptForCheck);
+                        $dosesTaken = (int) ($pastCounts[$canonicalVac] ?? 0);
+                        $maxLimit = (int) $limits[$canonicalVac];
+                        if ($dosesTaken >= $maxLimit) {
+                            $_SESSION['staff_flash'] = "Cannot select {$canonicalVac}: this infant has already reached the maximum dose limit of {$maxLimit} dose(s) ({$dosesTaken}/{$maxLimit} completed).";
+                            $returnUrl = trim((string) ($_POST['return_url'] ?? ''));
+                            header('Location: ' . ($returnUrl !== '' ? $returnUrl : 'index.php?page=queue'));
+                            exit;
+                        }
+                    }
+                }
+                $postData['vaccine_type'] = $chosenVac;
             }
         }
         if (($_POST['action'] ?? '') === 'save_vitals') {
@@ -2531,15 +2549,49 @@ for ($i = 0; $i < 6; $i++) {
                                                 'MMR (Measles, Mumps, Rubella)',
                                                 'Others'
                                             ];
+                                            $vaccineLimits = get_standard_vaccine_dose_limits();
+                                            $vaccineSchedules = get_standard_vaccine_schedules();
+                                            $infantPastCounts = fetch_infant_vaccine_counts_for_appointment($selectedVitalsAppointment);
                                             $curVaccine = (string) ($selectedVitalsAppointment['vaccine_type'] ?? '');
-                                            $isStandard = in_array($curVaccine, array_slice($standardVaccines, 0, 8), true);
+                                            $curCanonical = normalize_standard_vaccine_name($curVaccine) ?: $curVaccine;
+                                            $isStandard = in_array($curVaccine, array_slice($standardVaccines, 0, 8), true) || in_array($curCanonical, array_slice($standardVaccines, 0, 8), true);
                                             $isCustom = $curVaccine !== '' && !$isStandard;
-                                            $selectedVal = $isCustom ? 'Others' : ($curVaccine ?: '');
+                                            $selectedVal = $isCustom ? 'Others' : ($curCanonical ?: $curVaccine);
                                             ?>
                                             <select id="queue_vaccine_select" name="vaccine_type_select" required class="form-input-field" style="border-color: #86efac; background: #ffffff; font-size: 0.95rem;" onchange="handleStaffVaccineSelectChange(this)">
                                                 <option value="">-- Select Standard Vaccine Type --</option>
                                                 <?php foreach ($standardVaccines as $vac): ?>
-                                                    <option value="<?= h($vac); ?>" <?= ($selectedVal === $vac) ? 'selected' : ''; ?>><?= h($vac); ?></option>
+                                                    <?php
+                                                    if ($vac === 'Others') {
+                                                        $isLimitReached = false;
+                                                        $taken = 0;
+                                                        $limit = null;
+                                                        $optLabel = 'Others (Specify custom vaccine)';
+                                                    } else {
+                                                        $limit = $vaccineLimits[$vac] ?? null;
+                                                        $taken = (int) ($infantPastCounts[$vac] ?? 0);
+                                                        $isLimitReached = ($limit !== null && $taken >= $limit);
+
+                                                        if ($isLimitReached) {
+                                                            $optLabel = $vac . ' — [Limit Reached: ' . $taken . '/' . $limit . ' doses taken]';
+                                                        } elseif ($limit !== null && $taken > 0) {
+                                                            $nextDose = $taken + 1;
+                                                            $optLabel = $vac . ' (Dose ' . $nextDose . ' of ' . $limit . ' • ' . $taken . ' taken)';
+                                                        } elseif ($limit !== null) {
+                                                            $optLabel = $vac . ' (0/' . $limit . ' doses taken)';
+                                                        } else {
+                                                            $optLabel = $vac;
+                                                        }
+                                                    }
+                                                    ?>
+                                                    <option value="<?= h($vac); ?>" 
+                                                            data-limit="<?= $limit ?? ''; ?>" 
+                                                            data-taken="<?= $taken; ?>"
+                                                            <?= $isLimitReached ? 'disabled' : ''; ?>
+                                                            <?= ($selectedVal === $vac && !$isLimitReached) ? 'selected' : ''; ?>
+                                                            style="<?= $isLimitReached ? 'color: #94a3b8; background-color: #f1f5f9; text-decoration: line-through;' : ''; ?>">
+                                                        <?= h($optLabel); ?>
+                                                    </option>
                                                 <?php endforeach; ?>
                                             </select>
 
@@ -2547,7 +2599,36 @@ for ($i = 0; $i < 6; $i++) {
                                                 <label for="queue_vaccine_other" class="form-field-label" style="color: #166534; font-size: 0.85rem; font-weight: 600;">Specify Other Vaccine Type:</label>
                                                 <input type="text" id="queue_vaccine_other" name="vaccine_type_other" value="<?= $isCustom ? h($curVaccine) : ''; ?>" placeholder="Enter custom vaccine antigen or brand..." class="form-input-field" style="border-color: #86efac; background: #ffffff; font-size: 0.92rem;">
                                             </div>
-                                            <small style="display: block; margin-top: 6px; color: #15803d; font-size: 0.82rem;">Select from standard DOH national immunization program vaccines, or choose Others to specify.</small>
+                                            <small style="display: block; margin-top: 6px; color: #15803d; font-size: 0.82rem;">Select from standard DOH national immunization program vaccines (with infant dose limits enforced), or choose Others to specify.</small>
+
+                                            <!-- Infant Immunization Schedule & Dose Status Tracker Card -->
+                                            <div class="vaccine-schedule-status-box" style="margin-top: 14px; background: #ffffff; border: 1.5px solid #bbf7d0; border-radius: 12px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                                                    <span style="font-size: 0.82rem; font-weight: 700; color: #15803d; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                                                        <?= staff_icon('syringe'); ?> Infant Immunization Dose Limits &amp; Progress
+                                                    </span>
+                                                    <span style="font-size: 0.74rem; color: #64748b; font-weight: 600;">DOH National Immunization Program</span>
+                                                </div>
+                                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px;">
+                                                    <?php foreach ($vaccineLimits as $vName => $maxDose): ?>
+                                                        <?php
+                                                        $dosesDone = (int) ($infantPastCounts[$vName] ?? 0);
+                                                        $maxed = $dosesDone >= $maxDose;
+                                                        $schedInfo = $vaccineSchedules[$vName] ?? null;
+                                                        $ageTxt = $schedInfo ? $schedInfo['age'] : '';
+                                                        ?>
+                                                        <div style="background: <?= $maxed ? '#f8fafc' : '#f0fdf4'; ?>; border: 1px solid <?= $maxed ? '#cbd5e1' : '#86efac'; ?>; border-radius: 8px; padding: 7px 10px; display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
+                                                            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 6px;">
+                                                                <strong style="color: <?= $maxed ? '#64748b' : '#14532d'; ?>; display: block; font-size: 0.8rem; <?= $maxed ? 'text-decoration: line-through;' : ''; ?>"><?= h($vName); ?></strong>
+                                                                <small style="color: #64748b; font-size: 0.72rem;"><?= h($ageTxt); ?></small>
+                                                            </div>
+                                                            <span style="flex-shrink: 0; padding: 2px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; <?= $maxed ? 'background: #e2e8f0; color: #475569;' : ($dosesDone > 0 ? 'background: #dbeafe; color: #1e40af;' : 'background: #dcfce7; color: #166534;'); ?>">
+                                                                <?= $maxed ? 'Limit Reached (' . $dosesDone . '/' . $maxDose . ')' : ($dosesDone . '/' . $maxDose . ' Doses'); ?>
+                                                            </span>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            </div>
                                         </div>
                                     <?php else: ?>
                                         <!-- Self Immunization: Standard Text Input -->
@@ -6415,6 +6496,11 @@ window.closePatientProfileModal = function(e, returnUrl) {
 
 window.handleStaffVaccineSelectChange = function(selectElem) {
     if (!selectElem) return;
+    const selectedOpt = selectElem.options[selectElem.selectedIndex];
+    if (selectedOpt && selectedOpt.disabled) {
+        alert('This vaccine type has reached its dose limit for this infant and cannot be selected.');
+        selectElem.value = '';
+    }
     const otherWrap = document.getElementById('queue_vaccine_other_wrap');
     const otherInput = document.getElementById('queue_vaccine_other');
     if (selectElem.value.trim() !== '') {
@@ -6547,18 +6633,48 @@ window.openStaffInfantModal = function(infant) {
     }
 
     let dosesHtml = '';
+    const nipLimits = {
+        'BCG': 1,
+        'Hepatitis B': 1,
+        'Pentavalent (DTP-HepB-Hib)': 3,
+        'OPV (Oral Polio Vaccine)': 3,
+        'PCV (Pneumococcal Conjugate Vaccine)': 3,
+        'IPV (Inactivated Polio Vaccine)': 2,
+        'Measles-Rubella (MR) or AMV-1': 1,
+        'MMR (Measles, Mumps, Rubella)': 1
+    };
+    const normalizeVac = (name) => {
+        if (!name) return '';
+        const l = name.toLowerCase();
+        if (l.includes('bcg')) return 'BCG';
+        if (l.includes('pentavalent') || l.includes('dtp')) return 'Pentavalent (DTP-HepB-Hib)';
+        if (l.includes('ipv') || l.includes('inactivated polio')) return 'IPV (Inactivated Polio Vaccine)';
+        if (l.includes('opv') || l.includes('oral polio')) return 'OPV (Oral Polio Vaccine)';
+        if (l.includes('pcv') || l.includes('pneumococcal')) return 'PCV (Pneumococcal Conjugate Vaccine)';
+        if (l.includes('hepa') || l.includes('hep b') || l.includes('hepatitis')) return 'Hepatitis B';
+        if (l.includes('mmr') || l.includes('mumps')) return 'MMR (Measles, Mumps, Rubella)';
+        if (l.includes('measles') || l.includes('rubella') || l.includes('amv')) return 'Measles-Rubella (MR) or AMV-1';
+        return name;
+    };
     const vNames = Object.keys(vaccineSummary);
     if (vNames.length > 0) {
         dosesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">';
         vNames.forEach(vName => {
             const info = vaccineSummary[vName];
+            const canon = normalizeVac(vName);
+            const maxDose = nipLimits[canon] || null;
+            const isCompleted = maxDose !== null && info.count >= maxDose;
             const dateStr = info.latestDate ? new Date(info.latestDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+            const badgeLabel = maxDose !== null
+                ? (isCompleted ? `${info.count}/${maxDose} Doses (Limit Reached)` : `${info.count}/${maxDose} Doses Taken`)
+                : `${info.count} ${info.count === 1 ? 'Dose Taken' : 'Doses Taken'}`;
+
             dosesHtml += `
-            <div style="background: #f0f9ff; border: 1.5px solid #7dd3fc; color: #0369a1; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.08);">
-                <span style="display: inline-flex; align-items: center; color: #0284c7;"><?= staff_icon('syringe'); ?></span>
+            <div style="background: ${isCompleted ? '#ecfdf5' : '#f0f9ff'}; border: 1.5px solid ${isCompleted ? '#a7f3d0' : '#7dd3fc'}; color: ${isCompleted ? '#065f46' : '#0369a1'}; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);">
+                <span style="display: inline-flex; align-items: center; color: ${isCompleted ? '#059669' : '#0284c7'};"><?= staff_icon('syringe'); ?></span>
                 <span>${staffEscapeHtml(vName)}</span>
-                <span style="background: #0284c7; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${info.count} ${info.count === 1 ? 'Dose Taken' : 'Doses Taken'}</span>
-                ${dateStr ? `<span style="font-size: 0.74rem; color: #0284c7; font-weight: 600; opacity: 0.85;">(${staffEscapeHtml(dateStr)})</span>` : ''}
+                <span style="background: ${isCompleted ? '#059669' : '#0284c7'}; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${badgeLabel}</span>
+                ${dateStr ? `<span style="font-size: 0.74rem; color: ${isCompleted ? '#047857' : '#0284c7'}; font-weight: 600; opacity: 0.85;">(${staffEscapeHtml(dateStr)})</span>` : ''}
             </div>`;
         });
         dosesHtml += '</div>';
@@ -7446,8 +7562,11 @@ window.handleVitalNumericKeydown = handleVitalNumericKeydown;
         const vaccineSelect = form.querySelector('[name="vaccine_type_select"]');
         if (vaccineSelect) {
             const vacVal = vaccineSelect.value.trim();
+            const selectedOpt = vaccineSelect.options[vaccineSelect.selectedIndex];
             if (!vacVal) {
                 markVitalError(vaccineSelect, 'Please select a vaccine type.');
+            } else if (selectedOpt && selectedOpt.disabled) {
+                markVitalError(vaccineSelect, 'The selected vaccine has reached its dose limit and cannot be selected.');
             } else if (vacVal === 'Others') {
                 const vacOtherInput = form.querySelector('[name="vaccine_type_other"]');
                 if (vacOtherInput && !vacOtherInput.value.trim()) {

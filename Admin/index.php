@@ -5871,18 +5871,48 @@ window.renderAdminSelectedInfant = function(index) {
     }
 
     let dosesHtml = '';
+    const nipLimits = {
+        'BCG': 1,
+        'Hepatitis B': 1,
+        'Pentavalent (DTP-HepB-Hib)': 3,
+        'OPV (Oral Polio Vaccine)': 3,
+        'PCV (Pneumococcal Conjugate Vaccine)': 3,
+        'IPV (Inactivated Polio Vaccine)': 2,
+        'Measles-Rubella (MR) or AMV-1': 1,
+        'MMR (Measles, Mumps, Rubella)': 1
+    };
+    const normalizeVac = (name) => {
+        if (!name) return '';
+        const l = name.toLowerCase();
+        if (l.includes('bcg')) return 'BCG';
+        if (l.includes('pentavalent') || l.includes('dtp')) return 'Pentavalent (DTP-HepB-Hib)';
+        if (l.includes('ipv') || l.includes('inactivated polio')) return 'IPV (Inactivated Polio Vaccine)';
+        if (l.includes('opv') || l.includes('oral polio')) return 'OPV (Oral Polio Vaccine)';
+        if (l.includes('pcv') || l.includes('pneumococcal')) return 'PCV (Pneumococcal Conjugate Vaccine)';
+        if (l.includes('hepa') || l.includes('hep b') || l.includes('hepatitis')) return 'Hepatitis B';
+        if (l.includes('mmr') || l.includes('mumps')) return 'MMR (Measles, Mumps, Rubella)';
+        if (l.includes('measles') || l.includes('rubella') || l.includes('amv')) return 'Measles-Rubella (MR) or AMV-1';
+        return name;
+    };
     const vNames = Object.keys(vaccineSummary);
     if (vNames.length > 0) {
         dosesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">';
         vNames.forEach(vName => {
             const info = vaccineSummary[vName];
+            const canon = normalizeVac(vName);
+            const maxDose = nipLimits[canon] || null;
+            const isCompleted = maxDose !== null && info.count >= maxDose;
             const dateStr = info.latestDate ? new Date(info.latestDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+            const badgeLabel = maxDose !== null
+                ? (isCompleted ? `${info.count}/${maxDose} Doses (Limit Reached)` : `${info.count}/${maxDose} Doses Taken`)
+                : `${info.count} ${info.count === 1 ? 'Dose Taken' : 'Doses Taken'}`;
+
             dosesHtml += `
-            <div style="background: #f5f3ff; border: 1.5px solid #ddd6fe; color: #6d28d9; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(124, 58, 237, 0.08);">
-                <span style="display: inline-flex; align-items: center; color: #7c3aed;"><?= admin_icon('syringe'); ?></span>
+            <div style="background: ${isCompleted ? '#ecfdf5' : '#f5f3ff'}; border: 1.5px solid ${isCompleted ? '#a7f3d0' : '#ddd6fe'}; color: ${isCompleted ? '#065f46' : '#6d28d9'}; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);">
+                <span style="display: inline-flex; align-items: center; color: ${isCompleted ? '#059669' : '#7c3aed'};"><?= admin_icon('syringe'); ?></span>
                 <span>${adminEscapeHtml(vName)}</span>
-                <span style="background: #7c3aed; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${info.count} ${info.count === 1 ? 'Dose Taken' : 'Doses Taken'}</span>
-                ${dateStr ? `<span style="font-size: 0.74rem; color: #7c3aed; font-weight: 600; opacity: 0.85;">(${adminEscapeHtml(dateStr)})</span>` : ''}
+                <span style="background: ${isCompleted ? '#059669' : '#7c3aed'}; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${badgeLabel}</span>
+                ${dateStr ? `<span style="font-size: 0.74rem; color: ${isCompleted ? '#047857' : '#7c3aed'}; font-weight: 600; opacity: 0.85;">(${adminEscapeHtml(dateStr)})</span>` : ''}
             </div>`;
         });
         dosesHtml += '</div>';

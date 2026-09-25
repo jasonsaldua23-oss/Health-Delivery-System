@@ -4223,6 +4223,313 @@ function fetch_immunized_infants_by_patient_id(string $patientId): array
 }
 
 /**
+ * Standard National Immunization Program (NIP) infant vaccine dose limits.
+ * Based on DOH Infant Immunization Schedule:
+ * - BCG: 1 dose (At Birth)
+ * - Hepatitis B: 1 birth dose (At Birth within 24 hrs)
+ * - Pentavalent (DTP-HepB-Hib): 3 doses (6, 10, 14 Weeks)
+ * - OPV (Oral Polio Vaccine): 3 doses (6, 10, 14 Weeks)
+ * - PCV (Pneumococcal Conjugate Vaccine): 3 doses (6, 10, 14 Weeks)
+ * - IPV (Inactivated Polio Vaccine): 2 doses (14 Weeks, 9 Months)
+ * - Measles-Rubella (MR) or AMV-1: 1 dose (9 Months)
+ * - MMR (Measles, Mumps, Rubella): 1 dose (12 Months, completes primary series)
+ */
+function get_standard_vaccine_dose_limits(): array
+{
+    return [
+        'BCG' => 1,
+        'Hepatitis B' => 1,
+        'Pentavalent (DTP-HepB-Hib)' => 3,
+        'OPV (Oral Polio Vaccine)' => 3,
+        'PCV (Pneumococcal Conjugate Vaccine)' => 3,
+        'IPV (Inactivated Polio Vaccine)' => 2,
+        'Measles-Rubella (MR) or AMV-1' => 1,
+        'MMR (Measles, Mumps, Rubella)' => 1,
+    ];
+}
+
+/**
+ * Detailed infant immunization schedule specifications
+ */
+function get_standard_vaccine_schedules(): array
+{
+    return [
+        'BCG' => [
+            'age' => 'At Birth',
+            'disease' => 'Tuberculosis (TB meningitis, severe TB)',
+            'schedule' => '1 dose',
+            'limit' => 1,
+        ],
+        'Hepatitis B' => [
+            'age' => 'At Birth',
+            'disease' => 'Hepatitis B virus',
+            'schedule' => '1 birth dose (given within 24 hours)',
+            'limit' => 1,
+        ],
+        'Pentavalent (DTP-HepB-Hib)' => [
+            'age' => '6, 10, 14 Weeks',
+            'disease' => 'Diphtheria, Tetanus, Pertussis, Hep B, Hib',
+            'schedule' => '3 doses (6, 10, and 14 weeks)',
+            'limit' => 3,
+        ],
+        'OPV (Oral Polio Vaccine)' => [
+            'age' => '6, 10, 14 Weeks',
+            'disease' => 'Poliovirus',
+            'schedule' => '3 doses (6, 10, and 14 weeks)',
+            'limit' => 3,
+        ],
+        'PCV (Pneumococcal Conjugate Vaccine)' => [
+            'age' => '6, 10, 14 Weeks',
+            'disease' => 'Pneumococcal pneumonia, meningitis',
+            'schedule' => '3 doses (6, 10, and 14 weeks)',
+            'limit' => 3,
+        ],
+        'IPV (Inactivated Polio Vaccine)' => [
+            'age' => '14 Weeks, 9 Months',
+            'disease' => 'Poliovirus',
+            'schedule' => '2 doses (14 weeks injectable, 9 months)',
+            'limit' => 2,
+        ],
+        'Measles-Rubella (MR) or AMV-1' => [
+            'age' => '9 Months',
+            'disease' => 'Measles and Rubella',
+            'schedule' => '1st dose at 9 months',
+            'limit' => 1,
+        ],
+        'MMR (Measles, Mumps, Rubella)' => [
+            'age' => '12 Months',
+            'disease' => 'Measles, Mumps, Rubella',
+            'schedule' => '2nd dose at 12 months (completes primary infant series)',
+            'limit' => 1,
+        ],
+    ];
+}
+
+/**
+ * Normalizes any variation of a vaccine name to its canonical standard name.
+ */
+function normalize_standard_vaccine_name(?string $name): ?string
+{
+    $s = trim((string) $name);
+    if ($s === '') {
+        return null;
+    }
+    $limits = get_standard_vaccine_dose_limits();
+    if (isset($limits[$s])) {
+        return $s;
+    }
+
+    $lower = strtolower($s);
+
+    if (str_contains($lower, 'bcg')) {
+        return 'BCG';
+    }
+    if (str_contains($lower, 'pentavalent') || str_contains($lower, 'dtp')) {
+        return 'Pentavalent (DTP-HepB-Hib)';
+    }
+    if (str_contains($lower, 'ipv') || str_contains($lower, 'inactivated polio')) {
+        return 'IPV (Inactivated Polio Vaccine)';
+    }
+    if (str_contains($lower, 'opv') || str_contains($lower, 'oral polio')) {
+        return 'OPV (Oral Polio Vaccine)';
+    }
+    if (str_contains($lower, 'pcv') || str_contains($lower, 'pneumococcal')) {
+        return 'PCV (Pneumococcal Conjugate Vaccine)';
+    }
+    if (str_contains($lower, 'hepa') || str_contains($lower, 'hep b') || str_contains($lower, 'hepatitis')) {
+        return 'Hepatitis B';
+    }
+    if (str_contains($lower, 'mmr') || str_contains($lower, 'mumps')) {
+        return 'MMR (Measles, Mumps, Rubella)';
+    }
+    if (str_contains($lower, 'measles') || str_contains($lower, 'rubella') || str_contains($lower, 'amv') || preg_match('/\bmr\b/i', $s)) {
+        return 'Measles-Rubella (MR) or AMV-1';
+    }
+
+    return null;
+}
+
+/**
+ * Fetches prior vaccine doses taken by the infant associated with an appointment.
+ * Excludes the given appointment itself so editing/viewing it does not falsely count against limits.
+ *
+ * @return array<string, int> Map of canonical vaccine name => doses taken
+ */
+function fetch_infant_vaccine_counts_for_appointment(array $appointment): array
+{
+    $vitRec = appointment_recipient_details($appointment);
+    if (!$vitRec['is_immunization'] || $vitRec['is_self']) {
+        return [];
+    }
+
+    $rFirst = trim((string) ($vitRec['recipient_first_name'] ?? ''));
+    $rLast = trim((string) ($vitRec['recipient_last_name'] ?? ''));
+    $patientId = trim((string) ($appointment['patient_id'] ?? ''));
+    $currentApptId = (int) ($appointment['id'] ?? 0);
+    $currentApptCode = trim((string) ($appointment['appointment_code'] ?? ''));
+
+    if ($rFirst === '' && $rLast === '' && $patientId === '') {
+        return [];
+    }
+
+    $counts = [];
+    $countedAppointments = [];
+
+    // Exclude the current appointment so that viewing or editing the current visit does not count against limits
+    if ($currentApptId > 0) {
+        $countedAppointments['id_' . $currentApptId] = true;
+    }
+    if ($currentApptCode !== '') {
+        $countedAppointments['code_' . $currentApptCode] = true;
+    }
+
+    try {
+        $db = db();
+        ensure_immunized_infants_table($db);
+
+        // 1. Scan appointments table
+        // Find appointments belonging to this infant with recorded vaccine_type
+        if ($patientId !== '' && $rFirst !== '') {
+            $stmt = $db->prepare(
+                "SELECT id, appointment_code, vaccine_type, status, service_slug, service_name, recipient_first_name, recipient_last_name, recipient_birth_date, immunization_relationship, first_name, last_name, birth_date
+                 FROM appointments 
+                 WHERE patient_id = ? 
+                   AND vaccine_type IS NOT NULL 
+                   AND vaccine_type != ''"
+            );
+            if ($stmt) {
+                $stmt->bind_param('s', $patientId);
+                $stmt->execute();
+                $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                foreach ($rows as $row) {
+                    $rowId = (int) ($row['id'] ?? 0);
+                    $rowCode = trim((string) ($row['appointment_code'] ?? ''));
+                    if (isset($countedAppointments['id_' . $rowId]) || ($rowCode !== '' && isset($countedAppointments['code_' . $rowCode]))) {
+                        continue;
+                    }
+
+                    $status = trim((string) ($row['status'] ?? ''));
+                    if (strcasecmp($status, 'Cancelled') === 0 || stripos($status, 'no show') !== false) {
+                        continue;
+                    }
+
+                    // Check recipient matching
+                    $rowRec = appointment_recipient_details($row);
+                    if ($rowRec['is_self']) {
+                        continue;
+                    }
+                    $rowRFirst = trim((string) ($rowRec['recipient_first_name'] ?? ''));
+                    $rowRLast = trim((string) ($rowRec['recipient_last_name'] ?? ''));
+                    if ($rowRFirst !== '' && strcasecmp($rowRFirst, $rFirst) !== 0) {
+                        continue;
+                    }
+                    if ($rLast !== '' && $rowRLast !== '' && strcasecmp($rowRLast, $rLast) !== 0) {
+                        continue;
+                    }
+
+                    $vTypeRaw = trim((string) ($row['vaccine_type'] ?? ''));
+                    if ($vTypeRaw === '' || strcasecmp($vTypeRaw, 'Not recorded') === 0 || strcasecmp($vTypeRaw, 'Not yet recorded') === 0) {
+                        continue;
+                    }
+
+                    $canonical = normalize_standard_vaccine_name($vTypeRaw) ?: $vTypeRaw;
+                    $counts[$canonical] = ($counts[$canonical] ?? 0) + 1;
+
+                    if ($rowId > 0) $countedAppointments['id_' . $rowId] = true;
+                    if ($rowCode !== '') $countedAppointments['code_' . $rowCode] = true;
+                }
+            }
+        }
+
+        // Also check by recipient first & last name (in case booked under another profile or missing patient_id)
+        if ($rFirst !== '' && $rLast !== '') {
+            $stmt2 = $db->prepare(
+                "SELECT id, appointment_code, vaccine_type, status, service_slug, service_name, recipient_first_name, recipient_last_name, recipient_birth_date, immunization_relationship, first_name, last_name, birth_date
+                 FROM appointments 
+                 WHERE LOWER(recipient_first_name) = LOWER(?) 
+                   AND LOWER(recipient_last_name) = LOWER(?)
+                   AND vaccine_type IS NOT NULL 
+                   AND vaccine_type != ''"
+            );
+            if ($stmt2) {
+                $stmt2->bind_param('ss', $rFirst, $rLast);
+                $stmt2->execute();
+                $rows2 = $stmt2->get_result()->fetch_all(MYSQLI_ASSOC);
+                foreach ($rows2 as $row) {
+                    $rowId = (int) ($row['id'] ?? 0);
+                    $rowCode = trim((string) ($row['appointment_code'] ?? ''));
+                    if (isset($countedAppointments['id_' . $rowId]) || ($rowCode !== '' && isset($countedAppointments['code_' . $rowCode]))) {
+                        continue;
+                    }
+
+                    $status = trim((string) ($row['status'] ?? ''));
+                    if (strcasecmp($status, 'Cancelled') === 0 || stripos($status, 'no show') !== false) {
+                        continue;
+                    }
+
+                    $vTypeRaw = trim((string) ($row['vaccine_type'] ?? ''));
+                    if ($vTypeRaw === '' || strcasecmp($vTypeRaw, 'Not recorded') === 0 || strcasecmp($vTypeRaw, 'Not yet recorded') === 0) {
+                        continue;
+                    }
+
+                    $canonical = normalize_standard_vaccine_name($vTypeRaw) ?: $vTypeRaw;
+                    $counts[$canonical] = ($counts[$canonical] ?? 0) + 1;
+
+                    if ($rowId > 0) $countedAppointments['id_' . $rowId] = true;
+                    if ($rowCode !== '') $countedAppointments['code_' . $rowCode] = true;
+                }
+            }
+        }
+
+        // 2. Scan immunized_infants table
+        if ($patientId !== '' || ($rFirst !== '' && $rLast !== '')) {
+            $stmtImm = $db->prepare(
+                "SELECT id, appointment_id, appointment_code, patient_id, first_name, last_name, birth_date, vaccine_type 
+                 FROM immunized_infants 
+                 WHERE (patient_id = ? AND patient_id != '')
+                    OR (LOWER(first_name) = LOWER(?) AND LOWER(last_name) = LOWER(?))"
+            );
+            if ($stmtImm) {
+                $stmtImm->bind_param('sss', $patientId, $rFirst, $rLast);
+                $stmtImm->execute();
+                $rowsImm = $stmtImm->get_result()->fetch_all(MYSQLI_ASSOC);
+                foreach ($rowsImm as $imm) {
+                    $immApptId = (int) ($imm['appointment_id'] ?? 0);
+                    $immApptCode = trim((string) ($imm['appointment_code'] ?? ''));
+                    if (($immApptId > 0 && isset($countedAppointments['id_' . $immApptId])) || ($immApptCode !== '' && isset($countedAppointments['code_' . $immApptCode]))) {
+                        continue;
+                    }
+
+                    $immFirst = trim((string) ($imm['first_name'] ?? ''));
+                    $immLast = trim((string) ($imm['last_name'] ?? ''));
+                    if ($rFirst !== '' && $immFirst !== '' && strcasecmp($immFirst, $rFirst) !== 0) {
+                        continue;
+                    }
+                    if ($rLast !== '' && $immLast !== '' && strcasecmp($immLast, $rLast) !== 0) {
+                        continue;
+                    }
+
+                    $vTypeRaw = trim((string) ($imm['vaccine_type'] ?? ''));
+                    if ($vTypeRaw === '' || strcasecmp($vTypeRaw, 'Not recorded') === 0 || strcasecmp($vTypeRaw, 'Not yet recorded') === 0) {
+                        continue;
+                    }
+
+                    $canonical = normalize_standard_vaccine_name($vTypeRaw) ?: $vTypeRaw;
+                    $counts[$canonical] = ($counts[$canonical] ?? 0) + 1;
+
+                    if ($immApptId > 0) $countedAppointments['id_' . $immApptId] = true;
+                    if ($immApptCode !== '') $countedAppointments['code_' . $immApptCode] = true;
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('fetch_infant_vaccine_counts_for_appointment error: ' . $e->getMessage());
+    }
+
+    return $counts;
+}
+
+/**
  * Full name helper
  */
 if (!function_exists('fullName')) {
