@@ -5590,13 +5590,11 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                     <div class="reports-unattended-kpi-item blue">
                         <span class="lbl">Total Attention Items</span>
                         <strong class="val"><?= number_format($weeklyUnattendedStats['total']); ?></strong>
-                        <span class="sub">
-                            <?php if ($weeklyUnattendedStats['total'] === 0): ?>
+                        <?php if ($weeklyUnattendedStats['total'] === 0): ?>
+                            <span class="sub">
                                 <span class="status-pill" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:11px;padding:2px 8px;">✓ All Records Clear</span>
-                            <?php else: ?>
-                                <span class="status-pill" style="background:#fee2e2;color:#991b1b;font-size:11px;padding:2px 8px;border:1px solid #fca5a5;">⚡ Needs Follow-up</span>
-                            <?php endif; ?>
-                        </span>
+                            </span>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -6137,13 +6135,6 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         </div>
                                     </div>
                                 </div>
-                                <div class="unattended-item-actions">
-                                    <?php if (!empty($item['patient_id'])): ?>
-                                        <a href="?page=patients&patient_search=<?= urlencode((string) $item['patient_id']); ?>&view_patient_id=<?= urlencode((string) $item['patient_id']); ?>" class="ghost-btn" style="padding:6px 12px;font-size:0.8rem;">
-                                            <?= staff_icon('user'); ?> Profile
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -6195,13 +6186,6 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                             <span>Original Status: <strong><?= h((string) $item['original_status']); ?></strong></span>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="unattended-item-actions">
-                                    <?php if (!empty($item['patient_id'])): ?>
-                                        <a href="?page=patients&patient_search=<?= urlencode((string) $item['patient_id']); ?>&view_patient_id=<?= urlencode((string) $item['patient_id']); ?>" class="ghost-btn" style="padding:6px 12px;font-size:0.8rem;">
-                                            <?= staff_icon('user'); ?> Profile
-                                        </a>
-                                    <?php endif; ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
