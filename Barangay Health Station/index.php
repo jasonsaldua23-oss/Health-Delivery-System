@@ -1635,7 +1635,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 <input type="hidden" name="type" value="<?= h($unattendedType); ?>">
                                 <span class="unattended-search-icon"><?= staff_icon('search'); ?></span>
                                 <input type="search" name="unattended_search" value="<?= h($unattendedSearch); ?>" placeholder="Search patient, code, or service..." class="unattended-search-input">
-                                <button type="submit" class="primary-btn teal-btn slim">Search</button>
+                                <button type="submit" class="primary-btn blue-btn slim">Search</button>
                                 <?php if ($unattendedSearch !== ''): ?>
                                     <a href="?page=dashboard&view=unattended&timeframe=<?= h($unattendedTimeframe); ?>&type=<?= h($unattendedType); ?>" class="ghost-btn slim" title="Clear search">Clear</a>
                                 <?php endif; ?>
@@ -1663,14 +1663,14 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                             </div>
                         </article>
 
-                        <article class="unattended-kpi-card emerald">
-                            <div class="unattended-kpi-icon emerald"><?= staff_icon('alert'); ?></div>
+                        <article class="unattended-kpi-card blue">
+                            <div class="unattended-kpi-icon blue"><?= staff_icon('alert'); ?></div>
                             <div class="unattended-kpi-content">
                                 <span class="unattended-kpi-label">Audit Scope Total</span>
                                 <strong class="unattended-kpi-val"><?= number_format($currentTfCount['total']); ?></strong>
                                 <small class="unattended-kpi-hint">
                                     <?php if ($currentTfCount['total'] === 0): ?>
-                                        <span class="status-pill status-completed" style="font-size:11px;padding:2px 7px;">✓ All Clear</span>
+                                        <span class="status-pill" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:11px;padding:2px 7px;">✓ All Clear</span>
                                     <?php else: ?>
                                         <span class="status-pill" style="background:#fee2e2;color:#991b1b;font-size:11px;padding:2px 7px;border:1px solid #fca5a5;">⚡ Follow-up Required</span>
                                     <?php endif; ?>
@@ -1692,7 +1692,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                             <h3>No Records Require Attention</h3>
                             <p>There are no unattended appointment requests or unserved queue records matching <strong><?= h($currentTimeframeLabel); ?></strong><?= $unattendedSearch !== '' ? ' with search term "' . h($unattendedSearch) . '"' : ''; ?>. All patient visits are up to date.</p>
                             <div class="unattended-empty-actions">
-                                <a href="?page=dashboard&view=unattended&timeframe=all" class="primary-btn teal-btn slim">View All Records</a>
+                                <a href="?page=dashboard&view=unattended&timeframe=all" class="primary-btn blue-btn slim">View All Records</a>
                                 <a href="?page=dashboard" class="ghost-btn slim">Back to Dashboard</a>
                             </div>
                         </div>
@@ -1764,7 +1764,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                                         <span>Patient Profile</span>
                                                     </a>
                                                 <?php endif; ?>
-                                                <a href="?page=appointments&search=<?= urlencode($apptCode); ?>" class="primary-btn teal-btn slim" title="Manage in Appointments">
+                                                <a href="?page=appointments&search=<?= urlencode($apptCode); ?>" class="primary-btn blue-btn slim" title="Manage in Appointments">
                                                     <?= staff_icon('appointments'); ?>
                                                     <span>Manage Appt</span>
                                                 </a>
@@ -1846,7 +1846,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                                         <span>Patient Profile</span>
                                                     </a>
                                                 <?php endif; ?>
-                                                <a href="?page=queue&queue_date=both&search=<?= urlencode($qCode); ?>" class="primary-btn teal-btn slim" title="Manage in Queue">
+                                                <a href="?page=queue&queue_date=both&search=<?= urlencode($qCode); ?>" class="primary-btn blue-btn slim" title="Manage in Queue">
                                                     <?= staff_icon('queue'); ?>
                                                     <span>Manage Queue</span>
                                                 </a>
@@ -1947,7 +1947,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                             ⚡ <?= ($unattendedApptsCount + $unattendedQueueCount); ?> Total Attention Items
                         </div>
                     <?php else: ?>
-                        <div class="dash-audit-pill" style="background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;">
+                        <div class="dash-audit-pill" style="background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;">
                             ✓ All Past Records Clear
                         </div>
                     <?php endif; ?>
@@ -3446,15 +3446,19 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                         <a class="service-card queue-service-card" href="?page=patients&program=<?= h($program['slug']); ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>">
                             <div class="service-card-top">
                                 <div class="service-icon <?= h($program['color']); ?>"><?= staff_icon($program['icon']); ?></div>
-                                <span class="service-arrow"><?= staff_icon('arrow-right'); ?></span>
+                                <div class="service-card-top-right">
+                                    <span class="service-arrow"><?= staff_icon('arrow-right'); ?></span>
+                                    <?php if ($holdCount > 0): ?>
+                                        <span class="service-hold-icon" title="<?= $holdCount; ?> on-hold appointment<?= $holdCount > 1 ? 's' : ''; ?>" aria-label="<?= $holdCount; ?> on hold">
+                                            <?= staff_icon('pause'); ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             <h3><?= h($program['title']); ?></h3>
                             <p><?= h($program['description']); ?></p>
                             <div class="service-queue-stats">
                                 <div class="queue-stat-mini serving"><span><?= staff_icon('edit'); ?></span><strong><?= $ongoingCount; ?></strong><small>Ongoing</small></div>
-                                <?php if ($holdCount > 0): ?>
-                                    <div class="queue-stat-mini hold" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a;"><span><?= staff_icon('pause'); ?></span><strong><?= $holdCount; ?></strong><small>On Hold</small></div>
-                                <?php endif; ?>
                                 <div class="queue-stat-mini completed"><span><?= staff_icon('check'); ?></span><strong><?= $completedCount; ?></strong><small>Completed</small></div>
                                 <div class="queue-stat-mini total"><span><?= staff_icon('users'); ?></span><strong><?= $displayTotal; ?></strong><small>Total</small></div>
                             </div>
@@ -5607,12 +5611,12 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                         <span class="sub">Patients queued whose visit was not marked completed</span>
                     </div>
 
-                    <div class="reports-unattended-kpi-item emerald">
+                    <div class="reports-unattended-kpi-item blue">
                         <span class="lbl">Total Attention Items</span>
                         <strong class="val"><?= number_format($weeklyUnattendedStats['total']); ?></strong>
                         <span class="sub">
                             <?php if ($weeklyUnattendedStats['total'] === 0): ?>
-                                <span class="status-pill status-completed" style="font-size:11px;padding:2px 8px;">✓ All Records Clear</span>
+                                <span class="status-pill" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:11px;padding:2px 8px;">✓ All Records Clear</span>
                             <?php else: ?>
                                 <span class="status-pill" style="background:#fee2e2;color:#991b1b;font-size:11px;padding:2px 8px;border:1px solid #fca5a5;">⚡ Needs Follow-up</span>
                             <?php endif; ?>
@@ -6067,7 +6071,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
             
             <div class="account-modal-footer">
                 <button type="button" class="ghost-btn" id="cancelAccountModalBtn">Cancel</button>
-                <button type="submit" class="primary-btn teal-btn">
+                <button type="submit" class="primary-btn blue-btn">
                     <?= staff_icon('check'); ?>
                     <span>Save Account Details</span>
                 </button>
@@ -6234,7 +6238,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
             <div class="unattended-footer-note">
                 <?= staff_icon('check'); ?> Auto-synchronized across Barangay Health Station records
             </div>
-            <button type="button" class="primary-btn teal-btn" id="closeUnattendedModalBtn2" onclick="closeUnattendedModal()" style="padding:9px 22px;border-radius:12px;">
+            <button type="button" class="primary-btn blue-btn" id="closeUnattendedModalBtn2" onclick="closeUnattendedModal()" style="padding:9px 22px;border-radius:12px;">
                 <span>Done Reviewing</span>
             </button>
         </div>
