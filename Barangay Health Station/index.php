@@ -3448,10 +3448,10 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 <div class="service-icon <?= h($program['color']); ?>"><?= staff_icon($program['icon']); ?></div>
                                 <span class="service-arrow"><?= staff_icon('arrow-right'); ?></span>
                             </div>
-                            <div class="service-card-title-row">
-                                <h3><?= h($program['title']); ?></h3>
+                            <div class="service-card-title-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin:0 0 12px;">
+                                <h3 style="margin:0;font-size:1.18rem;line-height:1.3;flex:1;"><?= h($program['title']); ?></h3>
                                 <?php if ($holdCount > 0): ?>
-                                    <span class="service-hold-icon" title="<?= $holdCount; ?> on-hold appointment<?= $holdCount > 1 ? 's' : ''; ?>" aria-label="<?= $holdCount; ?> on hold" style="color:#b45309;">
+                                    <span class="service-hold-icon" title="<?= $holdCount; ?> on-hold appointment<?= $holdCount > 1 ? 's' : ''; ?>" aria-label="<?= $holdCount; ?> on hold" style="display:inline-flex;align-items:center;justify-content:center;color:#b45309;stroke:#b45309;flex-shrink:0;margin-left:auto;">
                                         <?= staff_icon('pause'); ?>
                                     </span>
                                 <?php endif; ?>
