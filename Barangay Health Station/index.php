@@ -1757,18 +1757,6 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                                     <span><strong>Audit Notice:</strong> Booked for <strong><?= h($formattedDate); ?></strong> with status <em>Pending</em>. The scheduled date concluded without staff confirming or cancelling the appointment.</span>
                                                 </div>
                                             </div>
-                                            <div class="unattended-record-actions">
-                                                <?php if ($patientId !== ''): ?>
-                                                    <a href="?page=patients&view_patient_id=<?= urlencode($patientId); ?>" class="ghost-btn slim" title="Inspect patient medical profile">
-                                                        <?= staff_icon('user'); ?>
-                                                        <span>Patient Profile</span>
-                                                    </a>
-                                                <?php endif; ?>
-                                                <a href="?page=appointments&search=<?= urlencode($apptCode); ?>" class="primary-btn blue-btn slim" title="Manage in Appointments">
-                                                    <?= staff_icon('appointments'); ?>
-                                                    <span>Manage Appt</span>
-                                                </a>
-                                            </div>
                                         </article>
                                     <?php endforeach; ?>
                                 </div>
@@ -1838,18 +1826,6 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                                     <?= staff_icon('clock'); ?>
                                                     <span><strong>Audit Notice:</strong> Patient checked into queue on <strong><?= h($formattedDate); ?></strong> as <em><?= h($qStatus); ?></em>, but station operating hours ended before consultation was recorded as completed.</span>
                                                 </div>
-                                            </div>
-                                            <div class="unattended-record-actions">
-                                                <?php if ($patientId !== ''): ?>
-                                                    <a href="?page=patients&view_patient_id=<?= urlencode($patientId); ?>" class="ghost-btn slim" title="Inspect patient medical profile">
-                                                        <?= staff_icon('user'); ?>
-                                                        <span>Patient Profile</span>
-                                                    </a>
-                                                <?php endif; ?>
-                                                <a href="?page=queue&queue_date=both&search=<?= urlencode($qCode); ?>" class="primary-btn blue-btn slim" title="Manage in Queue">
-                                                    <?= staff_icon('queue'); ?>
-                                                    <span>Manage Queue</span>
-                                                </a>
                                             </div>
                                         </article>
                                     <?php endforeach; ?>
