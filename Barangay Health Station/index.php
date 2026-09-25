@@ -3446,16 +3446,16 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                         <a class="service-card queue-service-card" href="?page=patients&program=<?= h($program['slug']); ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>">
                             <div class="service-card-top">
                                 <div class="service-icon <?= h($program['color']); ?>"><?= staff_icon($program['icon']); ?></div>
-                                <div class="service-card-top-right">
-                                    <span class="service-arrow"><?= staff_icon('arrow-right'); ?></span>
-                                    <?php if ($holdCount > 0): ?>
-                                        <span class="service-hold-icon" title="<?= $holdCount; ?> on-hold appointment<?= $holdCount > 1 ? 's' : ''; ?>" aria-label="<?= $holdCount; ?> on hold">
-                                            <?= staff_icon('pause'); ?>
-                                        </span>
-                                    <?php endif; ?>
-                                </div>
+                                <span class="service-arrow"><?= staff_icon('arrow-right'); ?></span>
                             </div>
-                            <h3><?= h($program['title']); ?></h3>
+                            <div class="service-card-title-row">
+                                <h3><?= h($program['title']); ?></h3>
+                                <?php if ($holdCount > 0): ?>
+                                    <span class="service-hold-icon" title="<?= $holdCount; ?> on-hold appointment<?= $holdCount > 1 ? 's' : ''; ?>" aria-label="<?= $holdCount; ?> on hold" style="color:#b45309;">
+                                        <?= staff_icon('pause'); ?>
+                                    </span>
+                                <?php endif; ?>
+                            </div>
                             <p><?= h($program['description']); ?></p>
                             <div class="service-queue-stats">
                                 <div class="queue-stat-mini serving"><span><?= staff_icon('edit'); ?></span><strong><?= $ongoingCount; ?></strong><small>Ongoing</small></div>
