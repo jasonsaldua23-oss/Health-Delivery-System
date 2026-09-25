@@ -5899,19 +5899,6 @@ function downloadAppointmentSlipDirectly(appt) {
                             </div>
                         <?php endif; ?>
 
-                        <?php 
-                        $hApptPhoto = resolve_patient_photo_url((string) ($hAppt['photo_path'] ?? ''), 'patient');
-                        if ($hApptPhoto !== ''): 
-                        ?>
-                            <div class="history-appt-photo-box" style="margin-bottom: 12px; display: flex; align-items: center; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 12px;">
-                                <img src="<?= h($hApptPhoto); ?>" alt="Consultation Verification Photo" style="width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1px solid #cbd5e1; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-                                <div>
-                                    <span style="font-size: 0.82rem; font-weight: 700; color: #1e293b; display: block;">Consultation Photo Captured</span>
-                                    <small style="color: #64748b; font-size: 0.76rem;">Taken during this check-up at the health center</small>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-
                         <div class="history-item-footer">
                             <?php $hApptSlipPayload = array_merge($hAppt, $hRec); ?>
                             <button type="button" class="btn-view-slip" style="padding: 7px 14px; font-size: 0.82rem;" data-appt="<?= htmlspecialchars(json_encode($hApptSlipPayload), ENT_QUOTES, 'UTF-8'); ?>" onclick="openAppointmentSlipFromElement(this)">
