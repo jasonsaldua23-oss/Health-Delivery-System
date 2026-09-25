@@ -3894,14 +3894,17 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
             }
             $vType = trim((string) ($appt['vaccine_type'] ?? ''));
             if ($vType !== '' && strcasecmp($vType, 'Not recorded') !== 0 && strcasecmp($vType, 'Not yet recorded') !== 0) {
-                $groupedInfants[$k]['vaccine_doses'][] = [
-                    'vaccine_type' => $vType,
-                    'date' => $appt['preferred_date'],
-                    'station_name' => $appt['station_name'] ?? '',
-                    'appointment_code' => $appt['appointment_code'] ?? $appt['reference_code'] ?? '',
-                    'doctor_notes' => $appt['doctor_notes'] ?? '',
-                    'status' => $appt['status'] ?? '',
-                ];
+                $vList = split_vaccine_types($vType);
+                foreach ($vList as $singleV) {
+                    $groupedInfants[$k]['vaccine_doses'][] = [
+                        'vaccine_type' => $singleV,
+                        'date' => $appt['preferred_date'],
+                        'station_name' => $appt['station_name'] ?? '',
+                        'appointment_code' => $appt['appointment_code'] ?? $appt['reference_code'] ?? '',
+                        'doctor_notes' => $appt['doctor_notes'] ?? '',
+                        'status' => $appt['status'] ?? '',
+                    ];
+                }
             }
         }
 
@@ -3971,22 +3974,25 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
 
             $vType = trim((string) ($imm['vaccine_type'] ?? ''));
             if ($vType !== '' && strcasecmp($vType, 'Not recorded') !== 0 && strcasecmp($vType, 'Not yet recorded') !== 0) {
-                $alreadyAdded = false;
-                foreach ($groupedInfants[$k]['vaccine_doses'] as $vd) {
-                    if ($vd['vaccine_type'] === $vType && ($vd['appointment_code'] === ($imm['appointment_code'] ?? ''))) {
-                        $alreadyAdded = true;
-                        break;
+                $vList = split_vaccine_types($vType);
+                foreach ($vList as $singleV) {
+                    $alreadyAdded = false;
+                    foreach ($groupedInfants[$k]['vaccine_doses'] as $vd) {
+                        if ($vd['vaccine_type'] === $singleV && ($vd['appointment_code'] === ($imm['appointment_code'] ?? ''))) {
+                            $alreadyAdded = true;
+                            break;
+                        }
                     }
-                }
-                if (!$alreadyAdded) {
-                    $groupedInfants[$k]['vaccine_doses'][] = [
-                        'vaccine_type' => $vType,
-                        'date' => $imm['created_at'] ? date('Y-m-d', strtotime($imm['created_at'])) : date('Y-m-d'),
-                        'station_name' => $imm['station_slug'] ?? '',
-                        'appointment_code' => $imm['appointment_code'] ?? '',
-                        'doctor_notes' => '',
-                        'status' => 'Completed',
-                    ];
+                    if (!$alreadyAdded) {
+                        $groupedInfants[$k]['vaccine_doses'][] = [
+                            'vaccine_type' => $singleV,
+                            'date' => $imm['created_at'] ? date('Y-m-d', strtotime($imm['created_at'])) : date('Y-m-d'),
+                            'station_name' => $imm['station_slug'] ?? '',
+                            'appointment_code' => $imm['appointment_code'] ?? '',
+                            'doctor_notes' => '',
+                            'status' => 'Completed',
+                        ];
+                    }
                 }
             }
         }
@@ -4346,7 +4352,28 @@ function normalize_standard_vaccine_name(?string $name): ?string
         return 'Measles-Rubella (MR) or AMV-1';
     }
 
-    return null;
+}
+
+/**
+ * Splits a composite vaccine type string into individual vaccine components.
+ * Correctly handles comma-delimited strings without splitting commas inside parentheses
+ * (e.g., "MMR (Measles, Mumps, Rubella)").
+ *
+ * @param string|null $raw
+ * @return string[]
+ */
+function split_vaccine_types(?string $raw): array
+{
+    $s = trim((string) $raw);
+    if ($s === '') {
+        return [];
+    }
+    // Split by comma that is NOT inside parentheses
+    $parts = preg_split('/,(?![^(]*\))/', $s);
+    if ($parts === false) {
+        $parts = [$s];
+    }
+    return array_values(array_filter(array_map('trim', $parts), static fn(string $p): bool => $p !== ''));
 }
 
 /**
@@ -4432,8 +4459,11 @@ function fetch_infant_vaccine_counts_for_appointment(array $appointment): array
                         continue;
                     }
 
-                    $canonical = normalize_standard_vaccine_name($vTypeRaw) ?: $vTypeRaw;
-                    $counts[$canonical] = ($counts[$canonical] ?? 0) + 1;
+                    $vParts = split_vaccine_types($vTypeRaw);
+                    foreach ($vParts as $singleV) {
+                        $canonical = normalize_standard_vaccine_name($singleV) ?: $singleV;
+                        $counts[$canonical] = ($counts[$canonical] ?? 0) + 1;
+                    }
 
                     if ($rowId > 0) $countedAppointments['id_' . $rowId] = true;
                     if ($rowCode !== '') $countedAppointments['code_' . $rowCode] = true;
@@ -4472,8 +4502,11 @@ function fetch_infant_vaccine_counts_for_appointment(array $appointment): array
                         continue;
                     }
 
-                    $canonical = normalize_standard_vaccine_name($vTypeRaw) ?: $vTypeRaw;
-                    $counts[$canonical] = ($counts[$canonical] ?? 0) + 1;
+                    $vParts = split_vaccine_types($vTypeRaw);
+                    foreach ($vParts as $singleV) {
+                        $canonical = normalize_standard_vaccine_name($singleV) ?: $singleV;
+                        $counts[$canonical] = ($counts[$canonical] ?? 0) + 1;
+                    }
 
                     if ($rowId > 0) $countedAppointments['id_' . $rowId] = true;
                     if ($rowCode !== '') $countedAppointments['code_' . $rowCode] = true;
@@ -4514,8 +4547,11 @@ function fetch_infant_vaccine_counts_for_appointment(array $appointment): array
                         continue;
                     }
 
-                    $canonical = normalize_standard_vaccine_name($vTypeRaw) ?: $vTypeRaw;
-                    $counts[$canonical] = ($counts[$canonical] ?? 0) + 1;
+                    $vParts = split_vaccine_types($vTypeRaw);
+                    foreach ($vParts as $singleV) {
+                        $canonical = normalize_standard_vaccine_name($singleV) ?: $singleV;
+                        $counts[$canonical] = ($counts[$canonical] ?? 0) + 1;
+                    }
 
                     if ($immApptId > 0) $countedAppointments['id_' . $immApptId] = true;
                     if ($immApptCode !== '') $countedAppointments['code_' . $immApptCode] = true;

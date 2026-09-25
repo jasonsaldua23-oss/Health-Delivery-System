@@ -687,17 +687,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
             $postData['weight'] = ($wVal !== '') ? ($wVal . ' kg') : '';
         }
         if (!empty($postData['vaccine_type_select'])) {
-            if ($postData['vaccine_type_select'] === 'Others') {
-                $postData['vaccine_type'] = trim((string) ($postData['vaccine_type_other'] ?? '')) ?: 'Others';
-            } else {
-                $chosenVac = trim((string) $postData['vaccine_type_select']);
-                // Check dose limitation for infant immunization
-                $limits = get_standard_vaccine_dose_limits();
-                $canonicalVac = normalize_standard_vaccine_name($chosenVac) ?: $chosenVac;
-                if (isset($limits[$canonicalVac])) {
-                    $apptForCheck = fetch_appointment_by_id($appointmentId);
-                    if ($apptForCheck !== null) {
-                        $pastCounts = fetch_infant_vaccine_counts_for_appointment($apptForCheck);
+            $rawSelect = $postData['vaccine_type_select'];
+            $selectedArray = is_array($rawSelect) ? $rawSelect : [$rawSelect];
+            $finalVaccines = [];
+            $limits = get_standard_vaccine_dose_limits();
+            $apptForCheck = fetch_appointment_by_id($appointmentId);
+            $pastCounts = $apptForCheck !== null ? fetch_infant_vaccine_counts_for_appointment($apptForCheck) : [];
+
+            foreach ($selectedArray as $item) {
+                $itemStr = trim((string) $item);
+                if ($itemStr === '') continue;
+
+                if ($itemStr === 'Others') {
+                    $otherVal = trim((string) ($postData['vaccine_type_other'] ?? ''));
+                    if ($otherVal !== '') {
+                        $finalVaccines[] = $otherVal;
+                    } else {
+                        $_SESSION['staff_flash'] = 'Please specify the custom vaccine type when "Others" is selected.';
+                        $returnUrl = trim((string) ($_POST['return_url'] ?? ''));
+                        header('Location: ' . ($returnUrl !== '' ? $returnUrl : 'index.php?page=queue'));
+                        exit;
+                    }
+                } else {
+                    $canonicalVac = normalize_standard_vaccine_name($itemStr) ?: $itemStr;
+                    if (isset($limits[$canonicalVac])) {
                         $dosesTaken = (int) ($pastCounts[$canonicalVac] ?? 0);
                         $maxLimit = (int) $limits[$canonicalVac];
                         if ($dosesTaken >= $maxLimit) {
@@ -707,9 +720,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
                             exit;
                         }
                     }
+                    $finalVaccines[] = $itemStr;
                 }
-                $postData['vaccine_type'] = $chosenVac;
             }
+
+            // Deduplicate preserving order
+            $finalVaccines = array_values(array_unique($finalVaccines));
+            $postData['vaccine_type'] = implode(', ', $finalVaccines);
         }
         if (($_POST['action'] ?? '') === 'save_vitals') {
             if (empty($postData['body_temperature']) || empty($postData['pulse_rate']) || empty($postData['respiration_rate']) || empty($postData['blood_pressure'])) {
@@ -2553,53 +2570,169 @@ for ($i = 0; $i < 6; $i++) {
                                             $vaccineSchedules = get_standard_vaccine_schedules();
                                             $infantPastCounts = fetch_infant_vaccine_counts_for_appointment($selectedVitalsAppointment);
                                             $curVaccine = (string) ($selectedVitalsAppointment['vaccine_type'] ?? '');
-                                            $curCanonical = normalize_standard_vaccine_name($curVaccine) ?: $curVaccine;
-                                            $isStandard = in_array($curVaccine, array_slice($standardVaccines, 0, 8), true) || in_array($curCanonical, array_slice($standardVaccines, 0, 8), true);
-                                            $isCustom = $curVaccine !== '' && !$isStandard;
-                                            $selectedVal = $isCustom ? 'Others' : ($curCanonical ?: $curVaccine);
+                                            $parsedVaccines = split_vaccine_types($curVaccine);
+                                            $selectedStandardVaccines = [];
+                                            $customVaccines = [];
+                                            foreach ($parsedVaccines as $pv) {
+                                                $pv = trim($pv);
+                                                if ($pv === '') continue;
+                                                $canonical = normalize_standard_vaccine_name($pv);
+                                                if ($canonical !== null && in_array($canonical, array_slice($standardVaccines, 0, 8), true)) {
+                                                    $selectedStandardVaccines[] = $canonical;
+                                                } else {
+                                                    $selectedStandardVaccines[] = 'Others';
+                                                    $customVaccines[] = $pv;
+                                                }
+                                            }
+                                            $selectedStandardVaccines = array_values(array_unique($selectedStandardVaccines));
+                                            $customVaccineText = implode(', ', $customVaccines);
+                                            $hasOthersSelected = in_array('Others', $selectedStandardVaccines, true);
                                             ?>
-                                            <select id="queue_vaccine_select" name="vaccine_type_select" required class="form-input-field" style="border-color: #86efac; background: #ffffff; font-size: 0.95rem;" onchange="handleStaffVaccineSelectChange(this)">
-                                                <option value="">-- Select Standard Vaccine Type --</option>
-                                                <?php foreach ($standardVaccines as $vac): ?>
-                                                    <?php
-                                                    if ($vac === 'Others') {
-                                                        $isLimitReached = false;
-                                                        $taken = 0;
-                                                        $limit = null;
-                                                        $optLabel = 'Others (Specify custom vaccine)';
-                                                    } else {
-                                                        $limit = $vaccineLimits[$vac] ?? null;
-                                                        $taken = (int) ($infantPastCounts[$vac] ?? 0);
-                                                        $isLimitReached = ($limit !== null && $taken >= $limit);
-
-                                                        if ($isLimitReached) {
-                                                            $optLabel = $vac . ' — [Limit Reached: ' . $taken . '/' . $limit . ' doses taken]';
-                                                        } elseif ($limit !== null && $taken > 0) {
-                                                            $nextDose = $taken + 1;
-                                                            $optLabel = $vac . ' (Dose ' . $nextDose . ' of ' . $limit . ' • ' . $taken . ' taken)';
-                                                        } elseif ($limit !== null) {
-                                                            $optLabel = $vac . ' (0/' . $limit . ' doses taken)';
+                                            <div class="vaccine-multiselect-container" id="vaccine_multiselect_container" style="position: relative; width: 100%;">
+                                                <!-- Synchronized native select for accessibility and forms -->
+                                                <select id="queue_vaccine_select" name="vaccine_type_select[]" multiple style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none;" tabindex="-1" onchange="window.syncVaccineMultiSelectUI && window.syncVaccineMultiSelectUI()">
+                                                    <?php foreach ($standardVaccines as $vac): ?>
+                                                        <?php
+                                                        if ($vac === 'Others') {
+                                                            $isLimitReached = false;
+                                                            $taken = 0;
+                                                            $limit = null;
+                                                            $optLabel = 'Others (Specify custom vaccine)';
+                                                            $isSelected = $hasOthersSelected;
                                                         } else {
-                                                            $optLabel = $vac;
-                                                        }
-                                                    }
-                                                    ?>
-                                                    <option value="<?= h($vac); ?>" 
-                                                            data-limit="<?= $limit ?? ''; ?>" 
-                                                            data-taken="<?= $taken; ?>"
-                                                            <?= $isLimitReached ? 'disabled' : ''; ?>
-                                                            <?= ($selectedVal === $vac && !$isLimitReached) ? 'selected' : ''; ?>
-                                                            style="<?= $isLimitReached ? 'color: #94a3b8; background-color: #f1f5f9; text-decoration: line-through;' : ''; ?>">
-                                                        <?= h($optLabel); ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
+                                                            $limit = $vaccineLimits[$vac] ?? null;
+                                                            $taken = (int) ($infantPastCounts[$vac] ?? 0);
+                                                            $isLimitReached = ($limit !== null && $taken >= $limit);
+                                                            $isSelected = in_array($vac, $selectedStandardVaccines, true) && !$isLimitReached;
 
-                                            <div id="queue_vaccine_other_wrap" style="margin-top: 10px; display: <?= $selectedVal === 'Others' ? 'block' : 'none'; ?>;">
-                                                <label for="queue_vaccine_other" class="form-field-label" style="color: #166534; font-size: 0.85rem; font-weight: 600;">Specify Other Vaccine Type:</label>
-                                                <input type="text" id="queue_vaccine_other" name="vaccine_type_other" value="<?= $isCustom ? h($curVaccine) : ''; ?>" placeholder="Enter custom vaccine antigen or brand..." class="form-input-field" style="border-color: #86efac; background: #ffffff; font-size: 0.92rem;">
+                                                            if ($isLimitReached) {
+                                                                $optLabel = $vac . ' — [Limit Reached: ' . $taken . '/' . $limit . ' doses taken]';
+                                                            } elseif ($limit !== null && $taken > 0) {
+                                                                $nextDose = $taken + 1;
+                                                                $optLabel = $vac . ' (Dose ' . $nextDose . ' of ' . $limit . ' • ' . $taken . ' taken)';
+                                                            } elseif ($limit !== null) {
+                                                                $optLabel = $vac . ' (0/' . $limit . ' doses taken)';
+                                                            } else {
+                                                                $optLabel = $vac;
+                                                            }
+                                                        }
+                                                        ?>
+                                                        <option value="<?= h($vac); ?>" 
+                                                                data-limit="<?= $limit ?? ''; ?>" 
+                                                                data-taken="<?= $taken; ?>"
+                                                                <?= $isLimitReached ? 'disabled' : ''; ?>
+                                                                <?= $isSelected ? 'selected' : ''; ?>>
+                                                            <?= h($optLabel); ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+
+                                                <!-- Custom Multi-Select Trigger -->
+                                                <div id="vaccine_multiselect_trigger" class="vaccine-multiselect-trigger" onclick="toggleVaccineDropdown(event)" tabindex="0" role="combobox" aria-haspopup="listbox" aria-expanded="false" onkeydown="handleVaccineTriggerKeydown(event)">
+                                                    <div id="vaccine_selected_chips" class="vaccine-chips-container">
+                                                        <?php if (empty($selectedStandardVaccines)): ?>
+                                                            <span class="vaccine-chips-placeholder">-- Select Vaccine Type(s) (Multiple Allowed) --</span>
+                                                        <?php else: ?>
+                                                            <?php foreach ($selectedStandardVaccines as $sVac): ?>
+                                                                <span class="vaccine-selected-chip" data-value="<?= h($sVac); ?>">
+                                                                    <span class="vaccine-chip-text"><?= h($sVac === 'Others' ? 'Others (Custom)' : $sVac); ?></span>
+                                                                    <button type="button" class="vaccine-chip-remove" onclick="removeVaccineChip(event, '<?= h(addslashes($sVac)); ?>')" title="Remove">&times;</button>
+                                                                </span>
+                                                            <?php endforeach; ?>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <div class="vaccine-trigger-controls">
+                                                        <span id="vaccine_selected_badge" class="vaccine-count-badge" style="<?= empty($selectedStandardVaccines) ? 'display: none;' : ''; ?>">
+                                                            <?= count($selectedStandardVaccines); ?> selected
+                                                        </span>
+                                                        <span class="vaccine-dropdown-chevron">
+                                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Dropdown Menu / Checklist -->
+                                                <div id="vaccine_multiselect_menu" class="vaccine-dropdown-menu" style="display: none;">
+                                                    <div class="vaccine-menu-header">
+                                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                                            <span style="font-size: 0.78rem; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.5px;">Standard Infant Vaccines</span>
+                                                            <span style="font-size: 0.72rem; color: #64748b; font-weight: 500;">(Select multiple)</span>
+                                                        </div>
+                                                        <button type="button" class="vaccine-clear-btn" onclick="clearAllVaccines(event)">Clear all</button>
+                                                    </div>
+                                                    <div class="vaccine-options-list" role="listbox" aria-multiselectable="true">
+                                                        <?php foreach ($standardVaccines as $vac): ?>
+                                                            <?php
+                                                            if ($vac === 'Others') {
+                                                                $isLimitReached = false;
+                                                                $taken = 0;
+                                                                $limit = null;
+                                                                $isSelected = $hasOthersSelected;
+                                                                $pillText = 'Custom';
+                                                                $subLabel = 'Specify custom antigen / formulation below';
+                                                            } else {
+                                                                $limit = $vaccineLimits[$vac] ?? null;
+                                                                $taken = (int) ($infantPastCounts[$vac] ?? 0);
+                                                                $isLimitReached = ($limit !== null && $taken >= $limit);
+                                                                $isSelected = in_array($vac, $selectedStandardVaccines, true) && !$isLimitReached;
+
+                                                                if ($isLimitReached) {
+                                                                    $pillText = 'Limit Reached (' . $taken . '/' . $limit . ')';
+                                                                    $subLabel = 'Max doses completed (' . $taken . '/' . $limit . ')';
+                                                                } elseif ($limit !== null && $taken > 0) {
+                                                                    $nextDose = $taken + 1;
+                                                                    $pillText = 'Dose ' . $nextDose . ' of ' . $limit . ' (' . $taken . ' taken)';
+                                                                    $sched = $vaccineSchedules[$vac] ?? null;
+                                                                    $subLabel = $sched ? 'Schedule: ' . $sched['age'] : 'DOH EPI routine';
+                                                                } elseif ($limit !== null) {
+                                                                    $pillText = '0/' . $limit . ' doses taken';
+                                                                    $sched = $vaccineSchedules[$vac] ?? null;
+                                                                    $subLabel = $sched ? 'Schedule: ' . $sched['age'] : 'DOH EPI routine';
+                                                                } else {
+                                                                    $pillText = 'Available';
+                                                                    $subLabel = 'Routine immunization';
+                                                                }
+                                                            }
+                                                            ?>
+                                                            <div class="vaccine-option-row <?= $isLimitReached ? 'is-disabled' : ''; ?> <?= $isSelected ? 'is-selected' : ''; ?>"
+                                                                 data-value="<?= h($vac); ?>"
+                                                                 data-disabled="<?= $isLimitReached ? '1' : '0'; ?>"
+                                                                 onclick="toggleVaccineOption(event, '<?= h(addslashes($vac)); ?>')">
+                                                                <label class="vaccine-option-checkbox-wrap" onclick="event.stopPropagation()">
+                                                                    <input type="checkbox"
+                                                                           class="vaccine-option-checkbox"
+                                                                           value="<?= h($vac); ?>"
+                                                                           <?= $isLimitReached ? 'disabled' : ''; ?>
+                                                                           <?= $isSelected ? 'checked' : ''; ?>
+                                                                           onchange="onVaccineCheckboxChange(this, '<?= h(addslashes($vac)); ?>')">
+                                                                    <span class="vaccine-custom-checkbox"></span>
+                                                                </label>
+                                                                <div class="vaccine-option-content">
+                                                                    <div class="vaccine-option-name" style="<?= $isLimitReached ? 'text-decoration: line-through; color: #94a3b8;' : ''; ?>">
+                                                                        <?= h($vac === 'Others' ? 'Others (Specify custom vaccine)' : $vac); ?>
+                                                                    </div>
+                                                                    <div class="vaccine-option-sub"><?= h($subLabel); ?></div>
+                                                                </div>
+                                                                <div class="vaccine-option-badge">
+                                                                    <span class="vaccine-status-pill <?= $isLimitReached ? 'pill-limit-reached' : ($vac === 'Others' ? 'pill-custom' : ($taken > 0 ? 'pill-in-progress' : 'pill-available')); ?>">
+                                                                        <?= h($pillText); ?>
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                    <div class="vaccine-menu-footer">
+                                                        <span style="font-size: 0.74rem; color: #64748b;">Multiple routine vaccines can be co-administered per DOH guidelines.</span>
+                                                        <button type="button" class="btn btn-sm btn-primary" onclick="closeVaccineDropdown(event)" style="padding: 4px 14px; font-size: 0.8rem; background: #16a34a; border-color: #16a34a; border-radius: 6px; font-weight: 600;">Done</button>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <small style="display: block; margin-top: 6px; color: #15803d; font-size: 0.82rem;">Select from standard DOH national immunization program vaccines (with infant dose limits enforced), or choose Others to specify.</small>
+
+                                            <div id="queue_vaccine_other_wrap" style="margin-top: 10px; display: <?= $hasOthersSelected ? 'block' : 'none'; ?>;">
+                                                <label for="queue_vaccine_other" class="form-field-label" style="color: #166534; font-size: 0.85rem; font-weight: 600;">Specify Other Vaccine Type:</label>
+                                                <input type="text" id="queue_vaccine_other" name="vaccine_type_other" value="<?= h($customVaccineText); ?>" placeholder="Enter custom vaccine antigen or brand..." class="form-input-field" style="border-color: #86efac; background: #ffffff; font-size: 0.92rem;">
+                                            </div>
+                                            <small style="display: block; margin-top: 6px; color: #15803d; font-size: 0.82rem;">Select one or more vaccines from standard DOH national immunization program (with infant dose limits enforced), or choose Others to specify.</small>
 
                                             <!-- Infant Immunization Schedule & Dose Status Tracker Card -->
                                             <div class="vaccine-schedule-status-box" style="margin-top: 14px; background: #ffffff; border: 1.5px solid #bbf7d0; border-radius: 12px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
@@ -6494,24 +6627,211 @@ window.closePatientProfileModal = function(e, returnUrl) {
     return false;
 };
 
-window.handleStaffVaccineSelectChange = function(selectElem) {
-    if (!selectElem) return;
-    const selectedOpt = selectElem.options[selectElem.selectedIndex];
-    if (selectedOpt && selectedOpt.disabled) {
-        alert('This vaccine type has reached its dose limit for this infant and cannot be selected.');
-        selectElem.value = '';
+// Infant Immunization Vaccine Multi-Select Dropdown Handlers
+window.toggleVaccineDropdown = function(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
     }
+    const menu = document.getElementById('vaccine_multiselect_menu');
+    const trigger = document.getElementById('vaccine_multiselect_trigger');
+    if (!menu || !trigger) return;
+
+    const isOpen = menu.style.display === 'block';
+    if (isOpen) {
+        window.closeVaccineDropdown();
+    } else {
+        window.openVaccineDropdown();
+    }
+};
+
+window.openVaccineDropdown = function() {
+    const menu = document.getElementById('vaccine_multiselect_menu');
+    const trigger = document.getElementById('vaccine_multiselect_trigger');
+    if (!menu || !trigger) return;
+
+    menu.style.display = 'block';
+    trigger.classList.add('is-open');
+    trigger.setAttribute('aria-expanded', 'true');
+};
+
+window.closeVaccineDropdown = function(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('vaccine_multiselect_menu');
+    const trigger = document.getElementById('vaccine_multiselect_trigger');
+    if (!menu || !trigger) return;
+
+    menu.style.display = 'none';
+    trigger.classList.remove('is-open');
+    trigger.setAttribute('aria-expanded', 'false');
+};
+
+window.handleVaccineTriggerKeydown = function(e) {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        window.openVaccineDropdown();
+    } else if (e.key === 'Escape') {
+        window.closeVaccineDropdown();
+    }
+};
+
+window.toggleVaccineOption = function(e, vacName) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('vaccine_multiselect_menu');
+    if (!menu) return;
+
+    const row = menu.querySelector(`.vaccine-option-row[data-value="${CSS.escape(vacName)}"]`);
+    if (!row) return;
+
+    if (row.getAttribute('data-disabled') === '1') {
+        alert('This vaccine type has reached its dose limit for this infant and cannot be selected.');
+        return;
+    }
+
+    const cb = row.querySelector('.vaccine-option-checkbox');
+    if (!cb || cb.disabled) return;
+
+    cb.checked = !cb.checked;
+    window.onVaccineCheckboxChange(cb, vacName);
+};
+
+window.onVaccineCheckboxChange = function(cb, vacName) {
+    if (!cb) return;
+    if (cb.disabled) {
+        cb.checked = false;
+        alert('This vaccine type has reached its dose limit for this infant and cannot be selected.');
+        return;
+    }
+
+    const selectElem = document.getElementById('queue_vaccine_select');
+    if (selectElem) {
+        for (let i = 0; i < selectElem.options.length; i++) {
+            if (selectElem.options[i].value === vacName) {
+                if (selectElem.options[i].disabled) {
+                    cb.checked = false;
+                    alert('This vaccine type has reached its dose limit for this infant and cannot be selected.');
+                    return;
+                }
+                selectElem.options[i].selected = cb.checked;
+                break;
+            }
+        }
+    }
+
+    window.syncVaccineMultiSelectUI();
+};
+
+window.removeVaccineChip = function(e, vacName) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const selectElem = document.getElementById('queue_vaccine_select');
+    if (selectElem) {
+        for (let i = 0; i < selectElem.options.length; i++) {
+            if (selectElem.options[i].value === vacName) {
+                selectElem.options[i].selected = false;
+                break;
+            }
+        }
+    }
+    window.syncVaccineMultiSelectUI();
+};
+
+window.clearAllVaccines = function(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const selectElem = document.getElementById('queue_vaccine_select');
+    if (selectElem) {
+        for (let i = 0; i < selectElem.options.length; i++) {
+            if (!selectElem.options[i].disabled) {
+                selectElem.options[i].selected = false;
+            }
+        }
+    }
+    window.syncVaccineMultiSelectUI();
+};
+
+window.syncVaccineMultiSelectUI = function() {
+    const selectElem = document.getElementById('queue_vaccine_select');
+    const menu = document.getElementById('vaccine_multiselect_menu');
+    const chipsContainer = document.getElementById('vaccine_selected_chips');
+    const badge = document.getElementById('vaccine_selected_badge');
+    const trigger = document.getElementById('vaccine_multiselect_trigger');
     const otherWrap = document.getElementById('queue_vaccine_other_wrap');
     const otherInput = document.getElementById('queue_vaccine_other');
-    if (selectElem.value.trim() !== '') {
-        selectElem.classList.remove('input-has-error');
-        const err = selectElem.closest('.form-group-item')?.querySelector('.field-error-text');
+
+    if (!selectElem) return;
+
+    const selectedValues = Array.from(selectElem.selectedOptions || [])
+        .map(opt => opt.value)
+        .filter(v => v !== '');
+
+    // Sync menu rows and checkboxes
+    if (menu) {
+        const rows = menu.querySelectorAll('.vaccine-option-row');
+        rows.forEach(row => {
+            const val = row.getAttribute('data-value');
+            const cb = row.querySelector('.vaccine-option-checkbox');
+            const isSelected = selectedValues.includes(val);
+            if (cb && !cb.disabled) {
+                cb.checked = isSelected;
+            }
+            if (isSelected) {
+                row.classList.add('is-selected');
+            } else {
+                row.classList.remove('is-selected');
+            }
+        });
+    }
+
+    // Sync trigger chips
+    if (chipsContainer) {
+        if (selectedValues.length === 0) {
+            chipsContainer.innerHTML = '<span class="vaccine-chips-placeholder">-- Select Vaccine Type(s) (Multiple Allowed) --</span>';
+        } else {
+            let chipsHtml = '';
+            selectedValues.forEach(val => {
+                const label = (val === 'Others') ? 'Others (Custom)' : val;
+                const safeVal = val.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                chipsHtml += `
+                    <span class="vaccine-selected-chip" data-value="${safeVal}">
+                        <span class="vaccine-chip-text">${label}</span>
+                        <button type="button" class="vaccine-chip-remove" onclick="removeVaccineChip(event, '${safeVal}')" title="Remove">&times;</button>
+                    </span>
+                `;
+            });
+            chipsContainer.innerHTML = chipsHtml;
+        }
+    }
+
+    // Sync count badge
+    if (badge) {
+        if (selectedValues.length > 0) {
+            badge.style.display = 'inline-block';
+            badge.textContent = `${selectedValues.length} selected`;
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    // Clear validation error on trigger if at least 1 selected
+    if (trigger && selectedValues.length > 0) {
+        trigger.classList.remove('input-has-error');
+        const container = trigger.closest('.form-group-item');
+        const err = container?.querySelector('.field-error-text');
         if (err) err.remove();
     }
+
+    // Handle "Others" specification input
     if (otherWrap) {
-        if (selectElem.value === 'Others') {
+        if (selectedValues.includes('Others')) {
             otherWrap.style.display = 'block';
-            if (otherInput) otherInput.focus();
+            if (otherInput && otherInput.value.trim() === '') {
+                otherInput.focus();
+            }
         } else {
             otherWrap.style.display = 'none';
             if (otherInput) {
@@ -6522,6 +6842,20 @@ window.handleStaffVaccineSelectChange = function(selectElem) {
         }
     }
 };
+
+window.handleStaffVaccineSelectChange = function(selectElem) {
+    if (!selectElem) return;
+    window.syncVaccineMultiSelectUI();
+};
+
+// Close vaccine dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const container = document.getElementById('vaccine_multiselect_container');
+    if (!container) return;
+    if (!container.contains(e.target)) {
+        window.closeVaccineDropdown();
+    }
+});
 
 window.togglePatientInfantsTray = function(profKey) {
     const tray = document.getElementById('infantsTray_' + profKey);
@@ -7559,18 +7893,31 @@ window.handleVitalNumericKeydown = handleVitalNumericKeydown;
         }
 
         // 7. Vaccine Type Select (Infant Immunization)
-        const vaccineSelect = form.querySelector('[name="vaccine_type_select"]');
+        const vaccineSelect = form.querySelector('[name="vaccine_type_select[]"]') || form.querySelector('[name="vaccine_type_select"]') || form.querySelector('#queue_vaccine_select');
         if (vaccineSelect) {
-            const vacVal = vaccineSelect.value.trim();
-            const selectedOpt = vaccineSelect.options[vaccineSelect.selectedIndex];
-            if (!vacVal) {
-                markVitalError(vaccineSelect, 'Please select a vaccine type.');
-            } else if (selectedOpt && selectedOpt.disabled) {
-                markVitalError(vaccineSelect, 'The selected vaccine has reached its dose limit and cannot be selected.');
-            } else if (vacVal === 'Others') {
-                const vacOtherInput = form.querySelector('[name="vaccine_type_other"]');
-                if (vacOtherInput && !vacOtherInput.value.trim()) {
-                    markVitalError(vacOtherInput, 'Please specify the vaccine type.');
+            const triggerEl = document.getElementById('vaccine_multiselect_trigger') || vaccineSelect;
+            const selectedOptions = Array.from(vaccineSelect.selectedOptions || []).filter(opt => opt.value !== '');
+            if (selectedOptions.length === 0) {
+                markVitalError(triggerEl, 'Please select at least one vaccine type.');
+            } else {
+                let hasDisabled = false;
+                let hasOthers = false;
+                for (const opt of selectedOptions) {
+                    if (opt.disabled) {
+                        hasDisabled = true;
+                    }
+                    if (opt.value === 'Others') {
+                        hasOthers = true;
+                    }
+                }
+                if (hasDisabled) {
+                    markVitalError(triggerEl, 'One or more selected vaccines have reached their dose limit and cannot be selected.');
+                }
+                if (hasOthers) {
+                    const vacOtherInput = form.querySelector('[name="vaccine_type_other"]');
+                    if (vacOtherInput && !vacOtherInput.value.trim()) {
+                        markVitalError(vacOtherInput, 'Please specify the custom vaccine type.');
+                    }
                 }
             }
         }
