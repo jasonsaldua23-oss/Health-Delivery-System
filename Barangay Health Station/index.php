@@ -916,6 +916,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'save
     exit;
 }
 $page = $_GET['page'] ?? 'dashboard';
+$view = trim((string) ($_GET['view'] ?? ''));
+if ($page === 'unattended') {
+    $redir = ['page' => 'dashboard', 'view' => 'unattended'];
+    if (isset($_GET['timeframe'])) $redir['timeframe'] = $_GET['timeframe'];
+    if (isset($_GET['type'])) $redir['type'] = $_GET['type'];
+    if (isset($_GET['unattended_search'])) $redir['unattended_search'] = $_GET['unattended_search'];
+    header('Location: ?' . http_build_query($redir));
+    exit;
+}
+$isUnattendedDashboardView = ($page === 'dashboard' && $view === 'unattended');
 $unattendedTimeframe = trim((string) ($_GET['timeframe'] ?? 'all'));
 if (!in_array($unattendedTimeframe, ['today', 'week', 'month', 'all'], true)) {
     $unattendedTimeframe = 'all';
@@ -925,7 +935,6 @@ if (!in_array($unattendedType, ['all', 'appts', 'queue'], true)) {
     $unattendedType = 'all';
 }
 $unattendedSearch = trim((string) ($_GET['unattended_search'] ?? ''));
-$view = trim((string) ($_GET['view'] ?? ''));
 $programFilter = trim((string) ($_GET['program'] ?? ''));
 $statusFilter = trim((string) ($_GET['status'] ?? ''));
 $dateFilter = trim((string) ($_GET['date'] ?? 'both'));
@@ -1468,13 +1477,6 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
             <nav class="sidebar-nav">
                 <a class="<?= $page === 'dashboard' ? 'active' : ''; ?>" href="?page=dashboard"><?= staff_icon('dashboard'); ?><span>Dashboard</span></a>
                 <a class="<?= $page === 'appointments' ? 'active' : ''; ?>" href="?page=appointments"><?= staff_icon('appointments'); ?><span>Appointments</span></a>
-                <a class="<?= $page === 'unattended' ? 'active' : ''; ?>" href="?page=unattended">
-                    <?= staff_icon('clock'); ?>
-                    <span>Unattended Records</span>
-                    <?php if ($unattendedTotalCount > 0): ?>
-                        <span class="unattended-nav-badge"><?= $unattendedTotalCount; ?></span>
-                    <?php endif; ?>
-                </a>
                 <a class="<?= $page === 'queue' ? 'active' : ''; ?>" href="?page=queue"><?= staff_icon('queue'); ?><span>Queue Management</span></a>
                 <a class="<?= $page === 'patients' ? 'active' : ''; ?>" href="?page=patients"><?= staff_icon('patients'); ?><span>Patients</span></a>
                 <a class="<?= $page === 'image-capture' ? 'active' : ''; ?>" href="?page=image-capture"><?= staff_icon('camera'); ?><span>Image Capture</span></a>
@@ -1534,15 +1536,338 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
         <?php endif; ?>
 
         <?php if ($page === 'dashboard'): ?>
-            <!-- Hero Greeting Section -->
-            <section class="dash-hero-card">
-                <div class="dash-hero-copy">
-                    <div class="dash-hero-badge">
-                        <?= staff_icon('sparkle'); ?>
-                        <span>Barangay Health &amp; Volunteer Command</span>
+            <?php if ($isUnattendedDashboardView): ?>
+                <?php
+                $currentTfCount = $timeframeCounts[$unattendedTimeframe] ?? $unattendedStats;
+                $filteredApptsCount = count($pageUnattendedAppts);
+                $filteredQueueCount = count($pageUnattendedQueue);
+                $filteredTotalCount = $filteredApptsCount + $filteredQueueCount;
+                $timeframeLabels = [
+                    'today' => 'Today',
+                    'week'  => 'This Week',
+                    'month' => 'This Month',
+                    'all'   => 'All Records',
+                ];
+                $currentTimeframeLabel = $timeframeLabels[$unattendedTimeframe] ?? 'All Records';
+                ?>
+                <div class="unattended-subpage-container">
+                    <!-- Top Navigation Bar & Breadcrumb -->
+                    <div class="unattended-subpage-topbar">
+                        <a href="?page=dashboard" class="unattended-back-to-dash-btn">
+                            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                            <span>Back to Dashboard</span>
+                        </a>
+                        <div class="unattended-subpage-breadcrumbs">
+                            <a href="?page=dashboard">Dashboard</a>
+                            <span class="sep">/</span>
+                            <span class="current">Station Operations Audit</span>
+                        </div>
                     </div>
-                    <h1>Welcome back, <?= h($staffAccount['staff_name']); ?> 👋</h1>
-                    <p><?= h($station['name']); ?> • Serving the healthcare needs of Brgy. <?= h($station['barangay']); ?>, Bacolod City.</p>
+
+                    <!-- Hero Header -->
+                    <section class="unattended-page-hero">
+                        <div class="unattended-hero-meta">
+                            <div class="unattended-hero-badge">
+                                <?= staff_icon('clock'); ?>
+                                <span>Operations &amp; Compliance Audit • <?= h($station['name']); ?></span>
+                            </div>
+                            <h1>Unattended &amp; Unserved Records</h1>
+                            <p>Detailed operational ledger of consultation requests past scheduled dates and incomplete station queues requiring staff review or patient contact.</p>
+                        </div>
+                        <div class="unattended-hero-counter">
+                            <span class="num"><?= $currentTfCount['total']; ?></span>
+                            <span class="lbl"><?= h($currentTimeframeLabel); ?> Items</span>
+                        </div>
+                    </section>
+
+                    <!-- Filter & Control Toolbar Card -->
+                    <section class="unattended-controls-card">
+                        <div class="unattended-controls-left">
+                            <div class="unattended-timeframe-picker">
+                                <label for="unattendedTimeframeSelect" class="unattended-control-label">
+                                    <?= staff_icon('calendar'); ?>
+                                    <span>Timeframe:</span>
+                                </label>
+                                <form method="get" class="unattended-timeframe-form" style="margin:0;">
+                                    <input type="hidden" name="page" value="dashboard">
+                                    <input type="hidden" name="view" value="unattended">
+                                    <?php if ($unattendedType !== 'all'): ?>
+                                        <input type="hidden" name="type" value="<?= h($unattendedType); ?>">
+                                    <?php endif; ?>
+                                    <?php if ($unattendedSearch !== ''): ?>
+                                        <input type="hidden" name="unattended_search" value="<?= h($unattendedSearch); ?>">
+                                    <?php endif; ?>
+                                    <select name="timeframe" id="unattendedTimeframeSelect" class="unattended-select-dropdown" onchange="this.form.submit()">
+                                        <option value="today" <?= $unattendedTimeframe === 'today' ? 'selected' : ''; ?>>Today (<?= $timeframeCounts['today']['total']; ?>)</option>
+                                        <option value="week" <?= $unattendedTimeframe === 'week' ? 'selected' : ''; ?>>This Week (<?= $timeframeCounts['week']['total']; ?>)</option>
+                                        <option value="month" <?= $unattendedTimeframe === 'month' ? 'selected' : ''; ?>>This Month (<?= $timeframeCounts['month']['total']; ?>)</option>
+                                        <option value="all" <?= $unattendedTimeframe === 'all' ? 'selected' : ''; ?>>All Records (<?= $timeframeCounts['all']['total']; ?>)</option>
+                                    </select>
+                                </form>
+                            </div>
+
+                            <!-- Type Segmented Control -->
+                            <div class="unattended-type-pills">
+                                <a href="?page=dashboard&view=unattended&timeframe=<?= h($unattendedTimeframe); ?><?= $unattendedSearch !== '' ? '&unattended_search=' . urlencode($unattendedSearch) : ''; ?>&type=all" 
+                                   class="unattended-type-pill <?= $unattendedType === 'all' ? 'active' : ''; ?>">
+                                    <span>All Records</span>
+                                    <span class="count"><?= $currentTfCount['total']; ?></span>
+                                </a>
+                                <a href="?page=dashboard&view=unattended&timeframe=<?= h($unattendedTimeframe); ?><?= $unattendedSearch !== '' ? '&unattended_search=' . urlencode($unattendedSearch) : ''; ?>&type=appts" 
+                                   class="unattended-type-pill <?= $unattendedType === 'appts' ? 'active' : ''; ?>">
+                                    <span>Unattended Requests</span>
+                                    <span class="count"><?= $currentTfCount['appointments']; ?></span>
+                                </a>
+                                <a href="?page=dashboard&view=unattended&timeframe=<?= h($unattendedTimeframe); ?><?= $unattendedSearch !== '' ? '&unattended_search=' . urlencode($unattendedSearch) : ''; ?>&type=queue" 
+                                   class="unattended-type-pill <?= $unattendedType === 'queue' ? 'active' : ''; ?>">
+                                    <span>Unserved Queue</span>
+                                    <span class="count"><?= $currentTfCount['queue']; ?></span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Search Input Form -->
+                        <div class="unattended-controls-right">
+                            <form method="get" class="unattended-search-wrap">
+                                <input type="hidden" name="page" value="dashboard">
+                                <input type="hidden" name="view" value="unattended">
+                                <input type="hidden" name="timeframe" value="<?= h($unattendedTimeframe); ?>">
+                                <input type="hidden" name="type" value="<?= h($unattendedType); ?>">
+                                <span class="unattended-search-icon"><?= staff_icon('search'); ?></span>
+                                <input type="search" name="unattended_search" value="<?= h($unattendedSearch); ?>" placeholder="Search patient, code, or service..." class="unattended-search-input">
+                                <button type="submit" class="primary-btn teal-btn slim">Search</button>
+                                <?php if ($unattendedSearch !== ''): ?>
+                                    <a href="?page=dashboard&view=unattended&timeframe=<?= h($unattendedTimeframe); ?>&type=<?= h($unattendedType); ?>" class="ghost-btn slim" title="Clear search">Clear</a>
+                                <?php endif; ?>
+                            </form>
+                        </div>
+                    </section>
+
+                    <!-- 3 KPI Metric Cards for Timeframe -->
+                    <section class="unattended-kpis-grid">
+                        <article class="unattended-kpi-card amber">
+                            <div class="unattended-kpi-icon amber"><?= staff_icon('clock'); ?></div>
+                            <div class="unattended-kpi-content">
+                                <span class="unattended-kpi-label">Unattended Requests</span>
+                                <strong class="unattended-kpi-val"><?= number_format($currentTfCount['appointments']); ?></strong>
+                                <small class="unattended-kpi-hint">Booked visits past date without action</small>
+                            </div>
+                        </article>
+
+                        <article class="unattended-kpi-card orange">
+                            <div class="unattended-kpi-icon orange"><?= staff_icon('users'); ?></div>
+                            <div class="unattended-kpi-content">
+                                <span class="unattended-kpi-label">Unserved Station Queue</span>
+                                <strong class="unattended-kpi-val"><?= number_format($currentTfCount['queue']); ?></strong>
+                                <small class="unattended-kpi-hint">Queued visits unfinalized at day end</small>
+                            </div>
+                        </article>
+
+                        <article class="unattended-kpi-card emerald">
+                            <div class="unattended-kpi-icon emerald"><?= staff_icon('alert'); ?></div>
+                            <div class="unattended-kpi-content">
+                                <span class="unattended-kpi-label">Audit Scope Total</span>
+                                <strong class="unattended-kpi-val"><?= number_format($currentTfCount['total']); ?></strong>
+                                <small class="unattended-kpi-hint">
+                                    <?php if ($currentTfCount['total'] === 0): ?>
+                                        <span class="status-pill status-completed" style="font-size:11px;padding:2px 7px;">✓ All Clear</span>
+                                    <?php else: ?>
+                                        <span class="status-pill" style="background:#fee2e2;color:#991b1b;font-size:11px;padding:2px 7px;border:1px solid #fca5a5;">⚡ Follow-up Required</span>
+                                    <?php endif; ?>
+                                </small>
+                            </div>
+                        </article>
+                    </section>
+
+                    <!-- Records List -->
+                    <?php
+                    $showAppts = in_array($unattendedType, ['all', 'appts'], true);
+                    $showQueue = in_array($unattendedType, ['all', 'queue'], true);
+                    $hasAnyRecords = ($showAppts && $pageUnattendedAppts !== []) || ($showQueue && $pageUnattendedQueue !== []);
+                    ?>
+
+                    <?php if (!$hasAnyRecords): ?>
+                        <div class="unattended-empty-card">
+                            <div class="unattended-empty-icon"><?= staff_icon('check'); ?></div>
+                            <h3>No Records Require Attention</h3>
+                            <p>There are no unattended appointment requests or unserved queue records matching <strong><?= h($currentTimeframeLabel); ?></strong><?= $unattendedSearch !== '' ? ' with search term "' . h($unattendedSearch) . '"' : ''; ?>. All patient visits are up to date.</p>
+                            <div class="unattended-empty-actions">
+                                <a href="?page=dashboard&view=unattended&timeframe=all" class="primary-btn teal-btn slim">View All Records</a>
+                                <a href="?page=dashboard" class="ghost-btn slim">Back to Dashboard</a>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <!-- Section 1: Unattended Appointment Requests -->
+                        <?php if ($showAppts && $pageUnattendedAppts !== []): ?>
+                            <section class="unattended-records-section">
+                                <div class="unattended-section-header">
+                                    <div class="unattended-section-title-wrap">
+                                        <span class="unattended-sec-icon amber"><?= staff_icon('clock'); ?></span>
+                                        <div>
+                                            <h3>Unattended Appointment Requests (<?= count($pageUnattendedAppts); ?>)</h3>
+                                            <p>Booked patient appointments that passed scheduled dates without staff confirmation or cancellation</p>
+                                        </div>
+                                    </div>
+                                    <span class="unattended-type-tag amber"><?= count($pageUnattendedAppts); ?> Missed Actions</span>
+                                </div>
+
+                                <div class="unattended-cards-stack">
+                                    <?php foreach ($pageUnattendedAppts as $appt): ?>
+                                        <?php
+                                        $apptCode = (string) ($appt['appointment_code'] ?: $appt['reference_code'] ?: 'N/A');
+                                        $preferredDate = (string) ($appt['preferred_date'] ?? '');
+                                        $formattedDate = $preferredDate !== '' ? date('F j, Y', strtotime($preferredDate)) : 'N/A';
+                                        $patientName = full_name($appt);
+                                        $serviceName = (string) ($appt['service_name'] ?? 'General Consultation');
+                                        $contact = (string) ($appt['contact_number'] ?? 'None');
+                                        $patientId = (string) ($appt['patient_id'] ?? '');
+                                        ?>
+                                        <article class="unattended-record-card is-appts">
+                                            <div class="unattended-record-body">
+                                                <div class="unattended-record-top-tags">
+                                                    <span class="unattended-type-tag amber">Unattended Request</span>
+                                                    <span class="appt-code-badge">#<?= h($apptCode); ?></span>
+                                                    <span class="queue-meta-pill service">
+                                                        <?= staff_icon('stethoscope'); ?>
+                                                        <span><?= h($serviceName); ?></span>
+                                                    </span>
+                                                </div>
+                                                <h4 class="unattended-record-name"><?= h($patientName); ?></h4>
+                                                <div class="unattended-record-meta-grid">
+                                                    <div class="unattended-meta-cell">
+                                                        <strong>Scheduled Date:</strong>
+                                                        <span class="date-highlight"><?= h($formattedDate); ?></span>
+                                                        <small style="color:#64748b;">(<?= h((string) ($appt['preferred_time'] ?? 'Regular')); ?>)</small>
+                                                    </div>
+                                                    <div class="unattended-meta-cell">
+                                                        <strong>Contact:</strong>
+                                                        <span><?= h($contact); ?></span>
+                                                    </div>
+                                                    <div class="unattended-meta-cell">
+                                                        <strong>Demographics:</strong>
+                                                        <span><?= h(age_label($appt)); ?> • <?= h((string) ($appt['gender'] ?? '')); ?></span>
+                                                    </div>
+                                                    <div class="unattended-meta-cell">
+                                                        <strong>Health Station:</strong>
+                                                        <span><?= h((string) ($appt['station_name'] ?? $station['name'])); ?></span>
+                                                    </div>
+                                                </div>
+                                                <div class="unattended-audit-callout amber">
+                                                    <?= staff_icon('alert'); ?>
+                                                    <span><strong>Audit Notice:</strong> Booked for <strong><?= h($formattedDate); ?></strong> with status <em>Pending</em>. The scheduled date concluded without staff confirming or cancelling the appointment.</span>
+                                                </div>
+                                            </div>
+                                            <div class="unattended-record-actions">
+                                                <?php if ($patientId !== ''): ?>
+                                                    <a href="?page=patients&view_patient_id=<?= urlencode($patientId); ?>" class="ghost-btn slim" title="Inspect patient medical profile">
+                                                        <?= staff_icon('user'); ?>
+                                                        <span>Patient Profile</span>
+                                                    </a>
+                                                <?php endif; ?>
+                                                <a href="?page=appointments&search=<?= urlencode($apptCode); ?>" class="primary-btn teal-btn slim" title="Manage in Appointments">
+                                                    <?= staff_icon('appointments'); ?>
+                                                    <span>Manage Appt</span>
+                                                </a>
+                                            </div>
+                                        </article>
+                                    <?php endforeach; ?>
+                                </div>
+                            </section>
+                        <?php endif; ?>
+
+                        <!-- Section 2: Unserved Station Queue -->
+                        <?php if ($showQueue && $pageUnattendedQueue !== []): ?>
+                            <section class="unattended-records-section">
+                                <div class="unattended-section-header">
+                                    <div class="unattended-section-title-wrap">
+                                        <span class="unattended-sec-icon orange"><?= staff_icon('users'); ?></span>
+                                        <div>
+                                            <h3>Unserved Station Queue Records (<?= count($pageUnattendedQueue); ?>)</h3>
+                                            <p>Patients who were confirmed or waiting in queue but station day concluded without consultation completion</p>
+                                        </div>
+                                    </div>
+                                    <span class="unattended-type-tag orange"><?= count($pageUnattendedQueue); ?> Incomplete Visits</span>
+                                </div>
+
+                                <div class="unattended-cards-stack">
+                                    <?php foreach ($pageUnattendedQueue as $qItem): ?>
+                                        <?php
+                                        $qCode = (string) ($qItem['appointment_code'] ?: $qItem['reference_code'] ?: 'N/A');
+                                        $queueNum = (string) ($qItem['queue_number'] ?? '');
+                                        $preferredDate = (string) ($qItem['preferred_date'] ?? '');
+                                        $formattedDate = $preferredDate !== '' ? date('F j, Y', strtotime($preferredDate)) : 'N/A';
+                                        $patientName = full_name($qItem);
+                                        $serviceName = (string) ($qItem['service_name'] ?? 'General Consultation');
+                                        $contact = (string) ($qItem['contact_number'] ?? 'None');
+                                        $patientId = (string) ($qItem['patient_id'] ?? '');
+                                        $qStatus = (string) ($qItem['status'] ?? 'Confirmed');
+                                        ?>
+                                        <article class="unattended-record-card is-queue">
+                                            <div class="unattended-record-body">
+                                                <div class="unattended-record-top-tags">
+                                                    <span class="unattended-type-tag orange">Unserved Queue</span>
+                                                    <?php if ($queueNum !== ''): ?>
+                                                        <span class="queue-num-badge">Queue #<?= h($queueNum); ?></span>
+                                                    <?php endif; ?>
+                                                    <span class="appt-code-badge">#<?= h($qCode); ?></span>
+                                                    <span class="queue-meta-pill service">
+                                                        <?= staff_icon('stethoscope'); ?>
+                                                        <span><?= h($serviceName); ?></span>
+                                                    </span>
+                                                </div>
+                                                <h4 class="unattended-record-name"><?= h($patientName); ?></h4>
+                                                <div class="unattended-record-meta-grid">
+                                                    <div class="unattended-meta-cell">
+                                                        <strong>Appointment Date:</strong>
+                                                        <span class="date-highlight"><?= h($formattedDate); ?></span>
+                                                    </div>
+                                                    <div class="unattended-meta-cell">
+                                                        <strong>Queue Status:</strong>
+                                                        <span class="status-pill status-queue-waiting"><?= h($qStatus); ?></span>
+                                                    </div>
+                                                    <div class="unattended-meta-cell">
+                                                        <strong>Contact:</strong>
+                                                        <span><?= h($contact); ?></span>
+                                                    </div>
+                                                    <div class="unattended-meta-cell">
+                                                        <strong>Demographics:</strong>
+                                                        <span><?= h(age_label($qItem)); ?> • <?= h((string) ($qItem['gender'] ?? '')); ?></span>
+                                                    </div>
+                                                </div>
+                                                <div class="unattended-audit-callout orange">
+                                                    <?= staff_icon('clock'); ?>
+                                                    <span><strong>Audit Notice:</strong> Patient checked into queue on <strong><?= h($formattedDate); ?></strong> as <em><?= h($qStatus); ?></em>, but station operating hours ended before consultation was recorded as completed.</span>
+                                                </div>
+                                            </div>
+                                            <div class="unattended-record-actions">
+                                                <?php if ($patientId !== ''): ?>
+                                                    <a href="?page=patients&view_patient_id=<?= urlencode($patientId); ?>" class="ghost-btn slim" title="Inspect patient medical profile">
+                                                        <?= staff_icon('user'); ?>
+                                                        <span>Patient Profile</span>
+                                                    </a>
+                                                <?php endif; ?>
+                                                <a href="?page=queue&queue_date=both&search=<?= urlencode($qCode); ?>" class="primary-btn teal-btn slim" title="Manage in Queue">
+                                                    <?= staff_icon('queue'); ?>
+                                                    <span>Manage Queue</span>
+                                                </a>
+                                            </div>
+                                        </article>
+                                    <?php endforeach; ?>
+                                </div>
+                            </section>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+            <?php else: ?>
+                <!-- Hero Greeting Section -->
+                <section class="dash-hero-card">
+                    <div class="dash-hero-copy">
+                        <div class="dash-hero-badge">
+                            <?= staff_icon('sparkle'); ?>
+                            <span>Barangay Health &amp; Volunteer Command</span>
+                        </div>
+                        <h1>Welcome back, <?= h($staffAccount['staff_name']); ?> 👋</h1>
+                        <p><?= h($station['name']); ?> • Serving the healthcare needs of Brgy. <?= h($station['barangay']); ?>, Bacolod City.</p>
                 </div>
             </section>
 
@@ -1617,21 +1942,15 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                             <p>Track patient appointment requests and queues that were left unserved past scheduled dates</p>
                         </div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-                        <a href="?page=unattended" class="dash-audit-view-all-link" title="View all unattended and unserved appointments">
-                            <span>View all</span>
-                            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2.2" fill="none"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                        </a>
-                        <?php if ($unattendedApptsCount > 0 || $unattendedQueueCount > 0): ?>
-                            <div class="dash-audit-pill amber" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;">
-                                ⚡ <?= ($unattendedApptsCount + $unattendedQueueCount); ?> Total Attention Items
-                            </div>
-                        <?php else: ?>
-                            <div class="dash-audit-pill" style="background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;">
-                                ✓ All Past Records Clear
-                            </div>
-                        <?php endif; ?>
-                    </div>
+                    <?php if ($unattendedApptsCount > 0 || $unattendedQueueCount > 0): ?>
+                        <div class="dash-audit-pill amber" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;">
+                            ⚡ <?= ($unattendedApptsCount + $unattendedQueueCount); ?> Total Attention Items
+                        </div>
+                    <?php else: ?>
+                        <div class="dash-audit-pill" style="background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;">
+                            ✓ All Past Records Clear
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="dash-audit-grid">
@@ -1641,10 +1960,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                             <div class="dash-audit-icon-wrap amber">
                                 <?= staff_icon('clock'); ?>
                             </div>
-                            <div style="display:flex;align-items:center;gap:8px;">
-                                <a href="?page=unattended&type=appts" class="dash-audit-card-view-all" onclick="event.stopPropagation();" title="View all unattended appointment requests">View all &rarr;</a>
-                                <span class="dash-audit-pill amber">Staff Action Missed</span>
-                            </div>
+                            <span class="dash-audit-pill amber">Staff Action Missed</span>
                         </div>
                         <div class="dash-audit-body">
                             <h3><?= number_format($unattendedApptsCount); ?></h3>
@@ -1663,10 +1979,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                             <div class="dash-audit-icon-wrap orange">
                                 <?= staff_icon('users'); ?>
                             </div>
-                            <div style="display:flex;align-items:center;gap:8px;">
-                                <a href="?page=unattended&type=queue" class="dash-audit-card-view-all" onclick="event.stopPropagation();" title="View all unserved station queue records">View all &rarr;</a>
-                                <span class="dash-audit-pill orange">No-Show / Unserved</span>
-                            </div>
+                            <span class="dash-audit-pill orange">No-Show / Unserved</span>
                         </div>
                         <div class="dash-audit-body">
                             <h3><?= number_format($unattendedQueueCount); ?></h3>
@@ -1778,275 +2091,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                     </section>
                 </div>
             </div>
-        <?php elseif ($page === 'unattended'): ?>
-            <?php
-            $currentTfCount = $timeframeCounts[$unattendedTimeframe] ?? $unattendedStats;
-            $filteredApptsCount = count($pageUnattendedAppts);
-            $filteredQueueCount = count($pageUnattendedQueue);
-            $filteredTotalCount = $filteredApptsCount + $filteredQueueCount;
-            $timeframeLabels = [
-                'today' => 'Today',
-                'week'  => 'This Week',
-                'month' => 'This Month',
-                'all'   => 'All Records',
-            ];
-            $currentTimeframeLabel = $timeframeLabels[$unattendedTimeframe] ?? 'All Records';
-            ?>
-            <section class="page-hero unattended-page-hero">
-                <div class="unattended-hero-meta">
-                    <div class="unattended-hero-badge">
-                        <?= staff_icon('clock'); ?>
-                        <span>Operations Audit • <?= h($station['name']); ?></span>
-                    </div>
-                    <h1>Unattended &amp; Unserved Appointments</h1>
-                    <p>Review and audit past-due consultation requests and unserved patient queues requiring clinical resolution or patient re-scheduling.</p>
-                </div>
-                <div class="unattended-hero-counter">
-                    <span class="num"><?= $currentTfCount['total']; ?></span>
-                    <span class="lbl"><?= h($currentTimeframeLabel); ?> Attention Items</span>
-                </div>
-            </section>
-
-            <!-- Interactive Filters & Search Toolbar -->
-            <section class="panel-card unattended-controls-card">
-                <div class="unattended-controls-top">
-                    <div class="unattended-filter-group">
-                        <label for="unattendedTimeframeSelect" class="unattended-control-label">
-                            <?= staff_icon('calendar'); ?>
-                            <span>Audit Timeframe:</span>
-                        </label>
-                        <form method="get" id="unattendedTimeframeForm" class="unattended-inline-form">
-                            <input type="hidden" name="page" value="unattended">
-                            <?php if ($unattendedType !== 'all'): ?>
-                                <input type="hidden" name="type" value="<?= h($unattendedType); ?>">
-                            <?php endif; ?>
-                            <?php if ($unattendedSearch !== ''): ?>
-                                <input type="hidden" name="unattended_search" value="<?= h($unattendedSearch); ?>">
-                            <?php endif; ?>
-                            <select name="timeframe" id="unattendedTimeframeSelect" class="unattended-select-dropdown" onchange="this.form.submit()">
-                                <option value="today" <?= $unattendedTimeframe === 'today' ? 'selected' : ''; ?>>Today (<?= $timeframeCounts['today']['total']; ?>)</option>
-                                <option value="week" <?= $unattendedTimeframe === 'week' ? 'selected' : ''; ?>>This Week (<?= $timeframeCounts['week']['total']; ?>)</option>
-                                <option value="month" <?= $unattendedTimeframe === 'month' ? 'selected' : ''; ?>>This Month (<?= $timeframeCounts['month']['total']; ?>)</option>
-                                <option value="all" <?= $unattendedTimeframe === 'all' ? 'selected' : ''; ?>>All Records (<?= $timeframeCounts['all']['total']; ?>)</option>
-                            </select>
-                        </form>
-                    </div>
-
-                    <!-- Type Filter Pills -->
-                    <div class="unattended-type-pills">
-                        <a href="?page=unattended&timeframe=<?= h($unattendedTimeframe); ?><?= $unattendedSearch !== '' ? '&unattended_search=' . urlencode($unattendedSearch) : ''; ?>&type=all" 
-                           class="unattended-type-pill <?= $unattendedType === 'all' ? 'active' : ''; ?>">
-                            <span>All Records</span>
-                            <span class="count"><?= $currentTfCount['total']; ?></span>
-                        </a>
-                        <a href="?page=unattended&timeframe=<?= h($unattendedTimeframe); ?><?= $unattendedSearch !== '' ? '&unattended_search=' . urlencode($unattendedSearch) : ''; ?>&type=appts" 
-                           class="unattended-type-pill <?= $unattendedType === 'appts' ? 'active' : ''; ?>">
-                            <span>Unattended Requests</span>
-                            <span class="count"><?= $currentTfCount['appointments']; ?></span>
-                        </a>
-                        <a href="?page=unattended&timeframe=<?= h($unattendedTimeframe); ?><?= $unattendedSearch !== '' ? '&unattended_search=' . urlencode($unattendedSearch) : ''; ?>&type=queue" 
-                           class="unattended-type-pill <?= $unattendedType === 'queue' ? 'active' : ''; ?>">
-                            <span>Unserved Queue</span>
-                            <span class="count"><?= $currentTfCount['queue']; ?></span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Search Input Row -->
-                <div class="unattended-search-row">
-                    <form method="get" class="unattended-search-form">
-                        <input type="hidden" name="page" value="unattended">
-                        <input type="hidden" name="timeframe" value="<?= h($unattendedTimeframe); ?>">
-                        <input type="hidden" name="type" value="<?= h($unattendedType); ?>">
-                        <div class="unattended-search-field-wrap">
-                            <span class="unattended-search-icon"><?= staff_icon('search'); ?></span>
-                            <input type="search" name="unattended_search" value="<?= h($unattendedSearch); ?>" placeholder="Search by patient name, reference code, or health service..." class="unattended-search-input">
-                            <button type="submit" class="primary-btn teal-btn slim">Search</button>
-                            <?php if ($unattendedSearch !== ''): ?>
-                                <a href="?page=unattended&timeframe=<?= h($unattendedTimeframe); ?>&type=<?= h($unattendedType); ?>" class="ghost-btn slim" title="Clear search">Clear</a>
-                            <?php endif; ?>
-                        </div>
-                    </form>
-                </div>
-            </section>
-
-            <!-- 3 KPI Summary Cards for Selected Timeframe -->
-            <section class="unattended-kpis-grid">
-                <article class="unattended-kpi-card amber">
-                    <div class="unattended-kpi-icon amber"><?= staff_icon('clock'); ?></div>
-                    <div class="unattended-kpi-content">
-                        <span class="unattended-kpi-label">Unattended Requests</span>
-                        <strong class="unattended-kpi-val"><?= number_format($currentTfCount['appointments']); ?></strong>
-                        <small class="unattended-kpi-hint">Booked consultations past date without staff action</small>
-                    </div>
-                </article>
-
-                <article class="unattended-kpi-card orange">
-                    <div class="unattended-kpi-icon orange"><?= staff_icon('users'); ?></div>
-                    <div class="unattended-kpi-content">
-                        <span class="unattended-kpi-label">Unserved Station Queue</span>
-                        <strong class="unattended-kpi-val"><?= number_format($currentTfCount['queue']); ?></strong>
-                        <small class="unattended-kpi-hint">Confirmed visits whose scheduled day ended unserved</small>
-                    </div>
-                </article>
-
-                <article class="unattended-kpi-card emerald">
-                    <div class="unattended-kpi-icon emerald"><?= staff_icon('alert'); ?></div>
-                    <div class="unattended-kpi-content">
-                        <span class="unattended-kpi-label">Total Attention Items</span>
-                        <strong class="unattended-kpi-val"><?= number_format($currentTfCount['total']); ?></strong>
-                        <small class="unattended-kpi-hint">Period: <strong><?= h($currentTimeframeLabel); ?></strong></small>
-                    </div>
-                </article>
-            </section>
-
-            <!-- List of Unattended Items -->
-            <?php
-            $showAppts = in_array($unattendedType, ['all', 'appts'], true);
-            $showQueue = in_array($unattendedType, ['all', 'queue'], true);
-            $hasAnyRecords = ($showAppts && $pageUnattendedAppts !== []) || ($showQueue && $pageUnattendedQueue !== []);
-            ?>
-
-            <?php if (!$hasAnyRecords): ?>
-                <div class="panel-card unattended-empty-card">
-                    <div class="unattended-empty-icon"><?= staff_icon('check'); ?></div>
-                    <h3>No Unattended Records Found</h3>
-                    <p>There are no unattended appointment requests or unserved queue records matching the selected timeframe (<strong><?= h($currentTimeframeLabel); ?></strong>)<?= $unattendedSearch !== '' ? ' and search query' : ''; ?>.</p>
-                    <div class="unattended-empty-actions">
-                        <a href="?page=unattended&timeframe=all" class="primary-btn teal-btn slim">View All Records</a>
-                        <a href="?page=dashboard" class="ghost-btn slim">Return to Dashboard</a>
-                    </div>
-                </div>
-            <?php else: ?>
-                <!-- Section 1: Unattended Appointment Requests -->
-                <?php if ($showAppts && $pageUnattendedAppts !== []): ?>
-                    <section class="panel-card unattended-records-section" style="margin-bottom:24px;">
-                        <div class="unattended-section-header">
-                            <div class="unattended-section-title-wrap">
-                                <span class="unattended-sec-icon amber"><?= staff_icon('clock'); ?></span>
-                                <div>
-                                    <h3>Unattended Appointment Requests (<?= count($pageUnattendedAppts); ?>)</h3>
-                                    <p>Online patient bookings that passed scheduled consultation dates without confirmation or cancellation</p>
-                                </div>
-                            </div>
-                            <span class="dash-audit-pill amber">Requires Review</span>
-                        </div>
-
-                        <div class="unattended-cards-stack">
-                            <?php foreach ($pageUnattendedAppts as $appt): ?>
-                                <?php
-                                $apptCode = (string) ($appt['appointment_code'] ?: $appt['reference_code'] ?: 'N/A');
-                                $preferredDate = (string) ($appt['preferred_date'] ?? '');
-                                $formattedDate = $preferredDate !== '' ? date('F j, Y', strtotime($preferredDate)) : 'N/A';
-                                $patientName = full_name($appt);
-                                $serviceName = (string) ($appt['service_name'] ?? 'General Consultation');
-                                $contact = (string) ($appt['contact_number'] ?? 'None');
-                                $patientId = (string) ($appt['patient_id'] ?? '');
-                                ?>
-                                <article class="unattended-item-card">
-                                    <div class="unattended-item-left">
-                                        <div class="unattended-item-header-row">
-                                            <span class="unattended-type-tag amber">Unattended Request</span>
-                                            <span class="appt-code-badge">#<?= h($apptCode); ?></span>
-                                            <span class="unattended-service-tag"><?= staff_icon('stethoscope'); ?> <?= h($serviceName); ?></span>
-                                        </div>
-                                        <h4 class="unattended-patient-title"><?= h($patientName); ?></h4>
-                                        <div class="unattended-meta-grid">
-                                            <div><strong>Scheduled Date:</strong> <span class="highlight-date"><?= h($formattedDate); ?></span> (<?= h((string) ($appt['preferred_time'] ?? 'Regular')); ?>)</div>
-                                            <div><strong>Contact Number:</strong> <?= h($contact); ?></div>
-                                            <div><strong>Demographics:</strong> <?= h(age_label($appt)); ?> • <?= h((string) ($appt['gender'] ?? '')); ?></div>
-                                            <div><strong>Barangay:</strong> <?= h((string) ($appt['station_name'] ?? $station['name'])); ?></div>
-                                        </div>
-                                        <div class="unattended-reason-callout amber">
-                                            <?= staff_icon('alert'); ?>
-                                            <span><strong>Audit Note:</strong> Appointment was booked for <strong><?= h($formattedDate); ?></strong> with status <em>Pending</em>, but consultation date has passed without staff action.</span>
-                                        </div>
-                                    </div>
-                                    <div class="unattended-item-actions">
-                                        <?php if ($patientId !== ''): ?>
-                                            <a href="?page=patients&view_patient_id=<?= urlencode($patientId); ?>" class="ghost-btn slim" title="Inspect patient medical profile">
-                                                <?= staff_icon('user'); ?>
-                                                <span>Patient Profile</span>
-                                            </a>
-                                        <?php endif; ?>
-                                        <a href="?page=appointments&search=<?= urlencode($apptCode); ?>" class="primary-btn teal-btn slim" title="Manage appointment in appointments manager">
-                                            <?= staff_icon('appointments'); ?>
-                                            <span>Manage Appt</span>
-                                        </a>
-                                    </div>
-                                </article>
-                            <?php endforeach; ?>
-                        </div>
-                    </section>
-                <?php endif; ?>
-
-                <!-- Section 2: Unserved Station Queue -->
-                <?php if ($showQueue && $pageUnattendedQueue !== []): ?>
-                    <section class="panel-card unattended-records-section">
-                        <div class="unattended-section-header">
-                            <div class="unattended-section-title-wrap">
-                                <span class="unattended-sec-icon orange"><?= staff_icon('users'); ?></span>
-                                <div>
-                                    <h3>Unserved Station Queue Records (<?= count($pageUnattendedQueue); ?>)</h3>
-                                    <p>Patients who were confirmed or waiting in the station queue but the day concluded without consultation completion</p>
-                                </div>
-                            </div>
-                            <span class="dash-audit-pill orange">Unfinished Visits</span>
-                        </div>
-
-                        <div class="unattended-cards-stack">
-                            <?php foreach ($pageUnattendedQueue as $qItem): ?>
-                                <?php
-                                $qCode = (string) ($qItem['appointment_code'] ?: $qItem['reference_code'] ?: 'N/A');
-                                $queueNum = (string) ($qItem['queue_number'] ?? '');
-                                $preferredDate = (string) ($qItem['preferred_date'] ?? '');
-                                $formattedDate = $preferredDate !== '' ? date('F j, Y', strtotime($preferredDate)) : 'N/A';
-                                $patientName = full_name($qItem);
-                                $serviceName = (string) ($qItem['service_name'] ?? 'General Consultation');
-                                $contact = (string) ($qItem['contact_number'] ?? 'None');
-                                $patientId = (string) ($qItem['patient_id'] ?? '');
-                                $qStatus = (string) ($qItem['status'] ?? 'Confirmed');
-                                ?>
-                                <article class="unattended-item-card">
-                                    <div class="unattended-item-left">
-                                        <div class="unattended-item-header-row">
-                                            <span class="unattended-type-tag orange">Unserved Queue</span>
-                                            <?php if ($queueNum !== ''): ?>
-                                                <span class="queue-num-badge">Queue #<?= h($queueNum); ?></span>
-                                            <?php endif; ?>
-                                            <span class="appt-code-badge">#<?= h($qCode); ?></span>
-                                            <span class="unattended-service-tag"><?= staff_icon('stethoscope'); ?> <?= h($serviceName); ?></span>
-                                        </div>
-                                        <h4 class="unattended-patient-title"><?= h($patientName); ?></h4>
-                                        <div class="unattended-meta-grid">
-                                            <div><strong>Appointment Date:</strong> <span class="highlight-date"><?= h($formattedDate); ?></span></div>
-                                            <div><strong>Queue Status:</strong> <span class="status-pill status-queue-waiting"><?= h($qStatus); ?></span></div>
-                                            <div><strong>Contact Number:</strong> <?= h($contact); ?></div>
-                                            <div><strong>Demographics:</strong> <?= h(age_label($qItem)); ?> • <?= h((string) ($qItem['gender'] ?? '')); ?></div>
-                                        </div>
-                                        <div class="unattended-reason-callout orange">
-                                            <?= staff_icon('clock'); ?>
-                                            <span><strong>Audit Note:</strong> Patient was marked <em><?= h($qStatus); ?></em> on <strong><?= h($formattedDate); ?></strong>, but station hours closed before consultation was marked completed.</span>
-                                        </div>
-                                    </div>
-                                    <div class="unattended-item-actions">
-                                        <?php if ($patientId !== ''): ?>
-                                            <a href="?page=patients&view_patient_id=<?= urlencode($patientId); ?>" class="ghost-btn slim" title="Inspect patient medical profile">
-                                                <?= staff_icon('user'); ?>
-                                                <span>Patient Profile</span>
-                                            </a>
-                                        <?php endif; ?>
-                                        <a href="?page=queue&queue_date=both&search=<?= urlencode($qCode); ?>" class="primary-btn teal-btn slim" title="Manage in Queue Management">
-                                            <?= staff_icon('queue'); ?>
-                                            <span>Manage Queue</span>
-                                        </a>
-                                    </div>
-                                </article>
-                            <?php endforeach; ?>
-                        </div>
-                    </section>
-                <?php endif; ?>
-            <?php endif; ?>
+            <?php endif; /* end regular dashboard */ ?>
         <?php elseif ($page === 'appointments'): ?>
             <section class="page-hero">
                 <h1>Appointments</h1>
@@ -5543,7 +5588,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                             <p>Compliance and missed consultation audit for <strong><?= h($station['name']); ?></strong> during <strong><?= h($reportWeekLabel); ?></strong></p>
                         </div>
                     </div>
-                    <a href="?page=unattended&timeframe=week" class="dash-audit-view-all-link" title="Open full unattended appointments page for this station">
+                    <a href="?page=dashboard&view=unattended&timeframe=week" class="dash-audit-view-all-link" title="Open full unattended records audit for this station">
                         <span>View full audit list</span>
                         <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2.2" fill="none"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                     </a>
@@ -6044,7 +6089,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                 <p class="unattended-modal-subtitle">Review past appointment requests and queue entries requiring staff follow-up</p>
             </div>
             <div style="display:flex;align-items:center;gap:12px;">
-                <a href="?page=unattended" class="unattended-modal-view-all-link" title="Open full dedicated page for unattended and unserved appointments">
+                <a href="?page=dashboard&view=unattended" class="unattended-modal-view-all-link" id="unattendedModalViewAllLink" title="View all unattended and unserved records in dashboard">
                     <span>View all</span>
                     <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </a>
@@ -6220,6 +6265,10 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
             if (tabQueue) tabQueue.classList.remove('active');
             if (paneAppts) paneAppts.style.display = 'block';
             if (paneQueue) paneQueue.style.display = 'none';
+        }
+        const viewAllLnk = document.getElementById('unattendedModalViewAllLink');
+        if (viewAllLnk) {
+            viewAllLnk.href = '?page=dashboard&view=unattended&type=' + encodeURIComponent(tabName);
         }
     }
 
