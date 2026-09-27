@@ -1617,10 +1617,10 @@ if (!function_exists('peso')) {
                                         <thead>
                                             <tr>
                                                 <th>Date</th>
-                                                <th>Health Service</th>
-                                                <th>Health Station</th>
+                                                <th style="text-align:center;">Health Service</th>
+                                                <th style="text-align:center;">Health Station</th>
                                                 <th>Appt Code</th>
-                                                <th>Action</th>
+                                                <th style="text-align:center;">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1630,14 +1630,14 @@ if (!function_exists('peso')) {
                                                         <strong><?= h(date('M j, Y', strtotime((string) $visit['preferred_date']))); ?></strong>
                                                         <small style="display:block;color:#94a3b8;"><?= h((string) ($visit['preferred_time'] ?? '')); ?></small>
                                                     </td>
-                                                    <td>
+                                                    <td style="text-align:center;vertical-align:middle;">
                                                         <span class="report-service-tag"><?= h((string) $visit['service_name']); ?></span>
                                                     </td>
-                                                    <td style="text-align:center;"><?php $cleanStationVisit = trim(str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', (string) ($visit['station_name'] ?? ''))); ?><?= h($cleanStationVisit); ?></td>
-                                                    <td style="font-family:monospace;font-weight:700;color:#3b82f6;">
+                                                    <td style="text-align:center;vertical-align:middle;"><?php $cleanStationVisit = trim(str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', (string) ($visit['station_name'] ?? ''))); ?><?= h($cleanStationVisit); ?></td>
+                                                    <td style="font-family:monospace;font-weight:700;color:#3b82f6;vertical-align:middle;">
                                                         #<?= h((string) ($visit['appointment_code'] ?? $visit['reference_code'])); ?>
                                                     </td>
-                                                    <td style="text-align:center;">
+                                                    <td style="text-align:center;vertical-align:middle;">
                                                         <a class="patient-action-btn view" href="?page=patients&<?= $patientHistoryBaseQuery; ?>&visit=<?= h((string) $visit['id']); ?>" title="View Consultation Form" style="margin:0 auto;">
                                                             <?= admin_icon('eye'); ?>
                                                         </a>
