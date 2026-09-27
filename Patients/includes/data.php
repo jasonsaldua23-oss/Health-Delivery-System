@@ -105,8 +105,8 @@ foreach ($stations as $index => &$station) {
     $station['name'] = $station['barangay'] . ' Barangay Health Station';
     $station['location'] = 'Serving residents of Brgy. ' . $station['barangay'] . ', Bacolod City';
     $station['detail_location'] = 'Brgy. ' . $station['barangay'] . ', Bacolod City';
-    $station['hours'] = 'Mon-Sat, 8AM-5PM';
-    $station['full_hours'] = 'Monday - Saturday, 8:00 AM - 5:00 PM';
+    $station['hours'] = 'Mon-Fri, 8AM-5PM';
+    $station['full_hours'] = 'Monday - Friday, 8:00 AM - 5:00 PM';
     $station['anchor'] = 'station-' . ($index + 1);
     $station['programs'] = array_map(static fn($key) => $serviceCatalog[$key], $stationPrograms[$station['slug']]);
 }

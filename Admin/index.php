@@ -613,7 +613,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'crea
         $name = trim((string) ($_POST['facility_name'] ?? ''));
         $location = trim((string) ($_POST['location'] ?? ''));
         $phone = ''; // Contact phone number removed per user request
-        $hours = trim((string) ($_POST['hours'] ?? 'Monday - Saturday, 8:00 AM - 5:00 PM'));
+        $hours = 'Monday - Friday, 8:00 AM - 5:00 PM';
         $color = trim((string) ($_POST['color'] ?? 'mint'));
         $services = is_array($_POST['services'] ?? null) ? $_POST['services'] : [];
         $capacities = is_array($_POST['capacities'] ?? null) ? $_POST['capacities'] : [];
@@ -3058,10 +3058,6 @@ if (!function_exists('peso')) {
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label>Operating Hours</label>
-                                <input type="text" name="hours" value="Monday - Saturday, 8:00 AM - 5:00 PM">
-                            </div>
-                            <div class="form-group">
                                 <label>Daily Booking Capacity (All Services)</label>
                                 <input type="number" name="max_slots" value="200" min="1" max="5000" required placeholder="e.g., 200">
                             </div>
@@ -3095,7 +3091,7 @@ if (!function_exists('peso')) {
                             </div>
                         </div>
 
-                        <div class="modal-actions" style="margin-top:20px;">
+                        <div class="modal-actions" style="margin-top:20px; display:flex; justify-content:center; gap:48px;">
                             <button type="button" class="blue-btn" onclick="document.getElementById('addFacilityModal').style.display='none'">Cancel</button>
                             <button type="submit" class="green-btn"><?= admin_icon('check'); ?>Register Health Center</button>
                         </div>

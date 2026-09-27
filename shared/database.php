@@ -524,8 +524,8 @@ function fetch_all_station_definitions(): array
                         'phone' => (string) $row['phone'],
                         'color' => (string) ($row['color'] ?: 'mint'),
                         'image' => $image,
-                        'hours' => (string) ($row['hours'] ?: 'Mon-Sat, 8AM-5PM'),
-                        'full_hours' => (string) ($row['hours'] ?: 'Monday - Saturday, 8:00 AM - 5:00 PM'),
+                        'hours' => (string) ($row['hours'] ?: 'Mon-Fri, 8AM-5PM'),
+                        'full_hours' => (string) ($row['hours'] ?: 'Monday - Friday, 8:00 AM - 5:00 PM'),
                         'services' => 0,
                     ];
                 }
@@ -553,8 +553,8 @@ function station_catalog(bool $useDatabaseAssignments = true): array
         $station['detail_location'] = $station['detail_location'] ?? ($isCityHealth
             ? 'Bacolod City Health Office, Bacolod City'
             : 'Brgy. ' . $barangayLabel . ', Bacolod City');
-        $station['full_hours'] = $station['full_hours'] ?? 'Monday - Saturday, 8:00 AM - 5:00 PM';
-        $station['hours'] = $station['hours'] ?? 'Mon-Sat, 8AM-5PM';
+        $station['full_hours'] = 'Monday - Friday, 8:00 AM - 5:00 PM';
+        $station['hours'] = 'Mon-Fri, 8AM-5PM';
         $station['anchor'] = 'station-' . ($index + 1);
         $programSlugs = array_values(array_filter(
             $programMap[$station['slug']] ?? [],
@@ -2611,7 +2611,7 @@ function create_health_facility(array $data, array $servicesWithCapacities = [])
     $phone = trim((string) ($data['phone'] ?? ''));
     $color = trim((string) ($data['color'] ?? 'mint'));
     $image = trim((string) ($data['image'] ?? ''));
-    $hours = trim((string) ($data['hours'] ?? 'Monday - Saturday, 8:00 AM - 5:00 PM'));
+    $hours = trim((string) ($data['hours'] ?? 'Monday - Friday, 8:00 AM - 5:00 PM'));
 
     if ($barangay === '' || $name === '') {
         return false;
