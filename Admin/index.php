@@ -23,6 +23,23 @@ if (!function_exists('h')) {
     }
 }
 
+if (!function_exists('admin_station_image_url')) {
+    function admin_station_image_url(?string $path): string
+    {
+        $p = trim((string) $path);
+        if ($p === '') {
+            return 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=900&q=80';
+        }
+        if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://') || str_starts_with($p, 'data:image/')) {
+            return $p;
+        }
+        if (str_starts_with($p, '../')) {
+            return $p;
+        }
+        return '../' . ltrim($p, '/');
+    }
+}
+
 if (!function_exists('admin_icon')) {
     function admin_icon(string $name): string
     {
@@ -595,7 +612,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'crea
         $barangay = trim((string) ($_POST['barangay'] ?? ''));
         $name = trim((string) ($_POST['facility_name'] ?? ''));
         $location = trim((string) ($_POST['location'] ?? ''));
-        $phone = trim((string) ($_POST['phone'] ?? ''));
+        $phone = ''; // Contact phone number removed per user request
         $hours = trim((string) ($_POST['hours'] ?? 'Monday - Saturday, 8:00 AM - 5:00 PM'));
         $color = trim((string) ($_POST['color'] ?? 'mint'));
         $services = is_array($_POST['services'] ?? null) ? $_POST['services'] : [];
@@ -606,6 +623,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'crea
             $srvSlug = (string) $srv;
             $cap = isset($capacities[$srvSlug]) ? (int) $capacities[$srvSlug] : 200;
             $servicesWithCapacities[$srvSlug] = max(1, $cap);
+        }
+
+        // Handle attached station photo
+        $stationImagePath = '';
+        if (isset($_FILES['station_photo']) && is_array($_FILES['station_photo']) && (($_FILES['station_photo']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK)) {
+            $tmpFile = (string) $_FILES['station_photo']['tmp_name'];
+            $origFileName = (string) $_FILES['station_photo']['name'];
+            $ext = strtolower(pathinfo($origFileName, PATHINFO_EXTENSION));
+            if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+                $ext = 'jpg';
+            }
+            $targetDir = dirname(__DIR__) . '/assets/images/stations';
+            if (!is_dir($targetDir)) {
+                @mkdir($targetDir, 0777, true);
+            }
+            $cleanSlug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $barangay));
+            $cleanSlug = trim($cleanSlug, '-');
+            $savedFilename = ($cleanSlug !== '' ? $cleanSlug : 'station') . '-' . uniqid() . '.' . $ext;
+            $destination = $targetDir . '/' . $savedFilename;
+            if (move_uploaded_file($tmpFile, $destination)) {
+                $stationImagePath = '../assets/images/stations/' . $savedFilename;
+            }
+        } elseif (!empty($_POST['station_photo_base64']) && is_string($_POST['station_photo_base64'])) {
+            $base64 = trim($_POST['station_photo_base64']);
+            if (preg_match('#^data:image/(png|jpeg|jpg|webp);base64,#i', $base64, $m)) {
+                $bin = base64_decode(substr($base64, strpos($base64, ',') + 1), true);
+                if ($bin !== false) {
+                    $ext = strtolower($m[1]) === 'jpeg' ? 'jpg' : strtolower($m[1]);
+                    $targetDir = dirname(__DIR__) . '/assets/images/stations';
+                    if (!is_dir($targetDir)) {
+                        @mkdir($targetDir, 0777, true);
+                    }
+                    $cleanSlug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $barangay));
+                    $cleanSlug = trim($cleanSlug, '-');
+                    $savedFilename = ($cleanSlug !== '' ? $cleanSlug : 'station') . '-' . uniqid() . '.' . $ext;
+                    if (file_put_contents($targetDir . '/' . $savedFilename, $bin) !== false) {
+                        $stationImagePath = '../assets/images/stations/' . $savedFilename;
+                    }
+                }
+            }
         }
 
         if ($barangay !== '') {
@@ -619,6 +676,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'crea
                 'phone' => $phone,
                 'hours' => $hours,
                 'color' => $color,
+                'image' => $stationImagePath,
             ], $servicesWithCapacities);
 
             $_SESSION['admin_flash'] = $created
@@ -2345,7 +2403,7 @@ if (!function_exists('peso')) {
                     }
                 ?>
                     <a class="station-admin-card" href="?page=appointments&station=<?= h($station['slug']); ?>">
-                        <div class="station-admin-image" style="background-image:url('<?= h($station['image']); ?>')">
+                        <div class="station-admin-image" style="background-image:url('<?= h(admin_station_image_url($station['image'])); ?>')">
                             <span class="station-count badge-<?= h($station['color']); ?>" data-station="<?= h($station['slug']); ?>">
                                 <?= (int) $count === 1 ? '1 Appointment' : (int) $count . ' Appointments'; ?>
                             </span>
@@ -2375,7 +2433,7 @@ if (!function_exists('peso')) {
                     }
                 ?>
                     <a class="station-admin-card" href="?page=queue&station=<?= h($station['slug']); ?>">
-                        <div class="station-admin-image" style="background-image:url('<?= h($station['image']); ?>')">
+                        <div class="station-admin-image" style="background-image:url('<?= h(admin_station_image_url($station['image'])); ?>')">
                             <span class="station-count badge-<?= h($station['color']); ?>" data-station="<?= h($station['slug']); ?>">
                                 <?= h((string) $count); ?> in Queue
                             </span>
@@ -2676,7 +2734,7 @@ if (!function_exists('peso')) {
                 <section class="station-admin-grid">
                     <?php foreach ($stations as $station): if ($station['slug'] === 'city-health') { continue; } ?>
                         <a class="station-admin-card" href="?page=services&station=<?= h($station['slug']); ?>">
-                            <div class="station-admin-image" style="background-image:url('<?= h($station['image']); ?>')">
+                            <div class="station-admin-image" style="background-image:url('<?= h(admin_station_image_url($station['image'])); ?>')">
                                 <span class="station-count badge-<?= h($station['color']); ?>"><?= h((string) count($station['programs'])); ?> Service<?= count($station['programs']) === 1 ? '' : 's'; ?></span>
                             </div>
                             <div class="station-admin-body">
@@ -2960,9 +3018,10 @@ if (!function_exists('peso')) {
                         <h2>Add New Barangay Health Center</h2>
                         <button type="button" class="modal-close-btn" onclick="document.getElementById('addFacilityModal').style.display='none'">×</button>
                     </div>
-                    <form method="post" class="service-modal-form">
+                    <form method="post" enctype="multipart/form-data" class="service-modal-form">
                         <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
                         <input type="hidden" name="action" value="create_health_facility">
+                        <input type="hidden" name="station_photo_base64" id="stationPhotoBase64Input" value="">
                         
                         <div class="facility-form-grid">
                             <div class="form-group">
@@ -2977,9 +3036,26 @@ if (!function_exists('peso')) {
                                 <label>Detailed Address / Location</label>
                                 <input type="text" name="location" id="facilityLocationInput" placeholder="e.g., Prk. San Jose, Brgy. Banago, Bacolod City">
                             </div>
-                            <div class="form-group">
-                                <label>Contact Phone Number</label>
-                                <input type="text" name="phone" placeholder="e.g., (034) 123-4516">
+                            <div class="form-group full-width">
+                                <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                    <span>Station Photo <span style="color:#64748b;font-weight:normal;font-size:0.82rem;">(Cover photo for station cards)</span></span>
+                                </label>
+                                <div class="station-photo-picker-box" style="border:2px dashed #cbd5e1;border-radius:12px;padding:16px;text-align:center;background:#f8fafc;position:relative;cursor:pointer;transition:border-color 0.2s;" onclick="document.getElementById('stationPhotoInput').click()">
+                                    <input type="file" name="station_photo" id="stationPhotoInput" accept="image/png,image/jpeg,image/webp,image/jpg" style="display:none;" onchange="handleStationPhotoSelect(event)">
+                                    <div id="stationPhotoPlaceholder" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+                                        <div style="width:48px;height:48px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;color:#64748b;">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                                        </div>
+                                        <div>
+                                            <strong style="color:#1e293b;font-size:0.92rem;">Click to attach health station photo</strong>
+                                            <p style="margin:2px 0 0;color:#64748b;font-size:0.8rem;">PNG, JPG, or WEBP (Max 5MB)</p>
+                                        </div>
+                                    </div>
+                                    <div id="stationPhotoPreviewWrap" style="display:none;position:relative;width:100%;height:160px;border-radius:8px;overflow:hidden;">
+                                        <img id="stationPhotoPreviewImg" src="" alt="Station Preview" style="width:100%;height:100%;object-fit:cover;">
+                                        <button type="button" onclick="event.stopPropagation(); clearStationPhoto()" style="position:absolute;top:8px;right:8px;background:rgba(15,23,42,0.75);color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;line-height:1;" title="Remove photo">&times;</button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label>Operating Hours</label>
@@ -3122,6 +3198,36 @@ if (!function_exists('peso')) {
                 if (previewText) {
                     previewText.textContent = label;
                 }
+            }
+
+            function handleStationPhotoSelect(e) {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const previewImg = document.getElementById('stationPhotoPreviewImg');
+                    const previewWrap = document.getElementById('stationPhotoPreviewWrap');
+                    const placeholder = document.getElementById('stationPhotoPlaceholder');
+                    const base64Input = document.getElementById('stationPhotoBase64Input');
+                    if (previewImg) previewImg.src = evt.target.result;
+                    if (base64Input) base64Input.value = evt.target.result;
+                    if (previewWrap) previewWrap.style.display = 'block';
+                    if (placeholder) placeholder.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function clearStationPhoto() {
+                const input = document.getElementById('stationPhotoInput');
+                const base64Input = document.getElementById('stationPhotoBase64Input');
+                const previewImg = document.getElementById('stationPhotoPreviewImg');
+                const previewWrap = document.getElementById('stationPhotoPreviewWrap');
+                const placeholder = document.getElementById('stationPhotoPlaceholder');
+                if (input) input.value = '';
+                if (base64Input) base64Input.value = '';
+                if (previewImg) previewImg.src = '';
+                if (previewWrap) previewWrap.style.display = 'none';
+                if (placeholder) placeholder.style.display = 'flex';
             }
 
             function openAddFacilityModal() {

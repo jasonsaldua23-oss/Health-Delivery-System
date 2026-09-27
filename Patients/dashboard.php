@@ -227,7 +227,7 @@ if ($selectedStation === null && !empty($stations)) {
 $servicesForBarangay = $selectedStation['programs'] ?? [];
 if (empty($servicesForBarangay) && !empty($stationSlug)) {
     $progMap = station_program_map();
-    $pSlugs = $progMap[$stationSlug] ?? ($progMap['bata'] ?? ['consultation', 'immunization', 'prenatal', 'family', 'nutrition', 'dental', 'pharmacy', 'checkup']);
+    $pSlugs = $progMap[$stationSlug] ?? ($progMap['bata'] ?? ['consultation', 'immunization', 'prenatal', 'family', 'nutrition', 'dental', 'checkup']);
     $catalog = service_catalog();
     $servicesForBarangay = array_values(array_filter(array_map(static fn(string $k): ?array => $catalog[$k] ?? null, $pSlugs)));
 }
@@ -5353,7 +5353,6 @@ function isAppointmentImmunization(appt) {
     const serviceName = (appt.service_name || '').toLowerCase().trim();
     return serviceSlug === 'immunization'
         || serviceSlug === 'vaccination'
-        || serviceSlug === 'flu'
         || serviceSlug === 'covid-vaccine'
         || serviceSlug === 'vaccine'
         || serviceSlug.includes('immuniz')

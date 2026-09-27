@@ -51,35 +51,33 @@ function service_catalog(): array
         'consultation' => ['slug' => 'consultation', 'icon' => 'stethoscope', 'title' => 'General Consultation', 'description' => 'Primary healthcare', 'duration' => '30 mins', 'color' => 'mint'],
         'nutrition' => ['slug' => 'nutrition', 'icon' => 'community', 'title' => 'Nutrition Program', 'description' => 'Nutritional assessment', 'duration' => '30 mins', 'color' => 'gold'],
         'dental' => ['slug' => 'dental', 'icon' => 'cube', 'title' => 'Dental Services', 'description' => 'Oral health care', 'duration' => '45 mins', 'color' => 'cyan'],
-        'pharmacy' => ['slug' => 'pharmacy', 'icon' => 'capsule', 'title' => 'Pharmacy Services', 'description' => 'Medicine dispensing', 'duration' => '15 mins', 'color' => 'indigo'],
         'checkup' => ['slug' => 'checkup', 'icon' => 'calendar', 'title' => 'Wellness Checkup', 'description' => 'Routine physical assessment', 'duration' => '25 mins', 'color' => 'mint'],
         'maternal' => ['slug' => 'maternal', 'icon' => 'baby', 'title' => 'Maternal Counseling', 'description' => 'Support for expectant mothers', 'duration' => '30 mins', 'color' => 'pink'],
         'pediatric' => ['slug' => 'pediatric', 'icon' => 'heart', 'title' => 'Pediatric Consultation', 'description' => 'Health visits for children', 'duration' => '30 mins', 'color' => 'red'],
         'senior' => ['slug' => 'senior', 'icon' => 'community', 'title' => 'Senior Citizen Care', 'description' => 'Monitoring and maintenance care', 'duration' => '20 mins', 'color' => 'gold'],
         'adolescent' => ['slug' => 'adolescent', 'icon' => 'user', 'title' => 'Adolescent Day', 'description' => 'Health services for adolescents', 'duration' => '30 mins', 'color' => 'blue'],
-        'flu' => ['slug' => 'flu', 'icon' => 'syringe', 'title' => 'Flu Vaccination', 'description' => 'Influenza vaccination', 'duration' => '15 mins', 'color' => 'cyan'],
     ];
 }
 
 function station_program_map(): array
 {
     return [
-        'alijis' => ['consultation', 'family', 'nutrition', 'pharmacy', 'checkup', 'senior', 'dental'],
+        'alijis' => ['consultation', 'family', 'nutrition', 'checkup', 'senior', 'dental'],
         'bata' => ['immunization', 'consultation', 'family', 'prenatal', 'tb', 'senior', 'dental'],
         'cabug' => ['prenatal', 'immunization', 'tb', 'family', 'consultation'],
-        'city-health' => ['consultation', 'immunization', 'prenatal', 'family', 'nutrition', 'dental', 'pharmacy', 'checkup', 'maternal', 'pediatric', 'senior'],
-        'estefania' => ['consultation', 'immunization', 'prenatal', 'family', 'nutrition', 'dental', 'pharmacy', 'senior'],
-        'granada' => ['consultation', 'immunization', 'family', 'nutrition', 'dental', 'pharmacy', 'checkup'],
-        'handumanan' => ['consultation', 'tb', 'family', 'nutrition', 'pharmacy', 'checkup'],
-        'mandalagan' => ['immunization', 'prenatal', 'family', 'tb', 'consultation', 'adolescent', 'flu'],
-        'mansilingan' => ['consultation', 'immunization', 'prenatal', 'family', 'nutrition', 'dental', 'pharmacy', 'senior'],
-        'pahanocoy' => ['consultation', 'family', 'nutrition', 'pharmacy', 'checkup'],
-        'singcang' => ['prenatal', 'family', 'consultation', 'nutrition', 'dental', 'pharmacy', 'checkup'],
-        'sum-ag' => ['consultation', 'immunization', 'family', 'nutrition', 'pharmacy', 'checkup'],
-        'taculing' => ['consultation', 'immunization', 'family', 'nutrition', 'dental', 'pharmacy', 'senior'],
-        'villamonte' => ['consultation', 'family', 'nutrition', 'dental', 'pharmacy', 'checkup', 'senior'],
-        'villa-esperanza' => ['consultation', 'nutrition', 'family', 'pharmacy', 'checkup'],
-        'vista-alegre' => ['consultation', 'immunization', 'family', 'nutrition', 'pharmacy', 'senior'],
+        'city-health' => ['consultation', 'immunization', 'prenatal', 'family', 'nutrition', 'dental', 'checkup', 'maternal', 'pediatric', 'senior'],
+        'estefania' => ['consultation', 'immunization', 'prenatal', 'family', 'nutrition', 'dental', 'senior'],
+        'granada' => ['consultation', 'immunization', 'family', 'nutrition', 'dental', 'checkup'],
+        'handumanan' => ['consultation', 'tb', 'family', 'nutrition', 'checkup'],
+        'mandalagan' => ['immunization', 'prenatal', 'family', 'tb', 'consultation', 'adolescent'],
+        'mansilingan' => ['consultation', 'immunization', 'prenatal', 'family', 'nutrition', 'dental', 'senior'],
+        'pahanocoy' => ['consultation', 'family', 'nutrition', 'checkup'],
+        'singcang' => ['prenatal', 'family', 'consultation', 'nutrition', 'dental', 'checkup'],
+        'sum-ag' => ['consultation', 'immunization', 'family', 'nutrition', 'checkup'],
+        'taculing' => ['consultation', 'immunization', 'family', 'nutrition', 'dental', 'senior'],
+        'villamonte' => ['consultation', 'family', 'nutrition', 'dental', 'checkup', 'senior'],
+        'villa-esperanza' => ['consultation', 'nutrition', 'family', 'checkup'],
+        'vista-alegre' => ['consultation', 'immunization', 'family', 'nutrition', 'senior'],
     ];
 }
 
@@ -95,7 +93,6 @@ function canonical_service_slug(string $slug): string
         'senior-citizen', 'senior-care' => 'senior',
         'wellness-checkup' => 'checkup',
         'dental-services' => 'dental',
-        'pharmacy-services' => 'pharmacy',
         'nutrition-program' => 'nutrition',
         default => $s,
     };
@@ -113,7 +110,6 @@ function service_slug_aliases(string $serviceSlug): array
         'senior', 'senior-citizen', 'senior-care' => ['senior', 'senior-citizen', 'senior-care'],
         'checkup', 'wellness-checkup' => ['checkup', 'wellness-checkup'],
         'dental', 'dental-services' => ['dental', 'dental-services'],
-        'pharmacy', 'pharmacy-services' => ['pharmacy', 'pharmacy-services'],
         'nutrition', 'nutrition-program' => ['nutrition', 'nutrition-program'],
         default => [$slug],
     };
@@ -314,10 +310,6 @@ function station_service_schedule_map(): array
             'adolescent' => [
                 'label' => 'Every Friday Morning',
                 'days' => [5 => ['Morning']],
-            ],
-            'flu' => [
-                'label' => 'Every Wednesday',
-                'days' => [3 => ['Whole day']],
             ],
         ],
     ];
@@ -4930,7 +4922,7 @@ function is_vaccination_service(string $serviceSlug, string $serviceName = ''): 
     $slug = strtolower(trim($serviceSlug));
     $name = strtolower(trim($serviceName));
 
-    return in_array($slug, ['immunization', 'flu', 'vaccination', 'covid-vaccine', 'vaccine'], true)
+    return in_array($slug, ['immunization', 'vaccination', 'covid-vaccine', 'vaccine'], true)
         || stripos($slug, 'vaccin') !== false
         || stripos($slug, 'immuniz') !== false
         || stripos($name, 'vaccin') !== false
