@@ -1617,7 +1617,7 @@ if (!function_exists('peso')) {
                                         <thead>
                                             <tr>
                                                 <th>Date</th>
-                                                <th>Service Program</th>
+                                                <th>Health Service</th>
                                                 <th>Health Station</th>
                                                 <th>Appt Code</th>
                                                 <th>Action</th>
@@ -1631,27 +1631,9 @@ if (!function_exists('peso')) {
                                                         <small style="display:block;color:#94a3b8;"><?= h((string) ($visit['preferred_time'] ?? '')); ?></small>
                                                     </td>
                                                     <td>
-                                                        <?php
-                                                        $vRec = appointment_recipient_details($visit);
-                                                        ?>
                                                         <span class="report-service-tag"><?= h((string) $visit['service_name']); ?></span>
-                                                        <?php if ($vRec['is_immunization']): ?>
-                                                            <div style="font-size: 0.78rem; color: #166534; margin-top: 3px; font-weight: 600;">
-                                                                Recipient: <strong style="color:#14532d;"><?= h($vRec['recipient_full_name']); ?></strong> (<?= h($vRec['relationship']); ?>)
-                                                            </div>
-                                                            <?php if (!empty($visit['vaccine_type'])): ?>
-                                                                <div style="font-size: 0.75rem; color: #1e40af; margin-top: 2px;">
-                                                                    💉 Vaccine: <strong><?= h((string) $visit['vaccine_type']); ?></strong>
-                                                                </div>
-                                                            <?php endif; ?>
-                                                        <?php endif; ?>
-                                                        <?php if (!empty($visit['chest_xray'])): ?>
-                                                            <div style="font-size: 0.75rem; color: #7e22ce; margin-top: 2px; font-weight: 600;">
-                                                                🩻 Chest X-Ray: <strong><?= h((string) $visit['chest_xray']); ?></strong>
-                                                            </div>
-                                                        <?php endif; ?>
                                                     </td>
-                                                    <td><?php $cleanStationVisit = trim(str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', (string) ($visit['station_name'] ?? ''))); ?><?= h($cleanStationVisit); ?></td>
+                                                    <td style="text-align:center;"><?php $cleanStationVisit = trim(str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', (string) ($visit['station_name'] ?? ''))); ?><?= h($cleanStationVisit); ?></td>
                                                     <td style="font-family:monospace;font-weight:700;color:#3b82f6;">
                                                         #<?= h((string) ($visit['appointment_code'] ?? $visit['reference_code'])); ?>
                                                     </td>
