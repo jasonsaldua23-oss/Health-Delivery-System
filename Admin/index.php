@@ -3093,7 +3093,7 @@ if (!function_exists('peso')) {
 
                         <div class="modal-actions" style="margin-top:20px; display:flex; justify-content:center; gap:48px;">
                             <button type="button" class="blue-btn" onclick="document.getElementById('addFacilityModal').style.display='none'">Cancel</button>
-                            <button type="submit" class="green-btn"><?= admin_icon('check'); ?>Register Health Center</button>
+                            <button type="submit" class="green-btn" style="margin-left:36px;"><?= admin_icon('check'); ?>Register Health Center</button>
                         </div>
                     </form>
                 </div>
