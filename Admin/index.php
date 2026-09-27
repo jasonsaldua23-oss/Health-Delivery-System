@@ -1616,7 +1616,7 @@ if (!function_exists('peso')) {
                                     <table class="data-table patient-history-table">
                                         <thead>
                                             <tr>
-                                                <th>Date</th>
+                                                <th style="text-align:center;">Date</th>
                                                 <th style="text-align:center;">Health Service</th>
                                                 <th style="text-align:center;">Health Station</th>
                                                 <th>Appt Code</th>
@@ -1626,9 +1626,15 @@ if (!function_exists('peso')) {
                                         <tbody>
                                             <?php foreach ($patientProfile['visits'] as $visit): ?>
                                                 <tr>
-                                                    <td>
+                                                    <td style="text-align:center;vertical-align:middle;">
                                                         <strong><?= h(date('M j, Y', strtotime((string) $visit['preferred_date']))); ?></strong>
-                                                        <small style="display:block;color:#94a3b8;"><?= h((string) ($visit['preferred_time'] ?? '')); ?></small>
+                                                        <?php 
+                                                            $cleanSlotTime = trim(str_ireplace(['Daily slot', 'Daily Slot'], '', (string) ($visit['preferred_time'] ?? '')));
+                                                            $cleanSlotTime = trim($cleanSlotTime, " -\t\n\r\0\x0B");
+                                                        ?>
+                                                        <?php if ($cleanSlotTime !== ''): ?>
+                                                            <small style="display:block;color:#94a3b8;"><?= h($cleanSlotTime); ?></small>
+                                                        <?php endif; ?>
                                                     </td>
                                                     <td style="text-align:center;vertical-align:middle;">
                                                         <span class="report-service-tag"><?= h((string) $visit['service_name']); ?></span>
