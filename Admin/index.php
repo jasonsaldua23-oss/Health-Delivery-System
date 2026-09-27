@@ -1651,12 +1651,12 @@ if (!function_exists('peso')) {
                                                             </div>
                                                         <?php endif; ?>
                                                     </td>
-                                                    <td><?= h((string) $visit['station_name']); ?></td>
+                                                    <td><?php $cleanStationVisit = trim(str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', (string) ($visit['station_name'] ?? ''))); ?><?= h($cleanStationVisit); ?></td>
                                                     <td style="font-family:monospace;font-weight:700;color:#3b82f6;">
                                                         #<?= h((string) ($visit['appointment_code'] ?? $visit['reference_code'])); ?>
                                                     </td>
-                                                    <td>
-                                                        <a class="patient-action-btn view" href="?page=patients&<?= $patientHistoryBaseQuery; ?>&visit=<?= h((string) $visit['id']); ?>" title="View Consultation Form">
+                                                    <td style="text-align:center;">
+                                                        <a class="patient-action-btn view" href="?page=patients&<?= $patientHistoryBaseQuery; ?>&visit=<?= h((string) $visit['id']); ?>" title="View Consultation Form" style="margin:0 auto;">
                                                             <?= admin_icon('eye'); ?>
                                                         </a>
                                                     </td>
@@ -2056,10 +2056,10 @@ if (!function_exists('peso')) {
                                             <tr>
                                                 <td><?= h(date('M j, Y', strtotime((string) $visit['preferred_date']))); ?></td>
                                                 <td><strong><?= h((string) $visit['service_name']); ?></strong></td>
-                                                <td><?= h((string) $visit['station_name']); ?></td>
+                                                <td><?php $cleanStationSH = trim(str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', (string) ($visit['station_name'] ?? ''))); ?><?= h($cleanStationSH); ?></td>
                                                 <td style="font-family:monospace;font-weight:700;color:#3b82f6;">#<?= h((string) ($visit['appointment_code'] ?? $visit['reference_code'])); ?></td>
-                                                <td>
-                                                    <a class="patient-action-btn view" href="?page=patients&patient=<?= h((string) $patientServiceHistoryProfile['patient_id']); ?>&visit=<?= h((string) $visit['id']); ?>" title="View Consultation Form">
+                                                <td style="text-align:center;">
+                                                    <a class="patient-action-btn view" href="?page=patients&patient=<?= h((string) $patientServiceHistoryProfile['patient_id']); ?>&visit=<?= h((string) $visit['id']); ?>" title="View Consultation Form" style="margin:0 auto;">
                                                         <?= admin_icon('eye'); ?>
                                                     </a>
                                                 </td>
