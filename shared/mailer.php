@@ -33,7 +33,7 @@ function sendSmtpEmail(string $toEmail, string $toName, string $subject, string 
         return false;
     }
 
-    $timeout = 15;
+    $timeout = 10;
     $context = stream_context_create([
         'ssl' => [
             'verify_peer' => false,
@@ -42,12 +42,40 @@ function sendSmtpEmail(string $toEmail, string $toName, string $subject, string 
         ]
     ]);
 
-    $prefix = ($secure === 'ssl' || $port === 465) ? 'ssl://' : 'tcp://';
-    $socket = @stream_socket_client($prefix . $host . ':' . $port, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
-    if (!$socket) {
-        $GLOBALS['LAST_MAIL_ERROR'] = "SMTP Connection failed to {$host}:{$port} ({$errstr})";
+    // Build candidates for connection (supporting automatic 587/465 failover)
+    $candidates = [
+        ['port' => $port, 'secure' => $secure, 'prefix' => ($secure === 'ssl' || $port === 465) ? 'ssl://' : 'tcp://'],
+    ];
+    if ($port === 587) {
+        $candidates[] = ['port' => 465, 'secure' => 'ssl', 'prefix' => 'ssl://'];
+    } elseif ($port === 465) {
+        $candidates[] = ['port' => 587, 'secure' => 'tls', 'prefix' => 'tcp://'];
+    }
+
+    $socket = null;
+    $connectErrors = [];
+    $activeCandidate = null;
+
+    foreach ($candidates as $cand) {
+        $p = $cand['port'];
+        $pref = $cand['prefix'];
+        $sock = @stream_socket_client($pref . $host . ':' . $p, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
+        if ($sock) {
+            $socket = $sock;
+            $activeCandidate = $cand;
+            break;
+        }
+        $connectErrors[] = "{$p} ({$errstr})";
+    }
+
+    if (!$socket || !$activeCandidate) {
+        $GLOBALS['LAST_MAIL_ERROR'] = "SMTP Connection failed to {$host} on ports: " . implode(', ', $connectErrors);
         return false;
     }
+
+    $port = $activeCandidate['port'];
+    $secure = $activeCandidate['secure'];
+    $prefix = $activeCandidate['prefix'];
 
     stream_set_timeout($socket, $timeout);
 
