@@ -28,7 +28,8 @@ function sendSmtpEmail(string $toEmail, string $toName, string $subject, string 
     $fromEmail = defined('MAIL_FROM_ADDRESS') && MAIL_FROM_ADDRESS !== '' ? (string) MAIL_FROM_ADDRESS : (getenv('MAIL_FROM_ADDRESS') ?: 'no-reply@bsns.online');
     $fromName = defined('MAIL_FROM_NAME') && MAIL_FROM_NAME !== '' ? (string) MAIL_FROM_NAME : (getenv('MAIL_FROM_NAME') ?: 'Bacolod Health Delivery System');
 
-    if ($host === '') {
+    if ($host === '' || str_contains($user, 'your_') || str_contains($pass, 'your_') || $user === '' || $pass === '') {
+        $GLOBALS['LAST_MAIL_ERROR'] = 'SMTP credentials not configured in .env (please provide your real email address and password).';
         return false;
     }
 
@@ -226,9 +227,11 @@ function sendBrevoEmail(string $toEmail, string $toName, string $subject, string
     $methodUsed = 'NONE';
     $detail = '';
 
-    // 1. Attempt direct SMTP if SMTP_HOST is configured
+    // 1. Attempt direct SMTP if SMTP_HOST is configured with non-placeholder credentials
     $smtpHost = defined('SMTP_HOST') ? (string) SMTP_HOST : (getenv('SMTP_HOST') ?: '');
-    if ($smtpHost !== '') {
+    $smtpUser = defined('SMTP_USER') ? (string) SMTP_USER : (getenv('SMTP_USER') ?: '');
+    $smtpPass = defined('SMTP_PASS') ? (string) SMTP_PASS : (getenv('SMTP_PASS') ?: '');
+    if ($smtpHost !== '' && !str_contains($smtpUser, 'your_') && !str_contains($smtpPass, 'your_') && $smtpUser !== '' && $smtpPass !== '') {
         $smtpOk = sendSmtpEmail($cleanToEmail, $cleanToName, $subject, $htmlContent, $textContent);
         if ($smtpOk) {
             $emailSent = true;
