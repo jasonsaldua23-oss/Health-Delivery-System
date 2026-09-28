@@ -8,38 +8,40 @@ declare(strict_types=1);
  */
 
 // Ensure environment variables from .env are loaded if not yet populated
-if (empty($_ENV['BREVO_API_KEY']) && empty(getenv('BREVO_API_KEY'))) {
-    $envCandidates = [
-        dirname(__DIR__) . '/.env',
-        dirname(__DIR__) . '/.env.production',
-        dirname(__DIR__) . '/.env.example',
-    ];
-    foreach ($envCandidates as $cand) {
-        if (file_exists($cand) && is_readable($cand)) {
-            $lines = file($cand, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            if ($lines !== false) {
-                foreach ($lines as $line) {
-                    $line = trim($line);
-                    if ($line === '' || str_starts_with($line, '#')) {
-                        continue;
+$envCandidates = [
+    dirname(__DIR__) . '/.env',
+    dirname(__DIR__) . '/.env.production',
+    dirname(__DIR__) . '/.env.example',
+];
+foreach ($envCandidates as $cand) {
+    if (file_exists($cand) && is_readable($cand)) {
+        $lines = file($cand, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines !== false) {
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if ($line === '' || str_starts_with($line, '#')) {
+                    continue;
+                }
+                $parts = explode('=', $line, 2);
+                if (count($parts) === 2) {
+                    $key = trim($parts[0]);
+                    $val = trim($parts[1]);
+                    if (preg_match('/^"([\s\S]*)"$/', $val, $m) || preg_match("/^'([\s\S]*)'$/", $val, $m)) {
+                        $val = $m[1];
                     }
-                    $parts = explode('=', $line, 2);
-                    if (count($parts) === 2) {
-                        $key = trim($parts[0]);
-                        $val = trim($parts[1]);
-                        if (preg_match('/^"([\s\S]*)"$/', $val, $m) || preg_match("/^'([\s\S]*)'$/", $val, $m)) {
-                            $val = $m[1];
-                        }
-                        if (!isset($_ENV[$key])) {
-                            $_ENV[$key] = $val;
-                            $_SERVER[$key] = $val;
-                            putenv("{$key}={$val}");
-                        }
+                    if (!isset($_ENV[$key])) {
+                        $_ENV[$key] = $val;
+                    }
+                    if (!isset($_SERVER[$key])) {
+                        $_SERVER[$key] = $val;
+                    }
+                    if (getenv($key) === false) {
+                        putenv("{$key}={$val}");
                     }
                 }
             }
-            break;
         }
+        break;
     }
 }
 
@@ -94,6 +96,34 @@ if (!defined('APP_URL')) {
 
 if (!defined('BREVO_API_KEY')) {
     define('BREVO_API_KEY', (string) ($_ENV['BREVO_API_KEY'] ?? getenv('BREVO_API_KEY') ?: ''));
+}
+
+if (!defined('SMTP_HOST')) {
+    define('SMTP_HOST', (string) ($_ENV['SMTP_HOST'] ?? getenv('SMTP_HOST') ?: ''));
+}
+
+if (!defined('SMTP_PORT')) {
+    define('SMTP_PORT', (int) ($_ENV['SMTP_PORT'] ?? getenv('SMTP_PORT') ?: 587));
+}
+
+if (!defined('SMTP_USER')) {
+    define('SMTP_USER', (string) ($_ENV['SMTP_USER'] ?? getenv('SMTP_USER') ?: ''));
+}
+
+if (!defined('SMTP_PASS')) {
+    define('SMTP_PASS', (string) ($_ENV['SMTP_PASS'] ?? getenv('SMTP_PASS') ?: ''));
+}
+
+if (!defined('SMTP_SECURE')) {
+    define('SMTP_SECURE', (string) ($_ENV['SMTP_SECURE'] ?? getenv('SMTP_SECURE') ?: 'tls'));
+}
+
+if (!defined('MAIL_FROM_ADDRESS')) {
+    define('MAIL_FROM_ADDRESS', (string) ($_ENV['MAIL_FROM_ADDRESS'] ?? getenv('MAIL_FROM_ADDRESS') ?: 'no-reply@bsns.online'));
+}
+
+if (!defined('MAIL_FROM_NAME')) {
+    define('MAIL_FROM_NAME', (string) ($_ENV['MAIL_FROM_NAME'] ?? getenv('MAIL_FROM_NAME') ?: 'Bacolod Health Delivery System'));
 }
 
 if (!defined('ADMIN_LOGIN_EMAIL')) {

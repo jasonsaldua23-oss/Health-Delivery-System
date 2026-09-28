@@ -509,6 +509,22 @@ if ($action === 'request_password_otp') {
 
     $maskedEmail = mask_email_address($targetEmail);
 
+    if (!$sent) {
+        $lastErr = function_exists('get_last_mail_error') ? get_last_mail_error() : '';
+        if (str_contains($lastErr, 'authorised_ips') || str_contains($lastErr, 'unrecognised IP')) {
+            $userMsg = "Email dispatch failed: Brevo detected an unrecognised IP address. Please authorize your IP in your Brevo security settings (https://app.brevo.com/security/authorised_ips) or configure SMTP credentials in .env.";
+        } else {
+            $userMsg = "Unable to deliver verification email to {$maskedEmail}. Please verify your email configuration or contact system support.";
+        }
+
+        echo json_encode([
+            'success' => false,
+            'message' => $userMsg,
+            'mail_error' => $lastErr,
+        ], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
     echo json_encode([
         'success' => true,
         'message' => "A 6-digit verification code has been sent to {$maskedEmail}.",

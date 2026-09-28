@@ -6,45 +6,245 @@ require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/config.php';
 
 /**
- * Sends a transactional email using the Brevo (Sendinblue) API with fallback to PHP mail() and logging.
+ * Global tracker for the last email dispatch error.
+ */
+$GLOBALS['LAST_MAIL_ERROR'] = '';
+
+function get_last_mail_error(): string
+{
+    return (string) ($GLOBALS['LAST_MAIL_ERROR'] ?? '');
+}
+
+/**
+ * Sends an email using pure PHP SMTP socket connection (supports SSL, TLS/STARTTLS, AUTH LOGIN).
+ */
+function sendSmtpEmail(string $toEmail, string $toName, string $subject, string $htmlContent, string $textContent = ''): bool
+{
+    $host = defined('SMTP_HOST') ? (string) SMTP_HOST : (getenv('SMTP_HOST') ?: '');
+    $port = defined('SMTP_PORT') ? (int) SMTP_PORT : (int) (getenv('SMTP_PORT') ?: 587);
+    $user = defined('SMTP_USER') ? (string) SMTP_USER : (getenv('SMTP_USER') ?: '');
+    $pass = defined('SMTP_PASS') ? (string) SMTP_PASS : (getenv('SMTP_PASS') ?: '');
+    $secure = defined('SMTP_SECURE') ? strtolower((string) SMTP_SECURE) : strtolower((string) (getenv('SMTP_SECURE') ?: 'tls'));
+    $fromEmail = defined('MAIL_FROM_ADDRESS') && MAIL_FROM_ADDRESS !== '' ? (string) MAIL_FROM_ADDRESS : (getenv('MAIL_FROM_ADDRESS') ?: 'no-reply@bsns.online');
+    $fromName = defined('MAIL_FROM_NAME') && MAIL_FROM_NAME !== '' ? (string) MAIL_FROM_NAME : (getenv('MAIL_FROM_NAME') ?: 'Bacolod Health Delivery System');
+
+    if ($host === '') {
+        return false;
+    }
+
+    $timeout = 15;
+    $context = stream_context_create([
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+            'allow_self_signed' => true,
+        ]
+    ]);
+
+    $prefix = ($secure === 'ssl' || $port === 465) ? 'ssl://' : 'tcp://';
+    $socket = @stream_socket_client($prefix . $host . ':' . $port, $errno, $errstr, $timeout, STREAM_CLIENT_CONNECT, $context);
+    if (!$socket) {
+        $GLOBALS['LAST_MAIL_ERROR'] = "SMTP Connection failed to {$host}:{$port} ({$errstr})";
+        return false;
+    }
+
+    stream_set_timeout($socket, $timeout);
+
+    $readResponse = static function ($socket, int $expectedCode): array {
+        $response = '';
+        while ($line = fgets($socket, 515)) {
+            $response .= $line;
+            if (isset($line[3]) && $line[3] === ' ') {
+                break;
+            }
+        }
+        $code = (int) substr($response, 0, 3);
+        return ['code' => $code, 'text' => trim($response), 'ok' => ($code === $expectedCode)];
+    };
+
+    $sendCommand = static function ($socket, string $cmd, int $expectedCode) use ($readResponse): array {
+        fwrite($socket, $cmd . "\r\n");
+        return $readResponse($socket, $expectedCode);
+    };
+
+    // Greeting (code 220)
+    $res = $readResponse($socket, 220);
+    if (!$res['ok']) {
+        fclose($socket);
+        $GLOBALS['LAST_MAIL_ERROR'] = "SMTP Server greeting failed: " . $res['text'];
+        return false;
+    }
+
+    $clientDomain = gethostname() ?: 'localhost';
+
+    // EHLO
+    $res = $sendCommand($socket, 'EHLO ' . $clientDomain, 250);
+    if (!$res['ok']) {
+        $res = $sendCommand($socket, 'HELO ' . $clientDomain, 250);
+        if (!$res['ok']) {
+            fclose($socket);
+            $GLOBALS['LAST_MAIL_ERROR'] = "SMTP EHLO/HELO failed: " . $res['text'];
+            return false;
+        }
+    }
+
+    // STARTTLS if port 587 or secure === 'tls'
+    if (($secure === 'tls' || $port === 587) && $prefix === 'tcp://') {
+        $res = $sendCommand($socket, 'STARTTLS', 220);
+        if (!$res['ok']) {
+            fclose($socket);
+            $GLOBALS['LAST_MAIL_ERROR'] = "SMTP STARTTLS failed: " . $res['text'];
+            return false;
+        }
+        $cryptoOk = stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT);
+        if (!$cryptoOk) {
+            fclose($socket);
+            $GLOBALS['LAST_MAIL_ERROR'] = "SMTP TLS encryption handshake failed.";
+            return false;
+        }
+        $res = $sendCommand($socket, 'EHLO ' . $clientDomain, 250);
+        if (!$res['ok']) {
+            fclose($socket);
+            $GLOBALS['LAST_MAIL_ERROR'] = "SMTP post-TLS EHLO failed: " . $res['text'];
+            return false;
+        }
+    }
+
+    // AUTH LOGIN if credentials provided
+    if ($user !== '' && $pass !== '') {
+        $res = $sendCommand($socket, 'AUTH LOGIN', 334);
+        if (!$res['ok']) {
+            fclose($socket);
+            $GLOBALS['LAST_MAIL_ERROR'] = "SMTP AUTH LOGIN rejected: " . $res['text'];
+            return false;
+        }
+        $res = $sendCommand($socket, base64_encode($user), 334);
+        if (!$res['ok']) {
+            fclose($socket);
+            $GLOBALS['LAST_MAIL_ERROR'] = "SMTP Username rejected: " . $res['text'];
+            return false;
+        }
+        $res = $sendCommand($socket, base64_encode($pass), 235);
+        if (!$res['ok']) {
+            fclose($socket);
+            $GLOBALS['LAST_MAIL_ERROR'] = "SMTP Password authentication failed: " . $res['text'];
+            return false;
+        }
+    }
+
+    // MAIL FROM
+    $res = $sendCommand($socket, "MAIL FROM:<{$fromEmail}>", 250);
+    if (!$res['ok']) {
+        fclose($socket);
+        $GLOBALS['LAST_MAIL_ERROR'] = "SMTP MAIL FROM failed: " . $res['text'];
+        return false;
+    }
+
+    // RCPT TO
+    $res = $sendCommand($socket, "RCPT TO:<{$toEmail}>", 250);
+    if (!$res['ok']) {
+        fclose($socket);
+        $GLOBALS['LAST_MAIL_ERROR'] = "SMTP RCPT TO failed: " . $res['text'];
+        return false;
+    }
+
+    // DATA
+    $res = $sendCommand($socket, 'DATA', 354);
+    if (!$res['ok']) {
+        fclose($socket);
+        $GLOBALS['LAST_MAIL_ERROR'] = "SMTP DATA command rejected: " . $res['text'];
+        return false;
+    }
+
+    $boundary = '=_hds_' . md5((string) microtime(true));
+    $date = date('r');
+    $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+    $encodedFromName = '=?UTF-8?B?' . base64_encode($fromName) . '?=';
+    $encodedToName = '=?UTF-8?B?' . base64_encode($toName) . '?=';
+
+    $msg = "Date: {$date}\r\n";
+    $msg .= "From: {$encodedFromName} <{$fromEmail}>\r\n";
+    $msg .= "To: {$encodedToName} <{$toEmail}>\r\n";
+    $msg .= "Subject: {$encodedSubject}\r\n";
+    $msg .= "MIME-Version: 1.0\r\n";
+    $msg .= "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n\r\n";
+
+    if ($textContent !== '') {
+        $msg .= "--{$boundary}\r\n";
+        $msg .= "Content-Type: text/plain; charset=UTF-8\r\n";
+        $msg .= "Content-Transfer-Encoding: base64\r\n\r\n";
+        $msg .= chunk_split(base64_encode($textContent)) . "\r\n";
+    }
+
+    $msg .= "--{$boundary}\r\n";
+    $msg .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $msg .= "Content-Transfer-Encoding: base64\r\n\r\n";
+    $msg .= chunk_split(base64_encode($htmlContent)) . "\r\n";
+    $msg .= "--{$boundary}--\r\n";
+    $msg .= ".\r\n";
+
+    fwrite($socket, $msg);
+    $res = $readResponse($socket, 250);
+    $sendCommand($socket, 'QUIT', 221);
+    fclose($socket);
+
+    if (!$res['ok']) {
+        $GLOBALS['LAST_MAIL_ERROR'] = "SMTP Message dispatch rejected: " . $res['text'];
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Sends a transactional email using configured SMTP or Brevo API with fallback to PHP mail() and logging.
  */
 function sendBrevoEmail(string $toEmail, string $toName, string $subject, string $htmlContent, string $textContent = ''): bool
 {
-    $apiKey = defined('BREVO_API_KEY') ? (string) BREVO_API_KEY : (getenv('BREVO_API_KEY') ?: '');
+    $cleanToEmail = trim($toEmail);
+    $cleanToName = trim($toName) !== '' ? trim($toName) : 'User';
+
+    if (!filter_var($cleanToEmail, FILTER_VALIDATE_EMAIL)) {
+        $GLOBALS['LAST_MAIL_ERROR'] = 'Invalid recipient email address.';
+        return false;
+    }
+
+    $fromEmail = defined('MAIL_FROM_ADDRESS') && MAIL_FROM_ADDRESS !== '' ? (string) MAIL_FROM_ADDRESS : (getenv('MAIL_FROM_ADDRESS') ?: 'no-reply@bsns.online');
+    $fromName = defined('MAIL_FROM_NAME') && MAIL_FROM_NAME !== '' ? (string) MAIL_FROM_NAME : (getenv('MAIL_FROM_NAME') ?: 'Bacolod Health Delivery System');
+
+    if ($textContent === '') {
+        $textContent = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>', '</div>', '</h1>', '</h2>', '</h3>'], "\n", $htmlContent));
+    }
+
     $logsDir = dirname(__DIR__) . '/logs';
     if (!is_dir($logsDir)) {
         @mkdir($logsDir, 0755, true);
     }
     $logFile = $logsDir . '/email_otp.log';
 
-    $cleanToEmail = trim($toEmail);
-    $cleanToName = trim($toName) !== '' ? trim($toName) : 'User';
-
-    if (!filter_var($cleanToEmail, FILTER_VALIDATE_EMAIL)) {
-        $logEntry = date('Y-m-d H:i:s') . " | To: {$cleanToEmail} | Status: FAILED | Error: Invalid recipient email\n";
-        @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
-        return false;
-    }
-
-    $senderName = 'Bacolod Health Delivery System';
-    $senderEmail = 'no-reply@bsns.online';
-
-    // If textContent is empty, generate plain text version from htmlContent
-    if ($textContent === '') {
-        $textContent = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>', '</div>', '</h1>', '</h2>', '</h3>'], "\n", $htmlContent));
-    }
-
     $emailSent = false;
-    $httpCode = 0;
-    $response = '';
-    $error = '';
+    $methodUsed = 'NONE';
+    $detail = '';
 
-    // Attempt delivery via Brevo v3 Transactional Email API
-    if ($apiKey !== '' && function_exists('curl_init')) {
+    // 1. Attempt direct SMTP if SMTP_HOST is configured
+    $smtpHost = defined('SMTP_HOST') ? (string) SMTP_HOST : (getenv('SMTP_HOST') ?: '');
+    if ($smtpHost !== '') {
+        $smtpOk = sendSmtpEmail($cleanToEmail, $cleanToName, $subject, $htmlContent, $textContent);
+        if ($smtpOk) {
+            $emailSent = true;
+            $methodUsed = 'SMTP (' . $smtpHost . ')';
+        } else {
+            $detail .= 'SMTP Error: ' . ($GLOBALS['LAST_MAIL_ERROR'] ?? 'Failed') . '; ';
+        }
+    }
+
+    // 2. Attempt delivery via Brevo v3 Transactional Email API if not yet sent
+    $apiKey = defined('BREVO_API_KEY') ? (string) BREVO_API_KEY : (getenv('BREVO_API_KEY') ?: '');
+    if (!$emailSent && $apiKey !== '' && function_exists('curl_init')) {
         $payload = [
             'sender' => [
-                'name' => $senderName,
-                'email' => $senderEmail,
+                'name' => $fromName,
+                'email' => $fromEmail,
             ],
             'to' => [
                 [
@@ -78,30 +278,40 @@ function sendBrevoEmail(string $toEmail, string $toName, string $subject, string
 
         if ($httpCode >= 200 && $httpCode < 300) {
             $emailSent = true;
+            $methodUsed = 'Brevo API';
+        } else {
+            if (str_contains($response, 'authorised_ips') || str_contains($response, 'unrecognised IP')) {
+                $GLOBALS['LAST_MAIL_ERROR'] = 'Brevo API blocked request: Unrecognised IP address. You must authorize your IP at https://app.brevo.com/security/authorised_ips or disable the IP restriction in Brevo.';
+            } else {
+                $GLOBALS['LAST_MAIL_ERROR'] = "Brevo API HTTP {$httpCode}: " . ($response ?: $error);
+            }
+            $detail .= "Brevo API HTTP {$httpCode}: {$response}; ";
         }
     }
 
-    // Fallback: try standard PHP mail() if Brevo did not succeed
+    // 3. Fallback: try standard PHP mail() if still not sent
     if (!$emailSent && function_exists('mail')) {
         $headers = [
             'MIME-Version: 1.0',
             'Content-type: text/html; charset=UTF-8',
-            'From: ' . $senderName . ' <' . $senderEmail . '>',
-            'Reply-To: ' . $senderEmail,
+            'From: ' . $fromName . ' <' . $fromEmail . '>',
+            'Reply-To: ' . $fromEmail,
             'X-Mailer: PHP/' . phpversion(),
         ];
         $mailSuccess = @mail($cleanToEmail, $subject, $htmlContent, implode("\r\n", $headers));
         if ($mailSuccess) {
             $emailSent = true;
+            $methodUsed = 'PHP mail()';
+        } else {
+            $detail .= 'PHP mail() failed; ';
         }
     }
 
-    $statusStr = $emailSent ? 'SUCCESS' : 'PENDING_LOCAL';
-    $logEntry = date('Y-m-d H:i:s') . " | To: {$cleanToEmail} | Subject: {$subject} | HTTP: {$httpCode} | Status: {$statusStr} | Response: {$response} | Error: {$error}\n";
+    $statusStr = $emailSent ? 'SUCCESS' : 'FAILED';
+    $logEntry = date('Y-m-d H:i:s') . " | To: {$cleanToEmail} | Subject: {$subject} | Method: {$methodUsed} | Status: {$statusStr} | Detail: {$detail}\n";
     @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
 
-    // Return true if Brevo sent, PHP mail sent, or in local dev logged successfully
-    return true;
+    return $emailSent;
 }
 
 /**
