@@ -194,6 +194,68 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'station_counts') {
     exit;
 }
 
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'recent_activity') {
+    if (!is_admin_authenticated()) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+
+    header('Content-Type: application/json; charset=UTF-8');
+    try {
+        $activityData = recent_activity();
+        $formatted = [];
+        $html = '';
+        $topActivities = array_slice($activityData, 0, 5);
+        if ($topActivities === []) {
+            $html = '<div class="empty-state">No recent activity recorded yet.</div>';
+        } else {
+            foreach ($topActivities as $activity) {
+                $stClass = strtolower(str_replace(' ', '-', (string) ($activity['status'] ?? 'pending')));
+                $timeVal = !empty($activity['updated_at']) ? $activity['updated_at'] : ($activity['created_at'] ?? '');
+                $timeText = $timeVal ? date('M j, g:i A', strtotime((string) $timeVal)) : '';
+                $name = full_name($activity);
+                $status = (string) ($activity['status'] ?? 'Pending');
+                $service = (string) ($activity['service_name'] ?? '');
+                $station = (string) ($activity['station_name'] ?? '');
+
+                $html .= '<div class="dash-activity-row">'
+                    . '<div class="dash-act-avatar ' . h($stClass) . '">'
+                    . admin_icon('user-outline')
+                    . '</div>'
+                    . '<div class="dash-act-details">'
+                    . '<div class="dash-act-line-1">'
+                    . '<strong>' . h($name) . '</strong>'
+                    . '<span class="status-pill status-' . h($stClass) . '">' . h($status) . '</span>'
+                    . '</div>'
+                    . '<div class="dash-act-line-2">'
+                    . '<span>' . h($service) . '</span>'
+                    . '<em>•</em>'
+                    . '<span>' . h($station) . '</span>'
+                    . '</div>'
+                    . '</div>'
+                    . '<div class="dash-act-time">' . h($timeText) . '</div>'
+                    . '</div>';
+
+                $formatted[] = [
+                    'name' => $name,
+                    'status' => $status,
+                    'status_class' => $stClass,
+                    'service_name' => $service,
+                    'station_name' => $station,
+                    'created_at' => $activity['created_at'] ?? '',
+                    'updated_at' => $activity['updated_at'] ?? '',
+                    'time_text' => $timeText,
+                ];
+            }
+        }
+        echo json_encode(['activities' => $formatted, 'html' => $html], JSON_THROW_ON_ERROR);
+    } catch (Throwable $e) {
+        echo json_encode(['activities' => [], 'html' => '<div class="empty-state">No recent activity recorded yet.</div>'], JSON_THROW_ON_ERROR);
+    }
+    exit;
+}
+
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'mark_notification_read') {
     if (!is_admin_authenticated()) {
         http_response_code(401);
@@ -1545,7 +1607,7 @@ if (!function_exists('peso')) {
                         </div>
                         <a href="?page=appointments" class="dash-link-btn">All Appointments →</a>
                     </div>
-                    <div class="dash-activity-list">
+                    <div class="dash-activity-list" id="dashRecentActivityList">
                         <?php if ($activities === []): ?>
                             <div class="empty-state">No recent activity recorded yet.</div>
                         <?php else: ?>
@@ -1569,7 +1631,7 @@ if (!function_exists('peso')) {
                                         </div>
                                     </div>
                                     <div class="dash-act-time">
-                                        <?= h(date('M j, g:i A', strtotime((string) $activity['created_at']))); ?>
+                                        <?= h(date('M j, g:i A', strtotime((string) (!empty($activity['updated_at']) ? $activity['updated_at'] : $activity['created_at'])))); ?>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -2051,13 +2113,13 @@ if (!function_exists('peso')) {
                                                     <?= admin_icon('history'); ?>
                                                 </a>
                                                 <?php if (!empty($adminInfants)): ?>
-                                                    <button type="button" class="patient-action-btn infant is-active" onclick="openAdminInfantViewer(<?= htmlspecialchars(json_encode([
-                                                        'patient_name' => full_name($patient),
-                                                        'patient_id' => (string) $patient['patient_id'],
-                                                        'infants' => $adminInfants,
-                                                    ]), ENT_QUOTES, 'UTF-8'); ?>)" title="View Registered Infant Sub-Profiles (<?= count($adminInfants); ?>)">
-                                                        <?= admin_icon('baby'); ?>
-                                                    </button>
+                                                    <?php foreach ($adminInfants as $adminInf): ?>
+                                                        <button type="button" class="patient-action-btn infant is-active" onclick="openAdminInfantViewer(<?= htmlspecialchars(json_encode([
+                                                            'infant' => $adminInf,
+                                                        ]), ENT_QUOTES, 'UTF-8'); ?>)" title="View Infant Profile: <?= h($adminInf['full_name']); ?>">
+                                                            <?= admin_icon('baby'); ?>
+                                                        </button>
+                                                    <?php endforeach; ?>
                                                 <?php else: ?>
                                                     <button type="button" class="patient-action-btn infant is-disabled" disabled title="No served infant records on file">
                                                         <?= admin_icon('baby'); ?>
@@ -2192,7 +2254,7 @@ if (!function_exists('peso')) {
                                 <?= admin_icon('baby'); ?>
                             </div>
                             <div>
-                                <h2 style="color: #ffffff; font-size: 1.2rem; margin: 0; font-weight: 700;" id="adminInfantModalTitle">Infant Sub-Profile &amp; Immunization Record</h2>
+                                <h2 style="color: #ffffff; font-size: 1.2rem; margin: 0; font-weight: 700;" id="adminInfantModalTitle">Infant Profile &amp; Immunization Record</h2>
                                 <p style="color: rgba(255, 255, 255, 0.85); font-size: 0.82rem; margin: 2px 0 0 0;">City Health Admin &bull; Read-Only Pediatric Medical History</p>
                             </div>
                         </div>
@@ -6033,10 +6095,43 @@ function toggleDualDateFilter(clickedType, paramName, event) {
 
     hideNotifications();
 
+    // Real-time automatic refresher for Recent Activity section on Admin Dashboard
+    const recentActivityEl = document.getElementById('dashRecentActivityList');
+    if (recentActivityEl) {
+        let isRefreshingRecentActivity = false;
+        const refreshRecentActivity = async () => {
+            if (isRefreshingRecentActivity) return;
+            try {
+                isRefreshingRecentActivity = true;
+                const response = await fetch('?ajax=recent_activity');
+                if (!response.ok) return;
+                const data = await response.json();
+                if (data && typeof data.html === 'string' && recentActivityEl) {
+                    if (recentActivityEl.innerHTML.trim() !== data.html.trim()) {
+                        recentActivityEl.innerHTML = data.html;
+                    }
+                }
+            } catch (err) {
+                console.debug('Recent activity auto-refresh error:', err);
+            } finally {
+                isRefreshingRecentActivity = false;
+            }
+        };
+
+        window.setInterval(refreshRecentActivity, 3000);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                refreshRecentActivity();
+            }
+        });
+        window.addEventListener('focus', refreshRecentActivity);
+    }
+
     // ── 5-SECOND BACKGROUND TABLE LIVE SYNC FOR ADMIN PORTAL ──
     // Seamlessly updates admin tables, queue states, and metrics without full page reload
     let isAdminSyncing = false;
     const adminSyncSelectors = [
+        '#dashRecentActivityList',
         '.table-scroll-wrapper',
         'table.data-table',
         '.stat-grid',
@@ -6059,6 +6154,8 @@ function toggleDualDateFilter(clickedType, paramName, event) {
         const isUserModalOpen = userModal && userModal.classList.contains('open');
         const reportVisitModal = document.getElementById('reportVisitModal');
         const isReportVisitOpen = reportVisitModal && reportVisitModal.style.display !== 'none';
+        const reportsFilterModal = document.getElementById('reportsFilterModal');
+        const isReportsFilterOpen = reportsFilterModal && reportsFilterModal.style.display !== 'none';
         const accountModal = document.getElementById('accountModal');
         const isAccountModalOpen = accountModal && !accountModal.hasAttribute('hidden');
         const editStaffModal = document.getElementById('editStaffModalBackdrop');
@@ -6251,39 +6348,24 @@ window.previewAdminPhotoInModal = function(src) {
 };
 
 window.openAdminInfantViewer = function(data) {
-    if (!data || !data.infants || data.infants.length === 0) return;
-    currentAdminInfantData = data;
-    currentAdminSelectedInfantIndex = 0;
-    
+    if (!data) return;
+    const infant = data.infant || (data.infants && data.infants[0]) || data;
+    if (!infant) return;
+    currentAdminInfantData = infant;
+
     const modal = document.getElementById('adminInfantModal');
     if (!modal) return;
-    
-    window.renderAdminSelectedInfant(0);
+
+    window.renderAdminSelectedInfant(infant);
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 };
 
-window.renderAdminSelectedInfant = function(index) {
-    if (!currentAdminInfantData || !currentAdminInfantData.infants || !currentAdminInfantData.infants[index]) return;
-    currentAdminSelectedInfantIndex = index;
-    const infant = currentAdminInfantData.infants[index];
-    const totalInfants = currentAdminInfantData.infants.length;
+window.renderAdminSelectedInfant = function(targetInfant) {
+    const infant = (targetInfant && typeof targetInfant === 'object') ? targetInfant : currentAdminInfantData;
+    if (!infant) return;
     const body = document.getElementById('adminInfantModalBody');
     if (!body) return;
-
-    // Multiple infants switcher if count > 1
-    let switcherHtml = '';
-    if (totalInfants > 1) {
-        switcherHtml = '<div style="display: flex; gap: 8px; margin-bottom: 18px; overflow-x: auto; padding-bottom: 4px;">';
-        currentAdminInfantData.infants.forEach((inf, i) => {
-            const isSel = i === index;
-            switcherHtml += `
-            <button type="button" onclick="renderAdminSelectedInfant(${i})" style="padding: 8px 16px; border-radius: 10px; font-size: 0.84rem; font-weight: 700; cursor: pointer; border: 1.5px solid ${isSel ? '#7c3aed' : '#e2e8f0'}; background: ${isSel ? '#f5f3ff' : '#ffffff'}; color: ${isSel ? '#6d28d9' : '#64748b'}; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;">
-                <span>👶 ${adminEscapeHtml(inf.full_name)}</span>
-            </button>`;
-        });
-        switcherHtml += '</div>';
-    }
 
     let photoHtml = '';
     const photoRaw = (infant.latest_photo || infant.photo_path || '').trim();
@@ -6457,51 +6539,25 @@ window.renderAdminSelectedInfant = function(index) {
         timelineHtml = '<p style="color: #64748b; font-size: 0.85rem; margin-top: 8px;">No consultation history on record.</p>';
     }
 
-    const isGuardian = Boolean(infant.is_guardian);
-    const roleBadgeHtml = isGuardian
-        ? `<span style="background: #fef3c7; color: #92400e; border: 1.5px solid #fde68a; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">Registered Guardian</span>`
-        : `<span style="background: #ede9fe; color: #6d28d9; border: 1.5px solid #ddd6fe; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">${adminEscapeHtml(infant.role_label || 'Registered Parent')}</span>`;
-
-    let parentalInfoHtml = '';
-    if (isGuardian) {
-        parentalInfoHtml = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
-            <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; padding: 12px 14px;">
-                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #92400e; text-transform: uppercase;">Registered Guardian:</span>
-                <strong style="display: block; font-size: 0.95rem; color: #78350f; margin-top: 3px;">${adminEscapeHtml(infant.guardian_name || currentAdminInfantData.patient_name)}</strong>
-                <span style="display: inline-block; background: #fef3c7; color: #b45309; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; margin-top: 4px;">Legal Guardian</span>
-            </div>
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Biological Mother:</span>
-                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.mother_name || 'None recorded')}</strong>
-            </div>
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Biological Father:</span>
-                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.father_name || 'None recorded')}</strong>
-            </div>
+    let parentalInfoHtml = `
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+            <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Mother's Name:</span>
+            <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.mother_name || 'None recorded')}</strong>
         </div>
-        `;
-    } else {
-        parentalInfoHtml = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Mother's Name:</span>
-                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.mother_name || 'None recorded')}</strong>
-            </div>
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Father's Name:</span>
-                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.father_name || 'None recorded')}</strong>
-            </div>
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Guardian Status:</span>
-                <strong style="display: block; font-size: 0.92rem; color: #64748b; margin-top: 3px;">Registered to Biological Parent</strong>
-            </div>
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+            <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Father's Name:</span>
+            <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.father_name || 'None recorded')}</strong>
         </div>
-        `;
-    }
+        ${infant.guardian_name ? `
+        <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; padding: 12px 14px;">
+            <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #92400e; text-transform: uppercase;">Guardian:</span>
+            <strong style="display: block; font-size: 0.92rem; color: #78350f; margin-top: 3px;">${adminEscapeHtml(infant.guardian_name)}</strong>
+        </div>` : ''}
+    </div>
+    `;
 
     body.innerHTML = `
-    ${switcherHtml}
     <!-- Demographic Card -->
     <div style="background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%); border: 1.5px solid #ddd6fe; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 18px; margin-bottom: 20px; flex-wrap: wrap;">
         <div style="width: 72px; height: 72px; border-radius: 50%; background: #ffffff; border: 3px solid #a855f7; position: relative; overflow: hidden; flex-shrink: 0; color: #7c3aed; font-size: 1.6rem; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);">
@@ -6519,10 +6575,6 @@ window.renderAdminSelectedInfant = function(index) {
                 <span>&bull;</span>
                 <span><strong>Gender:</strong> ${adminEscapeHtml(infant.gender || 'Not specified')}</span>
             </div>
-            <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 0.86rem; color: #581c87; flex-wrap: wrap;">
-                <strong>Account Holder Role:</strong>
-                ${roleBadgeHtml}
-            </div>
         </div>
     </div>
 
@@ -6536,11 +6588,11 @@ window.renderAdminSelectedInfant = function(index) {
         ${dosesHtml}
     </div>
 
-    <!-- Section 2: Parental / Guardian Information (Read-Only) -->
+    <!-- Section 2: Parental Information (Read-Only) -->
     <div style="margin-bottom: 20px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
         <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
             <span style="color: #7c3aed;"><?= admin_icon('user'); ?></span>
-            <span>Parental &amp; Guardian Information (Read-Only)</span>
+            <span>Parental Information (Read-Only)</span>
         </div>
         ${parentalInfoHtml}
         ${infant.custom_notes || infant.notes ? `<div style="margin-top: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">

@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Admin Panel - Bacolod City Health</title>
+    <!-- PWA & Mobile App Capabilities -->
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="BHS Admin">
+    <link rel="icon" type="image/svg+xml" href="../assets/icons/favicon.svg">
+    <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
+    <link rel="stylesheet" href="../shared/pwa-install.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/styles.css?v=1790574651">
+</head>
+<body>
+<div class="admin-drawer-backdrop" id="adminDrawerBackdrop"></div>
+<div class="admin-shell">
+    <aside class="sidebar" id="adminSidebar">
+        <div class="sidebar-drawer-header">
+            <div class="drawer-brand-mini">
+                <span class="brand-mark-mini"><span class="brand-mark" style="width:36px;height:36px;"><svg width="24" height="24" viewBox="0 0 24 24" style="width:24px;height:24px;max-width:24px;max-height:24px;display:inline-block;vertical-align:middle;"><path d="M6 3v6a4 4 0 0 0 8 0V3m-6 0h4m6 8a3 3 0 1 0 3 3v-4m-3 7a4 4 0 0 1-4 4h-1a4 4 0 0 1-4-4v-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
+                <div>
+                    <strong>Bacolod City Health</strong>
+                    <small>Admin Panel</small>
+                </div>
+            </div>
+            <button type="button" class="sidebar-drawer-close" id="adminSidebarCloseBtn" aria-label="Close navigation">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="sidebar-desktop-brand">
+            <div class="sidebar-brand"><span class="brand-mark"><svg width="24" height="24" viewBox="0 0 24 24" style="width:24px;height:24px;max-width:24px;max-height:24px;display:inline-block;vertical-align:middle;"><path d="M6 3v6a4 4 0 0 0 8 0V3m-6 0h4m6 8a3 3 0 1 0 3 3v-4m-3 7a4 4 0 0 1-4 4h-1a4 4 0 0 1-4-4v-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><strong>Bacolod City Health</strong><small>Admin Panel</small></div></div>
+        </div>
+        <div style="flex: 1;">
+            <nav class="sidebar-nav">
+                <a class="" href="?page=dashboard"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 3h6m-6 3h6v-6h-6v6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Dashboard</a>
+                <a class="active" href="?page=patients"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2m18 0v-2a4 4 0 0 0-3-3.87M14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm7 14v-2a4 4 0 0 0-3-3.87M18 3a4 4 0 0 1 0 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Patients</a>
+                <a class="" href="?page=appointments"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M8 2v4m8-4v4M3 10h18M5 5h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Appointments</a>
+                <a class="" href="?page=queue"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M4 7h16M4 12h10M4 17h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Queue Management</a>
+                <a class="" href="?page=services"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Station Services</a>
+                <a class="" href="?page=events"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 8v5l3 2m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Upcoming Events</a>
+                <a class="" href="?page=users"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M9 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-6 8a6 6 0 0 1 12 0m3-10h3m-1.5-1.5v3m-3.8 7.3 1.1 1.1 2.4-2.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>User Management</a>
+                <a class="" href="?page=reports"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M4 19V5m5 14V9m5 10V3m6 16H2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Reports</a>
+            </nav>
+        </div>
+        <div class="sidebar-footer-widget">
+            <div class="sidebar-admin-badge">
+                <div class="badge-role-tag">Administrator</div>
+                <strong>Admin User</strong>
+                <span>admintest@gmail.com</span>
+            </div>
+            <button type="button" class="sidebar-account-btn" id="sidebarOpenAccountBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                <span>Account Settings</span>
+            </button>
+        </div>
+        <div class="sidebar-drawer-signout">
+            <form method="post" class="logout-form" style="margin: 0;">
+                <input type="hidden" name="action" value="logout">
+                <input type="hidden" name="csrf_token" value="3af600efb6ed09e09d5fea9526a6001823ec5ffdf4670be0e82026d308ebef4a">
+                <button type="submit" class="sidebar-logout-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                    <span>Sign Out</span>
+                </button>
+            </form>
+        </div>
+    </aside>
+    <main class="main-content">
+        <header class="admin-header">
+            <div class="admin-header-left">
+                <button type="button" class="admin-mobile-nav-toggle" id="adminMobileNavToggle" aria-label="Toggle navigation menu">
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <div class="admin-status-indicator">
+                    <span class="live-pulse"></span>
+                    <span class="live-text">City Health Network Online</span>
+                </div>
+                <div class="admin-date-badge">Monday, September 28, 2026</div>
+            </div>
+            <div class="admin-header-actions">
+                <div class="admin-user-badge" id="adminTopbarUserBadge" style="cursor: pointer;" title="Open Account Settings">
+                    <div class="admin-user-avatar">
+                        A                    </div>
+                    <div class="admin-user-info">
+                        <strong>Admin User</strong>
+                        <span>admintest@gmail.com</span>
+                    </div>
+                </div>
+                <form method="post" class="logout-form admin-header-logout">
+                    <input type="hidden" name="action" value="logout">
+                    <input type="hidden" name="csrf_token" value="3af600efb6ed09e09d5fea9526a6001823ec5ffdf4670be0e82026d308ebef4a">
+                    <button type="submit" class="logout-button" title="Sign out of admin panel"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Sign Out</span></button>
+                </form>
+            </div>
+        </header>
+
+        
+                    <!-- Main Patients Directory Page -->
+            <section class="page-header action-head reports-page-head">
+                <div class="action-head-copy">
+                    <h1>Patients &amp; Health Records</h1>
+                    <p>Directory of registered patients, consultation history, and verified profile updates</p>
+                </div>
+                <div class="header-actions">
+                    <span class="dash-badge-count" style="font-size:0.9rem;padding:8px 16px;">
+                        3 Registered Patients
+                    </span>
+                </div>
+            </section>
+
+            <!-- Search & Filter Bar -->
+            <section class="panel-card patient-filter-bar-card">
+                <form class="patient-filter-form-modern" method="get">
+                    <input type="hidden" name="page" value="patients">
+                    
+                    <div class="patient-search-input-wrap">
+                        <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                        <input type="text" name="search" value="" placeholder="Search by patient name, contact number, ID, or address...">
+                    </div>
+
+                    <div class="patient-filter-selects">
+                        <select name="patient_station" onchange="this.form.submit()">
+                            <option value="" selected>All Barangay Stations</option>
+                                                            <option value="alijis" >
+                                    Alijis Barangay Health Station                                </option>
+                                                            <option value="bata" >
+                                    Bata Barangay Health Station                                </option>
+                                                            <option value="cabug" >
+                                    Cabug Barangay Health Station                                </option>
+                                                            <option value="city-health" >
+                                    Bacolod City Health Office                                </option>
+                                                            <option value="estefania" >
+                                    Estefania Barangay Health Station                                </option>
+                                                            <option value="granada" >
+                                    Granada Barangay Health Station                                </option>
+                                                            <option value="handumanan" >
+                                    Handumanan Barangay Health Station                                </option>
+                                                            <option value="mandalagan" >
+                                    Mandalagan Barangay Health Station                                </option>
+                                                            <option value="mansilingan" >
+                                    Mansilingan Barangay Health Station                                </option>
+                                                            <option value="pahanocoy" >
+                                    Pahanocoy Barangay Health Station                                </option>
+                                                            <option value="singcang" >
+                                    Singcang Barangay Health Station                                </option>
+                                                            <option value="sum-ag" >
+                                    Sum-Ag Barangay Health Station                                </option>
+                                                            <option value="taculing" >
+                                    Taculing Barangay Health Station                                </option>
+                                                            <option value="villamonte" >
+                                    Villamonte Barangay Health Station                                </option>
+                                                            <option value="villa-esperanza" >
+                                    Villa Esperanza Barangay Health Station                                </option>
+                                                            <option value="vista-alegre" >
+                                    Vista Alegre Barangay Health Station                                </option>
+                                                    </select>
+
+                        <select name="patient_gender" onchange="this.form.submit()">
+                            <option value="" selected>All Genders</option>
+                            <option value="Female" >Female</option>
+                            <option value="Male" >Male</option>
+                        </select>
+
+                        <button type="submit" class="dash-hero-btn primary mini-btn" style="padding:9px 16px;">Search</button>
+
+                                            </div>
+                </form>
+            </section>
+
+            <!-- Patients Directory Table Card -->
+            <section class="panel-card patient-table-card-modern">
+                                    <div class="table-scroll-wrapper">
+                        <table class="data-table patient-management-table-modern">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center;">Patient Profile</th>
+                                    <th style="text-align: center;">Age / Gender</th>
+                                    <th>Health Station &amp; Address</th>
+                                    <th style="text-align: center;">Contact Information</th>
+                                    <th>Last Visit</th>
+                                    <th style="text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                                                                                        <tr class="" data-notification-id="">
+                                        <td>
+                                            <div class="patient-table-user-cell">
+                                                <div class="patient-table-avatar">EZ</div>
+                                                <div>
+                                                    <strong>Evelyn Taboclaon Zacarias</strong>
+                                                    <span class="patient-table-id">ID: AD00A8</span>
+                                                </div>
+                                            </div>
+                                                                                    </td>
+                                        <td style="text-align: center;">
+                                            <div>62 yrs</div>
+                                            <small style="color:#64748b;">Female</small>
+                                        </td>
+                                        <td>
+                                                                                            <span class="patient-station-chip">Bata Barangay Health Station</span>
+                                                                                        <div class="patient-address-snippet">Purok Pag-isa, Barangay Bata, Bacolod City</div>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <div style="font-weight:600;color:#2563eb;">09426388677</div>
+                                            <small style="color:#64748b;">evelyntaboclaon@gmail.com</small>
+                                        </td>
+                                        <td>
+                                            <div>Sep 28, 2026</div>
+                                        </td>
+                                        <td style="text-align: center;">
+                                                                                        <div class="patient-table-action-btns" style="justify-content: center;">
+                                                <a class="patient-action-btn view" href="?page=patients&patient=AD00A8" title="View Complete Patient Profile">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                </a>
+                                                <a class="patient-action-btn history" href="?page=patients&service_history=AD00A8" title="View Completed Service History">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0-5v5h5M12 7v5l4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                </a>
+                                                                                                    <button type="button" class="patient-action-btn infant is-active" onclick="openAdminInfantViewer({&quot;patient_name&quot;:&quot;Evelyn Taboclaon Zacarias&quot;,&quot;patient_id&quot;:&quot;AD00A8&quot;,&quot;infants&quot;:[{&quot;id&quot;:4,&quot;infant_key&quot;:&quot;evelyn_zacarias_1963-12-26&quot;,&quot;patient_id&quot;:&quot;AD00A8&quot;,&quot;full_name&quot;:&quot;Evelyn Taboclaon Zacarias&quot;,&quot;first_name&quot;:&quot;Evelyn&quot;,&quot;middle_name&quot;:&quot;Taboclaon&quot;,&quot;last_name&quot;:&quot;Zacarias&quot;,&quot;birth_date&quot;:&quot;1963-12-26&quot;,&quot;age_label&quot;:&quot;62 yrs old&quot;,&quot;gender&quot;:&quot;Female&quot;,&quot;relationship&quot;:&quot;Mother&quot;,&quot;is_parent&quot;:true,&quot;is_guardian&quot;:false,&quot;role_type&quot;:&quot;Parent&quot;,&quot;role_label&quot;:&quot;Registered Parent (Mother)&quot;,&quot;mother_name&quot;:&quot;Evelyn Taboclaon Zacarias&quot;,&quot;father_name&quot;:&quot;&quot;,&quot;guardian_name&quot;:&quot;&quot;,&quot;parent_name&quot;:&quot;Evelyn Taboclaon Zacarias&quot;,&quot;parent_gender&quot;:&quot;Female&quot;,&quot;custom_notes&quot;:&quot;&quot;,&quot;photo_path&quot;:&quot;&quot;,&quot;latest_photo&quot;:&quot;&quot;,&quot;vaccine_counts&quot;:{&quot;Influenza&quot;:1},&quot;vaccine_doses&quot;:[{&quot;vaccine_type&quot;:&quot;Influenza&quot;,&quot;date&quot;:&quot;2026-09-28&quot;,&quot;station_name&quot;:&quot;bata&quot;,&quot;appointment_code&quot;:&quot;D4N3AYCL&quot;,&quot;doctor_notes&quot;:&quot;&quot;,&quot;status&quot;:&quot;Completed&quot;}],&quot;total_doses&quot;:1,&quot;appointments&quot;:[]},{&quot;id&quot;:2,&quot;infant_key&quot;:&quot;maria_teressa_2026-02-19&quot;,&quot;patient_id&quot;:&quot;AD00A8&quot;,&quot;full_name&quot;:&quot;Maria Leonora Teressa&quot;,&quot;first_name&quot;:&quot;Maria&quot;,&quot;middle_name&quot;:&quot;Leonora&quot;,&quot;last_name&quot;:&quot;Teressa&quot;,&quot;birth_date&quot;:&quot;2026-02-19&quot;,&quot;age_label&quot;:&quot;7 mos old&quot;,&quot;gender&quot;:&quot;Female&quot;,&quot;relationship&quot;:&quot;Guardian&quot;,&quot;is_parent&quot;:false,&quot;is_guardian&quot;:true,&quot;role_type&quot;:&quot;Guardian&quot;,&quot;role_label&quot;:&quot;Registered Guardian&quot;,&quot;mother_name&quot;:&quot;&quot;,&quot;father_name&quot;:&quot;&quot;,&quot;guardian_name&quot;:&quot;Evelyn Taboclaon Zacarias&quot;,&quot;parent_name&quot;:&quot;Evelyn Taboclaon Zacarias&quot;,&quot;parent_gender&quot;:&quot;Female&quot;,&quot;custom_notes&quot;:&quot;&quot;,&quot;photo_path&quot;:&quot;&quot;,&quot;latest_photo&quot;:&quot;&quot;,&quot;vaccine_counts&quot;:[],&quot;vaccine_doses&quot;:[],&quot;total_doses&quot;:0,&quot;appointments&quot;:[]}]})" title="View Registered Infant Sub-Profiles (2)">
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M9 12h.01M15 12h.01M10 16c.5.5 1.2.8 2 .8s1.5-.3 2-.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4v-2M9 4.5C9.5 3 10.5 2 12 2c1.5 0 2.5 1 3 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    </button>
+                                                                                                                                            </div>
+                                        </td>
+                                    </tr>
+                                                                                                        <tr class="" data-notification-id="">
+                                        <td>
+                                            <div class="patient-table-user-cell">
+                                                <div class="patient-table-avatar">LZ</div>
+                                                <div>
+                                                    <strong>Leo Taboclaon Zacarias</strong>
+                                                    <span class="patient-table-id">ID: P2YLL5</span>
+                                                </div>
+                                            </div>
+                                                                                    </td>
+                                        <td style="text-align: center;">
+                                            <div>23 yrs</div>
+                                            <small style="color:#64748b;">Male</small>
+                                        </td>
+                                        <td>
+                                                                                            <span class="patient-station-chip">Bata Barangay Health Station</span>
+                                                                                        <div class="patient-address-snippet">Purok Pag-isa, Barangay Bata, Bacolod City</div>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <div style="font-weight:600;color:#2563eb;">09691080024</div>
+                                            <small style="color:#64748b;">leozcrs17@gmail.com</small>
+                                        </td>
+                                        <td>
+                                            <div>Sep 28, 2026</div>
+                                        </td>
+                                        <td style="text-align: center;">
+                                                                                        <div class="patient-table-action-btns" style="justify-content: center;">
+                                                <a class="patient-action-btn view" href="?page=patients&patient=P2YLL5" title="View Complete Patient Profile">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                </a>
+                                                <a class="patient-action-btn history" href="?page=patients&service_history=P2YLL5" title="View Completed Service History">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0-5v5h5M12 7v5l4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                </a>
+                                                                                                    <button type="button" class="patient-action-btn infant is-active" onclick="openAdminInfantViewer({&quot;patient_name&quot;:&quot;Leo Taboclaon Zacarias&quot;,&quot;patient_id&quot;:&quot;P2YLL5&quot;,&quot;infants&quot;:[{&quot;id&quot;:1,&quot;infant_key&quot;:&quot;miko_santos_2026-03-09&quot;,&quot;patient_id&quot;:&quot;P2YLL5&quot;,&quot;full_name&quot;:&quot;Miko Ciocon Santos&quot;,&quot;first_name&quot;:&quot;Miko&quot;,&quot;middle_name&quot;:&quot;Ciocon&quot;,&quot;last_name&quot;:&quot;Santos&quot;,&quot;birth_date&quot;:&quot;2026-03-09&quot;,&quot;age_label&quot;:&quot;6 mos old&quot;,&quot;gender&quot;:&quot;Male&quot;,&quot;relationship&quot;:&quot;Guardian&quot;,&quot;is_parent&quot;:false,&quot;is_guardian&quot;:true,&quot;role_type&quot;:&quot;Guardian&quot;,&quot;role_label&quot;:&quot;Registered Guardian&quot;,&quot;mother_name&quot;:&quot;Mika Ciocon Santos&quot;,&quot;father_name&quot;:&quot;Nelson Bandoy Santos&quot;,&quot;guardian_name&quot;:&quot;Leo Taboclaon Zacarias&quot;,&quot;parent_name&quot;:&quot;Leo Taboclaon Zacarias&quot;,&quot;parent_gender&quot;:&quot;Male&quot;,&quot;custom_notes&quot;:&quot;&quot;,&quot;photo_path&quot;:&quot;uploads\/patient_6aabb60f27e1c0.02536229.jpg&quot;,&quot;latest_photo&quot;:&quot;uploads\/patient_6aabb60f27e1c0.02536229.jpg&quot;,&quot;vaccine_counts&quot;:{&quot;Pentavalent (DTP-HepB-Hib)&quot;:1,&quot;Hepatitis&quot;:1,&quot;Influenza&quot;:1},&quot;vaccine_doses&quot;:[{&quot;vaccine_type&quot;:&quot;Pentavalent (DTP-HepB-Hib)&quot;,&quot;date&quot;:&quot;2026-09-28&quot;,&quot;station_name&quot;:&quot;Bata Barangay Health Station&quot;,&quot;appointment_code&quot;:&quot;MBZVHVVA&quot;,&quot;doctor_notes&quot;:&quot;The infant is healthy, 1st dose of Pentavalent given.&quot;,&quot;status&quot;:&quot;Completed&quot;},{&quot;vaccine_type&quot;:&quot;Hepatitis&quot;,&quot;date&quot;:&quot;2026-09-17&quot;,&quot;station_name&quot;:&quot;Bata Barangay Health Station&quot;,&quot;appointment_code&quot;:&quot;6KZ7TPR6&quot;,&quot;doctor_notes&quot;:&quot;Ok na buhhi pana&quot;,&quot;status&quot;:&quot;Completed&quot;},{&quot;vaccine_type&quot;:&quot;Influenza&quot;,&quot;date&quot;:&quot;2026-09-16&quot;,&quot;station_name&quot;:&quot;Bata Barangay Health Station&quot;,&quot;appointment_code&quot;:&quot;M7CRSYSG&quot;,&quot;doctor_notes&quot;:&quot;Infant is healthy, and has been vaccinated.&quot;,&quot;status&quot;:&quot;Completed&quot;}],&quot;total_doses&quot;:3,&quot;appointments&quot;:[{&quot;id&quot;:33,&quot;reference_code&quot;:&quot;BK260928043608997&quot;,&quot;appointment_code&quot;:&quot;MBZVHVVA&quot;,&quot;patient_id&quot;:&quot;P2YLL5&quot;,&quot;station_slug&quot;:&quot;bata&quot;,&quot;station_name&quot;:&quot;Bata Barangay Health Station&quot;,&quot;service_slug&quot;:&quot;immunization&quot;,&quot;service_name&quot;:&quot;Immunization&quot;,&quot;first_name&quot;:&quot;Leo&quot;,&quot;middle_name&quot;:&quot;Taboclaon&quot;,&quot;last_name&quot;:&quot;Zacarias&quot;,&quot;birth_date&quot;:&quot;2002-11-17&quot;,&quot;gender&quot;:&quot;Male&quot;,&quot;contact_number&quot;:&quot;09691080024&quot;,&quot;email&quot;:&quot;leozcrs17@gmail.com&quot;,&quot;complete_address&quot;:&quot;Purok Pag-isa, Barangay Bata, Bacolod City&quot;,&quot;immunization_relationship&quot;:&quot;Guardian&quot;,&quot;recipient_first_name&quot;:&quot;Miko&quot;,&quot;recipient_middle_name&quot;:&quot;Ciocon&quot;,&quot;recipient_last_name&quot;:&quot;Santos&quot;,&quot;recipient_birth_date&quot;:&quot;2026-03-09&quot;,&quot;recipient_gender&quot;:&quot;Male&quot;,&quot;preferred_date&quot;:&quot;2026-09-28&quot;,&quot;preferred_time&quot;:&quot;Daily Slot&quot;,&quot;notes&quot;:&quot;&quot;,&quot;body_temperature&quot;:&quot;36.2&quot;,&quot;pulse_rate&quot;:&quot;80&quot;,&quot;respiration_rate&quot;:&quot;30&quot;,&quot;blood_pressure&quot;:&quot;65\/45&quot;,&quot;height&quot;:&quot;60 cm&quot;,&quot;weight&quot;:&quot;7 kg&quot;,&quot;vaccine_type&quot;:&quot;Pentavalent (DTP-HepB-Hib)&quot;,&quot;chest_xray&quot;:&quot;&quot;,&quot;doctor_notes&quot;:&quot;The infant is healthy, 1st dose of Pentavalent given.&quot;,&quot;reminder_sms_sent&quot;:0,&quot;reminder_sent_at&quot;:null,&quot;follow_up_date&quot;:null,&quot;follow_up_time&quot;:null,&quot;follow_up_notes&quot;:null,&quot;follow_up_set_at&quot;:null,&quot;photo_path&quot;:&quot;&quot;,&quot;status&quot;:&quot;Completed&quot;,&quot;created_at&quot;:&quot;2026-09-28 04:36:08&quot;,&quot;updated_at&quot;:&quot;2026-09-28 04:48:18&quot;},{&quot;id&quot;:24,&quot;reference_code&quot;:&quot;BK260917092832760&quot;,&quot;appointment_code&quot;:&quot;6KZ7TPR6&quot;,&quot;patient_id&quot;:&quot;P2YLL5&quot;,&quot;station_slug&quot;:&quot;bata&quot;,&quot;station_name&quot;:&quot;Bata Barangay Health Station&quot;,&quot;service_slug&quot;:&quot;immunization&quot;,&quot;service_name&quot;:&quot;Immunization&quot;,&quot;first_name&quot;:&quot;Leo&quot;,&quot;middle_name&quot;:&quot;Taboclaon&quot;,&quot;last_name&quot;:&quot;Zacarias&quot;,&quot;birth_date&quot;:&quot;2002-11-17&quot;,&quot;gender&quot;:&quot;Male&quot;,&quot;contact_number&quot;:&quot;09691080024&quot;,&quot;email&quot;:&quot;leozcrs17@gmail.com&quot;,&quot;complete_address&quot;:&quot;Purok Pag-isa, Barangay Bata, Bacolod City&quot;,&quot;immunization_relationship&quot;:&quot;Guardian&quot;,&quot;recipient_first_name&quot;:&quot;Miko&quot;,&quot;recipient_middle_name&quot;:&quot;Ciocon&quot;,&quot;recipient_last_name&quot;:&quot;Santos&quot;,&quot;recipient_birth_date&quot;:&quot;2026-03-09&quot;,&quot;recipient_gender&quot;:null,&quot;preferred_date&quot;:&quot;2026-09-17&quot;,&quot;preferred_time&quot;:&quot;Daily Slot&quot;,&quot;notes&quot;:&quot;&quot;,&quot;body_temperature&quot;:&quot;36.7 C&quot;,&quot;pulse_rate&quot;:&quot;80 bpm&quot;,&quot;respiration_rate&quot;:&quot;18 cpm&quot;,&quot;blood_pressure&quot;:&quot;120\/80&quot;,&quot;height&quot;:null,&quot;weight&quot;:null,&quot;vaccine_type&quot;:&quot;Hepatitis&quot;,&quot;chest_xray&quot;:null,&quot;doctor_notes&quot;:&quot;Ok na buhhi pana&quot;,&quot;reminder_sms_sent&quot;:0,&quot;reminder_sent_at&quot;:null,&quot;follow_up_date&quot;:null,&quot;follow_up_time&quot;:null,&quot;follow_up_notes&quot;:null,&quot;follow_up_set_at&quot;:null,&quot;photo_path&quot;:&quot;uploads\/patient_6aabb60f27e1c0.02536229.jpg&quot;,&quot;status&quot;:&quot;Completed&quot;,&quot;created_at&quot;:&quot;2026-09-17 09:28:32&quot;,&quot;updated_at&quot;:&quot;2026-09-17 09:43:30&quot;},{&quot;id&quot;:17,&quot;reference_code&quot;:&quot;BK260915201119915&quot;,&quot;appointment_code&quot;:&quot;M7CRSYSG&quot;,&quot;patient_id&quot;:&quot;P2YLL5&quot;,&quot;station_slug&quot;:&quot;bata&quot;,&quot;station_name&quot;:&quot;Bata Barangay Health Station&quot;,&quot;service_slug&quot;:&quot;immunization&quot;,&quot;service_name&quot;:&quot;Immunization&quot;,&quot;first_name&quot;:&quot;Leo&quot;,&quot;middle_name&quot;:&quot;Taboclaon&quot;,&quot;last_name&quot;:&quot;Zacarias&quot;,&quot;birth_date&quot;:&quot;2002-11-17&quot;,&quot;gender&quot;:&quot;Male&quot;,&quot;contact_number&quot;:&quot;09691080024&quot;,&quot;email&quot;:&quot;leozcrs17@gmail.com&quot;,&quot;complete_address&quot;:&quot;Purok Pag-isa, Barangay Bata, Bacolod City&quot;,&quot;immunization_relationship&quot;:&quot;Guardian&quot;,&quot;recipient_first_name&quot;:&quot;Miko&quot;,&quot;recipient_middle_name&quot;:&quot;Ciocon&quot;,&quot;recipient_last_name&quot;:&quot;Santos&quot;,&quot;recipient_birth_date&quot;:&quot;2026-03-09&quot;,&quot;recipient_gender&quot;:null,&quot;preferred_date&quot;:&quot;2026-09-16&quot;,&quot;preferred_time&quot;:&quot;Daily Slot&quot;,&quot;notes&quot;:&quot;&quot;,&quot;body_temperature&quot;:&quot;36.7 C&quot;,&quot;pulse_rate&quot;:&quot;120&quot;,&quot;respiration_rate&quot;:&quot;27&quot;,&quot;blood_pressure&quot;:&quot;80\/60&quot;,&quot;height&quot;:null,&quot;weight&quot;:null,&quot;vaccine_type&quot;:&quot;Influenza&quot;,&quot;chest_xray&quot;:null,&quot;doctor_notes&quot;:&quot;Infant is healthy, and has been vaccinated.&quot;,&quot;reminder_sms_sent&quot;:0,&quot;reminder_sent_at&quot;:null,&quot;follow_up_date&quot;:null,&quot;follow_up_time&quot;:null,&quot;follow_up_notes&quot;:null,&quot;follow_up_set_at&quot;:null,&quot;photo_path&quot;:&quot;uploads\/patient_6aa9f83bb24f21.47687780.jpg&quot;,&quot;status&quot;:&quot;Completed&quot;,&quot;created_at&quot;:&quot;2026-09-15 20:11:19&quot;,&quot;updated_at&quot;:&quot;2026-09-16 02:02:31&quot;}]}]})" title="View Registered Infant Sub-Profiles (1)">
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M9 12h.01M15 12h.01M10 16c.5.5 1.2.8 2 .8s1.5-.3 2-.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4v-2M9 4.5C9.5 3 10.5 2 12 2c1.5 0 2.5 1 3 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    </button>
+                                                                                                                                            </div>
+                                        </td>
+                                    </tr>
+                                                                                                        <tr class="" data-notification-id="">
+                                        <td>
+                                            <div class="patient-table-user-cell">
+                                                <div class="patient-table-avatar">MD</div>
+                                                <div>
+                                                    <strong>Mekai Villegas Dudot</strong>
+                                                    <span class="patient-table-id">ID: DBBF98</span>
+                                                </div>
+                                            </div>
+                                                                                    </td>
+                                        <td style="text-align: center;">
+                                            <div>26 yrs</div>
+                                            <small style="color:#64748b;">Female</small>
+                                        </td>
+                                        <td>
+                                                                                            <span class="patient-station-chip">Mandalagan Barangay Health Station</span>
+                                                                                        <div class="patient-address-snippet">Purok Bulak, Barangay Mandalagan, Bacolod City</div>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <div style="font-weight:600;color:#2563eb;">09665600834</div>
+                                            <small style="color:#64748b;">mekai123@gmail.com</small>
+                                        </td>
+                                        <td>
+                                            <div>Sep 18, 2026</div>
+                                        </td>
+                                        <td style="text-align: center;">
+                                                                                        <div class="patient-table-action-btns" style="justify-content: center;">
+                                                <a class="patient-action-btn view" href="?page=patients&patient=DBBF98" title="View Complete Patient Profile">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                </a>
+                                                <a class="patient-action-btn history" href="?page=patients&service_history=DBBF98" title="View Completed Service History">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0-5v5h5M12 7v5l4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                </a>
+                                                                                                    <button type="button" class="patient-action-btn infant is-active" onclick="openAdminInfantViewer({&quot;patient_name&quot;:&quot;Mekai Villegas Dudot&quot;,&quot;patient_id&quot;:&quot;DBBF98&quot;,&quot;infants&quot;:[{&quot;id&quot;:3,&quot;infant_key&quot;:&quot;ayanna_fajardo_2026-09-16&quot;,&quot;patient_id&quot;:&quot;DBBF98&quot;,&quot;full_name&quot;:&quot;Ayanna Bandoy Fajardo&quot;,&quot;first_name&quot;:&quot;Ayanna&quot;,&quot;middle_name&quot;:&quot;Bandoy&quot;,&quot;last_name&quot;:&quot;Fajardo&quot;,&quot;birth_date&quot;:&quot;2026-09-16&quot;,&quot;age_label&quot;:&quot;12 days old&quot;,&quot;gender&quot;:&quot;Female&quot;,&quot;relationship&quot;:&quot;Mother&quot;,&quot;is_parent&quot;:true,&quot;is_guardian&quot;:false,&quot;role_type&quot;:&quot;Parent&quot;,&quot;role_label&quot;:&quot;Registered Parent (Mother)&quot;,&quot;mother_name&quot;:&quot;Mekai Villegas Dudot&quot;,&quot;father_name&quot;:&quot;Johnny Fajardo&quot;,&quot;guardian_name&quot;:&quot;&quot;,&quot;parent_name&quot;:&quot;Mekai Villegas Dudot&quot;,&quot;parent_gender&quot;:&quot;Female&quot;,&quot;custom_notes&quot;:&quot;&quot;,&quot;photo_path&quot;:&quot;uploads\/patient_6aacd925312254.71921599.jpg&quot;,&quot;latest_photo&quot;:&quot;uploads\/patient_6aacd925312254.71921599.jpg&quot;,&quot;vaccine_counts&quot;:{&quot;Hepatitis B&quot;:1},&quot;vaccine_doses&quot;:[{&quot;vaccine_type&quot;:&quot;Hepatitis B&quot;,&quot;date&quot;:&quot;2026-09-18&quot;,&quot;station_name&quot;:&quot;Mandalagan Barangay Health Station&quot;,&quot;appointment_code&quot;:&quot;YKABLLWP&quot;,&quot;doctor_notes&quot;:&quot;Come back next week for another vaccination.&quot;,&quot;status&quot;:&quot;Completed&quot;}],&quot;total_doses&quot;:1,&quot;appointments&quot;:[{&quot;id&quot;:26,&quot;reference_code&quot;:&quot;BK260918061824999&quot;,&quot;appointment_code&quot;:&quot;YKABLLWP&quot;,&quot;patient_id&quot;:&quot;DBBF98&quot;,&quot;station_slug&quot;:&quot;mandalagan&quot;,&quot;station_name&quot;:&quot;Mandalagan Barangay Health Station&quot;,&quot;service_slug&quot;:&quot;immunization&quot;,&quot;service_name&quot;:&quot;Immunization&quot;,&quot;first_name&quot;:&quot;Mekai&quot;,&quot;middle_name&quot;:&quot;Villegas&quot;,&quot;last_name&quot;:&quot;Dudot&quot;,&quot;birth_date&quot;:&quot;2000-05-21&quot;,&quot;gender&quot;:&quot;Female&quot;,&quot;contact_number&quot;:&quot;09665600834&quot;,&quot;email&quot;:&quot;mekai123@gmail.com&quot;,&quot;complete_address&quot;:&quot;Purok Bulak, Barangay Mandalagan, Bacolod City&quot;,&quot;immunization_relationship&quot;:&quot;Parent&quot;,&quot;recipient_first_name&quot;:&quot;Ayanna&quot;,&quot;recipient_middle_name&quot;:&quot;Bandoy&quot;,&quot;recipient_last_name&quot;:&quot;Fajardo&quot;,&quot;recipient_birth_date&quot;:&quot;2026-09-16&quot;,&quot;recipient_gender&quot;:&quot;Female&quot;,&quot;preferred_date&quot;:&quot;2026-09-18&quot;,&quot;preferred_time&quot;:&quot;Daily Slot&quot;,&quot;notes&quot;:&quot;&quot;,&quot;body_temperature&quot;:&quot;36.7 C&quot;,&quot;pulse_rate&quot;:&quot;80 bpm&quot;,&quot;respiration_rate&quot;:&quot;18 cpm&quot;,&quot;blood_pressure&quot;:&quot;120\/80&quot;,&quot;height&quot;:&quot;65&quot;,&quot;weight&quot;:&quot;6.7&quot;,&quot;vaccine_type&quot;:&quot;Hepatitis B&quot;,&quot;chest_xray&quot;:null,&quot;doctor_notes&quot;:&quot;Come back next week for another vaccination.&quot;,&quot;reminder_sms_sent&quot;:0,&quot;reminder_sent_at&quot;:null,&quot;follow_up_date&quot;:null,&quot;follow_up_time&quot;:null,&quot;follow_up_notes&quot;:null,&quot;follow_up_set_at&quot;:null,&quot;photo_path&quot;:&quot;uploads\/patient_6aacd925312254.71921599.jpg&quot;,&quot;status&quot;:&quot;Completed&quot;,&quot;created_at&quot;:&quot;2026-09-18 06:18:24&quot;,&quot;updated_at&quot;:&quot;2026-09-18 06:29:20&quot;}]}]})" title="View Registered Infant Sub-Profiles (1)">
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M9 12h.01M15 12h.01M10 16c.5.5 1.2.8 2 .8s1.5-.3 2-.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4v-2M9 4.5C9.5 3 10.5 2 12 2c1.5 0 2.5 1 3 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                                                    </button>
+                                                                                                                                            </div>
+                                        </td>
+                                    </tr>
+                                                            </tbody>
+                        </table>
+                    </div>
+                    <div class="patient-directory-footer">
+                        <span>Showing 3 active patient records</span>
+                    </div>
+                            </section>
+
+            <!-- Patient Information History Audit Modal -->
+            
+            <!-- Patient Completed Service History Modal -->
+            
+            <!-- Admin Infant Sub-Profiles Viewer Modal (Purple Theme) -->
+            <section class="service-modal-overlay report-modal-backdrop" id="adminInfantModal" style="display:none;" onclick="if(event.target===this)closeAdminInfantModal()">
+                <div class="service-modal-card clinical-modal-card-modern" style="max-width: 780px; width: 100%; border-radius: 20px; overflow: hidden; background: #ffffff;">
+                    <div class="report-modal-header" style="background: linear-gradient(135deg, #6d28d9, #7c3aed); color: #ffffff; padding: 18px 24px;">
+                        <div class="report-modal-header-left" style="display: flex; align-items: center; gap: 12px;">
+                            <div class="report-modal-icon-badge" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M9 12h.01M15 12h.01M10 16c.5.5 1.2.8 2 .8s1.5-.3 2-.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4v-2M9 4.5C9.5 3 10.5 2 12 2c1.5 0 2.5 1 3 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                            </div>
+                            <div>
+                                <h2 style="color: #ffffff; font-size: 1.2rem; margin: 0; font-weight: 700;" id="adminInfantModalTitle">Infant Sub-Profile &amp; Immunization Record</h2>
+                                <p style="color: rgba(255, 255, 255, 0.85); font-size: 0.82rem; margin: 2px 0 0 0;">City Health Admin &bull; Read-Only Pediatric Medical History</p>
+                            </div>
+                        </div>
+                        <button type="button" class="modal-close-btn report-modal-close" onclick="closeAdminInfantModal()" aria-label="Close modal" style="color: #ffffff; opacity: 0.85; font-size: 1.6rem; background: none; border: none; cursor: pointer; line-height: 1;">&times;</button>
+                    </div>
+
+                    <div class="report-modal-body" id="adminInfantModalBody" style="padding: 22px 26px; max-height: calc(85vh - 120px); overflow-y: auto;">
+                        <!-- Content dynamically rendered via openAdminInfantViewer() and renderAdminSelectedInfant() -->
+                    </div>
+
+                    <div class="report-modal-footer" style="padding: 14px 24px; background: #fafafa; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end;">
+                        <button type="button" class="report-btn-primary" onclick="closeAdminInfantModal()" style="background: linear-gradient(135deg, #6d28d9, #7c3aed); border: none; color: #ffffff; padding: 9px 22px; border-radius: 10px; font-weight: 700; cursor: pointer;">
+                            Close Record
+                        </button>
+                    </div>
+                </div>
+            </section>
+            </main>
+</div>
+
+<!-- Admin Account Settings Modal -->
+<div class="account-modal-backdrop" id="accountModal" hidden>
+    <div class="account-modal-card admin-themed-modal" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
+        <div class="account-modal-header">
+            <div class="account-modal-title-group">
+                <span class="account-modal-icon"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <div>
+                    <h2 id="accountModalTitle">Admin Account Settings</h2>
+                    <p>Manage your central administration credentials, profile, and security settings.</p>
+                </div>
+            </div>
+            <button type="button" class="account-modal-close" id="closeAccountModalBtn" aria-label="Close modal">×</button>
+        </div>
+        
+        <form method="post" action="index.php" class="account-settings-form" id="adminAccountForm">
+            <input type="hidden" name="action" value="update_admin_account">
+            <input type="hidden" name="csrf_token" value="3af600efb6ed09e09d5fea9526a6001823ec5ffdf4670be0e82026d308ebef4a">
+            <input type="hidden" name="return_page" value="patients">
+            
+            <div class="account-modal-body">
+                <!-- Administrative Identity -->
+                <div class="account-section-divider">
+                    <svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                    <span>Administrative Profile</span>
+                </div>
+                
+                <div class="form-group-item">
+                    <label for="admin_name_input" class="form-field-label">
+                        <span>Administrator Full Name</span>
+                        <span class="required">*</span>
+                    </label>
+                    <input type="text" id="admin_name_input" name="admin_name" value="Admin User" required placeholder="e.g. Dr. Ma. Teresa Lim" maxlength="150" class="form-input-field">
+                </div>
+
+                <div class="form-group-item">
+                    <label for="admin_office_input" class="form-field-label">
+                        <span>Department / Office Designation</span>
+                    </label>
+                    <input type="text" id="admin_office_input" name="office_name" value="Bacolod City Health Office" placeholder="e.g. City Health Office - Central Admin" maxlength="255" class="form-input-field">
+                </div>
+
+                <!-- Contact & Account Details -->
+                <div class="account-section-divider">
+                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M4 6h16v12H4V6Zm0 0 8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                    <span>Contact &amp; Recovery Details</span>
+                </div>
+
+                <div class="form-row-grid">
+                    <div class="form-group-item">
+                        <label for="admin_email_input" class="form-field-label">
+                            <span>Admin Login Email</span>
+                            <span class="required">*</span>
+                        </label>
+                        <input type="email" id="admin_email_input" name="email" value="admintest@gmail.com" required placeholder="e.g. admintest@gmail.com" maxlength="150" class="form-input-field">
+                    </div>
+                    
+                    <div class="form-group-item">
+                        <label for="admin_contact_input" class="form-field-label">
+                            <span>Contact Number</span>
+                        </label>
+                        <input type="tel" id="admin_contact_input" name="contact_number" value="" placeholder="e.g. 0917 123 4567" maxlength="30" class="form-input-field">
+                    </div>
+                </div>
+
+                <div class="form-group-item">
+                    <label for="admin_recovery_email_input" class="form-field-label">
+                        <span>Personal Recovery Email</span>
+                    </label>
+                    <input type="email" id="admin_recovery_email_input" name="recovery_email" value="" placeholder="e.g. personal.admin@gmail.com" maxlength="150" class="form-input-field">
+                    <small class="field-subnote">Personal email used for emergency account recovery and OTP password resets.</small>
+                </div>
+
+                <!-- Network Role (Read-only) -->
+                <div class="account-section-divider">
+                    <svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                    <span>System Role &amp; Access</span>
+                </div>
+                
+                <div class="form-group-item">
+                    <div class="station-readonly-box admin-role-box">
+                        <span class="station-pin-icon admin-role-icon"><svg width="18" height="18" viewBox="0 0 24 24" style="width:18px;height:18px;max-width:18px;max-height:18px;display:inline-block;vertical-align:middle;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                        <div class="station-info-text">
+                            <strong>Central Health Network Administrator</strong>
+                            <span>Full System Access • All 6 Barangay Stations • City-wide Health Delivery Network</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Security & Password -->
+                <div class="account-section-divider">
+                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M7 11V7a5 5 0 0 1 10 0v4m-12 0h14v10H5V11Zm7 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                    <span>Security &amp; Password (Optional)</span>
+                </div>
+                
+                <div class="form-row-grid">
+                    <div class="form-group-item">
+                        <label for="admin_new_password_input" class="form-field-label">
+                            <span>New Password</span>
+                        </label>
+                        <div class="input-password-wrap">
+                            <input type="password" id="admin_new_password_input" name="new_password" placeholder="Leave blank to keep current" minlength="6" class="form-input-field">
+                            <button type="button" class="btn-toggle-eye" data-target="admin_new_password_input" aria-label="Toggle password visibility">
+                                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group-item">
+                        <label for="admin_confirm_password_input" class="form-field-label">
+                            <span>Confirm New Password</span>
+                        </label>
+                        <div class="input-password-wrap">
+                            <input type="password" id="admin_confirm_password_input" name="confirm_password" placeholder="Re-enter new password" minlength="6" class="form-input-field">
+                            <button type="button" class="btn-toggle-eye" data-target="admin_confirm_password_input" aria-label="Toggle password visibility">
+                                <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                            </button>
+                        </div>
+                    </div>
+                </div>
+                <p class="form-help-hint">Passwords must be at least 6 characters. Leave blank if you don't wish to change your password.</p>
+            </div>
+            
+            <div class="account-modal-footer">
+                <button type="button" class="ghost-btn" id="cancelAccountModalBtn">Cancel</button>
+                <button type="submit" class="primary-btn admin-primary-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m5 12 5 5L20 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>                    <span>Save Account Details</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+function toggleDualDateFilter(clickedType, paramName, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const container = event ? event.target.closest('.dual-date-filter') : document.querySelector(`.dual-date-filter[data-param="${paramName}"]`);
+    if (!container) return;
+
+    let todayActive = container.getAttribute('data-today') === '1';
+    let upcomingActive = container.getAttribute('data-upcoming') === '1';
+
+    let nextVal = 'both';
+
+    if (clickedType === 'today') {
+        if (todayActive && upcomingActive) {
+            nextVal = 'upcoming';
+        } else if (!todayActive && upcomingActive) {
+            nextVal = 'both';
+        } else if (todayActive && !upcomingActive) {
+            nextVal = 'upcoming';
+        } else {
+            nextVal = 'today';
+        }
+    } else if (clickedType === 'upcoming') {
+        if (todayActive && upcomingActive) {
+            nextVal = 'today';
+        } else if (todayActive && !upcomingActive) {
+            nextVal = 'both';
+        } else if (!todayActive && upcomingActive) {
+            nextVal = 'today';
+        } else {
+            nextVal = 'upcoming';
+        }
+    }
+
+    const form = container.closest('form');
+    if (form) {
+        let input = form.querySelector(`input[name="${paramName}"]`);
+        if (!input) {
+            input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = paramName;
+            form.appendChild(input);
+        }
+        input.value = nextVal;
+        form.submit();
+    } else {
+        const url = new URL(window.location.href);
+        url.searchParams.set(paramName, nextVal);
+        window.location.href = url.toString();
+    }
+}
+
+(function() {
+    const markNotificationRead = (notificationId) => {
+        if (!notificationId) return;
+        fetch('?ajax=mark_notification_read&notification_id=' + encodeURIComponent(notificationId))
+            .catch(() => {});
+    };
+
+    const hideNotifications = () => {
+        const selectors = [
+            '.toast-success',
+            '.photo-notice',
+            '.notification-row',
+            '.notification-message'
+        ];
+        const notifications = Array.from(new Set(selectors.flatMap((selector) => Array.from(document.querySelectorAll(selector)))));
+        if (notifications.length === 0) {
+            return;
+        }
+
+        // Mark all visible patient notifications as read via AJAX
+        document.querySelectorAll('tr[data-notification-id]').forEach((row) => {
+            const notifId = row.dataset.notificationId;
+            if (notifId) {
+                markNotificationRead(notifId);
+            }
+        });
+
+        window.setTimeout(() => {
+            notifications.forEach((element) => {
+                element.style.transition = 'opacity 0.35s ease';
+                element.style.opacity = '0';
+                window.setTimeout(() => {
+                    if (element.parentNode) {
+                        element.parentNode.removeChild(element);
+                    }
+                }, 350);
+            });
+        }, 5000);
+    };
+
+    hideNotifications();
+
+    // ── 5-SECOND BACKGROUND TABLE LIVE SYNC FOR ADMIN PORTAL ──
+    // Seamlessly updates admin tables, queue states, and metrics without full page reload
+    let isAdminSyncing = false;
+    const adminSyncSelectors = [
+        '.table-scroll-wrapper',
+        'table.data-table',
+        '.stat-grid',
+        '.stat-cards',
+        '.station-admin-grid',
+        '.station-queue-grid',
+        '.admin-overview-grid',
+        '.reports-table-wrap',
+        '.user-organized-list',
+        '.user-selection-grid',
+        '.user-station-grid',
+        '#staff-list-container'
+    ];
+
+    setInterval(async function () {
+        if (isAdminSyncing) return;
+        const activeEl = document.activeElement;
+        const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+        const userModal = document.getElementById('userModal');
+        const isUserModalOpen = userModal && userModal.classList.contains('open');
+        const reportVisitModal = document.getElementById('reportVisitModal');
+        const isReportVisitOpen = reportVisitModal && reportVisitModal.style.display !== 'none';
+        const accountModal = document.getElementById('accountModal');
+        const isAccountModalOpen = accountModal && !accountModal.hasAttribute('hidden');
+        const editStaffModal = document.getElementById('editStaffModalBackdrop');
+        const isEditStaffModalOpen = editStaffModal && !editStaffModal.classList.contains('hidden');
+
+        if (isTyping || isUserModalOpen || isReportVisitOpen || isReportsFilterOpen || isAccountModalOpen || isEditStaffModalOpen) return;
+
+        try {
+            isAdminSyncing = true;
+            const res = await fetch(window.location.href, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!res.ok) return;
+            const html = await res.text();
+            const parser = new DOMParser();
+            const newDoc = parser.parseFromString(html, 'text/html');
+
+            adminSyncSelectors.forEach(selector => {
+                const currentEls = document.querySelectorAll(selector);
+                const newEls = newDoc.querySelectorAll(selector);
+                if (currentEls.length > 0 && currentEls.length === newEls.length) {
+                    currentEls.forEach((curEl, idx) => {
+                        const newEl = newEls[idx];
+                        if (newEl && curEl.innerHTML !== newEl.innerHTML) {
+                            curEl.innerHTML = newEl.innerHTML;
+                        }
+                    });
+                }
+            });
+
+            // Re-assert visibility of active station staff list in case of DOM replacement
+            const currentStaffListPanel = document.getElementById('staffListPanel');
+            if (currentStaffListPanel && !currentStaffListPanel.classList.contains('hidden')) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const activeStation = urlParams.get('user_station') || sessionStorage.getItem('admin_user_active_station');
+                if (activeStation) {
+                    document.querySelectorAll('[data-staff-list-for]').forEach(list => {
+                        if (list.dataset.staffListFor === activeStation) {
+                            list.classList.remove('hidden');
+                        } else {
+                            list.classList.add('hidden');
+                        }
+                    });
+                }
+            }
+        } catch (err) {
+            console.debug('Admin live sync notice:', err);
+        } finally {
+            isAdminSyncing = false;
+        }
+    }, 5000);
+})();
+
+window.switchDemandPeriod = function(period) {
+    if (!period) period = 'quarter';
+    sessionStorage.setItem('admin_demand_period', period);
+    const select = document.getElementById('dashDemandPeriodSelect');
+    if (select && select.value !== period) {
+        select.value = period;
+    }
+    const views = document.querySelectorAll('.dash-demand-period-view');
+    views.forEach(v => {
+        if (v.getAttribute('data-period') === period) {
+            v.style.display = 'flex';
+            v.style.flexDirection = 'column';
+            v.style.gap = '14px';
+        } else {
+            v.style.display = 'none';
+        }
+    });
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const savedPeriod = sessionStorage.getItem('admin_demand_period');
+    if (savedPeriod && document.getElementById('dashDemandPeriodSelect')) {
+        window.switchDemandPeriod(savedPeriod);
+    }
+});
+
+window.dismissAdminToast = function() {
+    const toast = document.getElementById('adminFlashToast');
+    if (toast) {
+        toast.classList.add('hide-toast');
+        setTimeout(() => {
+            toast.remove();
+        }, 350);
+    }
+};
+(function() {
+    const toast = document.getElementById('adminFlashToast');
+    if (toast) {
+        setTimeout(() => {
+            window.dismissAdminToast();
+        }, 5000);
+    }
+})();
+
+// Admin Mobile Navigation Drawer & Dashboard Stat Slideshow Logic
+(function() {
+    const mobileToggle = document.getElementById('adminMobileNavToggle');
+    const sidebar = document.getElementById('adminSidebar');
+    const backdrop = document.getElementById('adminDrawerBackdrop');
+    const closeBtn = document.getElementById('adminSidebarCloseBtn');
+
+    function openAdminDrawer() {
+        if (!sidebar || !backdrop) return;
+        backdrop.classList.add('active');
+        sidebar.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeAdminDrawer() {
+        if (!sidebar || !backdrop) return;
+        backdrop.classList.remove('active');
+        sidebar.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    mobileToggle?.addEventListener('click', openAdminDrawer);
+    closeBtn?.addEventListener('click', closeAdminDrawer);
+    backdrop?.addEventListener('click', closeAdminDrawer);
+
+    // Dashboard Carousel sync
+    const carousel = document.getElementById('adminStatCarousel');
+    const dotsContainer = document.getElementById('adminStatDots');
+    if (carousel && dotsContainer) {
+        const dots = dotsContainer.querySelectorAll('.stat-dot');
+        const cards = carousel.querySelectorAll('.dash-stat-card');
+
+        dots.forEach((dot, idx) => {
+            dot.addEventListener('click', () => {
+                if (cards[idx]) {
+                    cards[idx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            });
+        });
+
+        carousel.addEventListener('scroll', () => {
+            const scrollLeft = carousel.scrollLeft;
+            const cardWidth = cards[0] ? cards[0].offsetWidth + 14 : 1;
+            const activeIndex = Math.round(scrollLeft / cardWidth);
+            dots.forEach((d, i) => {
+                d.classList.toggle('active', i === activeIndex);
+            });
+        }, { passive: true });
+    }
+})();
+
+// Admin Infant Sub-Profiles Viewer Logic
+let currentAdminInfantData = null;
+let currentAdminSelectedInfantIndex = 0;
+
+function adminEscapeHtml(str) {
+    return (str || '').toString().replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+    });
+}
+
+function resolveAdminPhotoUrl(raw) {
+    if (!raw) return '';
+    let s = String(raw).trim();
+    if (!s) return '';
+    // Reject external URLs and data URIs — all real photos are local uploads
+    if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:image/')) {
+        return '';
+    }
+    s = s.replace(/\\/g, '/');
+    s = s.replace(/^(\.\.\/)?(Patients\/)?/i, '');
+    s = s.replace(/^\/+/, '');
+    if (!s.startsWith('uploads/') && !s.startsWith('assets/')) {
+        s = 'uploads/' + s;
+    }
+    return '../Patients/' + s;
+}
+
+window.previewAdminPhotoInModal = function(src) {
+    if (!src) return;
+    let overlay = document.getElementById('adminPhotoPreviewOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'adminPhotoPreviewOverlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:999999;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:20px;';
+        overlay.onclick = function() { overlay.style.display = 'none'; };
+        overlay.innerHTML = '<div style="position:relative;max-width:90vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;gap:12px;" onclick="event.stopPropagation();"><img id="adminPhotoPreviewImg" src="" style="max-width:100%;max-height:80vh;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);border:3px solid #ffffff;object-fit:contain;"><button type="button" onclick="document.getElementById(\'adminPhotoPreviewOverlay\').style.display=\'none\';" style="background:#ffffff;color:#0f172a;border:none;padding:8px 20px;border-radius:999px;font-weight:700;font-size:0.88rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.25);">✕ Close Preview</button></div>';
+        document.body.appendChild(overlay);
+    }
+    const img = document.getElementById('adminPhotoPreviewImg');
+    if (img) img.src = src;
+    overlay.style.display = 'flex';
+};
+
+window.openAdminInfantViewer = function(data) {
+    if (!data || !data.infants || data.infants.length === 0) return;
+    currentAdminInfantData = data;
+    currentAdminSelectedInfantIndex = 0;
+    
+    const modal = document.getElementById('adminInfantModal');
+    if (!modal) return;
+    
+    window.renderAdminSelectedInfant(0);
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+};
+
+window.renderAdminSelectedInfant = function(index) {
+    if (!currentAdminInfantData || !currentAdminInfantData.infants || !currentAdminInfantData.infants[index]) return;
+    currentAdminSelectedInfantIndex = index;
+    const infant = currentAdminInfantData.infants[index];
+    const totalInfants = currentAdminInfantData.infants.length;
+    const body = document.getElementById('adminInfantModalBody');
+    if (!body) return;
+
+    // Multiple infants switcher if count > 1
+    let switcherHtml = '';
+    if (totalInfants > 1) {
+        switcherHtml = '<div style="display: flex; gap: 8px; margin-bottom: 18px; overflow-x: auto; padding-bottom: 4px;">';
+        currentAdminInfantData.infants.forEach((inf, i) => {
+            const isSel = i === index;
+            switcherHtml += `
+            <button type="button" onclick="renderAdminSelectedInfant(${i})" style="padding: 8px 16px; border-radius: 10px; font-size: 0.84rem; font-weight: 700; cursor: pointer; border: 1.5px solid ${isSel ? '#7c3aed' : '#e2e8f0'}; background: ${isSel ? '#f5f3ff' : '#ffffff'}; color: ${isSel ? '#6d28d9' : '#64748b'}; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;">
+                <span>👶 ${adminEscapeHtml(inf.full_name)}</span>
+            </button>`;
+        });
+        switcherHtml += '</div>';
+    }
+
+    let photoHtml = '';
+    const photoRaw = (infant.latest_photo || infant.photo_path || '').trim();
+    const photoSrc = resolveAdminPhotoUrl(photoRaw);
+    const babySvg = `<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" style=\"width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;\"><path d=\"M9 12h.01M15 12h.01M10 16c.5.5 1.2.8 2 .8s1.5-.3 2-.8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><circle cx=\"12\" cy=\"12\" r=\"8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M12 4v-2M9 4.5C9.5 3 10.5 2 12 2c1.5 0 2.5 1 3 2.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>`;
+    if (photoSrc) {
+        photoHtml = `<img src="${adminEscapeHtml(photoSrc)}" alt="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer;" onclick="window.previewAdminPhotoInModal('${adminEscapeHtml(photoSrc)}')" title="Click to view full photo" onerror="this.onerror=null; this.parentElement.style.display='flex'; this.parentElement.style.alignItems='center'; this.parentElement.style.justifyContent='center'; this.parentElement.innerHTML='${babySvg}';">`;
+    } else {
+        photoHtml = `<div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">${babySvg}</div>`;
+    }
+
+    // Aggregate vaccine counts and latest dates from vaccine_counts, vaccine_doses, and appointments
+    const vaccineSummary = {};
+    if (infant.vaccine_doses && Array.isArray(infant.vaccine_doses)) {
+        infant.vaccine_doses.forEach(d => {
+            const vType = (d.vaccine_type || '').trim();
+            if (vType && vType.toLowerCase() !== 'not recorded' && vType.toLowerCase() !== 'not yet recorded') {
+                if (!vaccineSummary[vType]) {
+                    vaccineSummary[vType] = { count: 0, latestDate: d.date || '' };
+                }
+                vaccineSummary[vType].count++;
+                if (d.date && (!vaccineSummary[vType].latestDate || d.date > vaccineSummary[vType].latestDate)) {
+                    vaccineSummary[vType].latestDate = d.date;
+                }
+            }
+        });
+    }
+    if (infant.appointments && Array.isArray(infant.appointments)) {
+        infant.appointments.forEach(a => {
+            const vType = (a.vaccine_type || '').trim();
+            if (vType && vType.toLowerCase() !== 'not recorded' && vType.toLowerCase() !== 'not yet recorded') {
+                if (!vaccineSummary[vType]) {
+                    vaccineSummary[vType] = { count: 1, latestDate: a.preferred_date || '' };
+                }
+            }
+        });
+    }
+    if (infant.vaccine_counts && typeof infant.vaccine_counts === 'object') {
+        Object.keys(infant.vaccine_counts).forEach(vType => {
+            const vt = (vType || '').trim();
+            if (vt && vt.toLowerCase() !== 'not recorded' && vt.toLowerCase() !== 'not yet recorded') {
+                const cnt = Number(infant.vaccine_counts[vType]) || 1;
+                if (!vaccineSummary[vt]) {
+                    vaccineSummary[vt] = { count: cnt, latestDate: '' };
+                } else if (cnt > vaccineSummary[vt].count) {
+                    vaccineSummary[vt].count = cnt;
+                }
+            }
+        });
+    }
+
+    let dosesHtml = '';
+    const nipLimits = {
+        'BCG': 1,
+        'Hepatitis B': 1,
+        'Pentavalent (DTP-HepB-Hib)': 3,
+        'OPV (Oral Polio Vaccine)': 3,
+        'PCV (Pneumococcal Conjugate Vaccine)': 3,
+        'IPV (Inactivated Polio Vaccine)': 2,
+        'Measles-Rubella (MR) or AMV-1': 1,
+        'MMR (Measles, Mumps, Rubella)': 1
+    };
+    const normalizeVac = (name) => {
+        if (!name) return '';
+        const l = name.toLowerCase();
+        if (l.includes('bcg')) return 'BCG';
+        if (l.includes('pentavalent') || l.includes('dtp')) return 'Pentavalent (DTP-HepB-Hib)';
+        if (l.includes('ipv') || l.includes('inactivated polio')) return 'IPV (Inactivated Polio Vaccine)';
+        if (l.includes('opv') || l.includes('oral polio')) return 'OPV (Oral Polio Vaccine)';
+        if (l.includes('pcv') || l.includes('pneumococcal')) return 'PCV (Pneumococcal Conjugate Vaccine)';
+        if (l.includes('hepa') || l.includes('hep b') || l.includes('hepatitis')) return 'Hepatitis B';
+        if (l.includes('mmr') || l.includes('mumps')) return 'MMR (Measles, Mumps, Rubella)';
+        if (l.includes('measles') || l.includes('rubella') || l.includes('amv')) return 'Measles-Rubella (MR) or AMV-1';
+        return name;
+    };
+    const vNames = Object.keys(vaccineSummary);
+    if (vNames.length > 0) {
+        dosesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">';
+        vNames.forEach(vName => {
+            const info = vaccineSummary[vName];
+            const canon = normalizeVac(vName);
+            const maxDose = nipLimits[canon] || null;
+            const isCompleted = maxDose !== null && info.count >= maxDose;
+            const dateStr = info.latestDate ? new Date(info.latestDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+            const badgeLabel = maxDose !== null
+                ? (isCompleted ? `${info.count}/${maxDose} Doses (Limit Reached)` : `${info.count}/${maxDose} Doses Taken`)
+                : `${info.count} ${info.count === 1 ? 'Dose Taken' : 'Doses Taken'}`;
+
+            dosesHtml += `
+            <div style="background: ${isCompleted ? '#ecfdf5' : '#f5f3ff'}; border: 1.5px solid ${isCompleted ? '#a7f3d0' : '#ddd6fe'}; color: ${isCompleted ? '#065f46' : '#6d28d9'}; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);">
+                <span style="display: inline-flex; align-items: center; color: ${isCompleted ? '#059669' : '#7c3aed'};"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m14 4 6 6M5 19l7.5-7.5M9.5 8.5 17 16M4 20l3-3M3 21l3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m8 16 9-9 3 3-9 9-3-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <span>${adminEscapeHtml(vName)}</span>
+                <span style="background: ${isCompleted ? '#059669' : '#7c3aed'}; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${badgeLabel}</span>
+                ${dateStr ? `<span style="font-size: 0.74rem; color: ${isCompleted ? '#047857' : '#7c3aed'}; font-weight: 600; opacity: 0.85;">(${adminEscapeHtml(dateStr)})</span>` : ''}
+            </div>`;
+        });
+        dosesHtml += '</div>';
+    } else {
+        dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 8px 0 0 0;">No immunization doses recorded yet for this infant.</p>';
+    }
+
+    const formatInfantHeight = (val) => {
+        if (!val) return '';
+        const s = String(val).trim();
+        if (!s) return '';
+        if (/(?:cm|centimeters?)$/i.test(s)) {
+            return s;
+        }
+        return s + ' cm';
+    };
+
+    const formatInfantWeight = (val) => {
+        if (!val) return '';
+        const s = String(val).trim();
+        if (!s) return '';
+        if (/(?:kg|kilograms?)$/i.test(s)) {
+            return s;
+        }
+        return s + ' kg';
+    };
+
+    // Timeline appointments
+    let timelineHtml = '';
+    if (infant.appointments && infant.appointments.length > 0) {
+        timelineHtml = '<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">';
+        infant.appointments.forEach((appt, idx) => {
+            const apptCode = appt.appointment_code || appt.reference_code || ('#' + (idx + 1));
+            const apptDate = appt.preferred_date ? new Date(appt.preferred_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
+            const vacType = appt.vaccine_type || 'Immunization Consultation';
+            const apptPhotoRaw = (appt.photo_path || '').trim();
+            const apptPhotoSrc = resolveAdminPhotoUrl(apptPhotoRaw);
+            
+            timelineHtml += `
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="background: #ede9fe; color: #6d28d9; font-weight: 700; font-size: 0.8rem; padding: 2px 8px; border-radius: 6px;">#${adminEscapeHtml(apptCode)}</span>
+                        <strong style="color: #0f172a; font-size: 0.92rem;">${adminEscapeHtml(vacType)}</strong>
+                    </div>
+                    <span style="font-size: 0.82rem; color: #64748b; font-weight: 600;">📅 ${adminEscapeHtml(apptDate)} &bull; ${adminEscapeHtml(appt.preferred_time || 'Regular Hours')}</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; font-size: 0.8rem; color: #475569; background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                    <div><strong>Temp:</strong> ${adminEscapeHtml(appt.body_temperature || 'N/A')} °C</div>
+                    <div><strong>PR:</strong> ${adminEscapeHtml(appt.pulse_rate || 'N/A')} bpm</div>
+                    <div><strong>RR:</strong> ${adminEscapeHtml(appt.respiration_rate || 'N/A')} cpm</div>
+                    <div><strong>BP:</strong> ${adminEscapeHtml(appt.blood_pressure || 'N/A')}</div>
+                    ${appt.height ? `<div><strong>Height:</strong> ${adminEscapeHtml(formatInfantHeight(appt.height))}</div>` : ''}
+                    ${appt.weight ? `<div><strong>Weight:</strong> ${adminEscapeHtml(formatInfantWeight(appt.weight))}</div>` : ''}
+                </div>
+
+                ${appt.doctor_notes ? `<div style="font-size: 0.82rem; color: #334155; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px 12px; border-radius: 8px;">
+                    <strong>Doctor's Clinical Notes:</strong> ${adminEscapeHtml(appt.doctor_notes)}
+                </div>` : ''}
+
+                ${apptPhotoSrc ? `
+                <div class="appt-photo-preview-wrap" style="display: flex; align-items: center; gap: 12px; margin-top: 6px; padding: 8px 12px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; width: fit-content; cursor: pointer; transition: all 0.15s ease;"
+                     onclick="window.previewAdminPhotoInModal('${adminEscapeHtml(apptPhotoSrc)}')"
+                     title="Click to view full photo">
+                    <img src="${adminEscapeHtml(apptPhotoSrc)}" alt="Visit Verification Photo" 
+                         style="width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1.5px solid #cbd5e1; cursor: pointer; display: block; box-shadow: 0 1px 3px rgba(0,0,0,0.08);"
+                         onerror="this.onerror=null; const p = this.closest('.appt-photo-preview-wrap'); if (p) p.style.display='none';">
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 0.82rem; font-weight: 700; color: #0f172a;">Consultation Verification Photo Recorded</span>
+                    </div>
+                </div>` : ''}
+            </div>`;
+        });
+        timelineHtml += '</div>';
+    } else {
+        timelineHtml = '<p style="color: #64748b; font-size: 0.85rem; margin-top: 8px;">No consultation history on record.</p>';
+    }
+
+    const isGuardian = Boolean(infant.is_guardian);
+    const roleBadgeHtml = isGuardian
+        ? `<span style="background: #fef3c7; color: #92400e; border: 1.5px solid #fde68a; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">Registered Guardian</span>`
+        : `<span style="background: #ede9fe; color: #6d28d9; border: 1.5px solid #ddd6fe; font-size: 0.78rem; font-weight: 800; padding: 3px 10px; border-radius: 999px;">${adminEscapeHtml(infant.role_label || 'Registered Parent')}</span>`;
+
+    let parentalInfoHtml = '';
+    if (isGuardian) {
+        parentalInfoHtml = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+            <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #92400e; text-transform: uppercase;">Registered Guardian:</span>
+                <strong style="display: block; font-size: 0.95rem; color: #78350f; margin-top: 3px;">${adminEscapeHtml(infant.guardian_name || currentAdminInfantData.patient_name)}</strong>
+                <span style="display: inline-block; background: #fef3c7; color: #b45309; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; margin-top: 4px;">Legal Guardian</span>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Biological Mother:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.mother_name || 'None recorded')}</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Biological Father:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.father_name || 'None recorded')}</strong>
+            </div>
+        </div>
+        `;
+    } else {
+        parentalInfoHtml = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Mother's Name:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.mother_name || 'None recorded')}</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Father's Name:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #0f172a; margin-top: 3px;">${adminEscapeHtml(infant.father_name || 'None recorded')}</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Guardian Status:</span>
+                <strong style="display: block; font-size: 0.92rem; color: #64748b; margin-top: 3px;">Registered to Biological Parent</strong>
+            </div>
+        </div>
+        `;
+    }
+
+    body.innerHTML = `
+    ${switcherHtml}
+    <!-- Demographic Card -->
+    <div style="background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%); border: 1.5px solid #ddd6fe; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 18px; margin-bottom: 20px; flex-wrap: wrap;">
+        <div style="width: 72px; height: 72px; border-radius: 50%; background: #ffffff; border: 3px solid #a855f7; position: relative; overflow: hidden; flex-shrink: 0; color: #7c3aed; font-size: 1.6rem; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);">
+            ${photoHtml}
+        </div>
+        <div style="flex: 1; min-width: 220px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #4c1d95;">${adminEscapeHtml(infant.full_name)}</h3>
+                <span style="background: #7c3aed; color: #ffffff; font-size: 0.75rem; font-weight: 700; padding: 2px 9px; border-radius: 999px;">Pediatric Record</span>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 0.84rem; color: #6d28d9; flex-wrap: wrap;">
+                <span><strong>Age:</strong> ${adminEscapeHtml(infant.age_label)}</span>
+                <span>&bull;</span>
+                <span><strong>Birthdate:</strong> ${infant.birth_date ? new Date(infant.birth_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</span>
+                <span>&bull;</span>
+                <span><strong>Gender:</strong> ${adminEscapeHtml(infant.gender || 'Not specified')}</span>
+            </div>
+            <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 0.86rem; color: #581c87; flex-wrap: wrap;">
+                <strong>Account Holder Role:</strong>
+                ${roleBadgeHtml}
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 1: Types of Vaccines Taken & Dose Counts -->
+    <div style="margin-bottom: 20px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <span style="color: #7c3aed;"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m14 4 6 6M5 19l7.5-7.5M9.5 8.5 17 16M4 20l3-3M3 21l3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m8 16 9-9 3 3-9 9-3-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span>Types of Vaccines Taken &amp; Dose Summary</span>
+        </div>
+        <p style="font-size: 0.82rem; color: #64748b; margin: 3px 0 0 0;">Summary of all completed antigens and number of doses administered to this infant.</p>
+        ${dosesHtml}
+    </div>
+
+    <!-- Section 2: Parental / Guardian Information (Read-Only) -->
+    <div style="margin-bottom: 20px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <span style="color: #7c3aed;"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span>Parental &amp; Guardian Information (Read-Only)</span>
+        </div>
+        ${parentalInfoHtml}
+        ${infant.custom_notes || infant.notes ? `<div style="margin-top: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
+            <span style="display: block; font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Pediatric Notes &amp; Remarks:</span>
+            <p style="margin: 3px 0 0 0; font-size: 0.88rem; color: #334155;">${adminEscapeHtml(infant.custom_notes || infant.notes)}</p>
+        </div>` : ''}
+    </div>
+
+    <!-- Section 3: Immunization & Consultation History Timeline -->
+    <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 18px 20px;">
+        <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <span style="color: #7c3aed;"><svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0-5v5h5M12 7v5l4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span>Immunization &amp; Consultation Appointments (${infant.appointments ? infant.appointments.length : 0})</span>
+        </div>
+        <p style="font-size: 0.82rem; color: #64748b; margin: 3px 0 0 0;">Chronological history of all immunization appointments booked for this infant.</p>
+        ${timelineHtml}
+    </div>
+    `;
+};
+
+window.closeAdminInfantModal = function() {
+    const modal = document.getElementById('adminInfantModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+};
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const adminInfantModal = document.getElementById('adminInfantModal');
+        if (adminInfantModal && adminInfantModal.style.display !== 'none') {
+            window.closeAdminInfantModal();
+        }
+    }
+});
+
+// Admin Account Settings Modal Controller
+(function() {
+    'use strict';
+    const accountModal = document.getElementById('accountModal');
+    const openBtns = [
+        document.getElementById('sidebarOpenAccountBtn'),
+        document.getElementById('adminTopbarUserBadge')
+    ].filter(Boolean);
+
+    const closeBtn = document.getElementById('closeAccountModalBtn');
+    const cancelBtn = document.getElementById('cancelAccountModalBtn');
+
+    function openAccountModal() {
+        if (!accountModal) return;
+        accountModal.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+        const nameInput = document.getElementById('admin_name_input');
+        if (nameInput) {
+            setTimeout(() => nameInput.focus(), 50);
+        }
+    }
+
+    function closeAccountModal() {
+        if (!accountModal) return;
+        accountModal.setAttribute('hidden', '');
+        document.body.style.overflow = '';
+    }
+
+    openBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAccountModal();
+        });
+    });
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeAccountModal();
+        });
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeAccountModal();
+        });
+    }
+
+    if (accountModal) {
+        accountModal.addEventListener('click', (e) => {
+            if (e.target === accountModal) {
+                closeAccountModal();
+            }
+        });
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && accountModal && !accountModal.hasAttribute('hidden')) {
+            closeAccountModal();
+        }
+    });
+
+    // Password visibility toggle
+    document.querySelectorAll('.btn-toggle-eye').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = btn.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            if (!input) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.classList.add('active');
+            } else {
+                input.type = 'password';
+                btn.classList.remove('active');
+            }
+        });
+    });
+})();
+</script>
+<script src="../shared/pwa-install.js" defer></script>
+</body>
+</html>
