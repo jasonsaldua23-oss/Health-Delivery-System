@@ -5489,34 +5489,13 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
             <section class="appt-filter-card reports-filter-card no-print">
                 <div class="reports-filter-left">
                     <span class="reports-filter-title"><?= staff_icon('calendar'); ?> Selected Period: <strong><?= h($reportPeriodLabel); ?></strong></span>
-                    <div class="reports-quick-pills">
-                        <a href="?page=reports&period=week" class="reports-quick-pill <?= ($reportPeriod === 'week' && $reportFromCustom === '') ? 'is-active' : ''; ?>">This Week</a>
-                        <a href="?page=reports&period=month" class="reports-quick-pill <?= ($reportPeriod === 'month' && $reportFromCustom === '') ? 'is-active' : ''; ?>">This Month</a>
-                        <a href="?page=reports&period=quarter" class="reports-quick-pill <?= ($reportPeriod === 'quarter' && $reportFromCustom === '') ? 'is-active' : ''; ?>">This Quarter</a>
-                        <a href="?page=reports&period=annual" class="reports-quick-pill <?= ($reportPeriod === 'annual' && $reportFromCustom === '') ? 'is-active' : ''; ?>">Annual</a>
-                    </div>
                 </div>
-
-                <form method="get" class="reports-custom-range-form">
-                    <input type="hidden" name="page" value="reports">
-                    <div class="reports-custom-inputs">
-                        <div class="reports-date-input-wrap">
-                            <label>From:</label>
-                            <input type="date" name="report_from" value="<?= h($reportStartDate); ?>" required>
-                        </div>
-                        <div class="reports-date-input-wrap">
-                            <label>To:</label>
-                            <input type="date" name="report_to" value="<?= h($reportEndDate); ?>" required>
-                        </div>
-                        <button type="submit" class="appt-find-btn primary-btn slim">
-                            <?= staff_icon('filter'); ?>
-                            <span>Apply</span>
-                        </button>
-                        <?php if ($reportFromCustom !== '' || $reportToCustom !== ''): ?>
-                            <a href="?page=reports&period=week" class="ghost-btn slim" title="Reset to This Week">Reset</a>
-                        <?php endif; ?>
-                    </div>
-                </form>
+                <div class="reports-quick-pills">
+                    <a href="?page=reports&period=week" class="reports-quick-pill <?= $reportPeriod === 'week' ? 'is-active' : ''; ?>">This Week</a>
+                    <a href="?page=reports&period=month" class="reports-quick-pill <?= $reportPeriod === 'month' ? 'is-active' : ''; ?>">This Month</a>
+                    <a href="?page=reports&period=quarter" class="reports-quick-pill <?= $reportPeriod === 'quarter' ? 'is-active' : ''; ?>">This Quarter</a>
+                    <a href="?page=reports&period=annual" class="reports-quick-pill <?= $reportPeriod === 'annual' ? 'is-active' : ''; ?>">Annual</a>
+                </div>
             </section>
 
             <!-- 5-KPI Executive Metrics Grid -->
