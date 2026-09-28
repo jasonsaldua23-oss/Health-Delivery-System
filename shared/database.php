@@ -115,9 +115,14 @@ function service_slug_aliases(string $serviceSlug): array
     };
 }
 
-function bacolod_purok_catalog(): array
+function bacolod_all_known_puroks_master(): array
 {
-    return [
+    static $master = null;
+    if ($master !== null) {
+        return $master;
+    }
+
+    $master = [
         'Alijis' => ['Accco Housing','Bayanihan','Celita Village','Dc 1 (Phases 1)','Dc 1 (Phases 2)','Dc 1 (Phases 3)','Dc 2 Rphs','Dc 3 Rphs','Ecc Villas','Gaisano','Himaya','Katilingban','Lote','Maanyag','Maanyag 1','Mahigugma-on','Mainuswagon','Malapitan','Malipayon','Masagana','Mildred Homes','Mt. Carmel Subdivision, Nature\'s','Olympia Village','Pag-asa, Paghida-et','Paghigugma, Progresso','Puentebella','Roadside 1','Roadside 2','Sambag Dubai','Sambag Tinago','San Jose','Score - Paghab','St. Vincent Homes','Torrecampo','Villa Baradas','Daalco Subdivision','Guadalupe Subdivision'],
         'Bata' => ['Sunriser','Maaliwanay','Kametal','Pepsi','Riverside','Masinadyahon','Mahimaya-on','Marapara I','Marapara II','Bayabasan','Tunay','Pag-isa','Sawmill I','Sawmill II','Sawmill III','Andan','Villagracia','Pinetree','Kamunsil','Katilingban','Mainuswagon','Magbinuligay','Sto. Rosario'],
         'Cabug' => ['Bougainvilla','Busay','Golden Rosary','Gumamela','Ipil-Ipil','Kabugwason','Kalayogan','Katipunan','Kawayanan','Lechonan','Lemon Grass','Linya','Madinalag-on','Mainuswagon','Malipayon','Monico Ville','Prosperville','Ilaya','Relota Ville','Rosal','Rosas Pandan','Rose','Santan','Torrecampo','Villa Guillena'],
@@ -128,23 +133,153 @@ function bacolod_purok_catalog(): array
         'Mansilingan' => ['Arceo','Cabalagnan','Carmenville','Encarnacion','Forest Hills','Fortaleza','Gonzaga','Grandville 1','Grandville 2','Grandville 3','Guanzon','Hermelinda','Hillside','Himaya','Jj Gonzaga','Kabugwason','Kahirup A','Kahirup B','Kasilingan 1','Kasilingan 2','Katilingban','Lasalleville','Laurel','Leonville','Lolita Heights','Lupa','Mabinuligon','Maghili-ugyon','Manayaosayao','Matahum','Paghidaet','Paglaum','Paglaum Village','Paraiso','Punay','St. Benilde','Unor Ville'],
         'Pahanocoy' => ['Acacia 1','Acacia 2','Bantud','Firmville','Florenceville','Gold Medal','Hanapbuhay','Mabinuligon','Maghimulat','Maghirupay','Mahigugmaon','Maninihon','Manville Executive Homes','Masinadyahon','Nha 1','Nha 2','Nha 3','Nha 4','Paho','Pta Balas North','Rc','Sp Village','Sta. Antonia','Sto. Niño','Villa Lourdes'],
         'Singcang' => ['Batad','Cadena De Amor','Villa Servando','Neptune','Kaingin','Mars','Sigay','Talaba','Sisi','Grasya','Kabulakan I','Greenplains','Lamperong','Magbinuligay','Ipil-Ipil','San Jose','Sampaguita','Mangga','Santol','Riverside','Tambi Palad','Malipayon','Masanag','Mahigugmaon','Mahinangpon','Mahayhay','Masagana','Katilingban','Paghida-et','Pag-asa','Narra','Molave','Mabolo','Acacia','Chico','Yanson'],
+        'Singcang-Airport' => ['Batad','Cadena De Amor','Villa Servando','Neptune','Kaingin','Mars','Sigay','Talaba','Sisi','Grasya','Kabulakan I','Greenplains','Lamperong','Magbinuligay','Ipil-Ipil','San Jose','Sampaguita','Mangga','Santol','Riverside','Tambi Palad','Malipayon','Masanag','Mahigugmaon','Mahinangpon','Mahayhay','Masagana','Katilingban','Paghida-et','Pag-asa','Narra','Molave','Mabolo','Acacia','Chico','Yanson'],
         'Sum-Ag' => ['Purok A.C. Yulo','Purok Brotherhood','Purok Candelaria','Purok Kaisahan','Purok Kbs','Purok Mabinuligon','Purok Masagana','Purok Naminami','Purok Providence','Purok Riverside','Purok San Antonio','Purok San Luis','Purok Sto. Niño','Purok Villa Milagrosa'],
         'Taculing' => ['Bayanihan','B.M.','Cinco','Cory I','Cosmos','Gonzaga','Jardine','Jocson','Kabukira','Kawilihan','Lirio','Malinong','Malipayon','Masagana','Nabali-an','Pagla-um','Paho','Planeta','Progreso','Rio Vista','Riverside','Rosal','Rosas','Santan','Sunflower','Sunrise','Tapulanga','Violeta'],
         'Villamonte' => ['Sabes','Cabachawan','Hervias III','Bayanihan','Goopio','Gonzaga West','Gonzaga East','Purok 7','Consuelo','Cubay','Bugnay','Hervias II','Calantas','Sulom II','Riverbank','Medalla Milagrosa','Pagkakaisa','Banaue','Isla','Gugma','Akishola','Herba Buena','Purok 17','Taal','Amor','Purok 18','Dahlia','Purok 2','Purok Himaya','Purok 5','Samfloma','Purok 15','Purok 16','Sunflower','Mainuwagon','Malvar Cubay'],
         'Villa Esperanza' => ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5'],
         'Vista Alegre' => ['Katilingban','Kawayanan','Kabulakan','Kabutongan','Busay','Inday Oya','Noli Garcia','Kabuguason','Angela Gonzaga','Ff Gonzaga','Kalubihan','Star Apple','Kasantolan 1','Kasantolan 2','Progreso Village I Zone 1','Progreso Village I Zone 2','Progreso Village I Zone 3','Progreso Village I Zone 4','Progreso Village I Zone 5','Progreso Village II','Kapisan','Villa Otto','Villa Nena','Pablo Torre','Lopez'],
+        'Banago' => ['Lilac','Rose','Gumamela','Cadena de Amor','Sampaguita','Camia','Dahlia','San Pedro','San Mateo','San Jose','San Roque','Riverside','Baybay','Sea Breeze','Kabulakan 1','Kabulakan 2','BM','North Terminal','Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+        'Tangub' => ['Seaside','Sto. Nino','San Jose','Caridad','Kasilingan','Paglaum','Progreso','Mahinangpanon','Malipayon','Masagana','Maya','Greenfields','Villa San Pedro','Singcang Side','Riverside','Kawayanan','Gardenville','Natures Village','Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6'],
+        'Felisa' => ['San Roque','Kabugwason','Riverside','Paglaum','Masinadyahon','Malipayon','Katilingban','Bagong Buhay','Mahimayaon','San Jose','Calu-ub','Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6'],
+        'Punta Taytay' => ['Baybay','Seaside','Fishermen','Paghidaet','San Jose','Sto. Nino','Mahigugmaon','Riverside','Mainuswagon','Centro','Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6'],
+        'Montevista' => ['Greenhills','Montevista Village','San Jose','Hills','Sunflower','Paglaum','Katilingban','Riverside','Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6'],
     ];
+
+    // Numbered Barangays 1 through 41 of Bacolod City
+    for ($i = 1; $i <= 41; $i++) {
+        $puroks = [
+            'Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7', 'Purok 8',
+            'Zone 1', 'Zone 2', 'Zone 3', 'Zone 4'
+        ];
+        $master['Barangay ' . $i] = $puroks;
+        $master['Brgy. ' . $i] = $puroks;
+    }
+
+    return $master;
+}
+
+function generate_puroks_for_barangay(string $barangay): array
+{
+    $raw = trim($barangay);
+    if ($raw === '') {
+        return ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6'];
+    }
+
+    $master = bacolod_all_known_puroks_master();
+
+    // 1. Direct match
+    if (isset($master[$raw]) && !empty($master[$raw])) {
+        return $master[$raw];
+    }
+
+    // 2. Case-insensitive & normalized prefix match
+    $clean = trim((string) preg_replace('/^(?:Brgy\.?|Barangay)\s+/i', '', $raw));
+    foreach ($master as $bKey => $pList) {
+        $cleanKey = trim((string) preg_replace('/^(?:Brgy\.?|Barangay)\s+/i', '', $bKey));
+        if (strcasecmp($clean, $cleanKey) === 0 || strcasecmp($raw, $bKey) === 0) {
+            return $pList;
+        }
+    }
+
+    // 3. Numbered Barangay match (e.g., "12", "Barangay 12", "Brgy. 12")
+    if (preg_match('/(?:^|\b|Brgy\.?|Barangay)\s*(\d+)\b/i', $raw, $m)) {
+        $num = (int) $m[1];
+        if ($num >= 1 && $num <= 41) {
+            return [
+                'Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7', 'Purok 8',
+                'Zone 1', 'Zone 2', 'Zone 3', 'Zone 4'
+            ];
+        }
+    }
+
+    // 4. Default realistic Bacolod purok names for custom or unrecognized barangays
+    return [
+        'Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7', 'Purok 8',
+        'Purok Centro', 'Purok Riverside', 'Purok San Jose', 'Purok Sto. Nino'
+    ];
+}
+
+function ensure_barangay_puroks(string $barangay): array
+{
+    $barangay = trim($barangay);
+    if ($barangay === '') {
+        return [];
+    }
+
+    $puroks = generate_puroks_for_barangay($barangay);
+    $slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $barangay));
+    $slug = trim($slug, '-');
+
+    if (empty($GLOBALS['health_db_bootstrapping'])) {
+        try {
+            ensure_barangay_puroks_table(db());
+            $stmt = db()->prepare('INSERT IGNORE INTO barangay_puroks (barangay, barangay_slug, purok_name) VALUES (?, ?, ?)');
+            if ($stmt) {
+                foreach ($puroks as $p) {
+                    $pName = trim((string) $p);
+                    if ($pName !== '') {
+                        $stmt->bind_param('sss', $barangay, $slug, $pName);
+                        $stmt->execute();
+                    }
+                }
+            }
+        } catch (Throwable $e) {}
+    }
+
+    return $puroks;
+}
+
+function bacolod_purok_catalog(): array
+{
+    $catalog = bacolod_all_known_puroks_master();
+
+    if (empty($GLOBALS['health_db_bootstrapping'])) {
+        try {
+            // Load custom or saved puroks from database table if any
+            $res = db()->query('SELECT barangay, purok_name FROM barangay_puroks ORDER BY id ASC');
+            if ($res) {
+                while ($row = $res->fetch_assoc()) {
+                    $b = (string) $row['barangay'];
+                    $p = (string) $row['purok_name'];
+                    if (!isset($catalog[$b])) {
+                        $catalog[$b] = [];
+                    }
+                    if (!in_array($p, $catalog[$b], true)) {
+                        $catalog[$b][] = $p;
+                    }
+                }
+            }
+
+            // Also check all health_facilities; if a facility exists but has no puroks in catalog, auto-generate them
+            $facRes = db()->query('SELECT barangay FROM health_facilities');
+            if ($facRes) {
+                while ($facRow = $facRes->fetch_assoc()) {
+                    $bName = trim((string) ($facRow['barangay'] ?? ''));
+                    if ($bName !== '' && empty($catalog[$bName])) {
+                        $catalog[$bName] = generate_puroks_for_barangay($bName);
+                        $cleanB = trim((string) preg_replace('/^(?:Brgy\.?|Barangay)\s+/i', '', $bName));
+                        if (!isset($catalog[$cleanB])) {
+                            $catalog[$cleanB] = $catalog[$bName];
+                        }
+                    }
+                }
+            }
+        } catch (Throwable $e) {}
+    }
+
+    return $catalog;
 }
 
 function parse_complete_address(string $address, ?string $knownBarangay = null, ?string $knownPurok = null): array
 {
-    $barangayCatalog = [
+    $purokMap = bacolod_purok_catalog();
+    $barangayCatalog = array_values(array_unique(array_merge([
         'Alijis', 'Bata', 'Cabug', 'Estefania', 'Granada',
         'Handumanan', 'Mandalagan', 'Mansilingan', 'Pahanocoy',
         'Singcang', 'Sum-Ag', 'Taculing', 'Villamonte',
         'Villa Esperanza', 'Vista Alegre'
-    ];
-    $purokMap = bacolod_purok_catalog();
+    ], array_keys($purokMap))));
 
     $cleanAddress = trim($address);
     if ($cleanAddress === '') {
@@ -1017,6 +1152,22 @@ function create_health_facilities_table(mysqli $connection, string $engine = 'In
     );
 }
 
+function create_barangay_puroks_table(mysqli $connection, string $engine = 'InnoDB'): void
+{
+    $connection->query(
+        'CREATE TABLE IF NOT EXISTS barangay_puroks (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            barangay VARCHAR(100) NOT NULL,
+            barangay_slug VARCHAR(100) NOT NULL,
+            purok_name VARCHAR(150) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_barangay_purok (barangay_slug, purok_name),
+            INDEX idx_bp_barangay (barangay),
+            INDEX idx_bp_slug (barangay_slug)
+        ) ENGINE=' . $engine . ' DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
+    );
+}
+
 function create_station_slot_limits_table(mysqli $connection, string $engine = 'InnoDB'): void
 {
     $connection->query(
@@ -1183,6 +1334,11 @@ function ensure_health_facilities_table(mysqli $connection): void
     ensure_table_is_usable($connection, 'health_facilities', 'create_health_facilities_table');
 }
 
+function ensure_barangay_puroks_table(mysqli $connection): void
+{
+    ensure_table_is_usable($connection, 'barangay_puroks', 'create_barangay_puroks_table');
+}
+
 function ensure_station_slot_limits_table(mysqli $connection): void
 {
     ensure_table_is_usable($connection, 'station_slot_limits', 'create_station_slot_limits_table');
@@ -1272,6 +1428,7 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
     ensure_patient_profiles_table($connection);
     ensure_station_service_assignments_table($connection);
     ensure_health_facilities_table($connection);
+    ensure_barangay_puroks_table($connection);
     ensure_station_slot_limits_table($connection);
     ensure_unattended_appointments_table($connection);
     ensure_unattended_queue_table($connection);
@@ -2657,6 +2814,9 @@ function create_health_facility(array $data, array $servicesWithCapacities = [])
             $defaultServices = ['consultation', 'immunization', 'prenatal', 'family', 'tb', 'adolescent'];
             save_station_service_selection($slug, $defaultServices);
         }
+
+        // Automatically ensure and register exact puroks for this new barangay
+        ensure_barangay_puroks($barangay);
 
         return true;
     } catch (Throwable $e) {

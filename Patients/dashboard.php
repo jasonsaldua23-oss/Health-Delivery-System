@@ -18,7 +18,12 @@ $patientId = (string) $_SESSION['patient_id'];
 $patientName = (string) ($_SESSION['patient_name'] ?? '');
 $patientBarangay = (string) ($_SESSION['patient_barangay'] ?? '');
 
-$barangayOptions = [
+$stationCatalogList = station_catalog();
+$publicBarangays = array_values(array_unique(array_filter(array_map(
+    static fn(array $st): string => (string) ($st['barangay'] ?? ''),
+    $stationCatalogList
+), static fn(string $b): bool => $b !== '' && strtolower($b) !== 'city health office' && strtolower($b) !== 'city-health')));
+$barangayOptions = !empty($publicBarangays) ? $publicBarangays : [
     'Alijis', 'Bata', 'Cabug', 'Estefania', 'Granada',
     'Handumanan', 'Mandalagan', 'Mansilingan', 'Pahanocoy',
     'Singcang', 'Sum-Ag', 'Taculing', 'Villamonte',
@@ -4918,7 +4923,25 @@ document.addEventListener('DOMContentLoaded', function () {
     if (accBarangaySelect && accPurokSelect) {
         accBarangaySelect.addEventListener('change', function () {
             const selectedBarangay = this.value.trim();
-            const purokList = puroksByBarangay[selectedBarangay] || [];
+            let purokList = puroksByBarangay[selectedBarangay];
+            if (!purokList || purokList.length === 0) {
+                const lower = selectedBarangay.toLowerCase();
+                const cleanLower = lower.replace(/^(?:brgy\.?|barangay)\s+/i, '').trim();
+                for (const key in puroksByBarangay) {
+                    const kLower = key.toLowerCase();
+                    const kClean = kLower.replace(/^(?:brgy\.?|barangay)\s+/i, '').trim();
+                    if (kLower === lower || kClean === cleanLower || kLower === cleanLower || kClean === lower) {
+                        purokList = puroksByBarangay[key];
+                        break;
+                    }
+                }
+            }
+            if (!purokList || purokList.length === 0) {
+                const isNum = /\b\d+\b/.test(selectedBarangay);
+                purokList = isNum 
+                    ? ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Zone 1', 'Zone 2', 'Zone 3', 'Zone 4']
+                    : ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7', 'Purok 8', 'Purok Centro', 'Purok Riverside'];
+            }
             
             accPurokSelect.innerHTML = '<option value="">Select Purok</option>';
             purokList.forEach(p => {

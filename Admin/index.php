@@ -3023,6 +3023,7 @@ if (!function_exists('peso')) {
                             <div class="form-group">
                                 <label>Barangay Name <em style="color:#ef4444;">*</em></label>
                                 <input type="text" name="barangay" id="facilityBarangayInput" placeholder="e.g., Banago, Felisa, Tangub" required oninput="autoPopulateFacilityName(this.value)">
+                                <small style="display:block;margin-top:4px;color:#0d9488;font-size:0.8rem;font-weight:500;">✓ Puroks / Zones for this barangay are generated automatically for patient registration.</small>
                             </div>
                             <div class="form-group">
                                 <label>Health Center Name <em style="color:#ef4444;">*</em></label>

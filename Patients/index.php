@@ -24,22 +24,7 @@ $barangayOptions = array_map(
     static fn(array $station): string => (string) $station['barangay'],
     $publicStations
 );
-$purokOptionsByBarangay = [
-    'Alijis' => ['Accco Housing','Bayanihan','Celita Village','Dc 1 (Phases 1)','Dc 1 (Phases 2)','Dc 1 (Phases 3)','Dc 2 Rphs','Dc 3 Rphs','Ecc Villas','Gaisano','Himaya','Katilingban','Lote','Maanyag','Maanyag 1','Mahigugma-on','Mainuswagon','Malapitan','Malipayon','Masagana','Mildred Homes','Mt. Carmel Subdivision, Nature\'s','Olympia Village','Pag-asa, Paghida-et','Paghigugma, Progresso','Puentebella','Roadside 1','Roadside 2','Sambag Dubai','Sambag Tinago','San Jose','Score - Paghab','St. Vincent Homes','Torrecampo','Villa Baradas','Daalco Subdivision','Guadalupe Subdivision'],
-    'Bata' => ['Sunriser','Maaliwanay','Kametal','Pepsi','Riverside','Masinadyahon','Mahimaya-on','Marapara I','Marapara II','Bayabasan','Tunay','Pag-isa','Sawmill I','Sawmill II','Sawmill III','Andan','Villagracia','Pinetree','Kamunsil','Katilingban','Mainuswagon','Magbinuligay','Sto. Rosario'],
-    'Cabug' => ['Bougainvilla','Busay','Golden Rosary','Gumamela','Ipil-Ipil','Kabugwason','Kalayogan','Katipunan','Kawayanan','Lechonan','Lemon Grass','Linya','Madinalag-on','Mainuswagon','Malipayon','Monico Ville','Prosperville','Ilaya','Relota Ville','Rosal','Rosas Pandan','Rose','Santan','Torrecampo','Villa Guillena'],
-    'Estefania' => ['Arabay 1','Arabay 2','Arao','Bagong Silang','Bethany Court','Buena Royale','Camelot Residences','Camelot Village','Camingawan Proper','Capitol Hills Subdivision','Celine Homes Subdivision','City Ville Subdivision','Country Homes Subdivision Phase 1','Country Homes Subdivision Phase 2','Country Homes Subdivision Phase 3','East Homes 1','East Homes 2','East Homes 3','Elsa','Escuerdo','Estefania Proper','Flora','Fortune Towne -B','Fortune Towne Subdivision','Glenwood Residences','Goldah','Greensville 1 Subdivision','Greensville 4 Subdivision','Jesusa Heights Subdivision','Kaburihan','Kasoy','La Herencia','Lopues Village','Luisville Subdivision','Mayang','Meadows Of Camelot','Pag-asa','Paho 1','Paho 2','Paraiso','Pedring','Pequiño','Providence Negros','Sagrado 2','Sambag','Sunshine Valley Subdivision','The Palisades','Villa Alexandra 1','Villa Alexandra 2','Villa Angeles','Villa Estefania','Villa Felicidad','Villamar','Villa Soledad','Villa Villeta'],
-    'Handumanan' => ['Purok (Zone) 1','Purok (Zone) 2','Purok (Zone) 3','Purok (Zone) 4','Purok (Zone) 5','Purok (Zone) 6','Purok (Zone) 7','Purok (Zone) 8','Purok (Zone) 9','Purok (Zone) 10','Purok (Zone) 11','Purok (Zone) 12','Purok Cadena De Amor','Purok Ceres','Purok Chico','Purok Datiles','Purok Gk','Purok Golden Rosary','Purok Kawayanan 1','Purok Kawayanan 2','Purok Lubi','Purok Lucky Homes','Purok Mabinuligon','Purok Mahogany','Purok Maniville','Purok Narra','Purok Ngo Village','Purok Paghida-et','Purok Paho','Purok Rosebell','Purok San Antonio','Purok San Roque 1','Purok San Roque 2','Purok Saturn Village','Purok St. Ezekiel Moreno','Purok Sto. Domingo','Purok Sto. Nino','Purok Tapulanga Hills','Purok Villasor Village'],
-    'Mandalagan' => ['Active','Bulak','Kaburihan','Luhod-Luhod','Sambag','Santol','Trese','Tuburan','Yanson 1','Yanson 2'],
-    'Mansilingan' => ['Arceo','Cabalagnan','Carmenville','Encarnacion','Forest Hills','Fortaleza','Gonzaga','Grandville 1','Grandville 2','Grandville 3','Guanzon','Hermelinda','Hillside','Himaya','Jj Gonzaga','Kabugwason','Kahirup A','Kahirup B','Kasilingan 1','Kasilingan 2','Katilingban','Lasalleville','Laurel','Leonville','Lolita Heights','Lupa','Mabinuligon','Maghili-ugyon','Manayaosayao','Matahum','Paghidaet','Paglaum','Paglaum Village','Paraiso','Punay','St. Benilde','Unor Ville'],
-    'Pahanocoy' => ['Acacia 1','Acacia 2','Bantud','Firmville','Florenceville','Gold Medal','Hanapbuhay','Mabinuligon','Maghimulat','Maghirupay','Mahigugmaon','Maninihon','Manville Executive Homes','Masinadyahon','Nha 1','Nha 2','Nha 3','Nha 4','Paho','Pta Balas North','Rc','Sp Village','Sta. Antonia','Sto. Niño','Villa Lourdes'],
-    'Singcang' => ['Batad','Cadena De Amor','Villa Servando','Neptune','Kaingin','Mars','Sigay','Talaba','Sisi','Grasya','Kabulakan I','Greenplains','Lamperong','Magbinuligay','Ipil-Ipil','San Jose','Sampaguita','Mangga','Santol','Riverside','Tambi Palad','Malipayon','Masanag','Mahigugmaon','Mahinangpon','Mahayhay','Masagana','Katilingban','Paghida-et','Pag-asa','Narra','Molave','Mabolo','Acacia','Chico','Yanson'],
-    'Sum-Ag' => ['Purok A.C. Yulo','Purok Brotherhood','Purok Candelaria','Purok Kaisahan','Purok Kbs','Purok Mabinuligon','Purok Masagana','Purok Naminami','Purok Providence','Purok Riverside','Purok San Antonio','Purok San Luis','Purok Sto. Niño','Purok Villa Milagrosa'],
-    'Taculing' => ['Bayanihan','B.M.','Cinco','Cory I','Cosmos','Gonzaga','Jardine','Jocson','Kabukira','Kawilihan','Lirio','Malinong','Malipayon','Masagana','Nabali-an','Pagla-um','Paho','Planeta','Progreso','Rio Vista','Riverside','Rosal','Rosas','Santan','Sunflower','Sunrise','Tapulanga','Violeta'],
-    'Villamonte' => ['Sabes','Cabachawan','Hervias III','Bayanihan','Goopio','Gonzaga West','Gonzaga East','Purok 7','Consuelo','Cubay','Bugnay','Hervias II','Calantas','Sulom II','Riverbank','Medalla Milagrosa','Pagkakaisa','Banaue','Isla','Gugma','Akishola','Herba Buena','Purok 17','Taal','Amor','Purok 18','Dahlia','Purok 2','Purok Himaya','Purok 5','Samfloma','Purok 15','Purok 16','Sunflower','Mainuwagon','Malvar Cubay'],
-    'Villa Esperanza' => [],
-    'Vista Alegre' => ['Katilingban','Kawayanan','Kabulakan','Kabutongan','Busay','Inday Oya','Noli Garcia','Kabuguason','Angela Gonzaga','Ff Gonzaga','Kalubihan','Star Apple','Kasantolan 1','Kasantolan 2','Progreso Village I Zone 1','Progreso Village I Zone 2','Progreso Village I Zone 3','Progreso Village I Zone 4','Progreso Village I Zone 5','Progreso Village II','Kapisan','Villa Otto','Villa Nena','Pablo Torre','Lopez'],
-];
+$purokOptionsByBarangay = bacolod_purok_catalog();
 $dbEvents = fetch_upcoming_events(['upcoming_only' => true, 'status' => 'active']);
 if (empty($dbEvents)) {
     $dbEvents = default_upcoming_event_seed();
@@ -2272,7 +2257,26 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const puroks = purokCatalog[selectedBrgy] || [];
+        let puroks = purokCatalog[selectedBrgy];
+        if (!puroks || puroks.length === 0) {
+            const lower = selectedBrgy.toLowerCase();
+            const cleanLower = lower.replace(/^(?:brgy\.?|barangay)\s+/i, '').trim();
+            for (const key in purokCatalog) {
+                const kLower = key.toLowerCase();
+                const kClean = kLower.replace(/^(?:brgy\.?|barangay)\s+/i, '').trim();
+                if (kLower === lower || kClean === cleanLower || kLower === cleanLower || kClean === lower) {
+                    puroks = purokCatalog[key];
+                    break;
+                }
+            }
+        }
+        if (!puroks || puroks.length === 0) {
+            const isNum = /\b\d+\b/.test(selectedBrgy);
+            puroks = isNum 
+                ? ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Zone 1', 'Zone 2', 'Zone 3', 'Zone 4']
+                : ['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5', 'Purok 6', 'Purok 7', 'Purok 8', 'Purok Centro', 'Purok Riverside'];
+        }
+
         const defaultOpt = document.createElement('option');
         defaultOpt.value = '';
         defaultOpt.textContent = 'Select Purok';
