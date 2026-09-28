@@ -1278,36 +1278,82 @@ $unattendedFilters = [
 $pageUnattendedAppts = fetch_unattended_appointments($unattendedFilters);
 $pageUnattendedQueue = fetch_unattended_queue($unattendedFilters);
 
-// Weekly Reports Data Calculation for Staff's Barangay Health Station
-$reportWeekOffset = (int) ($_GET['week_offset'] ?? 0);
+// Operational Reports Filter & Calculation for Staff's Barangay Health Station
+$reportPeriod = strtolower(trim((string) ($_GET['period'] ?? $_GET['report_period'] ?? 'week')));
 $reportFromCustom = trim((string) ($_GET['report_from'] ?? ''));
 $reportToCustom = trim((string) ($_GET['report_to'] ?? ''));
 
+$now = new DateTimeImmutable('today');
+
 if ($reportFromCustom !== '' && $reportToCustom !== '') {
+    $reportPeriod = 'custom';
     $reportStartDate = $reportFromCustom;
     $reportEndDate = $reportToCustom;
-    $reportWeekLabel = date('M j, Y', strtotime($reportStartDate)) . ' - ' . date('M j, Y', strtotime($reportEndDate));
+    $reportPeriodLabel = 'Custom (' . date('M j, Y', strtotime($reportStartDate)) . ' - ' . date('M j, Y', strtotime($reportEndDate)) . ')';
+    $reportPeriodName = 'Custom Period';
+    $reportWeekOffset = 0;
 } else {
-    $baseDate = new DateTimeImmutable('today');
-    if ($reportWeekOffset !== 0) {
-        $baseDate = $baseDate->modify(($reportWeekOffset > 0 ? "+{$reportWeekOffset}" : "{$reportWeekOffset}") . ' weeks');
-    }
-    $dayOfWeek = (int) $baseDate->format('N'); // 1 = Monday, 7 = Sunday
-    $weekStartObj = $baseDate->sub(new DateInterval('P' . ($dayOfWeek - 1) . 'D'));
-    $weekEndObj = $weekStartObj->add(new DateInterval('P5D')); // Monday to Saturday
-    $reportStartDate = $weekStartObj->format('Y-m-d');
-    $reportEndDate = $weekEndObj->format('Y-m-d');
-    
-    if ($reportWeekOffset === 0) {
-        $reportWeekLabel = 'This Week (' . $weekStartObj->format('M j') . ' - ' . $weekEndObj->format('M j, Y') . ')';
-    } elseif ($reportWeekOffset === -1) {
-        $reportWeekLabel = 'Last Week (' . $weekStartObj->format('M j') . ' - ' . $weekEndObj->format('M j, Y') . ')';
+    if (isset($_GET['week_offset']) && (int) $_GET['week_offset'] !== 0) {
+        $reportWeekOffset = (int) $_GET['week_offset'];
+        $baseDate = $now->modify(($reportWeekOffset > 0 ? "+{$reportWeekOffset}" : "{$reportWeekOffset}") . ' weeks');
+        $dayOfWeek = (int) $baseDate->format('N');
+        $weekStartObj = $baseDate->sub(new DateInterval('P' . ($dayOfWeek - 1) . 'D'));
+        $weekEndObj = $weekStartObj->add(new DateInterval('P4D')); // Mon - Fri
+        $reportStartDate = $weekStartObj->format('Y-m-d');
+        $reportEndDate = $weekEndObj->format('Y-m-d');
+        $reportPeriod = 'week';
+        $reportPeriodLabel = $weekStartObj->format('M j, Y') . ' - ' . $weekEndObj->format('M j, Y');
+        $reportPeriodName = 'Week of ' . $weekStartObj->format('M j');
     } else {
-        $reportWeekLabel = $weekStartObj->format('M j, Y') . ' - ' . $weekEndObj->format('M j, Y');
+        $reportWeekOffset = 0;
+        if (!in_array($reportPeriod, ['week', 'month', 'quarter', 'annual'], true)) {
+            $reportPeriod = 'week';
+        }
+
+        switch ($reportPeriod) {
+            case 'month':
+                $reportStartDate = $now->format('Y-m-01');
+                $reportEndDate = $now->format('Y-m-t');
+                $reportPeriodLabel = 'This Month (' . $now->format('F Y') . ')';
+                $reportPeriodName = 'This Month';
+                break;
+
+            case 'quarter':
+                $currentQuarterMonth = (int) (floor(((int) $now->format('n') - 1) / 3) * 3 + 1);
+                $quarterStartObj = new DateTimeImmutable($now->format('Y') . '-' . str_pad((string) $currentQuarterMonth, 2, '0', STR_PAD_LEFT) . '-01');
+                $quarterEndObj = $quarterStartObj->modify('+3 months -1 day');
+                $qNum = (int) ceil(((int) $now->format('n')) / 3);
+                $reportStartDate = $quarterStartObj->format('Y-m-d');
+                $reportEndDate = $quarterEndObj->format('Y-m-d');
+                $reportPeriodLabel = 'This Quarter (Q' . $qNum . ' ' . $now->format('Y') . ': ' . $quarterStartObj->format('M j') . ' - ' . $quarterEndObj->format('M j, Y') . ')';
+                $reportPeriodName = 'This Quarter';
+                break;
+
+            case 'annual':
+                $reportStartDate = $now->format('Y-01-01');
+                $reportEndDate = $now->format('Y-12-31');
+                $reportPeriodLabel = 'Annual (' . $now->format('Y') . ')';
+                $reportPeriodName = 'Annual';
+                break;
+
+            case 'week':
+            default:
+                $reportPeriod = 'week';
+                // Health stations operate Monday to Friday only (5 operating days)
+                $dayOfWeek = (int) $now->format('N'); // 1 = Monday, 7 = Sunday
+                $weekStartObj = $now->sub(new DateInterval('P' . ($dayOfWeek - 1) . 'D'));
+                $weekEndObj = $weekStartObj->add(new DateInterval('P4D')); // Monday to Friday
+                $reportStartDate = $weekStartObj->format('Y-m-d');
+                $reportEndDate = $weekEndObj->format('Y-m-d');
+                $reportPeriodLabel = 'This Week (' . $weekStartObj->format('M j') . ' - ' . $weekEndObj->format('M j, Y') . ')';
+                $reportPeriodName = 'This Week';
+                break;
+        }
     }
 }
+$reportWeekLabel = $reportPeriodLabel;
 
-// Fetch all weekly appointments strictly for this station
+// Fetch all appointments strictly for this station within the period
 $stationSlug = (string) $station['slug'];
 $stmtReport = db()->prepare(
     'SELECT * FROM appointments 
@@ -1336,17 +1382,22 @@ $stmtUniquePat->execute();
 $uniquePatRow = $stmtUniquePat->get_result()->fetch_assoc();
 $weeklyUniquePatients = (int) ($uniquePatRow['total'] ?? 0);
 
-// Service Breakdown for this station
+// Comprehensive Station Health Service Breakdown & Demand Ranking
 $weeklyServiceStats = [];
-foreach ($station['programs'] as $prog) {
-    $slug = $prog['slug'];
+$stationPrograms = $station['programs'] ?? [];
+$progSlugs = [];
+
+foreach ($stationPrograms as $prog) {
+    $slug = (string) $prog['slug'];
+    $progSlugs[$slug] = true;
     $progAppts = array_values(array_filter($weeklyAppointments, static fn(array $a): bool => (string) ($a['service_slug'] ?? '') === $slug));
     $totalProg = count($progAppts);
     $completedProg = count(array_filter($progAppts, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Completed'));
     $confirmedProg = count(array_filter($progAppts, static fn(array $a): bool => in_array((string) ($a['status'] ?? ''), ['Confirmed', 'Serving'], true)));
     $pendingProg = count(array_filter($progAppts, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Pending'));
     $cancelledProg = count(array_filter($progAppts, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Cancelled'));
-    $sharePct = $weeklyTotalBooked > 0 ? round(($totalProg / $weeklyTotalBooked) * 100) : 0;
+    $sharePct = $weeklyTotalBooked > 0 ? round(($totalProg / $weeklyTotalBooked) * 100, 1) : 0;
+    $compRate = $totalProg > 0 ? round(($completedProg / $totalProg) * 100) : 0;
     
     $weeklyServiceStats[] = [
         'slug' => $slug,
@@ -1358,34 +1409,115 @@ foreach ($station['programs'] as $prog) {
         'confirmed' => $confirmedProg,
         'pending' => $pendingProg,
         'cancelled' => $cancelledProg,
+        'active_queue' => $confirmedProg + $pendingProg,
         'share_pct' => $sharePct,
+        'completion_rate' => $compRate,
     ];
 }
-usort($weeklyServiceStats, static fn($a, $b) => $b['total'] <=> $a['total']);
 
-// Day-by-Day distribution
+// Check for any appointments with a service_slug not defined in station programs
+foreach ($weeklyAppointments as $a) {
+    $aSlug = (string) ($a['service_slug'] ?? '');
+    if ($aSlug !== '' && !isset($progSlugs[$aSlug])) {
+        $progSlugs[$aSlug] = true;
+        $aTitle = (string) ($a['service_name'] ?? 'Other Consultation');
+        $progAppts = array_values(array_filter($weeklyAppointments, static fn(array $row): bool => (string) ($row['service_slug'] ?? '') === $aSlug));
+        $totalProg = count($progAppts);
+        $completedProg = count(array_filter($progAppts, static fn(array $row): bool => (string) ($row['status'] ?? '') === 'Completed'));
+        $confirmedProg = count(array_filter($progAppts, static fn(array $row): bool => in_array((string) ($row['status'] ?? ''), ['Confirmed', 'Serving'], true)));
+        $pendingProg = count(array_filter($progAppts, static fn(array $row): bool => (string) ($row['status'] ?? '') === 'Pending'));
+        $cancelledProg = count(array_filter($progAppts, static fn(array $row): bool => (string) ($row['status'] ?? '') === 'Cancelled'));
+        $sharePct = $weeklyTotalBooked > 0 ? round(($totalProg / $weeklyTotalBooked) * 100, 1) : 0;
+        $compRate = $totalProg > 0 ? round(($completedProg / $totalProg) * 100) : 0;
+
+        $weeklyServiceStats[] = [
+            'slug' => $aSlug,
+            'title' => $aTitle,
+            'color' => 'teal',
+            'icon' => 'stethoscope',
+            'total' => $totalProg,
+            'completed' => $completedProg,
+            'confirmed' => $confirmedProg,
+            'pending' => $pendingProg,
+            'cancelled' => $cancelledProg,
+            'active_queue' => $confirmedProg + $pendingProg,
+            'share_pct' => $sharePct,
+            'completion_rate' => $compRate,
+        ];
+    }
+}
+
+// Sort services by Total Booked DESC, then Completed DESC, then Title ASC
+usort($weeklyServiceStats, static function(array $a, array $b): int {
+    if ($b['total'] !== $a['total']) {
+        return $b['total'] <=> $a['total'];
+    }
+    if ($b['completed'] !== $a['completed']) {
+        return $b['completed'] <=> $a['completed'];
+    }
+    return strcmp($a['title'], $b['title']);
+});
+
+// Operating Days (Monday to Friday) Consultation Volume & Period Total
 $weeklyDayData = [];
-$dateCursor = new DateTimeImmutable($reportStartDate);
-for ($i = 0; $i < 6; $i++) {
-    $curDateStr = $dateCursor->format('Y-m-d');
-    $dayName = $dateCursor->format('D');
-    $dayAppts = array_values(array_filter($weeklyAppointments, static fn(array $a): bool => (string) ($a['preferred_date'] ?? '') === $curDateStr));
-    $dayTotal = count($dayAppts);
-    $dayCompleted = count(array_filter($dayAppts, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Completed'));
-    $dayCancelled = count(array_filter($dayAppts, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Cancelled'));
-    
-    $weeklyDayData[] = [
-        'date' => $curDateStr,
-        'day_name' => $dayName,
-        'formatted_date' => $dateCursor->format('M j'),
-        'total' => $dayTotal,
-        'completed' => $dayCompleted,
-        'cancelled' => $dayCancelled,
-    ];
-    $dateCursor = $dateCursor->add(new DateInterval('P1D'));
+$operatingDaysTotalBooked = 0;
+$operatingDaysTotalCompleted = 0;
+
+if ($reportPeriod === 'week') {
+    $dateCursor = new DateTimeImmutable($reportStartDate);
+    for ($i = 0; $i < 5; $i++) {
+        $curDateStr = $dateCursor->format('Y-m-d');
+        $dayName = $dateCursor->format('D');
+        $dayAppts = array_values(array_filter($weeklyAppointments, static fn(array $a): bool => (string) ($a['preferred_date'] ?? '') === $curDateStr));
+        $dayTotal = count($dayAppts);
+        $dayCompleted = count(array_filter($dayAppts, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Completed'));
+        $dayCancelled = count(array_filter($dayAppts, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Cancelled'));
+        
+        $operatingDaysTotalBooked += $dayTotal;
+        $operatingDaysTotalCompleted += $dayCompleted;
+
+        $weeklyDayData[] = [
+            'date' => $curDateStr,
+            'day_name' => $dayName,
+            'formatted_date' => $dateCursor->format('M j'),
+            'total' => $dayTotal,
+            'completed' => $dayCompleted,
+            'cancelled' => $dayCancelled,
+            'is_today' => ($curDateStr === date('Y-m-d')),
+        ];
+        $dateCursor = $dateCursor->add(new DateInterval('P1D'));
+    }
+} else {
+    // For Month, Quarter, Annual, or Custom: aggregate across the 5 operating days (Mon=1 to Fri=5)
+    $weekdayShort = [1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri'];
+    $todayN = (int) date('N');
+
+    for ($d = 1; $d <= 5; $d++) {
+        $dayAppts = array_values(array_filter($weeklyAppointments, static function(array $a) use ($d): bool {
+            $pDate = (string) ($a['preferred_date'] ?? '');
+            if ($pDate === '') return false;
+            return (int) date('N', strtotime($pDate)) === $d;
+        }));
+        $dayTotal = count($dayAppts);
+        $dayCompleted = count(array_filter($dayAppts, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Completed'));
+        $dayCancelled = count(array_filter($dayAppts, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Cancelled'));
+
+        $operatingDaysTotalBooked += $dayTotal;
+        $operatingDaysTotalCompleted += $dayCompleted;
+
+        $weeklyDayData[] = [
+            'date' => '',
+            'day_name' => $weekdayShort[$d],
+            'formatted_date' => 'All ' . $weekdayShort[$d] . 's',
+            'total' => $dayTotal,
+            'completed' => $dayCompleted,
+            'cancelled' => $dayCancelled,
+            'is_today' => ($todayN === $d),
+        ];
+    }
 }
 
-// Weekly Unattended and Unserved Audit for Reports
+// Unattended and Unserved Audit for Reports
 $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
     'from_date' => $reportStartDate,
     'to_date' => $reportEndDate,
@@ -1481,7 +1613,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                 <a class="<?= $page === 'patients' ? 'active' : ''; ?>" href="?page=patients"><?= staff_icon('patients'); ?><span>Patients</span></a>
                 <a class="<?= $page === 'image-capture' ? 'active' : ''; ?>" href="?page=image-capture"><?= staff_icon('camera'); ?><span>Image Capture</span></a>
                 <a class="<?= $page === 'events' ? 'active' : ''; ?>" href="?page=events"><?= staff_icon('events'); ?><span>Upcoming Events</span></a>
-                <a class="<?= $page === 'reports' ? 'active' : ''; ?>" href="?page=reports"><?= staff_icon('reports'); ?><span>Weekly Reports</span></a>
+                <a class="<?= $page === 'reports' ? 'active' : ''; ?>" href="?page=reports"><?= staff_icon('reports'); ?><span>Reports</span></a>
             </nav>
         </div>
         <div class="sidebar-footer-widget">
@@ -1493,10 +1625,6 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
             <button type="button" class="sidebar-account-btn" id="sidebarOpenAccountBtn">
                 <?= staff_icon('user'); ?>
                 <span>Account Settings</span>
-            </button>
-            <button type="button" class="pwa-drawer-install-btn" data-pwa-install>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                <span>Install Mobile App</span>
             </button>
         </div>
         <div class="sidebar-drawer-signout">
@@ -5339,14 +5467,14 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                 </section>
             <?php endif; ?>
         <?php elseif ($page === 'reports'): ?>
-            <!-- Weekly Reports Header -->
+            <!-- Station Reports Header -->
             <section class="page-hero reports-page-hero">
                 <div class="reports-hero-left">
                     <div class="reports-hero-badge">
                         <?= staff_icon('reports'); ?>
                         <span>Barangay Health Station Analytics</span>
                     </div>
-                    <h1>Weekly Operational Reports</h1>
+                    <h1>Station Operational Reports</h1>
                     <p>Performance analytics, service breakdown, and consultation statistics strictly for <strong><?= h($station['name']); ?></strong>.</p>
                 </div>
                 <div class="reports-hero-actions no-print">
@@ -5357,15 +5485,15 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                 </div>
             </section>
 
-            <!-- Weekly Range Selector & Filter Toolbar -->
+            <!-- Period Selector & Filter Toolbar -->
             <section class="appt-filter-card reports-filter-card no-print">
                 <div class="reports-filter-left">
-                    <span class="reports-filter-title"><?= staff_icon('calendar'); ?> Selected Period: <strong><?= h($reportWeekLabel); ?></strong></span>
+                    <span class="reports-filter-title"><?= staff_icon('calendar'); ?> Selected Period: <strong><?= h($reportPeriodLabel); ?></strong></span>
                     <div class="reports-quick-pills">
-                        <a href="?page=reports&week_offset=0" class="reports-quick-pill <?= ($reportWeekOffset === 0 && $reportFromCustom === '') ? 'is-active' : ''; ?>">This Week</a>
-                        <a href="?page=reports&week_offset=-1" class="reports-quick-pill <?= ($reportWeekOffset === -1 && $reportFromCustom === '') ? 'is-active' : ''; ?>">Last Week</a>
-                        <a href="?page=reports&week_offset=-2" class="reports-quick-pill <?= ($reportWeekOffset === -2 && $reportFromCustom === '') ? 'is-active' : ''; ?>">2 Weeks Ago</a>
-                        <a href="?page=reports&week_offset=-3" class="reports-quick-pill <?= ($reportWeekOffset === -3 && $reportFromCustom === '') ? 'is-active' : ''; ?>">3 Weeks Ago</a>
+                        <a href="?page=reports&period=week" class="reports-quick-pill <?= ($reportPeriod === 'week' && $reportFromCustom === '') ? 'is-active' : ''; ?>">This Week</a>
+                        <a href="?page=reports&period=month" class="reports-quick-pill <?= ($reportPeriod === 'month' && $reportFromCustom === '') ? 'is-active' : ''; ?>">This Month</a>
+                        <a href="?page=reports&period=quarter" class="reports-quick-pill <?= ($reportPeriod === 'quarter' && $reportFromCustom === '') ? 'is-active' : ''; ?>">This Quarter</a>
+                        <a href="?page=reports&period=annual" class="reports-quick-pill <?= ($reportPeriod === 'annual' && $reportFromCustom === '') ? 'is-active' : ''; ?>">Annual</a>
                     </div>
                 </div>
 
@@ -5385,7 +5513,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                             <span>Apply</span>
                         </button>
                         <?php if ($reportFromCustom !== '' || $reportToCustom !== ''): ?>
-                            <a href="?page=reports" class="ghost-btn slim" title="Reset to This Week">Reset</a>
+                            <a href="?page=reports&period=week" class="ghost-btn slim" title="Reset to This Week">Reset</a>
                         <?php endif; ?>
                     </div>
                 </form>
@@ -5400,7 +5528,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                     <div class="reports-metric-content">
                         <span class="reports-metric-label">Total Unique Patients</span>
                         <strong class="reports-metric-val"><?= number_format($weeklyUniquePatients); ?></strong>
-                        <small class="reports-metric-hint">Individuals served this week</small>
+                        <small class="reports-metric-hint">Individuals served in this period</small>
                     </div>
                 </article>
 
@@ -5473,7 +5601,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                         <?php if ($weeklyServiceStats === [] || $weeklyTotalBooked === 0): ?>
                             <div class="reports-empty-inline">
                                 <?= staff_icon('alert-circle'); ?>
-                                <span>No appointment records recorded for this station during <?= h($reportWeekLabel); ?>.</span>
+                                <span>No appointment records recorded for this station during <?= h($reportPeriodLabel); ?>.</span>
                             </div>
                         <?php else: ?>
                             <?php foreach ($weeklyServiceStats as $svc): ?>
@@ -5508,24 +5636,21 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                     </div>
                 </section>
 
-                <!-- Right: Daily Weekly Consultation Volume (Mon - Sat) -->
+                <!-- Right: Daily Consultation Volume (Mon - Fri + Total) -->
                 <section class="panel-card reports-section-panel">
                     <div class="reports-section-header">
                         <div class="reports-sec-title-wrap">
                             <span class="reports-sec-icon-pill"><?= staff_icon('calendar'); ?></span>
                             <div>
                                 <h3>Daily Consultation Volume</h3>
-                                <p>Day-by-day appointments and completed visits (Monday to Saturday)</p>
+                                <p>Day-by-day appointments and completed visits (Monday to Friday)</p>
                             </div>
                         </div>
                     </div>
 
                     <div class="reports-days-grid">
                         <?php foreach ($weeklyDayData as $dayItem): ?>
-                            <?php
-                            $isDayToday = $dayItem['date'] === date('Y-m-d');
-                            ?>
-                            <div class="reports-day-card <?= $isDayToday ? 'is-today-day' : ''; ?>">
+                            <div class="reports-day-card <?= !empty($dayItem['is_today']) ? 'is-today-day' : ''; ?>">
                                 <div class="reports-day-head">
                                     <span class="reports-day-name"><?= h($dayItem['day_name']); ?></span>
                                     <span class="reports-day-date"><?= h($dayItem['formatted_date']); ?></span>
@@ -5540,19 +5665,38 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         <strong class="day-stat-val done"><?= $dayItem['completed']; ?></strong>
                                     </div>
                                 </div>
-                                <?php if ($isDayToday): ?>
+                                <?php if (!empty($dayItem['is_today'])): ?>
                                     <span class="reports-today-marker">Today</span>
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
+
+                        <!-- 6th Card: Total operating volume instead of Saturday -->
+                        <div class="reports-day-card is-total-card">
+                            <div class="reports-day-head">
+                                <span class="reports-day-name">Total</span>
+                                <span class="reports-day-date"><?= $reportPeriod === 'week' ? 'Mon – Fri' : 'Operating Days'; ?></span>
+                            </div>
+                            <div class="reports-day-nums">
+                                <div class="reports-day-stat-box">
+                                    <span class="day-stat-label">Booked</span>
+                                    <strong class="day-stat-val booked"><?= $operatingDaysTotalBooked; ?></strong>
+                                </div>
+                                <div class="reports-day-stat-box">
+                                    <span class="day-stat-label">Completed</span>
+                                    <strong class="day-stat-val done"><?= $operatingDaysTotalCompleted; ?></strong>
+                                </div>
+                            </div>
+                            <span class="reports-total-marker">Total</span>
+                        </div>
                     </div>
 
                     <!-- Station Summary Highlights Box -->
                     <div class="reports-highlight-box">
                         <div class="reports-hl-icon"><?= staff_icon('sparkle'); ?></div>
                         <div class="reports-hl-content">
-                            <strong>Weekly Station Summary</strong>
-                            <p>During the period of <strong><?= h($reportWeekLabel); ?></strong>, <?= h($station['name']); ?> recorded <strong><?= $weeklyTotalBooked; ?></strong> total appointment booking<?= $weeklyTotalBooked === 1 ? '' : 's'; ?> across <strong><?= count(array_filter($weeklyServiceStats, static fn($s) => $s['total'] > 0)); ?></strong> active health services, serving <strong><?= $weeklyUniquePatients; ?></strong> distinct patient<?= $weeklyUniquePatients === 1 ? '' : 's'; ?> with a <strong><?= $weeklyTotalBooked > 0 ? round(($weeklyCompleted / $weeklyTotalBooked) * 100) : 0; ?>%</strong> consultation completion rate.</p>
+                            <strong>Station Summary (<?= h($reportPeriodName); ?>)</strong>
+                            <p>During the period of <strong><?= h($reportPeriodLabel); ?></strong>, <?= h($station['name']); ?> recorded <strong><?= $weeklyTotalBooked; ?></strong> total appointment booking<?= $weeklyTotalBooked === 1 ? '' : 's'; ?> across <strong><?= count(array_filter($weeklyServiceStats, static fn($s) => $s['total'] > 0)); ?></strong> active health services, serving <strong><?= $weeklyUniquePatients; ?></strong> distinct patient<?= $weeklyUniquePatients === 1 ? '' : 's'; ?> with a <strong><?= $weeklyTotalBooked > 0 ? round(($weeklyCompleted / $weeklyTotalBooked) * 100) : 0; ?>%</strong> consultation completion rate.</p>
                         </div>
                     </div>
                 </section>
@@ -5565,7 +5709,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                         <span class="reports-sec-icon-pill" style="background:#fee2e2;color:#dc2626;"><?= staff_icon('alert'); ?></span>
                         <div>
                             <h3>Operational Audit: Unattended &amp; Unserved Appointments</h3>
-                            <p>Compliance and missed consultation audit for <strong><?= h($station['name']); ?></strong> during <strong><?= h($reportWeekLabel); ?></strong></p>
+                            <p>Compliance and missed consultation audit for <strong><?= h($station['name']); ?></strong> during <strong><?= h($reportPeriodLabel); ?></strong></p>
                         </div>
                     </div>
                     <a href="?page=dashboard&view=unattended&timeframe=week" class="dash-audit-view-all-link" title="Open full unattended records audit for this station">
@@ -5602,103 +5746,301 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                     <div class="reports-hl-icon" style="background:#e0f2fe;color:#0284c7;"><?= staff_icon('clock'); ?></div>
                     <div class="reports-hl-content">
                         <strong>Operational Audit Summary</strong>
-                        <p>During the period of <strong><?= h($reportWeekLabel); ?></strong>, <?= h($station['name']); ?> had <strong><?= $weeklyUnattendedStats['appointments']; ?></strong> unattended appointment booking request<?= $weeklyUnattendedStats['appointments'] === 1 ? '' : 's'; ?> and <strong><?= $weeklyUnattendedStats['queue']; ?></strong> unserved station queue entr<?= $weeklyUnattendedStats['queue'] === 1 ? 'y' : 'ies'; ?>. Keeping these counts low ensures high community care quality and accurate consultation records.</p>
+                        <p>During the period of <strong><?= h($reportPeriodLabel); ?></strong>, <?= h($station['name']); ?> had <strong><?= $weeklyUnattendedStats['appointments']; ?></strong> unattended appointment booking request<?= $weeklyUnattendedStats['appointments'] === 1 ? '' : 's'; ?> and <strong><?= $weeklyUnattendedStats['queue']; ?></strong> unserved station queue entr<?= $weeklyUnattendedStats['queue'] === 1 ? 'y' : 'ies'; ?>. Keeping these counts low ensures high community care quality and accurate consultation records.</p>
                     </div>
                 </div>
             </section>
 
-            <!-- Detailed Weekly Appointments Ledger Table -->
-            <section class="panel-card reports-ledger-section">
+            <!-- Most Requested Health Services Demand & Fulfillment Report -->
+            <section class="panel-card reports-demand-section">
                 <div class="reports-section-header">
                     <div class="reports-sec-title-wrap">
-                        <span class="reports-sec-icon-pill"><?= staff_icon('appointments'); ?></span>
+                        <span class="reports-sec-icon-pill" style="background:#ccfbf1;color:#0f766e;"><?= staff_icon('reports'); ?></span>
                         <div>
-                            <h3>Weekly Appointments Log</h3>
-                            <p>All appointment records logged at <?= h($station['name']); ?> for <?= h($reportWeekLabel); ?></p>
+                            <h3>Station Health Services Demand &amp; Utilization Report</h3>
+                            <p>Ranking of requested services, consultation completion counts, and station program demand for <strong><?= h($reportPeriodLabel); ?></strong></p>
                         </div>
                     </div>
-                    <span class="queue-count-badge"><?= count($weeklyAppointments); ?> Record<?= count($weeklyAppointments) === 1 ? '' : 's'; ?></span>
+                    <div class="reports-demand-header-badges">
+                        <span class="queue-count-badge" style="background:#f0fdfa;color:#0f766e;border:1px solid #99f6e4;">
+                            <?= count($weeklyServiceStats); ?> Station Service<?= count($weeklyServiceStats) === 1 ? '' : 's'; ?>
+                        </span>
+                        <span class="queue-count-badge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;">
+                            <?= $weeklyCompleted; ?> Completed Consultations
+                        </span>
+                    </div>
                 </div>
 
-                <?php if ($weeklyAppointments === []): ?>
-                    <div class="appt-empty-box" style="margin-top:16px;">
-                        <div class="appt-empty-icon"><?= staff_icon('calendar'); ?></div>
-                        <h3>No appointments found</h3>
-                        <p>There are no appointments on record for <?= h($station['name']); ?> in this weekly timeframe.</p>
+                <!-- Spotlight Cards: Top Demand Highlights -->
+                <div class="reports-demand-highlights-grid">
+                    <!-- Spotlight 1: #1 Most Requested Service -->
+                    <div class="demand-highlight-card top-demand">
+                        <div class="demand-hl-top">
+                            <span class="demand-hl-badge gold">🥇 Most Requested Service</span>
+                            <span class="demand-hl-rank">Rank #1</span>
+                        </div>
+                        <?php if (!empty($weeklyServiceStats[0]) && $weeklyServiceStats[0]['total'] > 0): ?>
+                            <?php $topSvc = $weeklyServiceStats[0]; ?>
+                            <div class="demand-hl-main">
+                                <div class="demand-hl-icon <?= h($topSvc['color']); ?>">
+                                    <?= staff_icon($topSvc['icon']); ?>
+                                </div>
+                                <div class="demand-hl-info">
+                                    <h4><?= h($topSvc['title']); ?></h4>
+                                    <div class="demand-hl-stats">
+                                        <span class="demand-stat-pill booked">
+                                            <strong><?= $topSvc['total']; ?></strong> Booked
+                                        </span>
+                                        <span class="demand-stat-pill done">
+                                            <strong><?= $topSvc['completed']; ?></strong> Completed
+                                        </span>
+                                        <span class="demand-stat-pill share">
+                                            <strong><?= $topSvc['share_pct']; ?>%</strong> Station Share
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="demand-hl-meter">
+                                <div class="demand-hl-meter-label">
+                                    <span>Consultation Fulfillment Rate</span>
+                                    <strong><?= $topSvc['completion_rate']; ?>% Completed</strong>
+                                </div>
+                                <div class="demand-hl-track">
+                                    <div class="demand-hl-bar" style="width: <?= $topSvc['completion_rate']; ?>%;"></div>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <div class="demand-hl-empty">
+                                <?= staff_icon('calendar'); ?>
+                                <span>No service requests recorded during <?= h($reportPeriodName); ?>.</span>
+                            </div>
+                        <?php endif; ?>
                     </div>
-                <?php else: ?>
-                    <div class="reports-table-wrap">
-                        <table class="reports-table">
-                            <thead>
+
+                    <!-- Spotlight 2: Station Consultation Fulfillment -->
+                    <div class="demand-highlight-card highest-fulfillment">
+                        <div class="demand-hl-top">
+                            <span class="demand-hl-badge green">✓ Station Consultation Fulfillment</span>
+                            <span class="demand-hl-rank">Station Rate</span>
+                        </div>
+                        <div class="demand-hl-main">
+                            <div class="demand-hl-icon mint">
+                                <?= staff_icon('check'); ?>
+                            </div>
+                            <div class="demand-hl-info">
+                                <h4>Overall Completion</h4>
+                                <div class="demand-hl-stats">
+                                    <span class="demand-stat-pill done">
+                                        <strong><?= $weeklyCompleted; ?></strong> of <strong><?= $weeklyTotalBooked; ?></strong> Completed
+                                    </span>
+                                    <span class="demand-stat-pill waiting">
+                                        <strong><?= $weeklyActiveWaiting; ?></strong> In Queue / Serving
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="demand-hl-meter">
+                            <div class="demand-hl-meter-label">
+                                <span>Overall Completion Rate</span>
+                                <strong><?= $weeklyTotalBooked > 0 ? round(($weeklyCompleted / $weeklyTotalBooked) * 100) : 0; ?>% Fulfilled</strong>
+                            </div>
+                            <div class="demand-hl-track">
+                                <div class="demand-hl-bar mint-bar" style="width: <?= $weeklyTotalBooked > 0 ? round(($weeklyCompleted / $weeklyTotalBooked) * 100) : 0; ?>%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Spotlight 3: Station Capacity & Active Services -->
+                    <div class="demand-highlight-card active-services">
+                        <div class="demand-hl-top">
+                            <span class="demand-hl-badge blue">📊 Service Program Coverage</span>
+                            <span class="demand-hl-rank">Utilization</span>
+                        </div>
+                        <?php
+                        $activeCount = count(array_filter($weeklyServiceStats, static fn($s) => $s['total'] > 0));
+                        $totalProgramsCount = count($weeklyServiceStats);
+                        $utilizationPct = $totalProgramsCount > 0 ? round(($activeCount / $totalProgramsCount) * 100) : 0;
+                        ?>
+                        <div class="demand-hl-main">
+                            <div class="demand-hl-icon sky">
+                                <?= staff_icon('users'); ?>
+                            </div>
+                            <div class="demand-hl-info">
+                                <h4>Program Demand Activity</h4>
+                                <div class="demand-hl-stats">
+                                    <span class="demand-stat-pill booked">
+                                        <strong><?= $activeCount; ?></strong> of <strong><?= $totalProgramsCount; ?></strong> Active Services
+                                    </span>
+                                    <span class="demand-stat-pill share">
+                                        <strong><?= $weeklyUniquePatients; ?></strong> Unique Patients
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="demand-hl-meter">
+                            <div class="demand-hl-meter-label">
+                                <span>Active Offerings</span>
+                                <strong><?= $utilizationPct; ?>% Programs Requested</strong>
+                            </div>
+                            <div class="demand-hl-track">
+                                <div class="demand-hl-bar sky-bar" style="width: <?= $utilizationPct; ?>%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Service Demand & Ranking Table -->
+                <div class="reports-table-wrap" style="margin-top:20px;">
+                    <table class="reports-table reports-demand-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px; text-align: center;">Rank</th>
+                                <th>Health Service Program</th>
+                                <th style="text-align: center;">Booked (Demand)</th>
+                                <th style="text-align: center;">Completed (Visits)</th>
+                                <th style="text-align: center;">In Queue / Pending</th>
+                                <th>Fulfillment Rate</th>
+                                <th style="text-align: center;">Station Share</th>
+                                <th style="text-align: center;">Demand Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($weeklyServiceStats === []): ?>
                                 <tr>
-                                    <th>Date &amp; Time</th>
-                                    <th>Appt Code</th>
-                                    <th>Patient Name</th>
-                                    <th>Service</th>
-                                    <th>Contact</th>
-                                    <th>Status</th>
-                                    <th class="no-print">Action</th>
+                                    <td colspan="8" style="text-align:center; padding:32px; color:#64748b;">
+                                        No health services configured for this station.
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($weeklyAppointments as $row): ?>
-                                    <?php
-                                    $st = (string) ($row['status'] ?? 'Pending');
-                                    $code = (string) ($row['appointment_code'] ?? $row['reference_code'] ?? 'N/A');
-                                    $formattedApptDate = date('M j, Y', strtotime((string) $row['preferred_date']));
-                                    ?>
-                                    <tr>
-                                        <td>
-                                            <div class="reports-td-datetime">
-                                                <strong><?= h($formattedApptDate); ?></strong>
-                                                <small><?= h((string) ($row['preferred_time'] ?? 'Regular Hours')); ?></small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="appt-code-badge">#<?= h($code); ?></span>
-                                        </td>
-                                        <td>
-                                            <div class="reports-td-pat">
-                                                <strong><?= h(full_name($row)); ?></strong>
-                                                <small><?= h(age_label($row)); ?> • <?= h((string) ($row['gender'] ?? '')); ?></small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="queue-meta-pill service">
-                                                <?= staff_icon('stethoscope'); ?>
-                                                <span><?= h((string) $row['service_name']); ?></span>
+                            <?php else: ?>
+                                <?php 
+                                $rankNum = 1; 
+                                foreach ($weeklyServiceStats as $svc): 
+                                    $rankClass = $rankNum === 1 ? 'rank-gold' : ($rankNum === 2 ? 'rank-silver' : ($rankNum === 3 ? 'rank-bronze' : 'rank-standard'));
+                                    $hasDemand = $svc['total'] > 0;
+                                ?>
+                                    <tr class="<?= $rankNum <= 3 && $hasDemand ? 'top-ranked-row' : ''; ?>">
+                                        <td style="text-align: center;">
+                                            <span class="demand-rank-pill <?= $rankClass; ?>">
+                                                <?php if ($rankNum === 1 && $hasDemand): ?>
+                                                    🥇 #1
+                                                <?php elseif ($rankNum === 2 && $hasDemand): ?>
+                                                    🥈 #2
+                                                <?php elseif ($rankNum === 3 && $hasDemand): ?>
+                                                    🥉 #3
+                                                <?php else: ?>
+                                                    #<?= $rankNum; ?>
+                                                <?php endif; ?>
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="reports-td-phone"><?= h((string) ($row['contact_number'] ?? 'None')); ?></span>
+                                            <div class="reports-svc-cell">
+                                                <span class="reports-svc-icon-badge <?= h($svc['color']); ?>">
+                                                    <?= staff_icon($svc['icon']); ?>
+                                                </span>
+                                                <div class="reports-svc-cell-info">
+                                                    <strong><?= h($svc['title']); ?></strong>
+                                                    <small><?= h(ucwords(str_replace('-', ' ', (string) $svc['slug']))); ?></small>
+                                                </div>
+                                            </div>
                                         </td>
-                                        <td>
-                                            <span class="status-pill status-queue-<?= $st === 'Completed' ? 'completed' : ($st === 'Serving' ? 'serving' : ($st === 'Cancelled' ? 'danger' : 'waiting')); ?>">
-                                                <?= $st === 'Completed' ? '✓ Completed' : ($st === 'Serving' ? '⚡ Serving' : ($st === 'Cancelled' ? '✕ Cancelled' : '⏳ ' . h($st))); ?>
-                                            </span>
+                                        <td style="text-align: center;">
+                                            <div class="demand-volume-cell">
+                                                <strong class="demand-val booked"><?= number_format($svc['total']); ?></strong>
+                                                <small class="demand-sub">booked</small>
+                                            </div>
                                         </td>
-                                        <td class="no-print">
-                                            <?php if ($st === 'Completed'): ?>
-                                                <?php
-                                                $reportUrlParams = ($reportWeekOffset !== 0 ? '&week_offset=' . $reportWeekOffset : '') . ($reportFromCustom !== '' && $reportToCustom !== '' ? '&report_from=' . urlencode($reportFromCustom) . '&report_to=' . urlencode($reportToCustom) : '');
-                                                ?>
-                                                <a href="?page=reports<?= $reportUrlParams; ?>&appointment_record=<?= h($code); ?>" class="report-record-btn is-active" title="View completed clinical record">
-                                                    <?= staff_icon('eye'); ?>
-                                                    <span>Record</span>
-                                                </a>
+                                        <td style="text-align: center;">
+                                            <div class="demand-volume-cell">
+                                                <strong class="demand-val completed"><?= number_format($svc['completed']); ?></strong>
+                                                <small class="demand-sub">completed</small>
+                                            </div>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <?php if ($svc['active_queue'] > 0): ?>
+                                                <span class="demand-queue-pill"><?= $svc['active_queue']; ?> active</span>
                                             <?php else: ?>
-                                                <button type="button" class="report-record-btn is-disabled" disabled title="Clinical record becomes accessible once consultation is completed">
-                                                    <?= staff_icon('eye'); ?>
-                                                    <span>Record</span>
-                                                </button>
+                                                <span class="demand-queue-pill zero">0 active</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <div class="demand-rate-cell">
+                                                <div class="demand-rate-top">
+                                                    <span class="demand-rate-pct <?= $svc['completion_rate'] >= 75 ? 'high' : ($svc['completion_rate'] >= 40 ? 'med' : 'low'); ?>">
+                                                        <?= $svc['completion_rate']; ?>%
+                                                    </span>
+                                                    <small class="demand-rate-counts"><?= $svc['completed']; ?> / <?= $svc['total']; ?></small>
+                                                </div>
+                                                <div class="demand-progress-track">
+                                                    <div class="demand-progress-fill <?= $svc['completion_rate'] >= 75 ? 'high' : ($svc['completion_rate'] >= 40 ? 'med' : 'low'); ?>" style="width: <?= $svc['completion_rate']; ?>%;"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <span class="demand-share-badge">
+                                                <?= $svc['share_pct']; ?>%
+                                            </span>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <?php if (!$hasDemand): ?>
+                                                <span class="demand-status-tag empty">No Bookings</span>
+                                            <?php elseif ($rankNum === 1): ?>
+                                                <span class="demand-status-tag top">🔥 Most Requested</span>
+                                            <?php elseif ($svc['share_pct'] >= 25): ?>
+                                                <span class="demand-status-tag high">High Demand</span>
+                                            <?php elseif ($svc['share_pct'] >= 10): ?>
+                                                <span class="demand-status-tag moderate">Moderate</span>
+                                            <?php else: ?>
+                                                <span class="demand-status-tag standard">Standard</span>
                                             <?php endif; ?>
                                         </td>
                                     </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
+                                <?php 
+                                    $rankNum++; 
+                                endforeach; 
+                                ?>
+                            <?php endif; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr class="reports-demand-tfoot">
+                                <td colspan="2">
+                                    <strong>Station Total (<?= count($weeklyServiceStats); ?> Health Services)</strong>
+                                </td>
+                                <td style="text-align: center;">
+                                    <strong class="foot-total booked"><?= number_format($weeklyTotalBooked); ?></strong>
+                                    <small>Total Booked</small>
+                                </td>
+                                <td style="text-align: center;">
+                                    <strong class="foot-total completed"><?= number_format($weeklyCompleted); ?></strong>
+                                    <small>Total Completed</small>
+                                </td>
+                                <td style="text-align: center;">
+                                    <strong class="foot-total active"><?= number_format($weeklyActiveWaiting); ?></strong>
+                                    <small>In Queue / Serving</small>
+                                </td>
+                                <td>
+                                    <div class="demand-rate-cell">
+                                        <div class="demand-rate-top">
+                                            <span class="demand-rate-pct high">
+                                                <?= $weeklyTotalBooked > 0 ? round(($weeklyCompleted / $weeklyTotalBooked) * 100) : 0; ?>%
+                                            </span>
+                                            <small>Station Fulfillment</small>
+                                        </div>
+                                        <div class="demand-progress-track">
+                                            <div class="demand-progress-fill high" style="width: <?= $weeklyTotalBooked > 0 ? round(($weeklyCompleted / $weeklyTotalBooked) * 100) : 0; ?>%;"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="text-align: center;">
+                                    <span class="demand-share-badge" style="font-weight: 800; background: #e0f2fe; color: #0369a1;">100%</span>
+                                </td>
+                                <td style="text-align: center;">
+                                    <span class="demand-status-tag total">Station Aggregate</span>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
                 <?php if ($selectedRemarksAppointment !== null): ?>
                     <?php
                     $isFinishedRecord = ((string) ($selectedRemarksAppointment['status'] ?? '') === 'Completed') || ($selectedRecordCode !== '');

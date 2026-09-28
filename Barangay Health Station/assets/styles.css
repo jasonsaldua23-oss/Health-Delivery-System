@@ -7836,6 +7836,30 @@ button { border: 0; cursor: pointer; }
   text-transform: uppercase;
 }
 
+.reports-day-card.is-total-card {
+  background: linear-gradient(135deg, #f0fdfa 0%, #ecfeff 100%);
+  border-color: #0d9488;
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.12);
+}
+
+.reports-day-card.is-total-card .reports-day-name {
+  color: #0f766e;
+}
+
+.reports-total-marker {
+  position: absolute;
+  top: -6px;
+  right: 8px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  background: #0d9488;
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .reports-highlight-box {
   display: flex;
   align-items: flex-start;
@@ -8034,12 +8058,555 @@ button { border: 0; cursor: pointer; }
   color: #94a3b8;
 }
 
+/* ── Station Services Demand & Utilization Section ── */
+.reports-demand-section {
+  padding: 24px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.04);
+}
+
+.reports-demand-header-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Demand Spotlight Highlights Grid */
+.reports-demand-highlights-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.demand-highlight-card {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.demand-highlight-card:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  transform: translateY(-2px);
+}
+
+.demand-highlight-card.top-demand {
+  background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 100%);
+  border-color: #fde68a;
+}
+
+.demand-highlight-card.highest-fulfillment {
+  background: linear-gradient(145deg, #f0fdf4 0%, #ecfdf5 100%);
+  border-color: #a7f3d0;
+}
+
+.demand-highlight-card.active-services {
+  background: linear-gradient(145deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-color: #bae6fd;
+}
+
+.demand-hl-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.demand-hl-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.demand-hl-badge.gold {
+  background: #fef08a;
+  color: #854d0e;
+  border: 1px solid #fde047;
+}
+
+.demand-hl-badge.green {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.demand-hl-badge.blue {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.demand-hl-rank {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.demand-hl-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.demand-hl-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.demand-hl-icon.mint {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.demand-hl-icon.sky {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.demand-hl-icon.teal {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.demand-hl-icon.purple {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.demand-hl-icon.blue {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.demand-hl-icon.amber {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.demand-hl-icon.coral {
+  background: #ffe4e6;
+  color: #e11d48;
+}
+
+.demand-hl-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.demand-hl-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.demand-hl-info h4 {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.demand-hl-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.demand-stat-pill {
+  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.demand-stat-pill.booked {
+  color: #0284c7;
+}
+
+.demand-stat-pill.done {
+  color: #059669;
+}
+
+.demand-stat-pill.waiting {
+  color: #d97706;
+}
+
+.demand-stat-pill.share {
+  color: #475569;
+}
+
+.demand-hl-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.demand-hl-meter-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.demand-hl-meter-label strong {
+  color: #0f172a;
+}
+
+.demand-hl-track {
+  width: 100%;
+  height: 7px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.demand-hl-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+  transition: width 0.4s ease;
+}
+
+.demand-hl-bar.mint-bar {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.demand-hl-bar.sky-bar {
+  background: linear-gradient(90deg, #06b6d4, #0284c7);
+}
+
+.demand-hl-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #64748b;
+  font-size: 0.85rem;
+  padding: 12px 0;
+}
+
+.demand-hl-empty svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Main Demand Ranking Table */
+.reports-demand-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.86rem;
+}
+
+.reports-demand-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 12px 14px;
+  border-bottom: 1.5px solid #e2e8f0;
+}
+
+.reports-demand-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.reports-demand-table tr:hover td {
+  background: #fbfcfe;
+}
+
+.top-ranked-row td {
+  background: rgba(240, 253, 250, 0.35);
+}
+
+.demand-rank-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 0.78rem;
+  min-width: 44px;
+}
+
+.demand-rank-pill.rank-gold {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.demand-rank-pill.rank-silver {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.demand-rank-pill.rank-bronze {
+  background: #ffedd5;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+}
+
+.demand-rank-pill.rank-standard {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.reports-svc-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reports-svc-cell-info strong {
+  display: block;
+  font-size: 0.9rem;
+  color: #0f172a;
+}
+
+.reports-svc-cell-info small {
+  display: block;
+  font-size: 0.74rem;
+  color: #64748b;
+}
+
+.demand-volume-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.demand-val {
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.demand-val.booked {
+  color: #0284c7;
+}
+
+.demand-val.completed {
+  color: #059669;
+}
+
+.demand-sub {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.demand-queue-pill {
+  display: inline-block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.demand-queue-pill.zero {
+  background: #f8fafc;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  font-weight: 500;
+}
+
+.demand-rate-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 120px;
+}
+
+.demand-rate-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.demand-rate-pct {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.demand-rate-pct.high {
+  color: #059669;
+}
+
+.demand-rate-pct.med {
+  color: #0284c7;
+}
+
+.demand-rate-pct.low {
+  color: #d97706;
+}
+
+.demand-rate-counts {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.demand-progress-track {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.demand-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.demand-progress-fill.high {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.demand-progress-fill.med {
+  background: linear-gradient(90deg, #06b6d4, #0284c7);
+}
+
+.demand-progress-fill.low {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.demand-share-badge {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0f766e;
+  background: #f0fdfa;
+  border: 1px solid #ccfbf1;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.demand-status-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.demand-status-tag.top {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.demand-status-tag.high {
+  background: #ecfeff;
+  color: #0e7490;
+  border: 1px solid #a5f3fc;
+}
+
+.demand-status-tag.moderate {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.demand-status-tag.standard {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.demand-status-tag.empty {
+  background: #f8fafc;
+  color: #94a3b8;
+  border: 1px solid #f1f5f9;
+}
+
+.demand-status-tag.total {
+  background: #0d9488;
+  color: #ffffff;
+  border: 1px solid #0f766e;
+}
+
+.reports-demand-tfoot td {
+  background: #f8fafc;
+  border-top: 2px solid #cbd5e1;
+  padding: 14px;
+  font-weight: 700;
+}
+
+.foot-total {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.foot-total.booked {
+  color: #0284c7;
+}
+
+.foot-total.completed {
+  color: #059669;
+}
+
+.foot-total.active {
+  color: #1d4ed8;
+}
+
+.reports-demand-tfoot small {
+  display: block;
+  font-size: 0.68rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
 /* ── Responsive & Print Media Rules ── */
 @media (max-width: 1100px) {
   .reports-metrics-grid {
     grid-template-columns: repeat(3, 1fr);
   }
   .reports-two-col-grid {
+    grid-template-columns: 1fr;
+  }
+  .reports-demand-highlights-grid {
     grid-template-columns: 1fr;
   }
 }
