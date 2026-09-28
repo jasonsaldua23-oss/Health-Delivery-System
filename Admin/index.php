@@ -607,6 +607,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'upda
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'add_barangay_purok')) {
+    if (verify_csrf($_POST['csrf_token'] ?? null)) {
+        $stationSlug = trim((string) ($_POST['station_slug'] ?? ''));
+        $barangay = trim((string) ($_POST['barangay'] ?? ''));
+        $purokName = trim((string) ($_POST['purok_name'] ?? ''));
+
+        if ($barangay !== '' && $purokName !== '') {
+            $added = add_purok_to_barangay($barangay, $purokName);
+            $_SESSION['admin_flash'] = $added
+                ? 'Purok "' . $purokName . '" added successfully to ' . $barangay . '.'
+                : 'Unable to add purok.';
+            if ($added) {
+                log_activity('admin', (string) ($adminAccount['email'] ?? 'admin'), 'purok_added', 'barangay', $purokName, '', '', $stationSlug);
+            }
+        }
+    }
+
+    header('Location: index.php?page=services&station=' . urlencode((string) ($_POST['station_slug'] ?? '')) . '&open_puroks=1');
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'update_barangay_purok')) {
+    if (verify_csrf($_POST['csrf_token'] ?? null)) {
+        $stationSlug = trim((string) ($_POST['station_slug'] ?? ''));
+        $barangay = trim((string) ($_POST['barangay'] ?? ''));
+        $oldPurok = trim((string) ($_POST['old_purok_name'] ?? ''));
+        $newPurok = trim((string) ($_POST['new_purok_name'] ?? ''));
+
+        if ($barangay !== '' && $oldPurok !== '' && $newPurok !== '') {
+            $updated = update_purok_in_barangay($barangay, $oldPurok, $newPurok);
+            $_SESSION['admin_flash'] = $updated
+                ? 'Purok updated to "' . $newPurok . '".'
+                : 'Unable to update purok name.';
+            if ($updated) {
+                log_activity('admin', (string) ($adminAccount['email'] ?? 'admin'), 'purok_updated', 'barangay', $newPurok, $oldPurok, '', $stationSlug);
+            }
+        }
+    }
+
+    header('Location: index.php?page=services&station=' . urlencode((string) ($_POST['station_slug'] ?? '')) . '&open_puroks=1');
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'delete_barangay_purok')) {
+    if (verify_csrf($_POST['csrf_token'] ?? null)) {
+        $stationSlug = trim((string) ($_POST['station_slug'] ?? ''));
+        $barangay = trim((string) ($_POST['barangay'] ?? ''));
+        $purokName = trim((string) ($_POST['purok_name'] ?? ''));
+
+        if ($barangay !== '' && $purokName !== '') {
+            $deleted = delete_purok_from_barangay($barangay, $purokName);
+            $_SESSION['admin_flash'] = $deleted
+                ? 'Purok "' . $purokName . '" removed from ' . $barangay . '.'
+                : 'Unable to remove purok.';
+            if ($deleted) {
+                log_activity('admin', (string) ($adminAccount['email'] ?? 'admin'), 'purok_deleted', 'barangay', $purokName, '', '', $stationSlug);
+            }
+        }
+    }
+
+    header('Location: index.php?page=services&station=' . urlencode((string) ($_POST['station_slug'] ?? '')) . '&open_puroks=1');
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'create_health_facility')) {
     if (verify_csrf($_POST['csrf_token'] ?? null)) {
         $barangay = trim((string) ($_POST['barangay'] ?? ''));
@@ -2749,6 +2813,7 @@ if (!function_exists('peso')) {
                         <p>Manage assigned clinical services, service schedules, and customize maximum booking slot capacities for this health center</p>
                     </div>
                     <div class="header-actions">
+                        <button type="button" class="teal-btn" onclick="openManagePuroksModal()"><?= admin_icon('map'); ?>Manage Puroks</button>
                         <button type="button" class="blue-btn" onclick="openManageScheduleModal()"><?= admin_icon('calendar'); ?>Manage Schedule</button>
                         <button type="button" class="green-btn" onclick="document.getElementById('addServiceModal').style.display='grid'"><?= admin_icon('plus'); ?>Add Service</button>
                         <button type="button" class="danger-btn" id="removeServiceBtn" style="display:none;" onclick="removeSelectedService()"><?= admin_icon('x'); ?>Remove Service</button>
@@ -2768,6 +2833,7 @@ if (!function_exists('peso')) {
                         'label' => $sched['label'] ?? service_schedule_label((string) $selectedServiceStation['slug'], $srvSlug),
                     ];
                 }
+                $stationPuroksList = fetch_puroks_for_barangay((string) ($selectedServiceStation['barangay'] ?? ''));
                 ?>
 
                 <div class="service-station-hero-card">
@@ -2781,6 +2847,7 @@ if (!function_exists('peso')) {
                             <div class="station-hero-badges-row">
                                 <span class="station-hours-chip"><?= admin_icon('clock'); ?> <?= h($selectedServiceStation['full_hours'] ?? 'Mon - Sat: 8:00 AM - 5:00 PM'); ?></span>
                                 <span class="station-srv-count-chip"><?= count($assignedServices); ?> Active Services</span>
+                                <span class="station-hours-chip" style="cursor:pointer;background:#f0fdfa;color:#0f766e;border-color:#99f6e4;" onclick="openManagePuroksModal()" title="Click to view and manage puroks"><?= admin_icon('map'); ?> <?= count($stationPuroksList); ?> Puroks / Zones</span>
                             </div>
                         </div>
                     </div>
@@ -3003,6 +3070,91 @@ if (!function_exists('peso')) {
                                 <button type="submit" class="report-btn-primary"><?= admin_icon('check'); ?>Save Station Capacity</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+
+                <!-- Manage Station Puroks Modal -->
+                <div id="managePuroksModal" style="display:none;" class="service-modal-overlay">
+                    <div class="service-modal-card puroks-modal-card" style="max-width: 680px; width: 100%;">
+                        <div class="modal-head">
+                            <div class="modal-head-title-wrap">
+                                <h2>Manage Barangay Puroks &amp; Zones</h2>
+                                <p>Add new subdivisions, correct misspelled names, or remove obsolete puroks for <strong><?= h($selectedServiceStation['name']); ?></strong> (Brgy. <?= h($selectedServiceStation['barangay']); ?>)</p>
+                            </div>
+                            <button type="button" class="modal-close-btn" onclick="document.getElementById('managePuroksModal').style.display='none'">×</button>
+                        </div>
+
+                        <div class="service-modal-form" style="padding: 20px 24px;">
+                            <!-- Add New Purok Form -->
+                            <form method="post" style="display:flex;gap:10px;align-items:center;background:#f8fafc;padding:14px;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:18px;">
+                                <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                                <input type="hidden" name="action" value="add_barangay_purok">
+                                <input type="hidden" name="station_slug" value="<?= h((string) $selectedServiceStation['slug']); ?>">
+                                <input type="hidden" name="barangay" value="<?= h((string) $selectedServiceStation['barangay']); ?>">
+                                <div style="flex:1;">
+                                    <input type="text" name="purok_name" placeholder="Enter new Purok / Subdivision name (e.g. Purok Greenfield, Zone 5)" required style="width:100%;padding:9px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;">
+                                </div>
+                                <button type="submit" class="teal-btn" style="padding:9px 16px;font-size:0.88rem;white-space:nowrap;">
+                                    <?= admin_icon('plus'); ?> Add Purok
+                                </button>
+                            </form>
+
+                            <!-- Search & Count Bar -->
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                                <div style="font-size:0.86rem;color:#64748b;font-weight:600;">
+                                    Registered Puroks (<span id="purokCountDisplay"><?= count($stationPuroksList); ?></span>)
+                                </div>
+                                <div style="max-width:240px;width:100%;">
+                                    <input type="text" id="purokFilterInput" placeholder="Filter puroks..." oninput="filterPurokItems(this.value)" style="width:100%;padding:6px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:0.82rem;">
+                                </div>
+                            </div>
+
+                            <!-- Puroks List Container -->
+                            <div id="puroksListContainer" style="max-height:360px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:8px;padding-right:4px;">
+                                <?php if (empty($stationPuroksList)): ?>
+                                    <p style="color:#64748b;font-size:0.88rem;grid-column:1/-1;text-align:center;padding:24px 0;">No puroks found. Add one above.</p>
+                                <?php else: ?>
+                                    <?php foreach ($stationPuroksList as $pIdx => $pName): ?>
+                                        <div class="purok-item-card" data-purok-name="<?= h(strtolower($pName)); ?>" style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:all 0.15s ease;">
+                                            <div class="purok-view-mode" id="purokView_<?= $pIdx; ?>" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+                                                <span class="purok-name-label" style="font-size:0.88rem;color:#1e293b;font-weight:600;"><?= h($pName); ?></span>
+                                                <div style="display:flex;align-items:center;gap:4px;">
+                                                    <button type="button" onclick="startEditPurok(<?= $pIdx; ?>)" style="background:#f1f5f9;color:#475569;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background 0.15s;" title="Edit / Rename">
+                                                        <?= admin_icon('edit'); ?>
+                                                    </button>
+                                                    <form method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to remove <?= h(addslashes($pName)); ?>?');">
+                                                        <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                                                        <input type="hidden" name="action" value="delete_barangay_purok">
+                                                        <input type="hidden" name="station_slug" value="<?= h((string) $selectedServiceStation['slug']); ?>">
+                                                        <input type="hidden" name="barangay" value="<?= h((string) $selectedServiceStation['barangay']); ?>">
+                                                        <input type="hidden" name="purok_name" value="<?= h($pName); ?>">
+                                                        <button type="submit" style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background 0.15s;" title="Delete Purok">
+                                                            <?= admin_icon('trash'); ?>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                            <!-- Inline Edit Form (Hidden by default) -->
+                                            <form method="post" id="purokEdit_<?= $pIdx; ?>" style="display:none;width:100%;align-items:center;gap:6px;">
+                                                <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                                                <input type="hidden" name="action" value="update_barangay_purok">
+                                                <input type="hidden" name="station_slug" value="<?= h((string) $selectedServiceStation['slug']); ?>">
+                                                <input type="hidden" name="barangay" value="<?= h((string) $selectedServiceStation['barangay']); ?>">
+                                                <input type="hidden" name="old_purok_name" value="<?= h($pName); ?>">
+                                                <input type="text" name="new_purok_name" value="<?= h($pName); ?>" required style="flex:1;padding:4px 8px;font-size:0.84rem;border:1px solid #3b82f6;border-radius:6px;">
+                                                <button type="submit" style="background:#10b981;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:0.75rem;font-weight:600;cursor:pointer;">Save</button>
+                                                <button type="button" onclick="cancelEditPurok(<?= $pIdx; ?>)" style="background:#e2e8f0;color:#475569;border:none;border-radius:6px;padding:4px 8px;font-size:0.75rem;cursor:pointer;">Cancel</button>
+                                            </form>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+
+                            <div style="margin-top:20px;padding-top:14px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;">
+                                <small style="color:#64748b;font-size:0.8rem;">Changes take effect immediately for patient registration and account address dropdowns.</small>
+                                <button type="button" class="report-btn-secondary" onclick="document.getElementById('managePuroksModal').style.display='none'">Done</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             <?php endif; ?>
@@ -3282,6 +3434,55 @@ if (!function_exists('peso')) {
                 document.body.appendChild(form);
                 form.submit();
             }
+
+            function openManagePuroksModal() {
+                const modal = document.getElementById('managePuroksModal');
+                if (modal) modal.style.display = 'grid';
+            }
+
+            function startEditPurok(idx) {
+                const v = document.getElementById('purokView_' + idx);
+                const e = document.getElementById('purokEdit_' + idx);
+                if (v && e) {
+                    v.style.display = 'none';
+                    e.style.display = 'flex';
+                    const input = e.querySelector('input[type="text"]');
+                    if (input) input.focus();
+                }
+            }
+
+            function cancelEditPurok(idx) {
+                const v = document.getElementById('purokView_' + idx);
+                const e = document.getElementById('purokEdit_' + idx);
+                if (v && e) {
+                    e.style.display = 'none';
+                    v.style.display = 'flex';
+                }
+            }
+
+            function filterPurokItems(query) {
+                const q = (query || '').toLowerCase().trim();
+                const cards = document.querySelectorAll('.purok-item-card');
+                let visible = 0;
+                cards.forEach(card => {
+                    const name = card.dataset.purokName || '';
+                    if (!q || name.includes(q)) {
+                        card.style.display = 'flex';
+                        visible++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                const countDisplay = document.getElementById('purokCountDisplay');
+                if (countDisplay) countDisplay.textContent = visible;
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('open_puroks') === '1') {
+                    openManagePuroksModal();
+                }
+            });
             </script>
         <?php elseif ($page === 'events'): ?>
             <section class="page-header action-head events-page-head">

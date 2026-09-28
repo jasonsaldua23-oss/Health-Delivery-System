@@ -230,25 +230,161 @@ function ensure_barangay_puroks(string $barangay): array
     return $puroks;
 }
 
+function fetch_puroks_for_barangay(string $barangay): array
+{
+    $clean = trim($barangay);
+    if ($clean === '') {
+        return [];
+    }
+
+    $slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $clean));
+    $slug = trim($slug, '-');
+
+    $puroks = [];
+    if (empty($GLOBALS['health_db_bootstrapping'])) {
+        try {
+            ensure_barangay_puroks_table(db());
+            $stmt = db()->prepare('SELECT purok_name FROM barangay_puroks WHERE barangay = ? OR barangay_slug = ? ORDER BY purok_name ASC');
+            if ($stmt) {
+                $stmt->bind_param('ss', $clean, $slug);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                while ($row = $res->fetch_assoc()) {
+                    $puroks[] = (string) $row['purok_name'];
+                }
+            }
+        } catch (Throwable $e) {}
+    }
+
+    // If none found in DB yet, auto-populate from generator and save to DB
+    if (empty($puroks)) {
+        $puroks = ensure_barangay_puroks($clean);
+    }
+
+    return array_values(array_unique(array_filter($puroks)));
+}
+
+function add_purok_to_barangay(string $barangay, string $purokName): bool
+{
+    $cleanBgy = trim($barangay);
+    $cleanPurok = trim($purokName);
+    if ($cleanBgy === '' || $cleanPurok === '') {
+        return false;
+    }
+
+    // Ensure base puroks exist in DB first so adding one doesn't lose the base list
+    fetch_puroks_for_barangay($cleanBgy);
+
+    $slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $cleanBgy));
+    $slug = trim($slug, '-');
+
+    if (empty($GLOBALS['health_db_bootstrapping'])) {
+        try {
+            ensure_barangay_puroks_table(db());
+            $stmt = db()->prepare('INSERT INTO barangay_puroks (barangay, barangay_slug, purok_name) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE purok_name = VALUES(purok_name)');
+            if ($stmt) {
+                $stmt->bind_param('sss', $cleanBgy, $slug, $cleanPurok);
+                $stmt->execute();
+                return $stmt->affected_rows >= 0;
+            }
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+function update_purok_in_barangay(string $barangay, string $oldPurokName, string $newPurokName): bool
+{
+    $cleanBgy = trim($barangay);
+    $oldPurok = trim($oldPurokName);
+    $newPurok = trim($newPurokName);
+    if ($cleanBgy === '' || $oldPurok === '' || $newPurok === '') {
+        return false;
+    }
+
+    // Ensure base puroks exist in DB first
+    fetch_puroks_for_barangay($cleanBgy);
+
+    $slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $cleanBgy));
+    $slug = trim($slug, '-');
+
+    if (empty($GLOBALS['health_db_bootstrapping'])) {
+        try {
+            ensure_barangay_puroks_table(db());
+            $stmt = db()->prepare('UPDATE barangay_puroks SET purok_name = ? WHERE (barangay = ? OR barangay_slug = ?) AND purok_name = ?');
+            if ($stmt) {
+                $stmt->bind_param('ssss', $newPurok, $cleanBgy, $slug, $oldPurok);
+                $stmt->execute();
+                return $stmt->affected_rows > 0;
+            }
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+function delete_purok_from_barangay(string $barangay, string $purokName): bool
+{
+    $cleanBgy = trim($barangay);
+    $cleanPurok = trim($purokName);
+    if ($cleanBgy === '' || $cleanPurok === '') {
+        return false;
+    }
+
+    // Ensure base puroks exist in DB first
+    fetch_puroks_for_barangay($cleanBgy);
+
+    $slug = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $cleanBgy));
+    $slug = trim($slug, '-');
+
+    if (empty($GLOBALS['health_db_bootstrapping'])) {
+        try {
+            ensure_barangay_puroks_table(db());
+            $stmt = db()->prepare('DELETE FROM barangay_puroks WHERE (barangay = ? OR barangay_slug = ?) AND purok_name = ?');
+            if ($stmt) {
+                $stmt->bind_param('sss', $cleanBgy, $slug, $cleanPurok);
+                $stmt->execute();
+                return $stmt->affected_rows > 0;
+            }
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    return false;
+}
+
 function bacolod_purok_catalog(): array
 {
     $catalog = bacolod_all_known_puroks_master();
 
     if (empty($GLOBALS['health_db_bootstrapping'])) {
         try {
-            // Load custom or saved puroks from database table if any
-            $res = db()->query('SELECT barangay, purok_name FROM barangay_puroks ORDER BY id ASC');
+            // Group custom or saved puroks from DB by barangay
+            $dbPuroks = [];
+            $res = db()->query('SELECT barangay, purok_name FROM barangay_puroks ORDER BY purok_name ASC');
             if ($res) {
                 while ($row = $res->fetch_assoc()) {
                     $b = (string) $row['barangay'];
                     $p = (string) $row['purok_name'];
-                    if (!isset($catalog[$b])) {
-                        $catalog[$b] = [];
+                    if (!isset($dbPuroks[$b])) {
+                        $dbPuroks[$b] = [];
                     }
-                    if (!in_array($p, $catalog[$b], true)) {
-                        $catalog[$b][] = $p;
+                    if (!in_array($p, $dbPuroks[$b], true)) {
+                        $dbPuroks[$b][] = $p;
                     }
                 }
+            }
+
+            // For any barangay with entries in DB, use DB list as definitive source of truth
+            foreach ($dbPuroks as $bName => $pList) {
+                $catalog[$bName] = $pList;
+                $cleanB = trim((string) preg_replace('/^(?:Brgy\.?|Barangay)\s+/i', '', $bName));
+                $catalog[$cleanB] = $pList;
             }
 
             // Also check all health_facilities; if a facility exists but has no puroks in catalog, auto-generate them
