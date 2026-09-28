@@ -2214,9 +2214,9 @@ if (!function_exists('peso')) {
                                         <tr>
                                             <th>Date</th>
                                             <th>Health Service</th>
-                                            <th>Health Station</th>
+                                            <th style="text-align:center;">Health Station</th>
                                             <th>Appt Code</th>
-                                            <th>Action</th>
+                                            <th style="text-align:center;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2224,7 +2224,7 @@ if (!function_exists('peso')) {
                                             <tr>
                                                 <td><?= h(date('M j, Y', strtotime((string) $visit['preferred_date']))); ?></td>
                                                 <td><strong><?= h((string) $visit['service_name']); ?></strong></td>
-                                                <td><?php $cleanStationSH = trim(str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', (string) ($visit['station_name'] ?? ''))); ?><?= h($cleanStationSH); ?></td>
+                                                <td style="text-align:center;"><?php $cleanStationSH = trim(str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', (string) ($visit['station_name'] ?? ''))); ?><?= h($cleanStationSH); ?></td>
                                                 <td style="font-family:monospace;font-weight:700;color:#3b82f6;">#<?= h((string) ($visit['appointment_code'] ?? $visit['reference_code'])); ?></td>
                                                 <td style="text-align:center;">
                                                     <a class="patient-action-btn view" href="?page=patients&patient=<?= h((string) $patientServiceHistoryProfile['patient_id']); ?>&visit=<?= h((string) $visit['id']); ?>" title="View Consultation Form" style="margin:0 auto;">

@@ -2,15 +2,24 @@
 require_once __DIR__ . '/../shared/bootstrap.php';
 require_once __DIR__ . '/../shared/database.php';
 $db = db();
-$res = $db->query("SELECT station_slug, count(*) as c FROM infant_profiles GROUP BY station_slug");
-if ($res) {
-    while($r = $res->fetch_assoc()) { echo "infant_profiles: " . $r['station_slug'] . " = " . $r['c'] . PHP_EOL; }
+
+echo "=== APPOINTMENTS WITH RECIPIENTS ===\n";
+$res = $db->query("SELECT id, patient_id, recipient_first_name, recipient_last_name, recipient_birth_date, photo_path, status, service_name, preferred_date FROM appointments WHERE recipient_first_name IS NOT NULL AND recipient_first_name != ''");
+$rows = $res->fetch_all(MYSQLI_ASSOC);
+foreach ($rows as $r) {
+    echo "ID: {$r['id']} | Patient: {$r['patient_id']} | Infant: {$r['recipient_first_name']} {$r['recipient_last_name']} | Status: {$r['status']} | Date: {$r['preferred_date']} | Photo: {$r['photo_path']}\n";
 }
-$res2 = $db->query("SELECT station_slug, count(*) as c FROM appointments WHERE recipient_first_name IS NOT NULL AND recipient_first_name != '' GROUP BY station_slug");
-if ($res2) {
-    while($r = $res2->fetch_assoc()) { echo "immunization appts: " . $r['station_slug'] . " = " . $r['c'] . PHP_EOL; }
+
+echo "\n=== ALL INFANT PROFILES TABLE ===\n";
+$res2 = $db->query("SELECT * FROM infant_profiles");
+$rows2 = $res2->fetch_all(MYSQLI_ASSOC);
+foreach ($rows2 as $r) {
+    echo "ID: {$r['id']} | Patient: {$r['patient_id']} | Infant: {$r['first_name']} {$r['last_name']} | Photo: " . ($r['photo_path'] ?? 'N/A') . "\n";
 }
-$res3 = $db->query("SELECT email, staff_name, station_slug FROM staff_accounts");
-if ($res3) {
-    while($r = $res3->fetch_assoc()) { echo "staff: " . $r['email'] . " -> " . $r['station_slug'] . PHP_EOL; }
+
+echo "\n=== ALL IMMUNIZED INFANTS TABLE ===\n";
+$res3 = $db->query("SELECT * FROM immunized_infants");
+$rows3 = $res3->fetch_all(MYSQLI_ASSOC);
+foreach ($rows3 as $r) {
+    echo "ID: {$r['id']} | Patient: {$r['patient_id']} | Infant: {$r['first_name']} {$r['last_name']} | Appt: {$r['appointment_code']}\n";
 }
