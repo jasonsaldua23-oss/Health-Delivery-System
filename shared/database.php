@@ -590,25 +590,26 @@ function station_program_map_with_assignments(): array
     return $assigned + $programMap;
 }
 
-function station_lookup(): array
+function station_lookup(bool $useDatabaseAssignments = true): array
 {
-    static $lookup = null;
+    static $lookup = [];
 
-    if (is_array($lookup)) {
-        return $lookup;
+    $key = $useDatabaseAssignments ? 1 : 0;
+    if (isset($lookup[$key])) {
+        return $lookup[$key];
     }
 
-    $lookup = [];
-    foreach (station_catalog(false) as $station) {
-        $lookup[$station['slug']] = $station;
+    $lookup[$key] = [];
+    foreach (station_catalog($useDatabaseAssignments) as $station) {
+        $lookup[$key][$station['slug']] = $station;
     }
 
-    return $lookup;
+    return $lookup[$key];
 }
 
-function fetch_station_by_slug_catalog(string $slug): ?array
+function fetch_station_by_slug_catalog(string $slug, bool $useDatabaseAssignments = true): ?array
 {
-    $lookup = station_lookup();
+    $lookup = station_lookup($useDatabaseAssignments);
 
     return $lookup[$slug] ?? null;
 }

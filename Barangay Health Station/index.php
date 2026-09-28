@@ -1383,20 +1383,33 @@ $uniquePatRow = $stmtUniquePat->get_result()->fetch_assoc();
 $weeklyUniquePatients = (int) ($uniquePatRow['total'] ?? 0);
 
 // Comprehensive Station Health Service Breakdown & Demand Ranking
-$weeklyServiceStats = [];
-$stationPrograms = $station['programs'] ?? [];
-$progSlugs = [];
+// Strictly includes only currently active services offered by this station (identical to patient dashboard)
+$stationPrograms = [];
+foreach (station_catalog(true) as $catStation) {
+    if ((string) ($catStation['slug'] ?? '') === (string) $stationSlug) {
+        $stationPrograms = $catStation['programs'] ?? [];
+        break;
+    }
+}
+if (empty($stationPrograms)) {
+    $stationPrograms = $station['programs'] ?? [];
+}
+if (empty($stationPrograms) && !empty($stationSlug)) {
+    $progMap = station_program_map_with_assignments();
+    $pSlugs = $progMap[$stationSlug] ?? (station_program_map()[$stationSlug] ?? []);
+    $catalog = service_catalog();
+    $stationPrograms = array_values(array_filter(array_map(static fn(string $k): ?array => $catalog[$k] ?? null, $pSlugs)));
+}
 
+$weeklyServiceStats = [];
 foreach ($stationPrograms as $prog) {
     $slug = (string) $prog['slug'];
-    $progSlugs[$slug] = true;
     $progAppts = array_values(array_filter($weeklyAppointments, static fn(array $a): bool => (string) ($a['service_slug'] ?? '') === $slug));
     $totalProg = count($progAppts);
     $completedProg = count(array_filter($progAppts, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Completed'));
     $confirmedProg = count(array_filter($progAppts, static fn(array $a): bool => in_array((string) ($a['status'] ?? ''), ['Confirmed', 'Serving'], true)));
     $pendingProg = count(array_filter($progAppts, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Pending'));
     $cancelledProg = count(array_filter($progAppts, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Cancelled'));
-    $sharePct = $weeklyTotalBooked > 0 ? round(($totalProg / $weeklyTotalBooked) * 100, 1) : 0;
     $compRate = $totalProg > 0 ? round(($completedProg / $totalProg) * 100) : 0;
     
     $weeklyServiceStats[] = [
@@ -1410,44 +1423,22 @@ foreach ($stationPrograms as $prog) {
         'pending' => $pendingProg,
         'cancelled' => $cancelledProg,
         'active_queue' => $confirmedProg + $pendingProg,
-        'share_pct' => $sharePct,
+        'share_pct' => 0,
         'completion_rate' => $compRate,
     ];
 }
 
-// Check for any appointments with a service_slug not defined in station programs
-foreach ($weeklyAppointments as $a) {
-    $aSlug = (string) ($a['service_slug'] ?? '');
-    if ($aSlug !== '' && !isset($progSlugs[$aSlug])) {
-        $progSlugs[$aSlug] = true;
-        $aTitle = (string) ($a['service_name'] ?? 'Other Consultation');
-        $progAppts = array_values(array_filter($weeklyAppointments, static fn(array $row): bool => (string) ($row['service_slug'] ?? '') === $aSlug));
-        $totalProg = count($progAppts);
-        $completedProg = count(array_filter($progAppts, static fn(array $row): bool => (string) ($row['status'] ?? '') === 'Completed'));
-        $confirmedProg = count(array_filter($progAppts, static fn(array $row): bool => in_array((string) ($row['status'] ?? ''), ['Confirmed', 'Serving'], true)));
-        $pendingProg = count(array_filter($progAppts, static fn(array $row): bool => (string) ($row['status'] ?? '') === 'Pending'));
-        $cancelledProg = count(array_filter($progAppts, static fn(array $row): bool => (string) ($row['status'] ?? '') === 'Cancelled'));
-        $sharePct = $weeklyTotalBooked > 0 ? round(($totalProg / $weeklyTotalBooked) * 100, 1) : 0;
-        $compRate = $totalProg > 0 ? round(($completedProg / $totalProg) * 100) : 0;
+$stationActiveTotalBooked = array_sum(array_column($weeklyServiceStats, 'total'));
+$stationActiveTotalCompleted = array_sum(array_column($weeklyServiceStats, 'completed'));
+$stationActiveWaiting = array_sum(array_column($weeklyServiceStats, 'active_queue'));
 
-        $weeklyServiceStats[] = [
-            'slug' => $aSlug,
-            'title' => $aTitle,
-            'color' => 'teal',
-            'icon' => 'stethoscope',
-            'total' => $totalProg,
-            'completed' => $completedProg,
-            'confirmed' => $confirmedProg,
-            'pending' => $pendingProg,
-            'cancelled' => $cancelledProg,
-            'active_queue' => $confirmedProg + $pendingProg,
-            'share_pct' => $sharePct,
-            'completion_rate' => $compRate,
-        ];
-    }
+// Calculate demand share percentage relative to active station services volume
+foreach ($weeklyServiceStats as &$svcStat) {
+    $svcStat['share_pct'] = $stationActiveTotalBooked > 0 ? round(($svcStat['total'] / $stationActiveTotalBooked) * 100, 1) : 0;
 }
+unset($svcStat);
 
-// Sort services by Total Booked DESC, then Completed DESC, then Title ASC
+// Sort active services by Total Booked DESC, then Completed DESC, then Title ASC
 usort($weeklyServiceStats, static function(array $a, array $b): int {
     if ($b['total'] !== $a['total']) {
         return $b['total'] <=> $a['total'];
@@ -5745,7 +5736,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                             <?= count($weeklyServiceStats); ?> Station Service<?= count($weeklyServiceStats) === 1 ? '' : 's'; ?>
                         </span>
                         <span class="queue-count-badge" style="background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;">
-                            <?= $weeklyCompleted; ?> Completed Consultations
+                            <?= $stationActiveTotalCompleted; ?> Completed Consultations
                         </span>
                     </div>
                 </div>
@@ -5810,10 +5801,10 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 <h4>Overall Completion</h4>
                                 <div class="demand-hl-stats">
                                     <span class="demand-stat-pill done">
-                                        <strong><?= $weeklyCompleted; ?></strong> of <strong><?= $weeklyTotalBooked; ?></strong> Completed
+                                        <strong><?= $stationActiveTotalCompleted; ?></strong> of <strong><?= $stationActiveTotalBooked; ?></strong> Completed
                                     </span>
                                     <span class="demand-stat-pill waiting">
-                                        <strong><?= $weeklyActiveWaiting; ?></strong> In Queue / Serving
+                                        <strong><?= $stationActiveWaiting; ?></strong> In Queue / Serving
                                     </span>
                                 </div>
                             </div>
@@ -5821,10 +5812,10 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                         <div class="demand-hl-meter">
                             <div class="demand-hl-meter-label">
                                 <span>Overall Completion Rate</span>
-                                <strong><?= $weeklyTotalBooked > 0 ? round(($weeklyCompleted / $weeklyTotalBooked) * 100) : 0; ?>% Fulfilled</strong>
+                                <strong><?= $stationActiveTotalBooked > 0 ? round(($stationActiveTotalCompleted / $stationActiveTotalBooked) * 100) : 0; ?>% Fulfilled</strong>
                             </div>
                             <div class="demand-hl-track">
-                                <div class="demand-hl-bar mint-bar" style="width: <?= $weeklyTotalBooked > 0 ? round(($weeklyCompleted / $weeklyTotalBooked) * 100) : 0; ?>%;"></div>
+                                <div class="demand-hl-bar mint-bar" style="width: <?= $stationActiveTotalBooked > 0 ? round(($stationActiveTotalCompleted / $stationActiveTotalBooked) * 100) : 0; ?>%;"></div>
                             </div>
                         </div>
                     </div>
@@ -5982,30 +5973,30 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                         <tfoot>
                             <tr class="reports-demand-tfoot">
                                 <td colspan="2">
-                                    <strong>Station Total (<?= count($weeklyServiceStats); ?> Health Services)</strong>
+                                    <strong>Station Total (<?= count($weeklyServiceStats); ?> Active Health Services)</strong>
                                 </td>
                                 <td style="text-align: center;">
-                                    <strong class="foot-total booked"><?= number_format($weeklyTotalBooked); ?></strong>
+                                    <strong class="foot-total booked"><?= number_format($stationActiveTotalBooked); ?></strong>
                                     <small>Total Booked</small>
                                 </td>
                                 <td style="text-align: center;">
-                                    <strong class="foot-total completed"><?= number_format($weeklyCompleted); ?></strong>
+                                    <strong class="foot-total completed"><?= number_format($stationActiveTotalCompleted); ?></strong>
                                     <small>Total Completed</small>
                                 </td>
                                 <td style="text-align: center;">
-                                    <strong class="foot-total active"><?= number_format($weeklyActiveWaiting); ?></strong>
+                                    <strong class="foot-total active"><?= number_format($stationActiveWaiting); ?></strong>
                                     <small>In Queue / Serving</small>
                                 </td>
                                 <td>
                                     <div class="demand-rate-cell">
                                         <div class="demand-rate-top">
                                             <span class="demand-rate-pct high">
-                                                <?= $weeklyTotalBooked > 0 ? round(($weeklyCompleted / $weeklyTotalBooked) * 100) : 0; ?>%
+                                                <?= $stationActiveTotalBooked > 0 ? round(($stationActiveTotalCompleted / $stationActiveTotalBooked) * 100) : 0; ?>%
                                             </span>
                                             <small>Station Fulfillment</small>
                                         </div>
                                         <div class="demand-progress-track">
-                                            <div class="demand-progress-fill high" style="width: <?= $weeklyTotalBooked > 0 ? round(($weeklyCompleted / $weeklyTotalBooked) * 100) : 0; ?>%;"></div>
+                                            <div class="demand-progress-fill high" style="width: <?= $stationActiveTotalBooked > 0 ? round(($stationActiveTotalCompleted / $stationActiveTotalBooked) * 100) : 0; ?>%;"></div>
                                         </div>
                                     </div>
                                 </td>
