@@ -248,7 +248,21 @@ if ($action === 'login_staff') {
 
     $staffAccount = fetch_staff_account_by_email($email);
     if ($staffAccount === null && ($email === 'staff_user' || str_contains($email, 'staff'))) {
-        $staffAccount = fetch_staff_account_by_email('staff-bata@bata.health');
+        // Try to resolve the correct station from the email domain
+        // Email format: staff-{slug}@{slug}.health
+        $resolvedSlug = '';
+        if (preg_match('/@([a-z0-9-]+)\.health$/i', $email, $domainMatch)) {
+            $resolvedSlug = strtolower($domainMatch[1]);
+        } elseif (preg_match('/staff[_-]?([a-z0-9-]+)/i', $email, $nameMatch)) {
+            $resolvedSlug = strtolower($nameMatch[1]);
+        }
+        if ($resolvedSlug !== '') {
+            $staffAccount = fetch_staff_account_by_email('staff-' . $resolvedSlug . '@' . $resolvedSlug . '.health');
+        }
+        // Final fallback: try bata only if no station could be resolved
+        if ($staffAccount === null && $resolvedSlug === '') {
+            $staffAccount = fetch_staff_account_by_email('staff-bata@bata.health');
+        }
     }
 
     if (is_array($staffAccount)) {
@@ -445,7 +459,19 @@ if ($action === 'request_password_otp') {
 
         $account = fetch_staff_account_by_email($email);
         if ($account === null && ($email === 'staff_user' || str_contains($email, 'staff'))) {
-            $account = fetch_staff_account_by_email('staff-bata@bata.health');
+            // Try to resolve the correct station from the email domain
+            $resolvedSlug = '';
+            if (preg_match('/@([a-z0-9-]+)\.health$/i', $email, $domainMatch)) {
+                $resolvedSlug = strtolower($domainMatch[1]);
+            } elseif (preg_match('/staff[_-]?([a-z0-9-]+)/i', $email, $nameMatch)) {
+                $resolvedSlug = strtolower($nameMatch[1]);
+            }
+            if ($resolvedSlug !== '') {
+                $account = fetch_staff_account_by_email('staff-' . $resolvedSlug . '@' . $resolvedSlug . '.health');
+            }
+            if ($account === null && $resolvedSlug === '') {
+                $account = fetch_staff_account_by_email('staff-bata@bata.health');
+            }
         }
         if ($account === null) {
             echo json_encode(['success' => false, 'message' => 'No staff account found with this work email address.'], JSON_THROW_ON_ERROR);
