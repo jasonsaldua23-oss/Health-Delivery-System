@@ -1582,6 +1582,22 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
     $connection->query("DELETE FROM patient_update_notifications WHERE patient_id = 'HE6JH6'");
     $connection->query("DELETE FROM appointment_status_notifications WHERE patient_id = 'HE6JH6'");
 
+    // Purge records of Mekai Villegas Dudot and infant Ayanna Bandoy Fajardo across all tables
+    try {
+        $connection->query("DELETE FROM appointments WHERE patient_id IN ('DBBF98', '02DC2A') OR appointment_code = 'YKABLLWP' OR reference_code = 'BK260918061824999' OR (first_name = 'Mekai' AND last_name = 'Dudot') OR (recipient_first_name = 'Ayanna' AND recipient_last_name = 'Fajardo') OR email = 'mekai123@gmail.com'");
+        $connection->query("DELETE FROM patient_profiles WHERE patient_id IN ('DBBF98', '02DC2A') OR (first_name = 'Mekai' AND last_name = 'Dudot') OR email = 'mekai123@gmail.com'");
+        $connection->query("DELETE FROM patient_accounts WHERE patient_id IN ('DBBF98', '02DC2A') OR (first_name = 'Mekai' AND last_name = 'Dudot') OR email = 'mekai123@gmail.com'");
+        $connection->query("DELETE FROM infant_profiles WHERE patient_id IN ('DBBF98', '02DC2A') OR (first_name = 'Ayanna' AND last_name = 'Fajardo') OR mother_name LIKE '%Mekai%' OR mother_name LIKE '%Dudot%'");
+        $connection->query("DELETE FROM immunized_infants WHERE patient_id IN ('DBBF98', '02DC2A') OR (first_name = 'Ayanna' AND last_name = 'Fajardo') OR appointment_code = 'YKABLLWP'");
+        $connection->query("DELETE FROM appointment_status_notifications WHERE patient_id IN ('DBBF98', '02DC2A') OR reference_code = 'BK260918061824999'");
+        $connection->query("DELETE FROM patient_info_history WHERE patient_id IN ('DBBF98', '02DC2A')");
+        $connection->query("DELETE FROM patient_update_notifications WHERE patient_id IN ('DBBF98', '02DC2A')");
+        $connection->query("DELETE FROM unattended_appointments WHERE patient_id IN ('DBBF98', '02DC2A') OR appointment_code = 'YKABLLWP'");
+        $connection->query("DELETE FROM unattended_queue WHERE patient_id IN ('DBBF98', '02DC2A') OR appointment_code = 'YKABLLWP'");
+        $connection->query("DELETE FROM activity_log WHERE actor_id = 'mekai123@gmail.com' OR actor_id IN ('DBBF98', '02DC2A') OR target_id IN ('DBBF98', '02DC2A', 'YKABLLWP', 'BK260918061824999')");
+        $connection->query("DELETE FROM password_reset_otps WHERE email = 'mekai123@gmail.com'");
+    } catch (Throwable $e) {}
+
     // Ensure columns
     $staffCols = [
         'home_address' => 'VARCHAR(255) DEFAULT NULL',
@@ -2160,6 +2176,26 @@ function db(): mysqli
         $connection->query("DELETE FROM patient_info_history WHERE patient_id = 'HE6JH6'");
         $connection->query("DELETE FROM patient_update_notifications WHERE patient_id = 'HE6JH6'");
         $connection->query("DELETE FROM appointment_status_notifications WHERE patient_id = 'HE6JH6'");
+    } catch (Throwable $e) {}
+
+    // Ensure records of Mekai Villegas Dudot and infant Ayanna Bandoy Fajardo are purged on every request
+    try {
+        $connection->query("DELETE FROM appointments WHERE patient_id IN ('DBBF98', '02DC2A') OR appointment_code = 'YKABLLWP' OR reference_code = 'BK260918061824999' OR (first_name = 'Mekai' AND last_name = 'Dudot') OR (recipient_first_name = 'Ayanna' AND recipient_last_name = 'Fajardo') OR email = 'mekai123@gmail.com'");
+        $connection->query("DELETE FROM patient_profiles WHERE patient_id IN ('DBBF98', '02DC2A') OR (first_name = 'Mekai' AND last_name = 'Dudot') OR email = 'mekai123@gmail.com'");
+        $connection->query("DELETE FROM patient_accounts WHERE patient_id IN ('DBBF98', '02DC2A') OR (first_name = 'Mekai' AND last_name = 'Dudot') OR email = 'mekai123@gmail.com'");
+        $connection->query("DELETE FROM infant_profiles WHERE patient_id IN ('DBBF98', '02DC2A') OR (first_name = 'Ayanna' AND last_name = 'Fajardo') OR mother_name LIKE '%Mekai%' OR mother_name LIKE '%Dudot%'");
+        $connection->query("DELETE FROM immunized_infants WHERE patient_id IN ('DBBF98', '02DC2A') OR (first_name = 'Ayanna' AND last_name = 'Fajardo') OR appointment_code = 'YKABLLWP'");
+        $connection->query("DELETE FROM appointment_status_notifications WHERE patient_id IN ('DBBF98', '02DC2A') OR reference_code = 'BK260918061824999'");
+        $connection->query("DELETE FROM patient_info_history WHERE patient_id IN ('DBBF98', '02DC2A')");
+        $connection->query("DELETE FROM patient_update_notifications WHERE patient_id IN ('DBBF98', '02DC2A')");
+        $connection->query("DELETE FROM unattended_appointments WHERE patient_id IN ('DBBF98', '02DC2A') OR appointment_code = 'YKABLLWP'");
+        $connection->query("DELETE FROM unattended_queue WHERE patient_id IN ('DBBF98', '02DC2A') OR appointment_code = 'YKABLLWP'");
+        $connection->query("DELETE FROM activity_log WHERE actor_id = 'mekai123@gmail.com' OR actor_id IN ('DBBF98', '02DC2A') OR target_id IN ('DBBF98', '02DC2A', 'YKABLLWP', 'BK260918061824999')");
+        $connection->query("DELETE FROM password_reset_otps WHERE email = 'mekai123@gmail.com'");
+        $mekaiPhotoPath = __DIR__ . '/../Patients/uploads/patient_6aacd925312254.71921599.jpg';
+        if (file_exists($mekaiPhotoPath)) {
+            @unlink($mekaiPhotoPath);
+        }
     } catch (Throwable $e) {}
 
     // Auto-remove any events whose scheduled date has already passed (< today) or target month has passed
