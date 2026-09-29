@@ -181,7 +181,6 @@ INSERT INTO `patient_accounts` (`id`, `patient_id`, `email`, `password_hash`, `f
 ('4', 'D369A7', 'jorillabrian@gmail.com', '$2y$10$pq9UWClw9OEyNUgbeKFgcuuZmAiAit4Pb/LAl2.rAknavJYxrjpja', 'Brian', 'Sotabento', 'Jorilla', '2004-10-16', 'Male', '09674306281', 'Purok Pag-isa, Barangay Bata, Bacolod City, 10', 'bata', 'Bata', '2026-08-26 15:13:44', '2026-09-11 13:44:09'),
 ('6', 'AD00A8', 'evelyntaboclaon@gmail.com', '$2y$10$mdgIO2H9c/YCPZ3QMGye/.DFORHIrJzVHFN6IdUaD5kfcwF.iFvfS', 'Evelyn', 'Taboclaon', 'Zacarias', '1963-12-26', 'Female', '09426388677', 'Purok Pag-isa, Barangay Bata, Bacolod City', 'bata', 'Bata Barangay Health Station', '2026-08-27 22:01:09', '2026-09-11 13:44:09'),
 ('13', '8A13C4', 'aleh@gmail.com', '$2y$10$L4FFnbR7iCji2dnF2W1iEueH2z7./C83BgdtmxHRyJnUSN5Mw7rvy', 'Oel', 'Baero', 'laehuj', '2026-09-01', 'Male', '0968ldji186568', 'Purok Pag-isa, Barangay Bata, Bacolod City', 'bata', 'Bata Barangay Health Station', '2026-09-01 13:45:41', '2026-09-11 13:44:09'),
-('28', '02DC2A', 'mekai123@gmail.com', '$2y$10$N9PvaWZWelhvLOGniVkkFe.XIsMjGyciaxWR9Ucr5x44MTOygcyju', 'Mekai', 'Villegas', 'Buenas', '2003-12-03', 'Female', '09665600834', 'Purok Bulak, Barangay Mandalagan, Bacolod City', 'mandalagan', 'Mandalagan Barangay Health Station', '2026-09-02 00:31:01', '2026-09-11 13:44:09'),
 ('33', 'TPAT01', 'test.patient.otp@gmail.com', '$2y$10$jkWUENIsgt5wjpHfTbQOeuGry1HT.9IC4cEcEzUSswB.YdE2c71i.', 'Maria', '', 'Santos', '1995-05-15', 'Female', '09171234567', 'Purok Masinadyahon, Barangay Bata, Bacolod City', 'bata', 'Bata Barangay Health Station', '2026-09-18 09:44:40', '2026-09-21 12:13:22');
 
 DROP TABLE IF EXISTS `patient_profiles`;
@@ -203,12 +202,10 @@ CREATE TABLE `patient_profiles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `patient_profiles` (`patient_id`, `first_name`, `middle_name`, `last_name`, `birth_date`, `gender`, `contact_number`, `email`, `complete_address`, `created_at`, `updated_at`) VALUES
-('02DC2A', 'Mekai', 'Villegas', 'Buenas', '2003-12-03', 'Female', '09665600834', 'mekai123@gmail.com', 'Purok Bulak, Barangay Mandalagan, Bacolod City', '2026-09-02 00:31:01', '2026-09-11 13:44:09'),
 ('3ACU9D', 'Evelyn', 'Taboclaon', 'Zacarias', '1963-12-26', 'Female', '09426388677', 'evelyn123@gmail.com', 'Purok Pag-isa, Barangay Bata, Bacolod City', '2026-06-01 20:31:52', '2026-09-11 13:44:09'),
 ('8A13C4', 'Oel', 'Baero', 'laehuj', '2026-09-01', 'Male', '0968ldji186568', 'aleh@gmail.com', 'Purok Pag-isa, Barangay Bata, Bacolod City', '2026-09-01 13:45:41', '2026-09-11 13:44:09'),
 ('AD00A8', 'Evelyn', 'Taboclaon', 'Zacarias', '1963-12-26', 'Female', '09426388677', 'evelyntaboclaon@gmail.com', 'Purok Pag-isa, Barangay Bata, Bacolod City', '2026-08-27 22:01:09', '2026-09-11 13:44:09'),
 ('D369A7', 'Brian', 'Sotabento', 'Jorilla', '2004-10-16', 'Male', '09674306281', 'jorillabrian@gmail.com', 'Purok Pag-isa, Barangay Bata, Bacolod City, 10', '2026-08-26 15:15:33', '2026-09-11 13:44:09'),
-('D72U7F', 'Mekai', 'Santos', 'Dela Cruz', '2000-04-12', 'Female', '09123456789', 'mekus2@gmail.com', 'Purok Pag-isa, Barangay Bata, Bacolod City', '2026-06-01 20:31:52', '2026-09-11 13:44:09'),
 ('MAAMS7', 'Katrina', 'Soberano', 'Fajardo', '2000-04-11', 'Female', '09397567456', 'kat2@gmail.com', 'Purok Bulak, Barangay Mandalagan, Bacolod City', '2026-06-02 09:01:17', '2026-09-11 13:44:09'),
 ('NXKPF5', 'Liza', 'Suplada', 'Tagamolila', '2000-05-25', 'Female', '09642834596', 'urzang@gmail.com', 'Purok Pag-isa, Barangay Bata, Bacolod City', '2026-06-02 08:32:11', '2026-09-11 13:44:09'),
 ('P2YLL5', 'Leo', 'Taboclaon', 'Zacarias', '2002-11-17', 'Male', '09691080024', 'leozcrs17@gmail.com', 'Purok Pag-isa, Barangay Bata, Bacolod City', '2026-06-01 23:19:22', '2026-09-11 13:44:09');
