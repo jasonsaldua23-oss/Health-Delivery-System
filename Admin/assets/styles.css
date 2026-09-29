@@ -5515,7 +5515,7 @@ button, input, select { font: inherit; }
 .patient-address-snippet {
   font-size: 0.82rem;
   color: #64748b;
-  max-width: 260px;
+  max-width: 340px;
   margin: 0 auto;
   text-align: center;
   white-space: nowrap;

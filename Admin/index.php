@@ -2088,7 +2088,11 @@ if (!function_exists('peso')) {
                                             <small style="color:#64748b;"><?= h((string) $patient['gender']); ?></small>
                                         </td>
                                         <td style="text-align: center;">
-                                            <div class="patient-address-snippet" style="margin: 0 auto; text-align: center;" title="<?= h((string) $patient['complete_address']); ?>"><?= h((string) $patient['complete_address']); ?></div>
+                                            <?php 
+                                                $rawAddr = (string) ($patient['complete_address'] ?? '');
+                                                $shortAddr = preg_replace('/\bBacolod\s+City\b/i', 'B.C.', $rawAddr);
+                                            ?>
+                                            <div class="patient-address-snippet" style="margin: 0 auto; text-align: center; max-width: 340px;" title="<?= h($rawAddr); ?>"><?= h($shortAddr); ?></div>
                                         </td>
                                         <td style="text-align: center;">
                                             <div style="font-weight:600;color:#2563eb;"><?= h((string) ($patient['contact_number'] ?: 'N/A')); ?></div>
