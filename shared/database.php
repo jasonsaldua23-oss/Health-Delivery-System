@@ -887,53 +887,7 @@ function fetch_station_by_slug_catalog(string $slug, bool $useDatabaseAssignment
 
 function default_upcoming_event_seed(): array
 {
-    return [
-        [
-            'station_slug' => 'city-health',
-            'title' => 'Citywide Wellness Caravan',
-            'description' => 'One-stop consultations, vital checks, and medicine counseling for walk-in residents.',
-            'event_date' => date('Y-m-d', strtotime('+5 days')),
-            'time_label' => '8:00 AM - 12:00 PM',
-            'icon' => 'heart',
-            'accent' => 'blue',
-        ],
-        [
-            'station_slug' => 'bata',
-            'title' => 'Child Immunization Day',
-            'description' => 'Routine vaccines and growth monitoring for infants and young children.',
-            'event_date' => date('Y-m-d', strtotime('+8 days')),
-            'time_label' => '9:00 AM - 2:00 PM',
-            'icon' => 'syringe',
-            'accent' => 'blue',
-        ],
-        [
-            'station_slug' => 'mandalagan',
-            'title' => 'Prenatal Checkup Morning',
-            'description' => 'Free prenatal consultations, blood pressure screening, and nutrition guidance.',
-            'event_date' => date('Y-m-d', strtotime('+11 days')),
-            'time_label' => '8:30 AM - 11:30 AM',
-            'icon' => 'baby',
-            'accent' => 'pink',
-        ],
-        [
-            'station_slug' => 'taculing',
-            'title' => 'Community Feeding Program',
-            'description' => 'Healthy meals, nutrition assessment, and vitamins for children and seniors.',
-            'event_date' => date('Y-m-d', strtotime('+13 days')),
-            'time_label' => '10:00 AM - 1:00 PM',
-            'icon' => 'community',
-            'accent' => 'gold',
-        ],
-        [
-            'station_slug' => 'singcang',
-            'title' => 'Family Planning Forum',
-            'description' => 'Barangay-based counseling and consultations on reproductive health services.',
-            'event_date' => date('Y-m-d', strtotime('+16 days')),
-            'time_label' => '1:00 PM - 4:00 PM',
-            'icon' => 'heart',
-            'accent' => 'mint',
-        ],
-    ];
+    return [];
 }
 
 function default_staff_password_hash(): string
@@ -2203,6 +2157,11 @@ function db(): mysqli
         $todayDate = date('Y-m-d');
         $currMonth = date('Y-m');
         $connection->query("DELETE FROM upcoming_events WHERE (event_date IS NOT NULL AND event_date != '' AND event_date < '{$todayDate}') OR (event_date IS NULL AND target_month IS NOT NULL AND target_month != '' AND target_month < '{$currMonth}')");
+    } catch (Throwable $e) {}
+
+    // Clean up any mock seed events or events not created from admin account
+    try {
+        $connection->query("DELETE FROM upcoming_events WHERE created_by = 'system-seed' OR created_by = 'staff-bata@bata.health' OR (created_by NOT LIKE '%admin%' AND created_by NOT IN (SELECT email FROM admin_accounts))");
     } catch (Throwable $e) {}
 
     // Normalize patient addresses in appointments, profiles, accounts to fixed standard format:
@@ -5518,6 +5477,9 @@ function fetch_upcoming_events(array $filters = []): array
         $params[] = $currentMonth;
         $types .= 'ss';
 
+        // Only include events created from admin account
+        $sql .= ' AND (created_by LIKE "%admin%" OR created_by IN (SELECT email FROM admin_accounts))';
+
         if (isset($filters['status']) && $filters['status'] !== 'all' && $filters['status'] !== '') {
             $sql .= ' AND status = ?';
             $params[] = (string) $filters['status'];
@@ -5525,7 +5487,7 @@ function fetch_upcoming_events(array $filters = []): array
         }
 
         if (!empty($filters['station_slug'])) {
-            $sql .= ' AND LOWER(station_slug) = LOWER(?)';
+            $sql .= ' AND (LOWER(station_slug) = LOWER(?) OR LOWER(station_slug) = "all")';
             $params[] = (string) $filters['station_slug'];
             $types .= 's';
         }
@@ -5559,7 +5521,7 @@ function fetch_upcoming_events(array $filters = []): array
         }
     } catch (Throwable $e) {}
 
-    return default_upcoming_event_seed();
+    return [];
 }
 
 function create_upcoming_event(array $eventData): bool

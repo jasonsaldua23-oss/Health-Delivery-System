@@ -26,9 +26,6 @@ $barangayOptions = array_map(
 );
 $purokOptionsByBarangay = bacolod_purok_catalog();
 $dbEvents = fetch_upcoming_events(['upcoming_only' => true, 'status' => 'active']);
-if (empty($dbEvents)) {
-    $dbEvents = default_upcoming_event_seed();
-}
 
 $events = array_map(
     static function (array $event) use ($stations): array {

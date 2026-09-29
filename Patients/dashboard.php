@@ -239,7 +239,7 @@ if (empty($servicesForBarangay) && !empty($stationSlug)) {
 
 $userStationSlug = strtolower($stationSlug);
 
-// Load upcoming events strictly for the Patient's assigned Barangay Health Station
+// Load upcoming events strictly for the Patient's assigned Barangay Health Station and City-Wide Broadcasts
 try {
     $dbUpcomingEvents = fetch_upcoming_events([
         'status' => 'active',
@@ -250,19 +250,18 @@ try {
     $dbUpcomingEvents = [];
 }
 
-if (empty($dbUpcomingEvents)) {
-    // Filter fallback seed events strictly by user station slug
-    $seedEvents = default_upcoming_event_seed();
-    $dbUpcomingEvents = array_values(array_filter($seedEvents, static function (array $ev) use ($userStationSlug): bool {
-        return strcasecmp((string) ($ev['station_slug'] ?? ''), $userStationSlug) === 0;
-    }));
-} else {
-    // Ensure strict station slug match
-    $dbUpcomingEvents = array_values(array_filter($dbUpcomingEvents, static function (array $ev) use ($userStationSlug): bool {
-        $evSlug = strtolower(trim((string) ($ev['station_slug'] ?? '')));
-        return $evSlug === $userStationSlug;
-    }));
-}
+// Strictly ensure events match user station or citywide broadcast, and were created from admin
+$dbUpcomingEvents = array_values(array_filter($dbUpcomingEvents, static function (array $ev) use ($userStationSlug): bool {
+    $evSlug = strtolower(trim((string) ($ev['station_slug'] ?? '')));
+    if ($evSlug !== $userStationSlug && $evSlug !== 'all') {
+        return false;
+    }
+    $createdBy = strtolower(trim((string) ($ev['created_by'] ?? '')));
+    if ($createdBy !== '' && !str_contains($createdBy, 'admin')) {
+        return false;
+    }
+    return true;
+}));
 
 $upcomingEvents = array_map(
     static function (array $event) use ($userStationSlug, $selectedStation, $patientBarangay): array {
@@ -274,9 +273,14 @@ $upcomingEvents = array_map(
         }
 
         $evSlug = strtolower(trim((string) ($event['station_slug'] ?? '')));
+        $isCitywide = ($evSlug === 'all');
         $stationTitle = $event['station_name'] ?? '';
         if (empty($stationTitle)) {
-            $stationTitle = $selectedStation['name'] ?? ($patientBarangay . ' Barangay Health Station');
+            if ($isCitywide) {
+                $stationTitle = 'City-Wide Health Outreach (All Stations)';
+            } else {
+                $stationTitle = $selectedStation['name'] ?? ($patientBarangay . ' Barangay Health Station');
+            }
         }
 
         return [
@@ -289,8 +293,8 @@ $upcomingEvents = array_map(
             'raw_date' => $event['event_date'],
             'time' => $timeDisplay,
             'accent' => $event['accent'] ?? 'mint',
-            'is_local' => true,
-            'is_citywide' => false,
+            'is_local' => !$isCitywide,
+            'is_citywide' => $isCitywide,
         ];
     },
     $dbUpcomingEvents
@@ -4411,9 +4415,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                                 </div>
                                 <div class="event-content">
                                     <div style="margin-bottom: 6px;">
-                                        <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; font-weight: 700; background: #dcfce7; color: #15803d; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.3px;">
-                                            <?= h($patientBarangay); ?> Barangay Health Station
-                                        </span>
+                                        <?php if (!empty($event['is_citywide'])): ?>
+                                            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; font-weight: 700; background: #e0e7ff; color: #3730a3; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.3px;">
+                                                📢 City-Wide Outreach • Disseminated to All Stations
+                                            </span>
+                                        <?php else: ?>
+                                            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; font-weight: 700; background: #dcfce7; color: #15803d; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.3px;">
+                                                <?= h($patientBarangay); ?> Barangay Health Station
+                                            </span>
+                                        <?php endif; ?>
                                     </div>
                                     <h3><?= h($event['title']); ?></h3>
                                     <div class="event-station"><?= h($event['station']); ?></div>
