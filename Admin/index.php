@@ -2044,7 +2044,7 @@ if (!function_exists('peso')) {
                                 <tr>
                                     <th style="text-align: center;">Patient Profile</th>
                                     <th style="text-align: center;">Age / Gender</th>
-                                    <th>Health Station &amp; Address</th>
+                                    <th style="text-align: center;">Address</th>
                                     <th style="text-align: center;">Contact Information</th>
                                     <th>Last Visit</th>
                                     <th style="text-align: center;">Actions</th>
@@ -2087,15 +2087,11 @@ if (!function_exists('peso')) {
                                             <div><?= h((string) $patient['age']); ?> yrs</div>
                                             <small style="color:#64748b;"><?= h((string) $patient['gender']); ?></small>
                                         </td>
-                                        <td>
-                                            <?php if (!empty($patient['station_name'])): ?>
-                                                <span class="patient-station-chip"><?= h((string) $patient['station_name']); ?></span>
-                                            <?php endif; ?>
-                                            <div class="patient-address-snippet"><?= h((string) $patient['complete_address']); ?></div>
+                                        <td style="text-align: center;">
+                                            <div class="patient-address-snippet" style="margin: 0 auto; text-align: center;" title="<?= h((string) $patient['complete_address']); ?>"><?= h((string) $patient['complete_address']); ?></div>
                                         </td>
                                         <td style="text-align: center;">
-                                            <div style="font-weight:600;color:#2563eb;"><?= h((string) $patient['contact_number']); ?></div>
-                                            <small style="color:#64748b;"><?= !empty($patient['email']) ? h((string) $patient['email']) : 'No email'; ?></small>
+                                            <div style="font-weight:600;color:#2563eb;"><?= h((string) ($patient['contact_number'] ?: 'N/A')); ?></div>
                                         </td>
                                         <td>
                                             <div><?= !empty($patient['last_visit']) ? h(date('M j, Y', strtotime((string) $patient['last_visit']))) : 'N/A'; ?></div>
