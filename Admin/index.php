@@ -2113,13 +2113,16 @@ if (!function_exists('peso')) {
                                                     <?= admin_icon('history'); ?>
                                                 </a>
                                                 <?php if (!empty($adminInfants)): ?>
-                                                    <?php foreach ($adminInfants as $adminInf): ?>
-                                                        <button type="button" class="patient-action-btn infant is-active" onclick="openAdminInfantViewer(<?= htmlspecialchars(json_encode([
-                                                            'infant' => $adminInf,
-                                                        ]), ENT_QUOTES, 'UTF-8'); ?>)" title="View Infant Profile: <?= h($adminInf['full_name']); ?>">
-                                                            <?= admin_icon('baby'); ?>
-                                                        </button>
-                                                    <?php endforeach; ?>
+                                                    <button type="button" class="patient-action-btn infant is-active" onclick="openAdminInfantViewer(<?= htmlspecialchars(json_encode([
+                                                        'infants' => $adminInfants,
+                                                        'parent_name' => h((string) ($patient['first_name'] ?? '') . ' ' . ($patient['middle_name'] ?? '') . ' ' . ($patient['last_name'] ?? '')),
+                                                        'parent_id' => (string) $patient['patient_id'],
+                                                    ]), ENT_QUOTES, 'UTF-8'); ?>)" title="View Registered Infant Sub-Profiles (<?= count($adminInfants); ?>)">
+                                                        <?= admin_icon('baby'); ?>
+                                                        <?php if (count($adminInfants) > 1): ?>
+                                                            <span class="admin-infant-count-badge"><?= count($adminInfants); ?></span>
+                                                        <?php endif; ?>
+                                                    </button>
                                                 <?php else: ?>
                                                     <button type="button" class="patient-action-btn infant is-disabled" disabled title="No served infant records on file">
                                                         <?= admin_icon('baby'); ?>
@@ -6307,6 +6310,7 @@ window.dismissAdminToast = function() {
 // Admin Infant Sub-Profiles Viewer Logic
 let currentAdminInfantData = null;
 let currentAdminSelectedInfantIndex = 0;
+let currentAdminInfantsList = [];
 
 function adminEscapeHtml(str) {
     return (str || '').toString().replace(/[&<>"']/g, function(m) {
@@ -6349,16 +6353,117 @@ window.previewAdminPhotoInModal = function(src) {
 
 window.openAdminInfantViewer = function(data) {
     if (!data) return;
-    const infant = data.infant || (data.infants && data.infants[0]) || data;
-    if (!infant) return;
-    currentAdminInfantData = infant;
 
     const modal = document.getElementById('adminInfantModal');
     if (!modal) return;
 
+    const infants = data.infants || [];
+    const parentName = data.parent_name || '';
+
+    // Store infants list for sub-profile selection
+    if (infants.length > 0) {
+        currentAdminInfantsList = infants;
+    }
+
+    // If single infant object was passed directly (legacy support), show it directly
+    if (data.infant && !data.infants) {
+        currentAdminInfantData = data.infant;
+        window.renderAdminSelectedInfant(data.infant);
+        const title = document.getElementById('adminInfantModalTitle');
+        if (title) title.textContent = 'Infant Profile & Immunization Record';
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        return;
+    }
+
+    // If only one infant, open directly
+    if (infants.length === 1) {
+        currentAdminInfantData = infants[0];
+        window.renderAdminSelectedInfant(infants[0]);
+        const title = document.getElementById('adminInfantModalTitle');
+        if (title) title.textContent = 'Infant Profile & Immunization Record';
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        return;
+    }
+
+    // Multiple infants: show selection list first
+    if (infants.length > 1) {
+        window.renderAdminInfantSelectionList(infants, parentName);
+        const title = document.getElementById('adminInfantModalTitle');
+        if (title) title.textContent = 'Registered Infant Sub-Profiles';
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        return;
+    }
+};
+
+window.renderAdminInfantSelectionList = function(infants, parentName) {
+    const body = document.getElementById('adminInfantModalBody');
+    if (!body) return;
+    const babySvg = `<?= addslashes(admin_icon('baby')); ?>`;
+
+    let html = `
+    <div style="margin-bottom: 20px; text-align: center;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #f5f3ff, #ede9fe); color: #7c3aed; font-size: 1.5rem; margin-bottom: 10px;">
+            ${babySvg}
+        </div>
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #1e1b4b;">Select an Infant Sub-Profile</h3>
+        <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">
+            ${infants.length} infant${infants.length !== 1 ? 's' : ''} registered under 
+            <strong style="color: #4c1d95;">${adminEscapeHtml(parentName.replace(/\s+/g, ' ').trim())}</strong>
+        </p>
+    </div>
+    <div class="admin-infant-selection-grid">`;
+
+    infants.forEach(function(infant, idx) {
+        const photoRaw = (infant.latest_photo || infant.photo_path || '').trim();
+        const photoSrc = resolveAdminPhotoUrl(photoRaw);
+        const roleBadge = infant.is_guardian
+            ? '<span style="background: #fef3c7; color: #92400e; font-size: 0.7rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid #fde68a;">Guardian</span>'
+            : '<span style="background: #ede9fe; color: #6d28d9; font-size: 0.7rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid #ddd6fe;">' + adminEscapeHtml(infant.role_label || 'Parent') + '</span>';
+        const vaxCount = (infant.appointments && infant.appointments.length) || 0;
+
+        const avatarContent = photoSrc
+            ? `<img src="${adminEscapeHtml(photoSrc)}" alt="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;" onerror="this.onerror=null; this.style.display='none';">`
+            : '';
+
+        html += `
+        <div class="admin-infant-selection-card" onclick="window.selectAdminInfantFromList(${idx})" title="Click to view ${adminEscapeHtml(infant.full_name)}'s profile">
+            <div class="admin-infant-sel-avatar">
+                ${avatarContent}
+                <span class="admin-infant-sel-avatar-fallback">${babySvg}</span>
+            </div>
+            <div class="admin-infant-sel-info">
+                <div class="admin-infant-sel-name-row">
+                    <span class="admin-infant-sel-name">${adminEscapeHtml(infant.full_name)}</span>
+                    ${roleBadge}
+                </div>
+                <div class="admin-infant-sel-meta">
+                    <span>${adminEscapeHtml(infant.age_label || 'N/A')} &bull; ${adminEscapeHtml(infant.gender || 'Infant')}</span>
+                    <span class="admin-infant-sel-vax-count">${vaxCount} ${vaxCount === 1 ? 'Vaccination' : 'Vaccinations'}</span>
+                </div>
+            </div>
+            <div class="admin-infant-sel-action">
+                <span>View</span>
+                <span class="admin-infant-sel-arrow">&rarr;</span>
+            </div>
+        </div>`;
+    });
+
+    html += '</div>';
+    body.innerHTML = html;
+};
+
+
+
+window.selectAdminInfantFromList = function(idx) {
+    if (!currentAdminInfantsList || !currentAdminInfantsList[idx]) return;
+    const infant = currentAdminInfantsList[idx];
+    currentAdminInfantData = infant;
+    const title = document.getElementById('adminInfantModalTitle');
+    if (title) title.textContent = 'Infant Profile & Immunization Record';
     window.renderAdminSelectedInfant(infant);
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
 };
 
 window.renderAdminSelectedInfant = function(targetInfant) {
@@ -6557,7 +6662,16 @@ window.renderAdminSelectedInfant = function(targetInfant) {
     </div>
     `;
 
+    const backBtnHtml = (currentAdminInfantsList && currentAdminInfantsList.length > 1)
+        ? `<div style="margin-bottom: 14px;">
+               <button type="button" onclick="window.renderAdminInfantSelectionList(currentAdminInfantsList, ''); var t = document.getElementById('adminInfantModalTitle'); if(t) t.textContent='Registered Infant Sub-Profiles';" style="background: #f5f3ff; color: #6d28d9; border: 1.5px solid #ddd6fe; padding: 7px 16px; border-radius: 10px; font-weight: 700; font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s;">
+                   <span style="font-size: 1rem;">&larr;</span> Back to Infant List
+               </button>
+           </div>`
+        : '';
+
     body.innerHTML = `
+    ${backBtnHtml}
     <!-- Demographic Card -->
     <div style="background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%); border: 1.5px solid #ddd6fe; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 18px; margin-bottom: 20px; flex-wrap: wrap;">
         <div style="width: 72px; height: 72px; border-radius: 50%; background: #ffffff; border: 3px solid #a855f7; position: relative; overflow: hidden; flex-shrink: 0; color: #7c3aed; font-size: 1.6rem; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);">

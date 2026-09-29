@@ -5625,6 +5625,159 @@ button, input, select { font: inherit; }
   opacity: 0.55;
 }
 
+/* Infant button count badge */
+.patient-action-btn.infant {
+  position: relative;
+}
+
+.admin-infant-count-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(109, 40, 217, 0.35);
+  border: 1.5px solid #ffffff;
+  pointer-events: none;
+}
+
+/* Admin infant selection grid (shown inside the modal) */
+.admin-infant-selection-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-infant-selection-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: #faf5ff;
+  border: 1.5px solid #ede9fe;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-infant-selection-card:hover {
+  background: #f5f3ff;
+  border-color: #c4b5fd;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.12);
+}
+
+.admin-infant-sel-avatar {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e0e7ff;
+  color: #7c3aed;
+  flex-shrink: 0;
+  border: 2px solid #c4b5fd;
+}
+
+.admin-infant-sel-avatar img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+  z-index: 1;
+}
+
+.admin-infant-sel-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.admin-infant-sel-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-infant-sel-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-infant-sel-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #1e1b4b;
+}
+
+.admin-infant-sel-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 3px;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.admin-infant-sel-vax-count {
+  background: #f0fdf4;
+  color: #15803d;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border: 1px solid #bbf7d0;
+}
+
+.admin-infant-sel-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #7c3aed;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.admin-infant-selection-card:hover .admin-infant-sel-action {
+  background: #ede9fe;
+}
+
+.admin-infant-sel-arrow {
+  font-size: 1rem;
+  transition: transform 0.15s;
+}
+
+.admin-infant-selection-card:hover .admin-infant-sel-arrow {
+  transform: translateX(3px);
+}
+
 .patient-directory-footer {
   padding: 14px 24px;
   background: #fafafa;
