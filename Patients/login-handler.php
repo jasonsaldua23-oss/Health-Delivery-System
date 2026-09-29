@@ -105,8 +105,37 @@ function check_email_misspelling(string $email): ?string
         'icloud.cm' => 'icloud.com',
     ];
 
+    $baseDomain = preg_replace('/\.[a-z0-9]+$/i', '', $domain);
+    $prefixTypos = [
+        'pmail' => 'gmail.com',
+        'bmail' => 'gmail.com',
+        'cmail' => 'gmail.com',
+        'gamil' => 'gmail.com',
+        'gmial' => 'gmail.com',
+        'gmai' => 'gmail.com',
+        'gmaill' => 'gmail.com',
+        'gmal' => 'gmail.com',
+        'gmil' => 'gmail.com',
+        'gnail' => 'gmail.com',
+        'fmail' => 'gmail.com',
+        'vmail' => 'gmail.com',
+        'tmail' => 'gmail.com',
+        'yaho' => 'yahoo.com',
+        'yhao' => 'yahoo.com',
+        'yahu' => 'yahoo.com',
+        'outlok' => 'outlook.com',
+        'outloo' => 'outlook.com',
+        'hotmial' => 'hotmail.com',
+        'hotmale' => 'hotmail.com',
+    ];
+
     if (isset($typoMap[$domain])) {
         $suggested = $typoMap[$domain];
+        return "Please correct your email address. \"@{$domain}\" appears to be misspelled. Did you mean \"@{$suggested}\"?";
+    }
+
+    if (isset($prefixTypos[$domain]) || isset($prefixTypos[$baseDomain])) {
+        $suggested = $prefixTypos[$domain] ?? $prefixTypos[$baseDomain];
         return "Please correct your email address. \"@{$domain}\" appears to be misspelled. Did you mean \"@{$suggested}\"?";
     }
 
@@ -339,8 +368,13 @@ if ($action === 'register_patient') {
         exit;
     }
 
-    if (strlen($password) < 6) {
-        echo json_encode(['success' => false, 'message' => 'Password must be at least 6 characters long.'], JSON_THROW_ON_ERROR);
+    if (strlen($password) < 8) {
+        echo json_encode(['success' => false, 'message' => 'Password must be at least 8 characters long.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
+    if (!preg_match('/[a-zA-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
+        echo json_encode(['success' => false, 'message' => 'Password must contain a combination of letters and numbers.'], JSON_THROW_ON_ERROR);
         exit;
     }
 

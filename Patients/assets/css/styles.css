@@ -3066,12 +3066,14 @@ select#immunization_relationship:focus {
     }
 }
 
-.input-has-error {
+.input-has-error,
+.input-with-icon.input-has-error {
     border-color: #ef4444 !important;
     background-color: #fff8f8 !important;
 }
 
-.input-has-error:focus {
+.input-has-error:focus,
+.input-with-icon.input-has-error:focus-within {
     border-color: #dc2626 !important;
     box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
 }

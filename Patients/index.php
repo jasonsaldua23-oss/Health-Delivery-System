@@ -1295,7 +1295,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                             <div class="field-group">
                                 <label for="regPassword">Password</label>
                                 <div class="input-with-icon password-field">
-                                    <input id="regPassword" name="password" type="password" value="" placeholder="" minlength="6" required>
+                                    <input id="regPassword" name="password" type="password" value="" placeholder="Min. 8 characters (letters &amp; numbers)" minlength="8" required>
                                     <button type="button" class="toggle-password" aria-label="Show password"><?= iconSvg('eye'); ?></button>
                                 </div>
                             </div>
@@ -2381,43 +2381,104 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function validateEmailMisspelling(email) {
         if (!email || !email.includes('@')) {
-            return { valid: false, message: 'Please enter a valid email address.' };
+            return { valid: false, message: 'Please enter a valid email address.', shortMessage: 'Please enter a valid email address.' };
         }
         const parts = email.toLowerCase().trim().split('@');
         if (parts.length !== 2 || !parts[0] || !parts[1]) {
-            return { valid: false, message: 'Please enter a valid email address format (e.g. name@domain.com).' };
+            return { valid: false, message: 'Please enter a valid email address format (e.g. name@domain.com).', shortMessage: 'Please enter a valid email format.' };
         }
         const domain = parts[1];
+        const baseDomain = domain.replace(/\.[a-z0-9]+$/i, '');
+
+        const prefixTypos = {
+            'pmail': 'gmail.com',
+            'bmail': 'gmail.com',
+            'cmail': 'gmail.com',
+            'gamil': 'gmail.com',
+            'gmial': 'gmail.com',
+            'gmai': 'gmail.com',
+            'gmaill': 'gmail.com',
+            'gmal': 'gmail.com',
+            'gmil': 'gmail.com',
+            'gnail': 'gmail.com',
+            'fmail': 'gmail.com',
+            'vmail': 'gmail.com',
+            'tmail': 'gmail.com',
+            'yaho': 'yahoo.com',
+            'yhao': 'yahoo.com',
+            'yahu': 'yahoo.com',
+            'outlok': 'outlook.com',
+            'outloo': 'outlook.com',
+            'hotmial': 'hotmail.com',
+            'hotmale': 'hotmail.com',
+            'icld': 'icloud.com',
+            'iclud': 'icloud.com'
+        };
+
         if (typoDomains[domain]) {
+            const suggested = typoDomains[domain];
             return {
                 valid: false,
-                message: `Please correct your email address. "@${domain}" appears to be misspelled. Did you mean "@${typoDomains[domain]}"?`,
-                suggested: typoDomains[domain]
+                message: `Please correct your email address. "@${domain}" appears to be misspelled. Did you mean "@${suggested}"?`,
+                shortMessage: `Email domain appears misspelled. Did you mean @${suggested}?`,
+                suggested: suggested
             };
         }
+
+        if (prefixTypos[domain] || prefixTypos[baseDomain]) {
+            const suggested = prefixTypos[domain] || prefixTypos[baseDomain];
+            return {
+                valid: false,
+                message: `Please correct your email address. "@${domain}" appears to be misspelled. Did you mean "@${suggested}"?`,
+                shortMessage: `Email domain appears misspelled. Did you mean @${suggested}?`,
+                suggested: suggested
+            };
+        }
+
         if (/\.(con|cpm|ocm|cmo|comm|coom)$/i.test(domain)) {
             return {
                 valid: false,
-                message: `Please correct your email address. The domain end ".${domain}" appears to be misspelled (e.g. ".con" instead of ".com").`
+                message: `Please correct your email address. The domain end ".${domain}" appears to be misspelled (e.g. ".con" instead of ".com").`,
+                shortMessage: `Email domain end ".${domain}" appears misspelled.`
             };
         }
         const standardEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!standardEmailRegex.test(email.trim())) {
-            return { valid: false, message: 'Please enter a valid email address format.' };
+            return { 
+                valid: false, 
+                message: 'Please enter a valid email address format (e.g. name@domain.com).',
+                shortMessage: 'Please enter a valid email format.'
+            };
         }
         return { valid: true };
     }
 
-    const regEmailInput = document.getElementById('regEmail');
-    regEmailInput?.addEventListener('blur', function() {
-        const val = this.value.trim();
-        if (val) {
-            const check = validateEmailMisspelling(val);
-            if (!check.valid) {
-                window.showSystemToast?.(check.message, { type: 'error', theme: 'patient', title: 'Misspelled Email Notice' });
-            }
+    function validatePasswordStrength(password) {
+        if (!password) {
+            return { 
+                valid: false, 
+                message: 'Password is required.', 
+                shortMessage: 'Password is required.' 
+            };
         }
-    });
+        if (password.length < 8) {
+            return { 
+                valid: false, 
+                message: 'Password must be at least 8 characters long.', 
+                shortMessage: 'Password must be at least 8 characters long.' 
+            };
+        }
+        const hasLetter = /[a-zA-Z]/.test(password);
+        const hasNumber = /[0-9]/.test(password);
+        if (!hasLetter || !hasNumber) {
+            return { 
+                valid: false, 
+                message: 'Password must contain a combination of letters and numbers.', 
+                shortMessage: 'Must contain both letters and numbers.' 
+            };
+        }
+        return { valid: true };
+    }
 
     function openPrivacyModal() {
         if (!privacyConsentModal) return;
@@ -2464,12 +2525,15 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!container) return;
 
         inputEl.classList.add('input-has-error');
+        const pwWrapper = inputEl.closest('.password-field') || inputEl.closest('.input-with-icon');
+        if (pwWrapper) {
+            pwWrapper.classList.add('input-has-error');
+        }
 
         let errEl = container.querySelector('.field-error-text');
         if (!errEl) {
             errEl = document.createElement('span');
             errEl.className = 'field-error-text';
-            const pwWrapper = inputEl.closest('.password-field') || inputEl.closest('.input-with-icon');
             const smallNote = container.querySelector('small');
             if (pwWrapper && pwWrapper.parentElement === container) {
                 pwWrapper.after(errEl);
@@ -2490,6 +2554,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!container) return;
 
         inputEl.classList.remove('input-has-error');
+        const pwWrapper = inputEl.closest('.password-field') || inputEl.closest('.input-with-icon');
+        if (pwWrapper) {
+            pwWrapper.classList.remove('input-has-error');
+        }
         const errEl = container.querySelector('.field-error-text');
         if (errEl) {
             errEl.remove();
@@ -2536,10 +2604,48 @@ document.addEventListener('DOMContentLoaded', function () {
         if (this.value.trim() !== '') clearFirstTimerFieldError(this);
     });
     firstTimerEmail?.addEventListener('input', function() {
-        if (this.value.trim() !== '') clearFirstTimerFieldError(this);
+        const val = this.value.trim();
+        if (val) {
+            const check = validateEmailMisspelling(val);
+            if (check.valid) {
+                clearFirstTimerFieldError(this);
+            }
+        } else {
+            clearFirstTimerFieldError(this);
+        }
+    });
+    firstTimerEmail?.addEventListener('blur', function() {
+        const val = this.value.trim();
+        if (val) {
+            const check = validateEmailMisspelling(val);
+            if (!check.valid) {
+                setFirstTimerFieldError(this, check.shortMessage || check.message);
+            } else {
+                clearFirstTimerFieldError(this);
+            }
+        }
     });
     firstTimerPassword?.addEventListener('input', function() {
-        if (this.value.trim().length >= 6) clearFirstTimerFieldError(this);
+        const val = this.value.trim();
+        if (val) {
+            const check = validatePasswordStrength(val);
+            if (check.valid) {
+                clearFirstTimerFieldError(this);
+            }
+        } else {
+            clearFirstTimerFieldError(this);
+        }
+    });
+    firstTimerPassword?.addEventListener('blur', function() {
+        const val = this.value.trim();
+        if (val) {
+            const check = validatePasswordStrength(val);
+            if (!check.valid) {
+                setFirstTimerFieldError(this, check.shortMessage || check.message);
+            } else {
+                clearFirstTimerFieldError(this);
+            }
+        }
     });
     regBarangaySelect?.addEventListener('change', function() {
         if (this.value.trim() !== '') clearFirstTimerFieldError(this);
@@ -2616,14 +2722,17 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             const emailCheck = validateEmailMisspelling(email);
             if (!emailCheck.valid) {
-                markFieldError(firstTimerEmail, emailCheck.message);
+                markFieldError(firstTimerEmail, emailCheck.shortMessage || emailCheck.message);
             }
         }
 
         if (!password) {
             markFieldError(firstTimerPassword, 'Password is required.');
-        } else if (password.length < 6) {
-            markFieldError(firstTimerPassword, 'Password must be at least 6 characters long.');
+        } else {
+            const pwCheck = validatePasswordStrength(password);
+            if (!pwCheck.valid) {
+                markFieldError(firstTimerPassword, pwCheck.message);
+            }
         }
 
         if (!barangay) {
