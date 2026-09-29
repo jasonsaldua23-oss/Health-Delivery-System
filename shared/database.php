@@ -3660,6 +3660,21 @@ function save_immunized_infant(array $data): ?int
         return null;
     }
 
+    // Never save the account holder / self-appointment as an immunized infant
+    if (strcasecmp($relationship, 'Self') === 0) {
+        return null;
+    }
+
+    // Infants/pediatric dependents are children under 18; exclude adult records
+    if ($birthDate !== '' && $birthDate !== '0000-00-00') {
+        try {
+            $dob = new DateTimeImmutable($birthDate);
+            if ($dob->diff(new DateTimeImmutable('today'))->y >= 18) {
+                return null;
+            }
+        } catch (Throwable $e) {}
+    }
+
     try {
         $db = db();
         if ($apptId !== null && $apptId > 0) {
@@ -3781,10 +3796,24 @@ function patient_has_infant_bookings(string $patientId, array $stationAppointmen
             return true;
         }
 
-        $stmt3 = $db->prepare("SELECT id FROM infant_profiles WHERE patient_id = ? LIMIT 1");
+        $stmt3 = $db->prepare("SELECT id, first_name, last_name, birth_date, relationship FROM infant_profiles WHERE patient_id = ?");
         $stmt3->bind_param('s', $patientId);
         $stmt3->execute();
-        if ($stmt3->get_result()->fetch_assoc()) {
+        $profRows = $stmt3->get_result()->fetch_all(MYSQLI_ASSOC);
+        foreach ($profRows as $pRow) {
+            $pRel = strtolower(trim((string) ($pRow['relationship'] ?? '')));
+            if ($pRel === 'self') {
+                continue;
+            }
+            $pDob = trim((string) ($pRow['birth_date'] ?? ''));
+            if ($pDob !== '' && $pDob !== '0000-00-00') {
+                try {
+                    $dob = new DateTimeImmutable($pDob);
+                    if ($dob->diff(new DateTimeImmutable('today'))->y >= 18) {
+                        continue;
+                    }
+                } catch (Throwable $e) {}
+            }
             return true;
         }
     } catch (Throwable $e) {
@@ -3926,6 +3955,10 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
         $parentName = $parentProfile ? fullName($parentProfile) : '';
         $parentGender = $parentProfile['gender'] ?? '';
 
+        $parentFirst = trim((string) ($parentProfile['first_name'] ?? ''));
+        $parentLast = trim((string) ($parentProfile['last_name'] ?? ''));
+        $parentDob = trim((string) ($parentProfile['birth_date'] ?? ''));
+
         $stmt = $db->prepare("SELECT * FROM appointments WHERE patient_id = ? AND (service_slug LIKE '%immuniz%' OR service_slug LIKE '%vaccin%' OR service_name LIKE '%immuniz%' OR service_name LIKE '%vaccin%') ORDER BY preferred_date DESC, id DESC");
         $stmt->bind_param('s', $patientId);
         $stmt->execute();
@@ -3949,6 +3982,15 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
         if ($parentGender === '') {
             $parentGender = $appts[0]['gender'] ?? '';
         }
+        if ($parentFirst === '') {
+            $parentFirst = trim((string) ($appts[0]['first_name'] ?? ''));
+        }
+        if ($parentLast === '') {
+            $parentLast = trim((string) ($appts[0]['last_name'] ?? ''));
+        }
+        if ($parentDob === '') {
+            $parentDob = trim((string) ($appts[0]['birth_date'] ?? ''));
+        }
     }
 
     if (!empty($stationAppointments)) {
@@ -3971,6 +4013,15 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
         if ($parentGender === '') {
             $parentGender = $appts[0]['gender'] ?? '';
         }
+        if ($parentFirst === '') {
+            $parentFirst = trim((string) ($appts[0]['first_name'] ?? ''));
+        }
+        if ($parentLast === '') {
+            $parentLast = trim((string) ($appts[0]['last_name'] ?? ''));
+        }
+        if ($parentDob === '') {
+            $parentDob = trim((string) ($appts[0]['birth_date'] ?? ''));
+        }
     }
 
     usort($appts, static function(array $a, array $b): int {
@@ -3983,15 +4034,86 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
     });
 
     try {
+        // Helper to detect if a record represents the account holder or an adult
+        $isAccountHolder = static function($firstName, $lastName, $dob = '', $rel = '') use ($parentFirst, $parentLast, $parentDob, $parentName): bool {
+            $f = trim((string) $firstName);
+            $l = trim((string) $lastName);
+            $d = trim((string) $dob);
+            $r = strtolower(trim((string) $rel));
+
+            // 1. Explicitly marked as Self
+            if ($r === 'self') {
+                return true;
+            }
+
+            // 2. Check if name matches parent / account holder
+            $nameMatches = false;
+            if ($f !== '' && $l !== '' && $parentFirst !== '' && $parentLast !== '') {
+                if (strcasecmp($f, $parentFirst) === 0 && strcasecmp($l, $parentLast) === 0) {
+                    $nameMatches = true;
+                }
+            }
+            if (!$nameMatches && $parentName !== '' && $f !== '' && $l !== '') {
+                $candFullName = trim($f . ' ' . $l);
+                if (strcasecmp($candFullName, $parentName) === 0) {
+                    $nameMatches = true;
+                }
+            }
+
+            if ($nameMatches) {
+                // If DOB matches account holder's DOB
+                if ($d !== '' && $parentDob !== '' && $d === $parentDob) {
+                    return true;
+                }
+                // If DOB is missing or empty
+                if ($d === '' || $d === '0000-00-00') {
+                    return true;
+                }
+                // If age indicates an adult (>= 18 years old)
+                try {
+                    $dobDate = new DateTimeImmutable($d);
+                    $diff = $dobDate->diff(new DateTimeImmutable('today'));
+                    if ($diff->y >= 18) {
+                        return true;
+                    }
+                } catch (Throwable $e) {}
+                // If relationship indicates parent
+                if ($r === 'parent' || $r === 'mother' || $r === 'father') {
+                    return true;
+                }
+            }
+
+            // 3. Independent age check: Infants/pediatric dependents are children.
+            // An individual 18 years or older (e.g. 62 yrs old) cannot be an infant sub-profile.
+            if ($d !== '' && $d !== '0000-00-00') {
+                try {
+                    $dobDate = new DateTimeImmutable($d);
+                    $diff = $dobDate->diff(new DateTimeImmutable('today'));
+                    if ($diff->y >= 18) {
+                        return true;
+                    }
+                } catch (Throwable $e) {}
+            }
+
+            return false;
+        };
+
         // Step 1: Track which infants have been or are currently being served
         // An infant profile is ONLY created and visible if the infant is being served or has been served:
         // at least one appointment is 'Serving' or 'Completed', or historical records in immunized_infants.
         $infantHasServedOrServing = [];
 
         foreach ($immInfants as $imm) {
+            $rRel = strtolower(trim((string) ($imm['relationship'] ?? '')));
+            if ($rRel === 'self') {
+                continue;
+            }
             $rFirst = trim((string) ($imm['first_name'] ?? ''));
             $rLast = trim((string) ($imm['last_name'] ?? ''));
             $rDob = trim((string) ($imm['birth_date'] ?? ''));
+            if ($isAccountHolder($rFirst, $rLast, $rDob, $rRel)) {
+                continue;
+            }
             if ($rFirst !== '' && $rLast !== '') {
                 $k = strtolower($rFirst . '_' . $rLast . '_' . $rDob);
                 $infantHasServedOrServing[$k] = true;
@@ -4006,6 +4128,10 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
             $rFirst = trim((string) ($rec['recipient_first_name'] ?: $appt['recipient_first_name'] ?: ''));
             $rLast = trim((string) ($rec['recipient_last_name'] ?: $appt['recipient_last_name'] ?: ''));
             $rDob = trim((string) ($rec['recipient_birth_date'] ?: $appt['recipient_birth_date'] ?: ''));
+            $rRel = trim((string) ($rec['relationship'] ?: $appt['immunization_relationship'] ?: ''));
+            if ($isAccountHolder($rFirst, $rLast, $rDob, $rRel)) {
+                continue;
+            }
             if ($rFirst === '' || $rLast === '') {
                 continue;
             }
@@ -4020,14 +4146,31 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
 
         // Step 2: Populate saved profiles ONLY for infants that are being served or were served
         foreach ($savedProfiles as $sp) {
-            $k = strtolower(trim($sp['first_name']) . '_' . trim($sp['last_name']) . '_' . trim($sp['birth_date']));
+            $spRel = (string) ($sp['relationship'] ?? 'Child');
+            $spFirst = trim((string) ($sp['first_name'] ?? ''));
+            $spLast = trim((string) ($sp['last_name'] ?? ''));
+            $spDob = trim((string) ($sp['birth_date'] ?? ''));
+
+            if ($isAccountHolder($spFirst, $spLast, $spDob, $spRel)) {
+                // If mistakenly saved into infant_profiles, purge from DB so it doesn't linger
+                if ($db !== null && !empty($sp['id'])) {
+                    try {
+                        $delStmt = $db->prepare("DELETE FROM infant_profiles WHERE id = ?");
+                        $delId = (int) $sp['id'];
+                        $delStmt->bind_param('i', $delId);
+                        $delStmt->execute();
+                    } catch (Throwable $e) {}
+                }
+                continue;
+            }
+
+            $k = strtolower($spFirst . '_' . $spLast . '_' . $spDob);
             
             // If the infant has never been served yet, do not display the profile
             if (empty($infantHasServedOrServing[$k])) {
                 continue;
             }
 
-            $spRel = (string) ($sp['relationship'] ?? 'Child');
             $roleInfo = resolve_infant_guardian_role_details($spRel, $parentName, $parentGender);
 
             $spMother = (string) ($sp['mother_name'] ?? '');
@@ -4083,6 +4226,10 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
             $rLast = trim((string) ($rec['recipient_last_name'] ?: $appt['recipient_last_name'] ?: ''));
             $rDob = trim((string) ($rec['recipient_birth_date'] ?: $appt['recipient_birth_date'] ?: ''));
             $rRel = trim((string) ($rec['relationship'] ?: $appt['immunization_relationship'] ?: 'Child'));
+
+            if ($isAccountHolder($rFirst, $rLast, $rDob, $rRel)) {
+                continue;
+            }
 
             if ($rFirst === '' || $rLast === '') {
                 continue;
@@ -4204,6 +4351,19 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
             $rDob = trim((string) ($imm['birth_date'] ?? ''));
             $rRel = trim((string) ($imm['relationship'] ?? 'Child'));
 
+            if ($isAccountHolder($rFirst, $rLast, $rDob, $rRel)) {
+                // Purge mistaken immunized_infants row for account holder
+                if ($db !== null && !empty($imm['id'])) {
+                    try {
+                        $delImmStmt = $db->prepare("DELETE FROM immunized_infants WHERE id = ?");
+                        $delImmId = (int) $imm['id'];
+                        $delImmStmt->bind_param('i', $delImmId);
+                        $delImmStmt->execute();
+                    } catch (Throwable $e) {}
+                }
+                continue;
+            }
+
             if ($rFirst === '' || $rLast === '') {
                 continue;
             }
@@ -4300,6 +4460,10 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
         unset($infRef);
 
         foreach ($groupedInfants as $k => $inf) {
+            if ($isAccountHolder($inf['first_name'], $inf['last_name'], $inf['birth_date'] ?? '', $inf['relationship'] ?? '')) {
+                continue;
+            }
+
             $nameParts = array_filter([$inf['first_name'], $inf['middle_name'], $inf['last_name']]);
             $infFullName = trim(implode(' ', $nameParts));
 
@@ -4446,6 +4610,21 @@ function save_or_update_infant_profile(array $data): ?int
 
     if ($patientId === '' || $firstName === '' || $lastName === '') {
         return null;
+    }
+
+    // Never save the account holder as an infant sub-profile
+    if (strcasecmp($relationship, 'Self') === 0) {
+        return null;
+    }
+
+    // Reject adult birthdates (>= 18 years old)
+    if ($birthDate !== '' && $birthDate !== '0000-00-00') {
+        try {
+            $dob = new DateTimeImmutable($birthDate);
+            if ($dob->diff(new DateTimeImmutable('today'))->y >= 18) {
+                return null;
+            }
+        } catch (Throwable $e) {}
     }
 
     try {
@@ -7214,7 +7393,7 @@ function schedule_appointment_follow_up(
         $insertStmt->execute();
         $newFollowUpApptId = (int) $connection->insert_id;
 
-        if ($serviceSlug === 'immunization' && $newFollowUpApptId > 0) {
+        if ($serviceSlug === 'immunization' && $newFollowUpApptId > 0 && strcasecmp($immRel, 'Self') !== 0) {
             save_immunized_infant([
                 'appointment_id' => $newFollowUpApptId,
                 'appointment_code' => $newApptCode,

@@ -448,7 +448,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
             $stmt->execute();
             $newApptId = (int) $dbConn->insert_id;
 
-            if ($selectedProgram['slug'] === 'immunization') {
+            $immRel = trim((string) ($formData['immunization_relationship'] ?? ''));
+            $isImmSelf = (strcasecmp($immRel, 'Self') === 0) || (empty($recipientFirst) && empty($recipientLast));
+            if ($selectedProgram['slug'] === 'immunization' && !$isImmSelf) {
                 save_immunized_infant([
                     'appointment_id' => $newApptId,
                     'appointment_code' => $appointmentCode,

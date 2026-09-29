@@ -2104,6 +2104,25 @@ if (!function_exists('peso')) {
                                             <?php
                                             $isParent = patient_has_infant_bookings((string) $patient['patient_id']);
                                             $adminInfants = $isParent ? fetch_infant_sub_profiles_by_patient_id((string) $patient['patient_id']) : [];
+                                            if (!empty($adminInfants)) {
+                                                $pFirst = trim((string) ($patient['first_name'] ?? ''));
+                                                $pLast = trim((string) ($patient['last_name'] ?? ''));
+                                                $pDob = trim((string) ($patient['birth_date'] ?? ''));
+                                                $pName = trim($pFirst . ' ' . $pLast);
+                                                $adminInfants = array_values(array_filter($adminInfants, static function(array $inf) use ($pFirst, $pLast, $pDob, $pName): bool {
+                                                    $infFirst = trim((string) ($inf['first_name'] ?? ''));
+                                                    $infLast = trim((string) ($inf['last_name'] ?? ''));
+                                                    $infDob = trim((string) ($inf['birth_date'] ?? ''));
+                                                    $infRel = strtolower(trim((string) ($inf['relationship'] ?? '')));
+                                                    $infName = trim((string) ($inf['full_name'] ?? ($infFirst . ' ' . $infLast)));
+                                                    if ($infRel === 'self') return false;
+                                                    if ($pFirst !== '' && $pLast !== '' && strcasecmp($infFirst, $pFirst) === 0 && strcasecmp($infLast, $pLast) === 0) return false;
+                                                    if ($pName !== '' && strcasecmp($infName, $pName) === 0) return false;
+                                                    if ($infDob !== '' && $pDob !== '' && $infDob === $pDob) return false;
+                                                    if (!empty($inf['age_label']) && preg_match('/(\d+)\s*(?:yr|year)/i', $inf['age_label'], $m) && (int)$m[1] >= 18) return false;
+                                                    return true;
+                                                }));
+                                            }
                                             ?>
                                             <div class="patient-table-action-btns" style="justify-content: center;">
                                                 <a class="patient-action-btn view" href="?page=patients&patient=<?= h((string) $patient['patient_id']); ?>" title="View Complete Patient Profile">
@@ -6357,13 +6376,36 @@ window.openAdminInfantViewer = function(data) {
     const modal = document.getElementById('adminInfantModal');
     if (!modal) return;
 
-    const infants = data.infants || [];
-    const parentName = data.parent_name || '';
+    let rawInfants = data.infants || [];
+    if (data.infant && !data.infants) {
+        rawInfants = [data.infant];
+    }
+    const parentName = (data.parent_name || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+    // Strictly filter out any account holder / parent mistakenly included in infant sub-profiles
+    const infants = rawInfants.filter(function(inf) {
+        if (!inf) return false;
+        const infName = (inf.full_name || ((inf.first_name || '') + ' ' + (inf.last_name || ''))).replace(/\s+/g, ' ').trim().toLowerCase();
+        const rel = (inf.relationship || '').trim().toLowerCase();
+        if (rel === 'self') return false;
+        if (parentName && infName === parentName) return false;
+        // Age check: Infants/pediatric dependents are children under 18; exclude adults
+        const ageLabel = (inf.age_label || '').toLowerCase();
+        if (ageLabel.includes('yr') || ageLabel.includes('year')) {
+            const yrMatch = ageLabel.match(/(\d+)\s*(?:yr|year)/);
+            if (yrMatch && parseInt(yrMatch[1], 10) >= 18) {
+                return false;
+            }
+        }
+        return true;
+    });
+
+    if (infants.length === 0) {
+        return;
+    }
 
     // Store infants list for sub-profile selection
-    if (infants.length > 0) {
-        currentAdminInfantsList = infants;
-    }
+    currentAdminInfantsList = infants;
 
     // If single infant object was passed directly (legacy support), show it directly
     if (data.infant && !data.infants) {

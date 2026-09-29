@@ -3384,6 +3384,25 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 $patientIdStr = (string) ($prof['patient_id'] ?? '');
                                 $hasInfantBookings = patient_has_infant_bookings($patientIdStr, $patientStationRecords);
                                 $infantSubProfiles = $hasInfantBookings ? fetch_infant_sub_profiles_by_patient_id($patientIdStr, $patientStationRecords) : [];
+                                if (!empty($infantSubProfiles)) {
+                                    $pFirst = trim((string) ($prof['first_name'] ?? ''));
+                                    $pLast = trim((string) ($prof['last_name'] ?? ''));
+                                    $pDob = trim((string) ($prof['birth_date'] ?? ''));
+                                    $pName = trim($pFirst . ' ' . $pLast);
+                                    $infantSubProfiles = array_values(array_filter($infantSubProfiles, static function(array $inf) use ($pFirst, $pLast, $pDob, $pName): bool {
+                                        $infFirst = trim((string) ($inf['first_name'] ?? ''));
+                                        $infLast = trim((string) ($inf['last_name'] ?? ''));
+                                        $infDob = trim((string) ($inf['birth_date'] ?? ''));
+                                        $infRel = strtolower(trim((string) ($inf['relationship'] ?? '')));
+                                        $infName = trim((string) ($inf['full_name'] ?? ($infFirst . ' ' . $infLast)));
+                                        if ($infRel === 'self') return false;
+                                        if ($pFirst !== '' && $pLast !== '' && strcasecmp($infFirst, $pFirst) === 0 && strcasecmp($infLast, $pLast) === 0) return false;
+                                        if ($pName !== '' && strcasecmp($infName, $pName) === 0) return false;
+                                        if ($infDob !== '' && $pDob !== '' && $infDob === $pDob) return false;
+                                        if (!empty($inf['age_label']) && preg_match('/(\d+)\s*(?:yr|year)/i', $inf['age_label'], $m) && (int)$m[1] >= 18) return false;
+                                        return true;
+                                    }));
+                                }
                                 ?>
                                 <div class="patient-profile-card-wrapper" id="profileItem_<?= h($prof['key']); ?>">
                                     <article class="modern-patient-record-card patient-profile-card is-completed" id="profileCard_<?= h($prof['key']); ?>">
