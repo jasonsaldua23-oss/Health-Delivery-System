@@ -5076,7 +5076,7 @@ function update_appointment_status(int $appointmentId, string $newStatus, ?strin
 
 function fetch_station_counts(string $status = 'Pending', string $dateFilter = 'both'): array
 {
-    $sql = 'SELECT station_slug, MAX(station_name) AS station_name, COUNT(*) AS total FROM appointments WHERE 1=1';
+    $sql = 'SELECT station_slug, service_slug, MAX(station_name) AS station_name, COUNT(*) AS total FROM appointments WHERE 1=1';
     $params = [];
     $types = '';
 
@@ -5102,7 +5102,7 @@ function fetch_station_counts(string $status = 'Pending', string $dateFilter = '
 
     $sql .= ' AND status NOT IN ("Confirmed", "Serving", "Completed")';
 
-    $sql .= ' GROUP BY station_slug ORDER BY station_slug';
+    $sql .= ' GROUP BY station_slug, service_slug ORDER BY station_slug';
 
     $stmt = db()->prepare($sql);
     if ($params !== []) {
@@ -5110,12 +5110,34 @@ function fetch_station_counts(string $status = 'Pending', string $dateFilter = '
     }
     $stmt->execute();
     $result = $stmt->get_result();
-    $rows = [];
+
+    // Aggregate per-station totals, only counting services that belong to each station's programs
+    $stationLookup = station_lookup();
+    $aggregated = [];
     while ($row = $result->fetch_assoc()) {
-        $rows[] = $row;
+        $slug = (string) $row['station_slug'];
+        $serviceSlug = canonical_service_slug((string) ($row['service_slug'] ?? ''));
+        $station = $stationLookup[$slug] ?? null;
+
+        // Only count this service if it belongs to the station's defined programs
+        if ($station !== null) {
+            $programSlugs = array_map(static fn(array $p): string => (string) $p['slug'], $station['programs'] ?? []);
+            if (!in_array($serviceSlug, $programSlugs, true)) {
+                continue;
+            }
+        }
+
+        if (!isset($aggregated[$slug])) {
+            $aggregated[$slug] = [
+                'station_slug' => $slug,
+                'station_name' => (string) $row['station_name'],
+                'total' => 0,
+            ];
+        }
+        $aggregated[$slug]['total'] += (int) $row['total'];
     }
 
-    return $rows;
+    return array_values($aggregated);
 }
 
 function fetch_station_queue_counts(bool $todayOnly = true): array
