@@ -3085,3 +3085,27 @@ select#immunization_relationship:focus {
     padding: 6px 10px;
     background-color: #fff8f8;
 }
+
+/* Inputs inside an icon wrapper must never draw their own box: the wrapper owns the
+   border, focus ring and error state. Themed focus rules and .input-has-error are more
+   specific than .input-with-icon input:focus, so these need !important to win. */
+.input-with-icon input,
+.input-with-icon input:focus,
+.input-with-icon input:focus-visible,
+.input-with-icon input.input-has-error,
+.input-with-icon input.input-has-error:focus {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    outline: none !important;
+    background: transparent !important;
+}
+
+/* Keep browser autofill from painting a tinted inner box */
+.input-with-icon input:-webkit-autofill,
+.input-with-icon input:-webkit-autofill:hover,
+.input-with-icon input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #0f172a;
+    caret-color: #0f172a;
+    transition: background-color 9999s ease-out 0s;
+}
