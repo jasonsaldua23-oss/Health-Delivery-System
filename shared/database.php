@@ -37,7 +37,7 @@ function contact_details(): array
     return [
         'phone' => '(034) 123-4567',
         'address' => 'Bacolod City, Negros Occidental',
-        'hours' => 'Monday - Saturday: 8:00 AM - 5:00 PM',
+        'hours' => 'Monday - Friday: 8:00 AM to 5:00 PM',
     ];
 }
 

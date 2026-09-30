@@ -532,10 +532,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 <small>Your Community Health Partner</small>
             </span>
         </a>
-        <a class="contact-link" href="tel:0341234567">
-            <span class="inline-icon"><?= iconSvg('phone'); ?></span>
-            <span><?= h($contact['phone']); ?></span>
-        </a>
     </div>
 </header>
 <?php if ($isConfirmationPage): ?>
@@ -1475,7 +1471,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
     </div>
 </main>
 <?php endif; ?>
-<footer class="footer" id="footer"><div class="container footer-grid"><div><div class="brand footer-brand"><span class="brand-icon"><?= iconSvg('heart'); ?></span><span class="brand-copy"><strong>Bacolod Health Stations</strong></span></div><p>Providing quality healthcare services to the communities of Bacolod City.</p></div><div><h3>Contact Information</h3><ul class="footer-list"><li><span class="inline-icon"><?= iconSvg('phone'); ?></span><?= h($contact['phone']); ?></li><li><span class="inline-icon"><?= iconSvg('map'); ?></span><?= h($contact['address']); ?></li><li><span class="inline-icon"><?= iconSvg('clock'); ?></span><?= h($contact['hours']); ?></li></ul></div><div><h3>Portals &amp; Navigation</h3><ul class="footer-links"><li><a href="#portalSelector">Choose Portal</a></li><li><a href="#top">Back to Top</a></li></ul></div></div><div class="container footer-bottom"><p>&copy; 2026 Bacolod Health Stations. All rights reserved.</p></div></footer>
+<footer class="footer" id="footer"><div class="container footer-grid"><div><div class="brand footer-brand"><span class="brand-icon"><?= iconSvg('heart'); ?></span><span class="brand-copy"><strong>Bacolod Health Stations</strong></span></div><p>Providing quality healthcare services to the communities of Bacolod City.</p></div><div><h3>Operating Hours</h3><ul class="footer-list"><li><span class="inline-icon"><?= iconSvg('map'); ?></span><?= h($contact['address']); ?></li><li><span class="inline-icon"><?= iconSvg('clock'); ?></span><?= h($contact['hours']); ?></li></ul></div><div><h3>Portals &amp; Navigation</h3><ul class="footer-links"><li><a href="#portalSelector">Choose Portal</a></li><li><a href="#top">Back to Top</a></li></ul></div></div><div class="container footer-bottom"><p>&copy; 2026 Bacolod Health Stations. All rights reserved.</p></div></footer>
 <script src="assets/js/app.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
