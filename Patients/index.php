@@ -570,12 +570,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
 
                 <?php if ($isImmuAppt): ?>
                     <div class="divider"></div>
-                    <div class="immunization-slip-badge-header">
-                        <span class="badge-icon-syringe" style="width: 26px; height: 26px; min-width: 26px; max-width: 26px; min-height: 26px; max-height: 26px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 7px;"><?= iconSvg('syringe'); ?></span>
-                        <div>
-                            <h2>Immunization Recipient Information</h2>
-                            <p>Vaccination recipient &amp; relationship details</p>
-                        </div>
+                    <div class="immunization-slip-header">
+                        <h2>Immunization Recipient Information</h2>
+                        <p>Vaccination recipient &amp; relationship details</p>
                     </div>
                     <div class="detail-grid two-col recipient-details-box">
                         <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('user'); ?></span><div><small>Recipient Name</small><strong><?= h($recipientInfo['recipient_full_name']); ?></strong></div></div>

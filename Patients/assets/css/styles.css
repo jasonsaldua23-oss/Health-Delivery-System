@@ -2729,10 +2729,11 @@ select#immunization_relationship:focus {
     margin-left: 4px;
 }
 
+.immunization-slip-header,
 .immunization-slip-badge-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    display: block;
+
+
     margin: 14px 0 10px;
 }
 
