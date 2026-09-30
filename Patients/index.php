@@ -917,7 +917,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 <button type="button" class="portal-card" data-portal="admin">
                     <div class="portal-card-icon admin-icon"><?= iconSvg('shield'); ?></div>
                     <h3>Admin</h3>
-                    <p>System administration, analytics, and oversight of all health stations</p>
+                    <p>System administration, and oversight of all health stations</p>
                 </button>
             </div>
 
