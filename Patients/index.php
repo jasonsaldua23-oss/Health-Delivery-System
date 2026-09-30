@@ -949,9 +949,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                             <label for="volunteerEmail">Work Email</label>
                             <div class="input-with-icon">
                                 <span class="field-icon"><?= iconSvg('mail'); ?></span>
-                                <input id="volunteerEmail" name="volunteer_email" type="email" value="" placeholder="e.g. staff-bata@bata.health or leo@bata.health" required>
+                                <input id="volunteerEmail" name="volunteer_email" type="email" value="" placeholder="e.g. staff-bata@bata.health" required>
                             </div>
-                            <small>Use your assigned health station email (e.g., staff-bata@bata.health, leo@bata.health)</small>
+                            <small>Use your assigned health station email</small>
                         </div>
                         <div class="field-group">
                             <label for="volunteerPassword">Password</label>
