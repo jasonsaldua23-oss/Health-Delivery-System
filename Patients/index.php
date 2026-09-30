@@ -528,7 +528,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
         <a class="brand" href="<?= $isLoggedIn ? 'dashboard.php' : 'index.php'; ?>">
             <span class="brand-icon"><?= iconSvg('heart'); ?></span>
             <span class="brand-copy">
-                <strong>Bacolod Health Centers</strong>
+                <strong>Bacolod Health Stations</strong>
                 <small>Your Community Health Partner</small>
             </span>
         </a>
@@ -883,7 +883,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
         <div class="container portal-hero-inner">
             <div class="portal-hero-content">
                 <span class="hero-badge"><span class="inline-icon"><?= iconSvg('sparkle'); ?></span>Your Health, Our Priority</span>
-                <h1>Welcome to Bacolod<br>Community Health Centers</h1>
+                <h1>Welcome to Bacolod<br>Community Health Stations</h1>
                 <p>Access quality healthcare services in your barangay. Book appointments, check schedules, and stay updated with health programs.</p>
                 <button type="button" class="portal-button js-portal-scroll">
                     <span>Choose Your Portal</span>
@@ -905,19 +905,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 <button type="button" class="portal-card active" data-portal="patient">
                     <div class="portal-card-icon patient-icon"><?= iconSvg('user'); ?></div>
                     <h3>Patient</h3>
-                    <p>Book appointments and access healthcare services at your barangay health center</p>
+                    <p>Book appointments and access healthcare services at your barangay health station</p>
                 </button>
 
                 <button type="button" class="portal-card" data-portal="volunteer">
                     <div class="portal-card-icon volunteer-icon"><?= iconSvg('stethoscope'); ?></div>
                     <h3>Volunteer</h3>
-                    <p>Manage appointments and queues as an assigned health center staff member</p>
+                    <p>Manage appointments and queues as an assigned health station staff member</p>
                 </button>
 
                 <button type="button" class="portal-card" data-portal="admin">
                     <div class="portal-card-icon admin-icon"><?= iconSvg('shield'); ?></div>
                     <h3>Admin</h3>
-                    <p>System administration, analytics, and oversight of all health centers</p>
+                    <p>System administration, analytics, and oversight of all health stations</p>
                 </button>
             </div>
 
