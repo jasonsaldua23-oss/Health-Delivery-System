@@ -5546,9 +5546,17 @@ function create_upcoming_event(array $eventData): bool
         return false;
     }
 
-    // Support broadcasting to 'all' stations or a specific station
+    // Support broadcasting to 'all' stations, a list of stations, or a specific station
+    $stationSlugList = is_array($eventData['station_slugs'] ?? null) ? $eventData['station_slugs'] : [];
     $targetStations = [];
-    if ($stationSlugInput === 'all' || $stationSlugInput === '') {
+    if ($stationSlugList !== []) {
+        foreach (array_unique(array_map('strval', $stationSlugList)) as $listSlug) {
+            $listStation = $listSlug !== 'city-health' ? fetch_station_by_slug_catalog($listSlug) : null;
+            if ($listStation !== null) {
+                $targetStations[] = $listStation;
+            }
+        }
+    } elseif ($stationSlugInput === 'all' || $stationSlugInput === '') {
         foreach (health_station_catalog() as $st) {
             if ((string) ($st['slug'] ?? '') !== 'city-health') {
                 $targetStations[] = $st;

@@ -388,23 +388,28 @@ unset($_SESSION['admin_flash']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'create_event')) {
     if (verify_csrf($_POST['csrf_token'] ?? null)) {
-        $stationSlug = trim((string) ($_POST['station_slug'] ?? 'all'));
+        $postedSlugs = is_array($_POST['station_slugs'] ?? null) ? $_POST['station_slugs'] : [];
+        $stationSlugs = array_values(array_unique(array_filter(
+            array_map(static fn($slug): string => trim((string) $slug), $postedSlugs),
+            static fn(string $slug): bool => $slug !== ''
+        )));
         $title = trim((string) ($_POST['title'] ?? ''));
         $description = trim((string) ($_POST['description'] ?? ''));
         $targetMonth = trim((string) ($_POST['target_month'] ?? date('Y-m')));
-        $startTime = trim((string) ($_POST['time_label'] ?? '8:00 AM'));
-        $endTime = trim((string) ($_POST['end_time_label'] ?? '12:00 PM'));
         $icon = trim((string) ($_POST['icon'] ?? 'calendar'));
         $accent = trim((string) ($_POST['accent'] ?? 'blue'));
 
-        if ($title !== '' && $targetMonth !== '') {
+        if ($stationSlugs === []) {
+            $_SESSION['admin_flash'] = 'Please select at least one health station.';
+        } elseif ($title !== '' && $targetMonth !== '') {
+            // Times are left blank; each station sets the actual schedule when activating the event.
             $created = create_upcoming_event([
-                'station_slug' => $stationSlug,
+                'station_slugs' => $stationSlugs,
                 'title' => $title,
                 'description' => $description,
                 'target_month' => $targetMonth,
-                'time_label' => $startTime,
-                'end_time_label' => $endTime,
+                'time_label' => '',
+                'end_time_label' => '',
                 'icon' => $icon,
                 'accent' => $accent,
                 'status' => 'inactive',
@@ -414,7 +419,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'crea
                 ? 'Community event created successfully! It is now dispatched to the Health Station(s) as Inactive awaiting date assignment.'
                 : 'Unable to create event. Please check required fields.';
             if ($created) {
-                log_activity('admin', (string) ($adminAccount['email'] ?? 'admin'), 'event_created', 'event', '', '', '', $stationSlug);
+                log_activity('admin', (string) ($adminAccount['email'] ?? 'admin'), 'event_created', 'event', '', '', '', implode(',', $stationSlugs));
             }
         } else {
             $_SESSION['admin_flash'] = 'Event title and suggested target month are required.';
@@ -433,8 +438,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'upda
                 'description' => trim((string) ($_POST['description'] ?? '')),
                 'target_month' => trim((string) ($_POST['target_month'] ?? '')),
                 'event_date' => trim((string) ($_POST['event_date'] ?? '')),
-                'time_label' => trim((string) ($_POST['time_label'] ?? '')),
-                'end_time_label' => trim((string) ($_POST['end_time_label'] ?? '')),
                 'icon' => trim((string) ($_POST['icon'] ?? 'calendar')),
                 'accent' => trim((string) ($_POST['accent'] ?? 'blue')),
                 'status' => trim((string) ($_POST['status'] ?? 'inactive')),
@@ -3731,10 +3734,12 @@ if (!function_exists('peso')) {
                                         </div>
                                     <?php endif; ?>
 
+                                    <?php if (trim((string) ($event['time_label'] ?? '')) !== ''): ?>
                                     <div class="admin-event-meta-line">
                                         <?= admin_icon('clock'); ?>
                                         <span><?= h($event['time_label']); ?><?php if (!empty($event['end_time_label'])): ?> - <?= h((string) $event['end_time_label']); ?><?php endif; ?></span>
                                     </div>
+                                    <?php endif; ?>
 
                                     <div class="admin-event-meta-line">
                                         <?= admin_icon('map'); ?>
@@ -3770,21 +3775,36 @@ if (!function_exists('peso')) {
 
                         <div class="event-form-body">
                             <div class="event-form-group">
-                                <label for="adminEventStationSelect">
+                                <label for="adminEventStationTrigger">
                                     <span>Target Health Station / Barangay <span class="required-mark">*</span></span>
                                 </label>
-                                <div class="event-input-wrapper">
-                                    <span class="event-input-icon"><?= admin_icon('map'); ?></span>
-                                    <select name="station_slug" id="adminEventStationSelect" class="event-form-input has-icon" required <?= $eventEditing !== null ? 'disabled' : ''; ?>>
-                                        <option value="all" <?= ($eventEditing === null || ($eventEditing['station_slug'] ?? '') === 'all') ? 'selected' : ''; ?>>📢 All Barangay Health Stations (Broadcast)</option>
-                                        <?php foreach ($stations as $stItem): ?>
-                                            <?php if ($stItem['slug'] !== 'city-health'): ?>
-                                                <option value="<?= h($stItem['slug']); ?>" <?= (($eventEditing['station_slug'] ?? '') === $stItem['slug']) ? 'selected' : ''; ?>><?= h($stItem['name']); ?></option>
-                                            <?php endif; ?>
+                                <?php
+                                    $eventPickerStations = array_values(array_filter($stations, static fn(array $st): bool => ($st['slug'] ?? '') !== 'city-health'));
+                                    $eventEditingSlug = $eventEditing !== null ? (string) ($eventEditing['station_slug'] ?? '') : '';
+                                    $eventEditingStationName = $eventEditing !== null ? (string) ($eventEditing['station_name'] ?? $eventEditingSlug) : '';
+                                ?>
+                                <div class="event-station-picker" id="adminEventStationPicker">
+                                    <div class="event-input-wrapper">
+                                        <span class="event-input-icon"><?= admin_icon('map'); ?></span>
+                                        <button type="button" id="adminEventStationTrigger" class="event-form-input has-icon event-station-trigger" onclick="toggleAdminEventStationPanel()" aria-haspopup="true" aria-expanded="false" <?= $eventEditing !== null ? 'disabled' : ''; ?>>
+                                            <span id="adminEventStationSummary"><?= $eventEditing !== null ? h($eventEditingStationName) : 'All Barangay Health Stations'; ?></span>
+                                            <span class="event-station-caret" aria-hidden="true"></span>
+                                        </button>
+                                    </div>
+                                    <div class="event-station-panel" id="adminEventStationPanel" hidden>
+                                        <label class="event-station-option event-station-option-all">
+                                            <input type="checkbox" id="adminEventStationAll" <?= $eventEditing === null ? 'checked' : ''; ?> onchange="toggleAllAdminEventStations(this.checked)">
+                                            <span>All Barangay Health Stations</span>
+                                        </label>
+                                        <?php foreach ($eventPickerStations as $stItem): ?>
+                                            <label class="event-station-option">
+                                                <input type="checkbox" name="station_slugs[]" value="<?= h($stItem['slug']); ?>" data-name="<?= h($stItem['name']); ?>" <?= ($eventEditing === null || $eventEditingSlug === $stItem['slug']) ? 'checked' : ''; ?> <?= $eventEditing !== null ? 'disabled' : ''; ?> onchange="syncAdminEventStationPicker()">
+                                                <span><?= h($stItem['name']); ?></span>
+                                            </label>
                                         <?php endforeach; ?>
-                                    </select>
+                                    </div>
                                 </div>
-                                <small class="event-field-hint">Selecting "All Stations" creates an inactive event template for each barangay station.</small>
+                                <small class="event-field-hint" id="adminEventStationHint">Select all stations, a single station, or any combination. An inactive event template is created for each selected station.</small>
                             </div>
 
                             <div class="event-form-group">
@@ -3803,12 +3823,12 @@ if (!function_exists('peso')) {
                                         <span>Event Category <span class="required-mark">*</span></span>
                                     </label>
                                     <select name="icon" id="adminEventCategorySelect" class="event-form-input" required>
-                                        <option value="syringe" <?= (($eventEditing['icon'] ?? '') === 'syringe') ? 'selected' : ''; ?>>💉 Vaccination Drive</option>
-                                        <option value="community" <?= (($eventEditing['icon'] ?? '') === 'community') ? 'selected' : ''; ?>>🍲 Feeding Program</option>
-                                        <option value="heart" <?= (($eventEditing['icon'] ?? '') === 'heart') ? 'selected' : ''; ?>>🩺 Free Medical Mission</option>
-                                        <option value="calendar" <?= (($eventEditing['icon'] ?? '') === 'calendar') ? 'selected' : ''; ?>>📋 Health Seminar / Workshop</option>
-                                        <option value="pulse" <?= (($eventEditing['icon'] ?? '') === 'pulse') ? 'selected' : ''; ?>>🩸 Blood Donation / Screening</option>
-                                        <option value="other" <?= (($eventEditing['icon'] ?? '') === 'other') ? 'selected' : ''; ?>>✨ General Outreach Event</option>
+                                        <option value="syringe" <?= (($eventEditing['icon'] ?? '') === 'syringe') ? 'selected' : ''; ?>>Vaccination Drive</option>
+                                        <option value="community" <?= (($eventEditing['icon'] ?? '') === 'community') ? 'selected' : ''; ?>>Feeding Program</option>
+                                        <option value="heart" <?= (($eventEditing['icon'] ?? '') === 'heart') ? 'selected' : ''; ?>>Free Medical Mission</option>
+                                        <option value="calendar" <?= (($eventEditing['icon'] ?? '') === 'calendar') ? 'selected' : ''; ?>>Health Seminar / Workshop</option>
+                                        <option value="pulse" <?= (($eventEditing['icon'] ?? '') === 'pulse') ? 'selected' : ''; ?>>Blood Donation / Screening</option>
+                                        <option value="other" <?= (($eventEditing['icon'] ?? '') === 'other') ? 'selected' : ''; ?>>General Outreach Event</option>
                                     </select>
                                 </div>
 
@@ -3817,28 +3837,6 @@ if (!function_exists('peso')) {
                                         <span>Suggested Target Month <span class="required-mark">*</span></span>
                                     </label>
                                     <input type="month" name="target_month" id="adminEventMonthInput" min="<?= date('Y-m'); ?>" value="<?= h((string) ($eventEditing['target_month'] ?? date('Y-m'))); ?>" required class="event-form-input">
-                                </div>
-                            </div>
-
-                            <div class="event-form-row">
-                                <div class="event-form-group">
-                                    <label for="adminEventStartTimeInput">
-                                        <span>Tentative Start Time <span class="required-mark">*</span></span>
-                                    </label>
-                                    <div class="event-input-wrapper">
-                                        <span class="event-input-icon"><?= admin_icon('clock'); ?></span>
-                                        <input type="text" name="time_label" id="adminEventStartTimeInput" value="<?= h((string) ($eventEditing['time_label'] ?? '8:00 AM')); ?>" placeholder="e.g. 8:00 AM" required class="event-form-input has-icon">
-                                    </div>
-                                </div>
-
-                                <div class="event-form-group">
-                                    <label for="adminEventEndTimeInput">
-                                        <span>Tentative End Time <span class="required-mark">*</span></span>
-                                    </label>
-                                    <div class="event-input-wrapper">
-                                        <span class="event-input-icon"><?= admin_icon('clock'); ?></span>
-                                        <input type="text" name="end_time_label" id="adminEventEndTimeInput" value="<?= h((string) ($eventEditing['end_time_label'] ?? '12:00 PM')); ?>" placeholder="e.g. 12:00 PM" required class="event-form-input has-icon">
-                                    </div>
                                 </div>
                             </div>
 
@@ -3869,14 +3867,13 @@ if (!function_exists('peso')) {
                 const action = document.getElementById('adminEventAction');
                 const eventId = document.getElementById('adminEventId');
                 const submitText = document.getElementById('adminEventSubmitText');
-                const stationSelect = document.getElementById('adminEventStationSelect');
 
                 if (title) title.textContent = 'Create & Dispatch Community Event';
                 if (action) action.value = 'create_event';
                 if (eventId) eventId.value = '';
                 if (submitText) submitText.textContent = 'Create & Dispatch';
-                if (stationSelect) stationSelect.disabled = false;
                 if (form) form.reset();
+                resetAdminEventStationPicker();
 
                 const monthInput = document.getElementById('adminEventMonthInput');
                 if (monthInput && !monthInput.value) {
@@ -3894,7 +3891,114 @@ if (!function_exists('peso')) {
                 const modal = document.getElementById('adminEventModalBackdrop');
                 if (modal) modal.style.display = 'none';
                 document.body.style.overflow = '';
+                closeAdminEventStationPanel();
             }
+
+            function getAdminEventStationBoxes() {
+                return Array.from(document.querySelectorAll('#adminEventStationPanel input[name="station_slugs[]"]'));
+            }
+
+            function toggleAdminEventStationPanel() {
+                const panel = document.getElementById('adminEventStationPanel');
+                const trigger = document.getElementById('adminEventStationTrigger');
+                if (!panel || !trigger || trigger.disabled) return;
+                panel.hidden = !panel.hidden;
+                trigger.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+            }
+
+            function closeAdminEventStationPanel() {
+                const panel = document.getElementById('adminEventStationPanel');
+                const trigger = document.getElementById('adminEventStationTrigger');
+                if (panel) panel.hidden = true;
+                if (trigger) trigger.setAttribute('aria-expanded', 'false');
+            }
+
+            function toggleAllAdminEventStations(checked) {
+                getAdminEventStationBoxes().forEach(box => { box.checked = checked; });
+                syncAdminEventStationPicker();
+            }
+
+            function syncAdminEventStationPicker() {
+                const boxes = getAdminEventStationBoxes();
+                const selected = boxes.filter(box => box.checked);
+                const allBox = document.getElementById('adminEventStationAll');
+                const summary = document.getElementById('adminEventStationSummary');
+                const trigger = document.getElementById('adminEventStationTrigger');
+                const hint = document.getElementById('adminEventStationHint');
+
+                if (allBox) {
+                    allBox.checked = boxes.length > 0 && selected.length === boxes.length;
+                    allBox.indeterminate = selected.length > 0 && selected.length < boxes.length;
+                }
+                if (summary) {
+                    if (selected.length === 0) {
+                        summary.textContent = 'Select health station(s)';
+                    } else if (selected.length === boxes.length) {
+                        summary.textContent = 'All Barangay Health Stations';
+                    } else if (selected.length === 1) {
+                        summary.textContent = selected[0].dataset.name || selected[0].value;
+                    } else {
+                        summary.textContent = `${selected.length} health stations selected`;
+                    }
+                }
+                if (trigger) trigger.classList.toggle('is-invalid', selected.length === 0);
+                if (hint && selected.length > 0) {
+                    hint.textContent = 'Select all stations, a single station, or any combination. An inactive event template is created for each selected station.';
+                    hint.classList.remove('is-error');
+                }
+            }
+
+            function resetAdminEventStationPicker() {
+                const trigger = document.getElementById('adminEventStationTrigger');
+                const allBox = document.getElementById('adminEventStationAll');
+                if (trigger) trigger.disabled = false;
+                if (allBox) allBox.disabled = false;
+                getAdminEventStationBoxes().forEach(box => { box.disabled = false; });
+                toggleAllAdminEventStations(true);
+                closeAdminEventStationPanel();
+            }
+
+            function lockAdminEventStationPicker(slug, name) {
+                const trigger = document.getElementById('adminEventStationTrigger');
+                const summary = document.getElementById('adminEventStationSummary');
+                const allBox = document.getElementById('adminEventStationAll');
+                getAdminEventStationBoxes().forEach(box => {
+                    box.checked = box.value === slug;
+                    box.disabled = true;
+                });
+                if (allBox) {
+                    allBox.checked = false;
+                    allBox.indeterminate = false;
+                    allBox.disabled = true;
+                }
+                closeAdminEventStationPanel();
+                if (trigger) {
+                    trigger.disabled = true;
+                    trigger.classList.remove('is-invalid');
+                }
+                if (summary) summary.textContent = name || slug;
+            }
+
+            document.addEventListener('click', (e) => {
+                const picker = document.getElementById('adminEventStationPicker');
+                if (picker && !picker.contains(e.target)) closeAdminEventStationPanel();
+            });
+
+            document.getElementById('adminEventForm')?.addEventListener('submit', (e) => {
+                const action = document.getElementById('adminEventAction');
+                if (!action || action.value !== 'create_event') return;
+                if (!getAdminEventStationBoxes().some(box => box.checked)) {
+                    e.preventDefault();
+                    syncAdminEventStationPicker();
+                    const panel = document.getElementById('adminEventStationPanel');
+                    if (panel && panel.hidden) toggleAdminEventStationPanel();
+                    const hint = document.getElementById('adminEventStationHint');
+                    if (hint) {
+                        hint.textContent = 'Please select at least one health station.';
+                        hint.classList.add('is-error');
+                    }
+                }
+            });
 
             function editAdminEvent(eventData) {
                 if (!eventData) return;
@@ -3907,9 +4011,6 @@ if (!function_exists('peso')) {
                 const descInput = document.getElementById('adminEventDescInput');
                 const iconSelect = document.getElementById('adminEventCategorySelect');
                 const monthInput = document.getElementById('adminEventMonthInput');
-                const startInput = document.getElementById('adminEventStartTimeInput');
-                const endInput = document.getElementById('adminEventEndTimeInput');
-                const stationSelect = document.getElementById('adminEventStationSelect');
 
                 if (title) title.textContent = 'Update Health Event';
                 if (action) action.value = 'update_event';
@@ -3919,12 +4020,7 @@ if (!function_exists('peso')) {
                 if (descInput) descInput.value = eventData.description || '';
                 if (iconSelect) iconSelect.value = eventData.icon || 'calendar';
                 if (monthInput) monthInput.value = eventData.target_month || (eventData.event_date ? eventData.event_date.substring(0, 7) : '');
-                if (startInput) startInput.value = eventData.time_label || '8:00 AM';
-                if (endInput) endInput.value = eventData.end_time_label || eventData.time_label || '12:00 PM';
-                if (stationSelect) {
-                    stationSelect.value = eventData.station_slug || '';
-                    stationSelect.disabled = true;
-                }
+                lockAdminEventStationPicker(eventData.station_slug || '', eventData.station_name || '');
 
                 if (modal) modal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
@@ -6599,13 +6695,13 @@ window.renderAdminSelectedInfant = function(targetInfant) {
             const dateStr = info.latestDate ? new Date(info.latestDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
             const badgeLabel = maxDose !== null
                 ? (isCompleted ? `${info.count}/${maxDose} Doses (Limit Reached)` : `${info.count}/${maxDose} Doses Taken`)
-                : `${info.count} ${info.count === 1 ? 'Dose Taken' : 'Doses Taken'}`;
+                : '';
 
             dosesHtml += `
             <div style="background: ${isCompleted ? '#ecfdf5' : '#f5f3ff'}; border: 1.5px solid ${isCompleted ? '#a7f3d0' : '#ddd6fe'}; color: ${isCompleted ? '#065f46' : '#6d28d9'}; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);">
                 <span style="display: inline-flex; align-items: center; color: ${isCompleted ? '#059669' : '#7c3aed'};"><?= admin_icon('syringe'); ?></span>
                 <span>${adminEscapeHtml(vName)}</span>
-                <span style="background: ${isCompleted ? '#059669' : '#7c3aed'}; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${badgeLabel}</span>
+                ${badgeLabel ? `<span style="background: ${isCompleted ? '#059669' : '#7c3aed'}; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${badgeLabel}</span>` : ''}
                 ${dateStr ? `<span style="font-size: 0.74rem; color: ${isCompleted ? '#047857' : '#7c3aed'}; font-weight: 600; opacity: 0.85;">(${adminEscapeHtml(dateStr)})</span>` : ''}
             </div>`;
         });

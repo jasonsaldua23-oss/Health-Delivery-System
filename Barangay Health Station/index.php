@@ -5169,10 +5169,12 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     </div>
 
                                     <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; color: #64748b;">
+                                        <?php if (trim((string) ($event['time_label'] ?? '')) !== ''): ?>
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: #64748b; flex-shrink: 0;"><?= staff_icon('clock'); ?></span>
                                             <span>Tentative Hours: <strong><?= h((string)$event['time_label']); ?><?php if (!empty($event['end_time_label'])): ?> - <?= h((string)$event['end_time_label']); ?><?php endif; ?></strong></span>
                                         </div>
+                                        <?php endif; ?>
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <span style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: #64748b; flex-shrink: 0;"><?= staff_icon('pin'); ?></span>
                                             <span>Target Station: <strong><?= h((string)$event['station_name']); ?></strong></span>
@@ -7721,13 +7723,13 @@ window.openStaffInfantModal = function(infant) {
             const dateStr = info.latestDate ? new Date(info.latestDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
             const badgeLabel = maxDose !== null
                 ? (isCompleted ? `${info.count}/${maxDose} Doses (Limit Reached)` : `${info.count}/${maxDose} Doses Taken`)
-                : `${info.count} ${info.count === 1 ? 'Dose Taken' : 'Doses Taken'}`;
+                : '';
 
             dosesHtml += `
             <div style="background: ${isCompleted ? '#ecfdf5' : '#f0f9ff'}; border: 1.5px solid ${isCompleted ? '#a7f3d0' : '#7dd3fc'}; color: ${isCompleted ? '#065f46' : '#0369a1'}; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);">
                 <span style="display: inline-flex; align-items: center; color: ${isCompleted ? '#059669' : '#0284c7'};"><?= staff_icon('syringe'); ?></span>
                 <span>${staffEscapeHtml(vName)}</span>
-                <span style="background: ${isCompleted ? '#059669' : '#0284c7'}; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${badgeLabel}</span>
+                ${badgeLabel ? `<span style="background: ${isCompleted ? '#059669' : '#0284c7'}; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${badgeLabel}</span>` : ''}
                 ${dateStr ? `<span style="font-size: 0.74rem; color: ${isCompleted ? '#047857' : '#0284c7'}; font-weight: 600; opacity: 0.85;">(${staffEscapeHtml(dateStr)})</span>` : ''}
             </div>`;
         });

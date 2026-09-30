@@ -25,12 +25,11 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
-  use: {
+ use: {
   baseURL: 'http://localhost/Health-Delivery-System-Latest',
   trace: 'on-first-retry',
   screenshot: 'only-on-failure',
-  },
-
+},
   /* Configure projects for major browsers */
   projects: [
     {
