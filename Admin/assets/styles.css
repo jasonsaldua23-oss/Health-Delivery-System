@@ -7185,11 +7185,17 @@ button, input, select { font: inherit; }
 /* Admin Event Card Grid & Sizing */
 .admin-event-card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 380px));
-    gap: 22px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
     align-items: start;
     justify-content: start;
     width: 100%;
+}
+
+@media (max-width: 1180px) {
+    .admin-event-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 .admin-event-card {
@@ -7202,7 +7208,7 @@ button, input, select { font: inherit; }
     flex-direction: column;
     justify-content: space-between;
     width: 100%;
-    max-width: 380px;
+    min-width: 0;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 

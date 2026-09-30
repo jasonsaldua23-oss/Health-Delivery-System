@@ -3688,7 +3688,6 @@ if (!function_exists('peso')) {
                                     <div class="admin-event-pill-row">
                                         <span class="admin-event-pill icon-pill">
                                             <?= admin_icon('sprout'); ?>
-                                            <span>Life</span>
                                         </span>
                                         <?php if ($isEventActive): ?>
                                             <span class="admin-status-pill status-active-pill">
