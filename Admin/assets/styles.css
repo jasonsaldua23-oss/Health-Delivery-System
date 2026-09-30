@@ -7194,7 +7194,7 @@ button, input, select { font: inherit; }
 
 .admin-event-card {
     background: #ffffff;
-    border: 1.5px solid #e2e8f0;
+    border: 1.5px solid var(--theme-purple-border);
     border-radius: 18px;
     overflow: hidden;
     box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04);
@@ -7208,25 +7208,25 @@ button, input, select { font: inherit; }
 
 .admin-event-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 10px 24px rgba(109, 40, 217, 0.12);
 }
 
 .admin-event-card.is-active {
-    border-color: #cbd5e1;
+    border-color: #ddd6fe;
 }
 
 .admin-event-card.is-pending {
-    border-color: #fde68a;
+    border-color: var(--theme-purple-border);
 }
 
 .admin-event-card-header {
     padding: 16px 18px 16px;
-    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #7c3aed 100%);
+    background: linear-gradient(135deg, var(--theme-purple-dark) 0%, var(--theme-purple) 55%, var(--violet) 100%);
     color: #ffffff;
 }
 
 .admin-event-card.is-pending .admin-event-card-header {
-    background: linear-gradient(135deg, #334155 0%, #475569 100%);
+    background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 55%, var(--theme-purple-dark) 100%);
 }
 
 .admin-event-card-top {
@@ -7326,7 +7326,7 @@ button, input, select { font: inherit; }
 
 .admin-event-action-btn.edit:hover {
     background: #ffffff;
-    color: #4f46e5;
+    color: var(--theme-purple-dark);
     border-color: #ffffff;
     transform: translateY(-1px);
 }
@@ -7368,8 +7368,8 @@ button, input, select { font: inherit; }
 }
 
 .admin-event-schedule-box {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--theme-purple-light);
+    border: 1px solid var(--theme-purple-border);
     border-radius: 12px;
     padding: 12px 14px;
     display: flex;
@@ -7378,13 +7378,13 @@ button, input, select { font: inherit; }
 }
 
 .admin-event-schedule-box.box-active {
-    background: #f0fdf4;
-    border-color: #bbf7d0;
+    background: var(--theme-purple-light);
+    border-color: #ddd6fe;
 }
 
 .admin-event-schedule-box.box-pending {
-    background: #fffdf5;
-    border-color: #fef08a;
+    background: #faf8ff;
+    border-color: var(--theme-purple-border);
 }
 
 .admin-event-meta-line {
@@ -7399,27 +7399,27 @@ button, input, select { font: inherit; }
 .admin-event-meta-line svg {
     width: 15px !important;
     height: 15px !important;
-    color: #6366f1;
+    color: var(--theme-purple);
     flex-shrink: 0;
 }
 
 .admin-event-meta-line.primary-date {
-    color: #166534;
+    color: #5b21b6;
     font-size: 0.88rem;
 }
 
 .admin-event-meta-line.primary-date svg {
-    color: #16a34a;
+    color: var(--theme-purple);
     width: 16px !important;
     height: 16px !important;
 }
 
 .admin-event-meta-line.pending-month {
-    color: #854d0e;
+    color: var(--theme-purple-dark);
 }
 
 .admin-event-meta-line.pending-month svg {
-    color: #d97706;
+    color: var(--violet);
     width: 16px !important;
     height: 16px !important;
 }

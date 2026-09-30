@@ -87,6 +87,7 @@ if (!function_exists('admin_icon')) {
             'tooth' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M7 3C4.5 3 3 5 3 8c0 3.5 1.5 7 2.5 10 .8 2.5 2 3 3.5 3s2-2 3-2 1.5 2 3 2 2.7-.5 3.5-3c1-3 2.5-6.5 2.5-10 0-3-1.5-5-4-5-2 0-3.5 1.5-4.5 2C12.5 4.5 11 3 7 3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'capsule' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m10.5 20.5-7-7a4.95 4.95 0 0 1 7-7l7 7a4.95 4.95 0 0 1-7 7Zm-3-10 9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'calendar' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M8 2v4m8-4v4M3 10h18M5 5h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m9 16 2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'sprout' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M7 20h10M10 20c5.5-2.5.8-6.4 3-10M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8ZM14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'sparkle' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Zm7 10 .8 2.2L22 16l-2.2.8L19 19l-.8-2.2L16 16l2.2-.8L19 13ZM5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8L5 14Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'trash' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-6 5v6m4-6v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'key' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m21 2-2 2m-1.5 1.5L14 9l-4 4-2-2-4 4 2 2-2 2 2 2 4-4-2-2 4-4 3.5-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7.5" cy="16.5" r="1.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
@@ -3680,15 +3681,14 @@ if (!function_exists('peso')) {
                         $hasConfirmedDate = !empty($event['event_date']);
                         $targetMonthStr = (string) ($event['target_month'] ?? '');
                         $formattedMonth = $targetMonthStr !== '' ? date('F Y', strtotime($targetMonthStr . '-01')) : '';
-                        $iconType = (string) ($event['icon'] ?? 'calendar');
                         ?>
                         <article class="admin-event-card <?= $isEventActive ? 'is-active' : 'is-pending'; ?>">
                             <div class="admin-event-card-header">
                                 <div class="admin-event-card-top">
                                     <div class="admin-event-pill-row">
-                                        <span class="admin-event-pill icon-pill cat-<?= h($iconType); ?>">
-                                            <?= admin_icon($iconType === 'other' ? 'sparkle' : $iconType); ?>
-                                            <span><?= ucfirst(str_replace('-', ' ', $iconType)); ?></span>
+                                        <span class="admin-event-pill icon-pill">
+                                            <?= admin_icon('sprout'); ?>
+                                            <span>Life</span>
                                         </span>
                                         <?php if ($isEventActive): ?>
                                             <span class="admin-status-pill status-active-pill">
