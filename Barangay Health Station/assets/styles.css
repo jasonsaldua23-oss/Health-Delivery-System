@@ -2464,8 +2464,12 @@ button { border: 0; cursor: pointer; }
 .queue-service-card .service-icon.indigo { background: linear-gradient(180deg, #6b5cff 0%, #5240f8 100%); }
 .queue-service-card .service-icon.gold { background: #ff9800; }
 .queue-service-card .service-icon svg {
-  width: 26px;
-  height: 26px;
+  /* !important overrides the 16px inline size baked into staff_icon() */
+  width: 28px !important;
+  height: 28px !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
+  flex-shrink: 0;
 }
 .queue-service-card .service-arrow {
   color: #0aad72;
