@@ -2803,10 +2803,13 @@ if (!function_exists('peso')) {
                                                 <?= admin_icon('phone'); ?>
                                                 <?= h((string) ($appointment['contact_number'] ?? '')); ?>
                                             </span>
+                                            <?php $queueSlotTime = trim((string) ($appointment['preferred_time'] ?? '')); ?>
+                                            <?php if ($queueSlotTime !== '' && strcasecmp($queueSlotTime, 'Daily Slot') !== 0): ?>
                                             <span class="queue-meta-item">
                                                 <?= admin_icon('clock'); ?>
-                                                <?= h((string) ($appointment['preferred_time'] ?? '')); ?>
+                                                <?= h($queueSlotTime); ?>
                                             </span>
+                                            <?php endif; ?>
                                             <span class="queue-meta-item">
                                                 <?= admin_icon('calendar'); ?>
                                                 <?= h(date('M j, Y', strtotime((string) ($appointment['preferred_date'] ?? 'now')))); ?>

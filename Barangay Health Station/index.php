@@ -2642,10 +2642,13 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                                         <?= staff_icon('stethoscope'); ?>
                                                         <span><?= h($row['service_name']); ?></span>
                                                     </span>
+                                                    <?php $queueSlotTime = trim((string) ($row['preferred_time'] ?? '')); ?>
+                                                    <?php if ($queueSlotTime !== '' && strcasecmp($queueSlotTime, 'Daily Slot') !== 0): ?>
                                                     <span class="queue-meta-pill time">
                                                         <?= staff_icon('clock'); ?>
-                                                        <span><?= h($row['preferred_time'] ?? 'Regular Hours'); ?></span>
+                                                        <span><?= h($queueSlotTime); ?></span>
                                                     </span>
+                                                    <?php endif; ?>
                                                     <?php if ($hasPatientPhoto): ?>
                                                         <span class="queue-meta-pill photo-ok">
                                                             <?= staff_icon('camera'); ?>
