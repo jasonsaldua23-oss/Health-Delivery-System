@@ -58,6 +58,7 @@ function sendBrevoSMS(string $phone, string $message, int $appointmentId = 0): b
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
         CURLOPT_TIMEOUT => 15,
+        CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
         CURLOPT_HTTPHEADER => [
             'accept: application/json',
             'api-key: ' . $apiKey,
@@ -73,6 +74,10 @@ function sendBrevoSMS(string $phone, string $message, int $appointmentId = 0): b
 
     $logEntry = date('Y-m-d H:i:s') . " | Appointment ID: {$appointmentId} | Phone: {$formattedPhone} | HTTP Code: {$httpCode} | Response: {$response} | Error: {$error}\n";
     @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+
+    if ($httpCode < 200 || $httpCode >= 300) {
+        error_log("Brevo SMS dispatch failed (HTTP {$httpCode}) for Appointment #{$appointmentId} [{$formattedPhone}]: {$response}");
+    }
 
     return ($httpCode >= 200 && $httpCode < 300);
 }
