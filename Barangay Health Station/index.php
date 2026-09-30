@@ -60,7 +60,8 @@ if (!function_exists('staff_icon')) {
             'arrow-left' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M19 12H5m6-6-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'arrow-right' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M5 12h14m-5-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'edit' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m4 20 4.5-1 9.5-9.5-3.5-3.5L5 15.5 4 20Zm11-13 3.5 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-            'trash' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M3 6h18M8 6V4h8v2m-9 0v13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6M10 11v6m4-6v6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'trash' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-6 5v6m4-6v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'sprout' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M7 20h10M10 20c5.5-2.5.8-6.4 3-10M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8ZM14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'logout' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'mail' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M4 6h16v12H4V6Zm0 0 8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'lock' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M7 11V7a5 5 0 0 1 10 0v4m-12 0h14v10H5V11Zm7 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -5142,14 +5143,12 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                             <?php
                             $targetMonthVal = !empty($event['target_month']) ? (string)$event['target_month'] : date('Y-m');
                             $monthFormatted = date('F Y', strtotime($targetMonthVal . '-01'));
-                            $iconType = (string) ($event['icon'] ?? 'calendar');
                             ?>
                             <article class="staff-inactive-event-card" style="background: #ffffff; border: 1.5px solid #fde68a; border-radius: 16px; padding: 22px; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.08); display: flex; flex-direction: column; justify-content: space-between; gap: 16px;">
                                 <div>
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px;">
-                                        <div class="event-category-chip cat-<?= h($iconType); ?>" style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 700;">
-                                            <?= staff_icon($iconType); ?>
-                                            <span><?= h(ucfirst(str_replace('-', ' ', $iconType))); ?></span>
+                                        <div class="event-category-chip cat-life" title="Community health event">
+                                            <?= staff_icon('sprout'); ?>
                                         </div>
                                         <span style="background: #fffbeb; color: #92400e; border: 1px solid #fde68a; font-size: 0.74rem; font-weight: 700; padding: 3px 8px; border-radius: 999px;">
                                             ⚠️ Inactive
@@ -5192,7 +5191,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         <input type="hidden" name="action" value="delete_event">
                                         <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
                                         <input type="hidden" name="event_id" value="<?= h((string)$event['id']); ?>">
-                                        <button type="submit" class="event-action-icon delete" title="Dismiss Event" style="background: #fee2e2; border: 1px solid #fca5a5; color: #dc2626; border-radius: 10px; padding: 8px 10px; cursor: pointer;">
+                                        <button type="submit" class="event-action-icon delete event-dismiss-btn" title="Dismiss Event" aria-label="Dismiss Event">
                                             <?= staff_icon('trash'); ?>
                                         </button>
                                     </form>
@@ -5235,7 +5234,6 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                             $eventDay = date('j', $eventTime);
                             $eventYear = date('Y', $eventTime);
                             $eventDayName = date('l', $eventTime);
-                            $iconType = (string) ($event['icon'] ?? 'calendar');
                             ?>
                             <article class="modern-event-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: space-between; gap: 16px;">
                                 <div>
@@ -5247,9 +5245,8 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         </div>
 
                                         <div style="flex: 1;">
-                                            <div class="event-category-chip cat-<?= h($iconType); ?>" style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 6px; font-size: 0.76rem; font-weight: 700; margin-bottom: 6px;">
-                                                <?= staff_icon($iconType); ?>
-                                                <span><?= h(ucfirst(str_replace('-', ' ', $iconType))); ?></span>
+                                            <div class="event-category-chip cat-life" title="Community health event" style="margin-bottom: 6px;">
+                                                <?= staff_icon('sprout'); ?>
                                             </div>
                                             <h3 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.3;"><?= h((string)$event['title']); ?></h3>
                                         </div>
@@ -5325,7 +5322,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 <!-- Event Summary Box -->
                                 <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                                        <span style="color: #2563eb; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0;"><?= staff_icon($eventToActivate['icon'] ?? 'calendar'); ?></span>
+                                        <span style="color: #059669; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0;"><?= staff_icon('sprout'); ?></span>
                                         <strong style="font-size: 1.05rem; color: #0f172a;"><?= h((string) $eventToActivate['title']); ?></strong>
                                     </div>
                                     <p style="color: #64748b; font-size: 0.88rem; margin: 0; line-height: 1.45;"><?= nl2br(h((string) $eventToActivate['description'])); ?></p>

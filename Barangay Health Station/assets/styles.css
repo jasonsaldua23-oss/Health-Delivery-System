@@ -6587,6 +6587,21 @@ button { border: 0; cursor: pointer; }
   color: #475569;
   border: 1px solid #e2e8f0;
 }
+.event-category-chip.cat-life {
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+.event-category-chip.cat-life svg {
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0;
+}
 
 .event-actions-dropdown {
   display: flex;
@@ -6624,6 +6639,25 @@ button { border: 0; cursor: pointer; }
   background: #fef2f2;
   color: #dc2626;
   border-color: #fecaca;
+}
+.event-action-icon.event-dismiss-btn {
+  width: 40px;
+  height: 38px;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+.event-action-icon.event-dismiss-btn svg {
+  width: 17px !important;
+  height: 17px !important;
+}
+.event-action-icon.event-dismiss-btn:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #ffffff;
 }
 
 .event-card-content {
