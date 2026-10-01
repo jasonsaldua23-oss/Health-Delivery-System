@@ -891,42 +891,27 @@ $reportFilters = [
     'status'        => $reportStatus,
 ];
 
-// Handle CSV export for reports if requested
-if ($page === 'reports' && (($_GET['export'] ?? '') === 'csv')) {
-    $exportAppointments = fetch_filtered_report_appointments($reportFilters, 5000);
-    $filename = 'health_report_' . date('Ymd_His') . '.csv';
-    header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    $output = fopen('php://output', 'w');
-    fputcsv($output, ['Appointment Code', 'Reference Code', 'Patient / Account Holder', 'Recipient Name', 'Relationship to Recipient', 'Recipient Birth Date', 'Patient Birth Date', 'Gender', 'Contact Number', 'Address', 'Barangay Health Center', 'Service', 'Date', 'Time', 'Status', 'Vaccine Type', 'Temperature', 'Pulse', 'Blood Pressure', 'Doctor Notes', 'Created At']);
-    foreach ($exportAppointments as $row) {
-        $expRec = appointment_recipient_details($row);
-        fputcsv($output, [
-            $row['appointment_code'] ?: $row['reference_code'],
-            $row['reference_code'],
-            full_name($row),
-            $expRec['is_immunization'] ? $expRec['recipient_full_name'] : full_name($row),
-            $expRec['is_immunization'] ? $expRec['relationship'] : 'Self',
-            $expRec['is_immunization'] ? ($expRec['recipient_birth_date'] ?? '') : '',
-            $row['birth_date'],
-            $row['gender'],
-            $row['contact_number'],
-            $row['complete_address'],
-            $row['station_name'],
-            $row['service_name'],
-            $row['preferred_date'],
-            $row['preferred_time'],
-            $row['status'],
-            $row['vaccine_type'] ?? '',
-            $row['body_temperature'] ?? '',
-            $row['pulse_rate'] ?? '',
-            $row['blood_pressure'] ?? '',
-            $row['doctor_notes'] ?? '',
-            $row['created_at'],
-        ]);
-    }
-    fclose($output);
-    exit;
+// Report export (CSV download, or JSON the browser turns into a PDF) using every active report filter
+if ($page === 'reports' && in_array(($_GET['export'] ?? ''), ['csv', 'json'], true)) {
+    $exportPeriodLabels = ['today' => 'Today', 'weekly' => 'This Week', 'monthly' => 'This Month', 'quarterly' => 'This Quarter', 'annually' => 'This Year'];
+    $exportAgeLabels = ['0-12' => 'Infants & Children (0-12y)', '13-17' => 'Adolescents (13-17y)', '18-30' => 'Young Adults (18-30y)', '31-45' => 'Middle Adults (31-45y)', '46-59' => 'Mature Adults (46-59y)', '18-59' => 'Adults (18-59y)', '60+' => 'Seniors (60y+)'];
+    $exportStation = $reportStation !== '' ? fetch_station_by_slug_catalog($reportStation) : null;
+    $exportService = $reportService !== '' ? (service_catalog()[$reportService] ?? null) : null;
+    $exportFilterLabels = [
+        'Period' => ($exportPeriodLabels[$reportPeriod] ?? ucfirst($reportPeriod)) . ' (' . date('M j, Y', strtotime($reportFrom)) . ' - ' . date('M j, Y', strtotime($reportTo)) . ')',
+        'Health Station' => $exportStation['name'] ?? 'All Health Stations',
+        'Service' => $exportService['title'] ?? ($reportService !== '' ? $reportService : 'All Services'),
+        'Gender' => $reportGender !== '' && strtolower($reportGender) !== 'all' ? ucfirst($reportGender) : 'All',
+        'Age Group' => $reportAgeGroup !== '' && $reportAgeGroup !== 'all' ? ($exportAgeLabels[$reportAgeGroup] ?? $reportAgeGroup) : 'All Ages',
+        'Status' => $reportStatus !== '' && $reportStatus !== 'all' ? $reportStatus : 'All Statuses',
+    ];
+    send_report_export(
+        (string) $_GET['export'],
+        fetch_filtered_report_appointments($reportFilters, 5000),
+        'health_report_' . date('Ymd_His'),
+        'Bacolod City Health Delivery System - Health Report',
+        $exportFilterLabels
+    );
 }
 
 // 1. Stats and Station Counts
@@ -1166,37 +1151,6 @@ $cityHealthCompletedToday = count(array_filter(
     static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Completed' && (string) ($item['preferred_date'] ?? '') === date('Y-m-d')
 ));
 
-if ($page === 'reports' && isset($_GET['export']) && $_GET['export'] === 'csv') {
-    $exportFrom = trim((string) ($_GET['report_from'] ?? date('Y-m-01')));
-    $exportTo   = trim((string) ($_GET['report_to']   ?? date('Y-m-d')));
-    $exportAppts = fetch_appointments(['date_from' => $exportFrom, 'date_to' => $exportTo]);
-    if (empty($exportAppts)) {
-        $allAppts = fetch_appointments([]);
-        $exportAppts = array_filter($allAppts, static function (array $a) use ($exportFrom, $exportTo): bool {
-            $d = (string) ($a['preferred_date'] ?? '');
-            return $d >= $exportFrom && $d <= $exportTo;
-        });
-    }
-
-    header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="health-report-' . $exportFrom . '-to-' . $exportTo . '.csv"');
-    $out = fopen('php://output', 'w');
-    fputcsv($out, ['Reference', 'Patient Name', 'Station', 'Service', 'Preferred Date', 'Status', 'Contact', 'Created At']);
-    foreach ($exportAppts as $row) {
-        fputcsv($out, [
-            $row['reference_code'] ?? '',
-            trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')),
-            $row['station_name'] ?? '',
-            $row['service_name'] ?? '',
-            $row['preferred_date'] ?? '',
-            $row['status'] ?? '',
-            $row['contact_number'] ?? '',
-            $row['created_at'] ?? '',
-        ]);
-    }
-    fclose($out);
-    exit;
-}
 
 if (!function_exists('peso')) {
     function peso(float $value): string
@@ -5094,10 +5048,22 @@ if (!function_exists('peso')) {
                             <span class="filter-count-badge"><?= $activeFilterCount; ?></span>
                         <?php endif; ?>
                     </button>
-                    <a href="?page=reports&export=csv&<?= http_build_query(array_filter($reportFilters)); ?>" class="dash-hero-btn primary" title="Download matching appointment records as CSV">
+                    <?php
+                    $exportQuery = http_build_query(array_filter([
+                        'page' => 'reports',
+                        'report_period' => $reportPeriod,
+                        'gender' => $reportGender,
+                        'age_group' => $reportAgeGroup,
+                        'station_slug' => $reportStation,
+                        'service_slug' => $reportService,
+                        'status_filter' => $reportStatus,
+                    ], static fn($v): bool => $v !== '' && $v !== null));
+                    ?>
+                    <button type="button" class="dash-hero-btn primary" title="Export the records matching the active filters as CSV or PDF"
+                            onclick="ReportExport.choose({ csvUrl: '?<?= h($exportQuery); ?>&export=csv', pdfDataUrl: '?<?= h($exportQuery); ?>&export=json', accent: '#7c3aed' })">
                         <?= admin_icon('download'); ?>
-                        <span>Export CSV</span>
-                    </a>
+                        <span>Export Report</span>
+                    </button>
                 </div>
             </section>
 
@@ -7137,6 +7103,7 @@ document.addEventListener('keydown', function(e) {
     });
 })();
 </script>
+<script src="../shared/report-export.js?v=<?= (int) @filemtime(__DIR__ . '/../shared/report-export.js'); ?>"></script>
 <script src="../shared/modal-persist.js?v=<?= (int) @filemtime(__DIR__ . '/../shared/modal-persist.js'); ?>"></script>
 <script>
 // Keep JavaScript-opened modals open across a refresh (URL-driven modals already persist)

@@ -6882,6 +6882,93 @@ function build_report_filter_sql(array $filters, string $tableAlias = ''): array
     ];
 }
 
+/**
+ * Rows for a report export (CSV or PDF). Both formats use the same records; the PDF shows a
+ * narrower set of columns so the table fits a landscape page.
+ */
+function report_export_table(array $appointments): array
+{
+    $columns = ['Appointment Code', 'Patient / Account Holder', 'Recipient', 'Relationship to Recipient', 'Recipient Birth Date', 'Patient Birth Date', 'Gender', 'Contact Number', 'Address', 'Health Station', 'Service', 'Date', 'Time', 'Status', 'Vaccine Type', 'Temperature', 'Pulse', 'Respiration', 'Blood Pressure', 'Height', 'Weight', 'Doctor Notes', 'Created At'];
+    $pdfColumns = ['Appointment Code', 'Patient / Account Holder', 'Recipient', 'Health Station', 'Service', 'Date', 'Status', 'Vaccine Type'];
+
+    $rows = [];
+    foreach ($appointments as $row) {
+        $rec = appointment_recipient_details($row);
+        $isInfant = appointment_is_infant_immunization($row);
+        $rows[] = [
+            'Appointment Code' => (string) (($row['appointment_code'] ?? '') ?: ($row['reference_code'] ?? '')),
+            'Patient / Account Holder' => full_name($row),
+            'Recipient' => $isInfant ? $rec['recipient_full_name'] : full_name($row),
+            'Relationship to Recipient' => $isInfant ? $rec['relationship'] : 'Self',
+            'Recipient Birth Date' => $isInfant ? (string) ($rec['recipient_birth_date'] ?? '') : '',
+            'Patient Birth Date' => (string) ($row['birth_date'] ?? ''),
+            'Gender' => (string) ($row['gender'] ?? ''),
+            'Contact Number' => (string) ($row['contact_number'] ?? ''),
+            'Address' => (string) ($row['complete_address'] ?? ''),
+            'Health Station' => (string) ($row['station_name'] ?? ''),
+            'Service' => (string) ($row['service_name'] ?? ''),
+            'Date' => (string) ($row['preferred_date'] ?? ''),
+            'Time' => (string) ($row['preferred_time'] ?? ''),
+            'Status' => (string) ($row['status'] ?? ''),
+            'Vaccine Type' => (string) ($row['vaccine_type'] ?? ''),
+            'Temperature' => (string) ($row['body_temperature'] ?? ''),
+            'Pulse' => (string) ($row['pulse_rate'] ?? ''),
+            'Respiration' => (string) ($row['respiration_rate'] ?? ''),
+            'Blood Pressure' => (string) ($row['blood_pressure'] ?? ''),
+            'Height' => (string) ($row['height'] ?? ''),
+            'Weight' => (string) ($row['weight'] ?? ''),
+            'Doctor Notes' => (string) ($row['doctor_notes'] ?? ''),
+            'Created At' => (string) ($row['created_at'] ?? ''),
+        ];
+    }
+
+    return ['columns' => $columns, 'pdf_columns' => $pdfColumns, 'rows' => $rows];
+}
+
+/**
+ * Send a report export and stop: 'csv' downloads a CSV file; 'json' returns the data the browser
+ * turns into a PDF (title, active filters, summary and table).
+ */
+function send_report_export(string $format, array $appointments, string $fileBase, string $title, array $filterLabels): void
+{
+    $table = report_export_table($appointments);
+
+    if ($format === 'csv') {
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $fileBase . '.csv"');
+        $output = fopen('php://output', 'w');
+        fwrite($output, "\xEF\xBB\xBF"); // UTF-8 BOM so Excel shows accented names correctly
+        fputcsv($output, [$title]);
+        foreach ($filterLabels as $label => $value) {
+            fputcsv($output, [$label, $value]);
+        }
+        fputcsv($output, ['Generated', date('F j, Y g:i A')]);
+        fputcsv($output, []);
+        fputcsv($output, $table['columns']);
+        foreach ($table['rows'] as $row) {
+            fputcsv($output, array_map(static fn(string $col) => $row[$col] ?? '', $table['columns']));
+        }
+        fclose($output);
+        exit;
+    }
+
+    $statusCounts = [];
+    foreach ($table['rows'] as $row) {
+        $statusCounts[$row['Status']] = ($statusCounts[$row['Status']] ?? 0) + 1;
+    }
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode([
+        'title' => $title,
+        'file_name' => $fileBase . '.pdf',
+        'generated_at' => date('F j, Y g:i A'),
+        'filters' => $filterLabels,
+        'summary' => ['Total Records' => count($table['rows'])] + $statusCounts,
+        'columns' => $table['pdf_columns'],
+        'rows' => array_map(static fn(array $row) => array_map(static fn(string $col) => $row[$col] ?? '', $table['pdf_columns']), $table['rows']),
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 function monthly_trends_data($fromDateOrFilters = '', string $toDate = ''): array
 {
     $filters = is_array($fromDateOrFilters) ? $fromDateOrFilters : [

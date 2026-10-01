@@ -1528,6 +1528,20 @@ $weeklyConfirmed = count(array_filter($weeklyAppointments, static fn(array $a): 
 $weeklyServing = count(array_filter($weeklyAppointments, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Serving'));
 $weeklyPending = count(array_filter($weeklyAppointments, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Pending'));
 $weeklyCancelled = count(array_filter($weeklyAppointments, static fn(array $a): bool => (string) ($a['status'] ?? '') === 'Cancelled'));
+
+// Report export (CSV download, or JSON the browser turns into a PDF) for the selected report period
+if ($page === 'reports' && in_array(($_GET['export'] ?? ''), ['csv', 'json'], true)) {
+    send_report_export(
+        (string) $_GET['export'],
+        $weeklyAppointments,
+        'station_report_' . $stationSlug . '_' . date('Ymd_His'),
+        (string) $station['name'] . ' - Station Operational Report',
+        [
+            'Health Station' => (string) $station['name'],
+            'Period' => (string) $reportPeriodLabel,
+        ]
+    );
+}
 $weeklyActiveWaiting = $weeklyConfirmed + $weeklyServing;
 
 $stmtUniquePat = db()->prepare(
@@ -5706,9 +5720,20 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                     <p>Performance analytics, service breakdown, and consultation statistics strictly for <strong><?= h($station['name']); ?></strong>.</p>
                 </div>
                 <div class="reports-hero-actions no-print">
-                    <button type="button" class="primary-btn slim reports-print-btn" onclick="window.print()">
+                    <?php
+                    // Same period the page is showing (preset, custom range or week offset)
+                    $staffExportQuery = http_build_query(array_filter([
+                        'page' => 'reports',
+                        'period' => $reportPeriod !== 'custom' ? $reportPeriod : '',
+                        'report_from' => $reportPeriod === 'custom' ? $reportStartDate : '',
+                        'report_to' => $reportPeriod === 'custom' ? $reportEndDate : '',
+                        'week_offset' => $reportWeekOffset !== 0 ? (string) $reportWeekOffset : '',
+                    ], static fn($v): bool => $v !== '' && $v !== null));
+                    ?>
+                    <button type="button" class="primary-btn slim reports-print-btn" title="Export this period's records as CSV or PDF"
+                            onclick="ReportExport.choose({ csvUrl: '?<?= h($staffExportQuery); ?>&export=csv', pdfDataUrl: '?<?= h($staffExportQuery); ?>&export=json', accent: '#2563eb' })">
                         <?= staff_icon('download'); ?>
-                        <span>Print / Export Report</span>
+                        <span>Export Report</span>
                     </button>
                 </div>
             </section>
@@ -9206,6 +9231,7 @@ window.handleVitalNumericKeydown = handleVitalNumericKeydown;
 })();
 </script>
 <?php endif; ?>
+<script src="../shared/report-export.js?v=<?= (int) @filemtime(__DIR__ . '/../shared/report-export.js'); ?>"></script>
 <script src="../shared/modal-persist.js?v=<?= (int) @filemtime(__DIR__ . '/../shared/modal-persist.js'); ?>"></script>
 <script>
 // Keep JavaScript-opened modals open across a refresh (URL-driven modals already persist)
