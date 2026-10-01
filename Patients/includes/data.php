@@ -58,7 +58,7 @@ $serviceCatalog = [
     'tb' => ['slug' => 'tb', 'icon' => 'pulse', 'title' => 'TB DOTS Program', 'description' => 'Tuberculosis treatment', 'duration' => '20 mins', 'color' => 'violet'],
     'consultation' => ['slug' => 'consultation', 'icon' => 'stethoscope', 'title' => 'General Consultation', 'description' => 'Primary healthcare', 'duration' => '30 mins', 'color' => 'mint'],
     'nutrition' => ['slug' => 'nutrition', 'icon' => 'community', 'title' => 'Nutrition Program', 'description' => 'Nutritional assessment', 'duration' => '30 mins', 'color' => 'gold'],
-    'dental' => ['slug' => 'dental', 'icon' => 'cube', 'title' => 'Dental Services', 'description' => 'Oral health care', 'duration' => '45 mins', 'color' => 'cyan'],
+    'dental' => ['slug' => 'dental', 'icon' => 'tooth', 'title' => 'Dental Services', 'description' => 'Oral health care', 'duration' => '45 mins', 'color' => 'cyan'],
     'checkup' => ['slug' => 'checkup', 'icon' => 'calendar', 'title' => 'Wellness Checkup', 'description' => 'Routine physical assessment', 'duration' => '25 mins', 'color' => 'mint'],
     'maternal' => ['slug' => 'maternal', 'icon' => 'baby', 'title' => 'Maternal Counseling', 'description' => 'Support for expectant mothers', 'duration' => '30 mins', 'color' => 'pink'],
     'pediatric' => ['slug' => 'pediatric', 'icon' => 'heart', 'title' => 'Pediatric Consultation', 'description' => 'Health visits for children', 'duration' => '30 mins', 'color' => 'red'],
