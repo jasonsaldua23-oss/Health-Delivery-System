@@ -4029,7 +4029,8 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
     }
 
     if (!empty($stationAppointments)) {
-        $existingIds = array_column($appts, 'id');
+        // DB ids come back as strings; compare as integers so rows already loaded aren't added twice
+        $existingIds = array_map('intval', array_column($appts, 'id'));
         foreach ($stationAppointments as $stAppt) {
             if (strcasecmp((string)($stAppt['patient_id'] ?? ''), $patientId) === 0) {
                 $stId = (int) ($stAppt['id'] ?? 0);

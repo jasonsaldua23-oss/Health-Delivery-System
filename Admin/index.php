@@ -2114,7 +2114,15 @@ if (!function_exists('peso')) {
                                         <td style="text-align: center;">
                                             <?php
                                             $isParent = patient_has_infant_bookings((string) $patient['patient_id']);
-                                            $adminInfants = $isParent ? fetch_infant_sub_profiles_by_patient_id((string) $patient['patient_id']) : [];
+                                            // Same inputs as the staff page: the patient's appointment rows are passed in too
+                                            if (!isset($adminCompletedApptsByPatient)) {
+                                                $adminCompletedApptsByPatient = [];
+                                                foreach (fetch_appointments(['status' => 'Completed']) as $adminApptRow) {
+                                                    $adminCompletedApptsByPatient[strtoupper(trim((string) ($adminApptRow['patient_id'] ?? '')))][] = $adminApptRow;
+                                                }
+                                            }
+                                            $adminPatientAppts = $adminCompletedApptsByPatient[strtoupper(trim((string) $patient['patient_id']))] ?? [];
+                                            $adminInfants = $isParent ? fetch_infant_sub_profiles_by_patient_id((string) $patient['patient_id'], $adminPatientAppts) : [];
                                             if (!empty($adminInfants)) {
                                                 $pFirst = trim((string) ($patient['first_name'] ?? ''));
                                                 $pLast = trim((string) ($patient['last_name'] ?? ''));
