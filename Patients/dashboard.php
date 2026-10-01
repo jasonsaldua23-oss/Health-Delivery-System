@@ -609,9 +609,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
             box-shadow: 0 8px 18px rgba(245, 158, 11, 0.25);
         }
 
+        .section-title-wrap .section-icon.emerald {
+            display: grid;
+            place-items: center;
+            width: 62px;
+            height: 62px;
+            border-radius: 18px;
+            flex-shrink: 0;
+        }
+
+        /* iconSvg() puts a 16px inline size cap on every icon, so the larger size needs !important */
         .section-title-wrap .section-icon svg {
-            width: 30px;
-            height: 30px;
+            width: 30px !important;
+            height: 30px !important;
+            max-width: 30px !important;
+            max-height: 30px !important;
         }
 
         .section-title-copy h2 {
@@ -3304,15 +3316,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                 gap: 12px;
             }
 
-            .section-title-wrap .section-icon.gold {
+            .section-title-wrap .section-icon.gold,
+            .section-title-wrap .section-icon.emerald {
                 width: 48px;
                 height: 48px;
                 border-radius: 14px;
             }
 
             .section-title-wrap .section-icon svg {
-                width: 24px;
-                height: 24px;
+                width: 24px !important;
+                height: 24px !important;
+                max-width: 24px !important;
+                max-height: 24px !important;
             }
 
             .section-title-copy h2 {
@@ -4093,7 +4108,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
             <!-- MY BOOKED APPOINTMENTS SECTION -->
             <section class="dashboard-section-block patient-appointments-section" id="appointmentsSection">
                 <div class="section-title-wrap">
-                    <div class="section-icon emerald" style="background:#ecfdf5;color:#059669;"><?= iconSvg('calendar'); ?></div>
                     <div class="section-title-copy">
                         <h2>My Booked Appointments</h2>
                         <p>Your scheduled health station appointment, booking details, and consultation history.</p>
