@@ -879,10 +879,6 @@ $reportAgeGroup = trim((string) ($_GET['age_group'] ?? ''));
 $reportStation  = trim((string) ($_GET['station_slug'] ?? ''));
 $reportService  = trim((string) ($_GET['service_slug'] ?? ''));
 $reportStatus   = trim((string) ($_GET['status_filter'] ?? ''));
-$unattendedAdminPeriod = trim((string) ($_GET['unattended_period'] ?? 'all'));
-if (!in_array($unattendedAdminPeriod, ['all', 'today', 'week', 'month'], true)) {
-    $unattendedAdminPeriod = 'all';
-}
 
 $reportFilters = [
     'report_period' => $reportPeriod,
@@ -893,7 +889,6 @@ $reportFilters = [
     'station_slug'  => $reportStation,
     'service_slug'  => $reportService,
     'status'        => $reportStatus,
-    'unattended_period' => $unattendedAdminPeriod,
 ];
 
 // Handle CSV export for reports if requested
@@ -1089,11 +1084,8 @@ try {
     $activityLog         = fetch_activity_log(30, $reportFrom, $reportTo);
     $healthEventsSummary = health_events_summary();
 
-    $unattendedAdminSummaryFilters = [];
-    if ($unattendedAdminPeriod !== 'all') {
-        $unattendedAdminSummaryFilters['timeframe'] = $unattendedAdminPeriod;
-    }
-    $unattendedStationSummary = fetch_unattended_station_summary($unattendedAdminSummaryFilters);
+    // Audit follows the report period buttons (Today / Weekly / Monthly / Quarterly / Annually)
+    $unattendedStationSummary = fetch_unattended_station_summary(['from_date' => $reportFrom, 'to_date' => $reportTo]);
 } catch (Throwable $e) {
     error_log('Admin reports analytics error: ' . $e->getMessage());
     $reportStats = ['total_patients' => 0, 'services_rendered' => 0, 'total_bookings' => 0, 'completed_count' => 0, 'cancelled_count' => 0, 'confirmed_count' => 0, 'pending_count' => 0, 'serving_count' => 0, 'avg_daily' => 0.0, 'utilization_pct' => 0, 'cancellation_pct' => 0, 'day_count' => 1];
@@ -5461,21 +5453,13 @@ if (!function_exists('peso')) {
                         </div>
                     </div>
                     <div class="admin-unattended-actions">
-                        <form method="get" class="admin-unattended-period-form" style="display:flex;align-items:center;gap:8px;">
-                            <input type="hidden" name="page" value="reports">
-                            <?php foreach ($reportFilters as $rfk => $rfv): ?>
-                                <?php if ($rfk !== 'unattended_period' && $rfv !== '' && $rfv !== null): ?>
-                                    <input type="hidden" name="<?= h($rfk); ?>" value="<?= h($rfv); ?>">
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                            <label for="unattendedPeriodSelect" style="font-size:0.82rem;font-weight:700;color:#475569;white-space:nowrap;">Audit Scope:</label>
-                            <select name="unattended_period" id="unattendedPeriodSelect" class="form-input" style="padding:6px 12px;font-size:0.84rem;border-radius:10px;" onchange="this.form.submit()">
-                                <option value="all" <?= $unattendedAdminPeriod === 'all' ? 'selected' : ''; ?>>All Records (All-Time)</option>
-                                <option value="today" <?= $unattendedAdminPeriod === 'today' ? 'selected' : ''; ?>>Today</option>
-                                <option value="week" <?= $unattendedAdminPeriod === 'week' ? 'selected' : ''; ?>>This Week</option>
-                                <option value="month" <?= $unattendedAdminPeriod === 'month' ? 'selected' : ''; ?>>This Month</option>
-                            </select>
-                        </form>
+                        <?php
+                        $auditPeriodLabels = ['today' => 'Today', 'weekly' => 'This Week', 'monthly' => 'This Month', 'quarterly' => 'This Quarter', 'annually' => 'This Year'];
+                        ?>
+                        <span class="admin-unattended-period-pill" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#f5f3ff;color:#5b21b6;font-size:0.82rem;font-weight:700;white-space:nowrap;">
+                            <?= admin_icon('calendar'); ?>
+                            <?= h($auditPeriodLabels[$reportPeriod] ?? 'Selected Period'); ?> &middot; <?= h(date('M j', strtotime($reportFrom))); ?> &ndash; <?= h(date('M j, Y', strtotime($reportTo))); ?>
+                        </span>
                     </div>
                 </div>
 
