@@ -3059,9 +3059,9 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 <?php if ($isVaccination): ?>
                                     <?php if ($isNonSelf): ?>
                                         <!-- Non-Self / Infant Immunization: Standard 9-option Select Dropdown with dynamic Others input -->
-                                        <div class="form-group-item full-width" style="margin-top: 18px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 14px; padding: 16px 18px;">
-                                            <label for="queue_vaccine_select" class="form-field-label" style="color: #166534; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                                                <span style="display:inline-flex;color:#16a34a;"><?= staff_icon('syringe'); ?></span>
+                                        <div class="form-group-item full-width" style="margin-top: 18px; background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 14px; padding: 16px 18px;">
+                                            <label for="queue_vaccine_select" class="form-field-label" style="color: #1e40af; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                                                <span style="display:inline-flex;color:#2563eb;"><?= staff_icon('syringe'); ?></span>
                                                 <span>Type of Vaccine (Infant / Child Schedule)</span>
                                                 <span class="required" style="color: #dc2626;">*</span>
                                             </label>
@@ -3166,7 +3166,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                                 <div id="vaccine_multiselect_menu" class="vaccine-dropdown-menu" style="display: none;">
                                                     <div class="vaccine-menu-header">
                                                         <div style="display: flex; align-items: center; gap: 6px;">
-                                                            <span style="font-size: 0.78rem; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.5px;">Standard Infant Vaccines</span>
+                                                            <span style="font-size: 0.78rem; font-weight: 700; color: #1e40af; text-transform: uppercase; letter-spacing: 0.5px;">Standard Infant Vaccines</span>
                                                             <span style="font-size: 0.72rem; color: #64748b; font-weight: 500;">(Select multiple)</span>
                                                         </div>
                                                         <button type="button" class="vaccine-clear-btn" onclick="clearAllVaccines(event)">Clear all</button>
@@ -3234,21 +3234,21 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                                     </div>
                                                     <div class="vaccine-menu-footer">
                                                         <span style="font-size: 0.74rem; color: #64748b;">Multiple routine vaccines can be co-administered per DOH guidelines.</span>
-                                                        <button type="button" class="btn btn-sm btn-primary" onclick="closeVaccineDropdown(event)" style="padding: 4px 14px; font-size: 0.8rem; background: #16a34a; border-color: #16a34a; border-radius: 6px; font-weight: 600;">Done</button>
+                                                        <button type="button" class="btn btn-sm btn-primary" onclick="closeVaccineDropdown(event)" style="padding: 4px 14px; font-size: 0.8rem; background: #2563eb; border-color: #2563eb; border-radius: 6px; font-weight: 600;">Done</button>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div id="queue_vaccine_other_wrap" style="margin-top: 10px; display: <?= $hasOthersSelected ? 'block' : 'none'; ?>;">
-                                                <label for="queue_vaccine_other" class="form-field-label" style="color: #166534; font-size: 0.85rem; font-weight: 600;">Specify Other Vaccine Type:</label>
-                                                <input type="text" id="queue_vaccine_other" name="vaccine_type_other" value="<?= h($customVaccineText); ?>" placeholder="Enter custom vaccine antigen or brand..." class="form-input-field" style="border-color: #86efac; background: #ffffff; font-size: 0.92rem;">
+                                                <label for="queue_vaccine_other" class="form-field-label" style="color: #1e40af; font-size: 0.85rem; font-weight: 600;">Specify Other Vaccine Type:</label>
+                                                <input type="text" id="queue_vaccine_other" name="vaccine_type_other" value="<?= h($customVaccineText); ?>" placeholder="Enter custom vaccine antigen or brand..." class="form-input-field" style="border-color: #93c5fd; background: #ffffff; font-size: 0.92rem;">
                                             </div>
-                                            <small style="display: block; margin-top: 6px; color: #15803d; font-size: 0.82rem;">Select one or more vaccines from standard DOH national immunization program (with infant dose limits enforced), or choose Others to specify.</small>
+                                            <small style="display: block; margin-top: 6px; color: #1d4ed8; font-size: 0.82rem;">Select one or more vaccines from standard DOH national immunization program (with infant dose limits enforced), or choose Others to specify.</small>
 
                                             <!-- Infant Immunization Schedule & Dose Status Tracker Card -->
-                                            <div class="vaccine-schedule-status-box" style="margin-top: 14px; background: #ffffff; border: 1.5px solid #bbf7d0; border-radius: 12px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                                            <div class="vaccine-schedule-status-box" style="margin-top: 14px; background: #ffffff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                                                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
-                                                    <span style="font-size: 0.82rem; font-weight: 700; color: #15803d; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                                                    <span style="font-size: 0.82rem; font-weight: 700; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
                                                         <?= staff_icon('syringe'); ?> Infant Immunization Dose Limits &amp; Progress
                                                     </span>
                                                     <span style="font-size: 0.74rem; color: #64748b; font-weight: 600;">DOH National Immunization Program</span>
@@ -3261,12 +3261,12 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                                         $schedInfo = $vaccineSchedules[$vName] ?? null;
                                                         $ageTxt = $schedInfo ? $schedInfo['age'] : '';
                                                         ?>
-                                                        <div style="background: <?= $maxed ? '#f8fafc' : '#f0fdf4'; ?>; border: 1px solid <?= $maxed ? '#cbd5e1' : '#86efac'; ?>; border-radius: 8px; padding: 7px 10px; display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
+                                                        <div style="background: <?= $maxed ? '#f8fafc' : '#eff6ff'; ?>; border: 1px solid <?= $maxed ? '#cbd5e1' : '#93c5fd'; ?>; border-radius: 8px; padding: 7px 10px; display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
                                                             <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 6px;">
-                                                                <strong style="color: <?= $maxed ? '#64748b' : '#14532d'; ?>; display: block; font-size: 0.8rem; <?= $maxed ? 'text-decoration: line-through;' : ''; ?>"><?= h($vName); ?></strong>
+                                                                <strong style="color: <?= $maxed ? '#64748b' : '#1e3a8a'; ?>; display: block; font-size: 0.8rem; <?= $maxed ? 'text-decoration: line-through;' : ''; ?>"><?= h($vName); ?></strong>
                                                                 <small style="color: #64748b; font-size: 0.72rem;"><?= h($ageTxt); ?></small>
                                                             </div>
-                                                            <span style="flex-shrink: 0; padding: 2px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; <?= $maxed ? 'background: #e2e8f0; color: #475569;' : ($dosesDone > 0 ? 'background: #dbeafe; color: #1e40af;' : 'background: #dcfce7; color: #166534;'); ?>">
+                                                            <span style="flex-shrink: 0; padding: 2px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; <?= $maxed ? 'background: #e2e8f0; color: #475569;' : ($dosesDone > 0 ? 'background: #fef3c7; color: #92400e;' : 'background: #dbeafe; color: #1e40af;'); ?>">
                                                                 <?= $maxed ? 'Limit Reached (' . $dosesDone . '/' . $maxDose . ')' : ($dosesDone . '/' . $maxDose . ' Doses'); ?>
                                                             </span>
                                                         </div>
@@ -3276,14 +3276,14 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         </div>
                                     <?php else: ?>
                                         <!-- Self Immunization: Standard Text Input -->
-                                        <div class="form-group-item full-width" style="margin-top: 18px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 14px; padding: 16px 18px;">
-                                            <label for="queue_vaccine_type" class="form-field-label" style="color: #166534; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                                                <span style="display:inline-flex;color:#16a34a;"><?= staff_icon('syringe'); ?></span>
+                                        <div class="form-group-item full-width" style="margin-top: 18px; background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 14px; padding: 16px 18px;">
+                                            <label for="queue_vaccine_type" class="form-field-label" style="color: #1e40af; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                                                <span style="display:inline-flex;color:#2563eb;"><?= staff_icon('syringe'); ?></span>
                                                 <span>Type of Vaccine</span>
                                                 <span class="required" style="color: #dc2626;">*</span>
                                             </label>
-                                            <input type="text" id="queue_vaccine_type" name="vaccine_type" value="<?= h((string) ($selectedVitalsAppointment['vaccine_type'] ?? '')); ?>" placeholder="e.g. Influenza, COVID-19 Booster, Pneumococcal, Tetanus Toxoid..." required class="form-input-field" style="border-color: #86efac; background: #ffffff; font-size: 0.95rem;">
-                                            <small style="display: block; margin-top: 6px; color: #15803d; font-size: 0.82rem;">Encode the specific brand, antigen, or formulation administered during this adult visit.</small>
+                                            <input type="text" id="queue_vaccine_type" name="vaccine_type" value="<?= h((string) ($selectedVitalsAppointment['vaccine_type'] ?? '')); ?>" placeholder="e.g. Influenza, COVID-19 Booster, Pneumococcal, Tetanus Toxoid..." required class="form-input-field" style="border-color: #93c5fd; background: #ffffff; font-size: 0.95rem;">
+                                            <small style="display: block; margin-top: 6px; color: #1d4ed8; font-size: 0.82rem;">Encode the specific brand, antigen, or formulation administered during this adult visit.</small>
                                         </div>
                                     <?php endif; ?>
                                 <?php endif; ?>
@@ -3309,7 +3309,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 </a>
                                 <button type="submit" class="clinical-modal-save-btn">
                                     <?= staff_icon('check'); ?>
-                                    <span>Save Vital Signs</span>
+                                    <span><?= $isVaccination ? 'Save' : 'Save Vital Signs'; ?></span>
                                 </button>
                             </div>
                         </form>
