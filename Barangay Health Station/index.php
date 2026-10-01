@@ -795,12 +795,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'save
         exit;
     }
 
-    $doses = [];
+    $postedDates = (array) ($_POST['manual_vaccine_dates'] ?? []);
+    $infantBirthDate = (string) ($infantProfile['birth_date'] ?? '');
+    $vaccines = [];
     foreach ((array) ($_POST['manual_vaccines'] ?? []) as $vaccine => $count) {
-        $doses[(string) $vaccine] = (int) $count;
+        $vaccine = (string) $vaccine;
+        $count = (int) $count;
+        $date = trim((string) ($postedDates[$vaccine] ?? ''));
+        if ($count > 0) {
+            $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+            if ($parsed === false || $parsed->format('Y-m-d') !== $date) {
+                echo json_encode(['success' => false, 'message' => "Please enter the date {$vaccine} was administered."]);
+                exit;
+            }
+            if ($date > date('Y-m-d')) {
+                echo json_encode(['success' => false, 'message' => "The date {$vaccine} was administered cannot be in the future."]);
+                exit;
+            }
+            if ($infantBirthDate !== '' && $infantBirthDate !== '0000-00-00' && $date < $infantBirthDate) {
+                echo json_encode(['success' => false, 'message' => "The date {$vaccine} was administered cannot be before the infant's birth date."]);
+                exit;
+            }
+        }
+        $vaccines[$vaccine] = ['doses' => $count, 'date' => $date];
     }
 
-    if (save_infant_manual_vaccines($infantId, $doses, (string) ($staffAccount['email'] ?? ''))) {
+    if (save_infant_manual_vaccines($infantId, $vaccines, (string) ($staffAccount['email'] ?? ''))) {
         log_activity('staff', (string) ($staffAccount['email'] ?? ''), 'infant_manual_vaccines_saved', 'infant', (string) $infantId, '', '', (string) ($station['slug'] ?? ''));
         echo json_encode([
             'success' => true,
@@ -7771,13 +7791,17 @@ window.openStaffInfantModal = function(infant) {
     // Doses staff encoded by hand (given elsewhere, e.g. BCG / Hepatitis B at the birth hospital)
     const manualVaccines = (infant.manual_vaccines && typeof infant.manual_vaccines === 'object') ? infant.manual_vaccines : {};
     Object.keys(manualVaccines).forEach(canon => {
-        const manualCount = Number(manualVaccines[canon]) || 0;
+        const entry = manualVaccines[canon] || {};
+        const manualCount = Number(entry.doses) || 0;
         if (!nipLimits[canon] || manualCount <= 0) return;
         if (!cardSummary[canon]) {
             cardSummary[canon] = { count: 0, latestDate: '' };
         }
         cardSummary[canon].count = Math.min(cardSummary[canon].count + manualCount, nipLimits[canon]);
         cardSummary[canon].manual = manualCount;
+        if (entry.date && (!cardSummary[canon].latestDate || entry.date > cardSummary[canon].latestDate)) {
+            cardSummary[canon].latestDate = entry.date;
+        }
     });
     const vNames = Object.keys(nipLimits).filter(canon => cardSummary[canon]);
     if (vNames.length > 0) {
@@ -7786,7 +7810,8 @@ window.openStaffInfantModal = function(infant) {
             const info = cardSummary[vName];
             const maxDose = nipLimits[vName];
             const isCompleted = info.count >= maxDose;
-            const dateStr = info.latestDate ? new Date(info.latestDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+            // Dates are plain Y-m-d; parse as local so the day doesn't shift with the timezone
+            const dateStr = info.latestDate ? new Date(String(info.latestDate).slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
             const badgeLabel = isCompleted ? `${info.count}/${maxDose} Doses (Limit Reached)` : `${info.count}/${maxDose} Doses Taken`;
 
             dosesHtml += `
@@ -7803,20 +7828,31 @@ window.openStaffInfantModal = function(infant) {
         dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 8px 0 0 0;">No NIP vaccine doses recorded yet for this infant.</p>';
     }
 
+    const todayIso = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const infantBirthIso = (infant.birth_date && infant.birth_date !== '0000-00-00') ? String(infant.birth_date).slice(0, 10) : '';
     const manualVaccineRowsHtml = Object.keys(nipLimits).map(canon => {
-        const saved = Number(manualVaccines[canon]) || 0;
+        const entry = manualVaccines[canon] || {};
+        const saved = Number(entry.doses) || 0;
+        const savedDate = entry.date || '';
+        const multiDose = nipLimits[canon] > 1;
         let options = '';
         for (let n = 1; n <= nipLimits[canon]; n++) {
             options += `<option value="${n}" ${saved === n ? 'selected' : ''}>${n} dose${n > 1 ? 's' : ''}</option>`;
         }
         return `
-            <label style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; cursor: pointer;">
-                <span style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.86rem; font-weight: 600; color: #0f172a;">
-                    <input type="checkbox" class="manual-vax-check" data-vaccine="${staffEscapeHtml(canon)}" ${saved > 0 ? 'checked' : ''} onchange="this.closest('label').querySelector('select').disabled = !this.checked;">
-                    ${staffEscapeHtml(canon)}
-                </span>
-                <select class="manual-vax-doses" data-vaccine="${staffEscapeHtml(canon)}" ${saved > 0 ? '' : 'disabled'} style="padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.82rem;">${options}</select>
-            </label>`;
+            <div class="manual-vax-row" style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.86rem; font-weight: 600; color: #0f172a; cursor: pointer;">
+                        <input type="checkbox" class="manual-vax-check" data-vaccine="${staffEscapeHtml(canon)}" ${saved > 0 ? 'checked' : ''} onchange="this.closest('.manual-vax-row').querySelectorAll('select, input[type=date]').forEach(el => { el.disabled = !this.checked; });">
+                        ${staffEscapeHtml(canon)}
+                    </label>
+                    <select class="manual-vax-doses" data-vaccine="${staffEscapeHtml(canon)}" ${saved > 0 ? '' : 'disabled'} style="padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.82rem;">${options}</select>
+                </div>
+                <label style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 0.78rem; color: #475569; font-weight: 600;">
+                    <span>${multiDose ? 'Date of latest dose' : 'Date administered'}</span>
+                    <input type="date" class="manual-vax-date" data-vaccine="${staffEscapeHtml(canon)}" value="${staffEscapeHtml(savedDate)}" max="${todayIso}" ${infantBirthIso ? `min="${staffEscapeHtml(infantBirthIso)}"` : ''} ${saved > 0 ? '' : 'disabled'} style="padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.82rem;">
+                </label>
+            </div>`;
     }).join('');
 
     const formatInfantHeight = (val) => {
@@ -8050,11 +8086,26 @@ window.saveStaffInfantManualVaccines = function(btn) {
     ['patient_id', 'first_name', 'middle_name', 'last_name', 'birth_date', 'gender'].forEach(key => {
         formData.append(key, infant[key] || '');
     });
+    let missingDate = '';
     form.querySelectorAll('.manual-vax-check').forEach(check => {
         const vaccine = check.dataset.vaccine;
         const select = form.querySelector(`.manual-vax-doses[data-vaccine="${CSS.escape(vaccine)}"]`);
+        const dateInput = form.querySelector(`.manual-vax-date[data-vaccine="${CSS.escape(vaccine)}"]`);
+        const dateVal = dateInput ? dateInput.value : '';
+        if (check.checked && !dateVal && !missingDate) {
+            missingDate = vaccine;
+        }
         formData.append(`manual_vaccines[${vaccine}]`, check.checked && select ? select.value : '0');
+        formData.append(`manual_vaccine_dates[${vaccine}]`, check.checked ? dateVal : '');
     });
+    if (missingDate) {
+        if (alertBox) {
+            alertBox.style.display = 'block';
+            alertBox.style.color = '#dc2626';
+            alertBox.textContent = `Please enter the date ${missingDate} was administered.`;
+        }
+        return;
+    }
 
     if (btn) {
         btn.disabled = true;

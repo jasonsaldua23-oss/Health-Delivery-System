@@ -4648,18 +4648,23 @@ function ensure_infant_manual_vaccines_table(mysqli $connection): void
             infant_profile_id INT UNSIGNED NOT NULL,
             vaccine_type VARCHAR(100) NOT NULL,
             doses TINYINT UNSIGNED NOT NULL DEFAULT 1,
+            administered_date DATE NULL DEFAULT NULL,
             encoded_by VARCHAR(150) NOT NULL DEFAULT "",
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY uniq_infant_vaccine (infant_profile_id, vaccine_type)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
     );
+    if (!db_column_exists($connection, 'infant_manual_vaccines', 'administered_date')) {
+        $connection->query('ALTER TABLE infant_manual_vaccines ADD COLUMN administered_date DATE NULL DEFAULT NULL AFTER doses');
+    }
     $ensured = true;
 }
 
 /**
  * Vaccine doses staff encoded by hand for an infant (e.g. BCG / Hepatitis B given at the birth hospital).
- * Returns [vaccine card name => doses].
+ * Returns [vaccine card name => ['doses' => int, 'date' => 'Y-m-d' or '']]; for multi-dose vaccines
+ * the date is when the most recent encoded dose was given.
  */
 function fetch_infant_manual_vaccines(int $infantProfileId): array
 {
@@ -4669,13 +4674,16 @@ function fetch_infant_manual_vaccines(int $infantProfileId): array
     try {
         $db = db();
         ensure_infant_manual_vaccines_table($db);
-        $stmt = $db->prepare('SELECT vaccine_type, doses FROM infant_manual_vaccines WHERE infant_profile_id = ?');
+        $stmt = $db->prepare('SELECT vaccine_type, doses, administered_date FROM infant_manual_vaccines WHERE infant_profile_id = ?');
         $stmt->bind_param('i', $infantProfileId);
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $manual = [];
         foreach ($rows as $row) {
-            $manual[(string) $row['vaccine_type']] = (int) $row['doses'];
+            $manual[(string) $row['vaccine_type']] = [
+                'doses' => (int) $row['doses'],
+                'date' => (string) ($row['administered_date'] ?? ''),
+            ];
         }
         return $manual;
     } catch (Throwable $e) {
@@ -4685,10 +4693,11 @@ function fetch_infant_manual_vaccines(int $infantProfileId): array
 }
 
 /**
- * Replace an infant's manually encoded vaccines. $doses maps vaccine card name => dose count;
- * unknown vaccines are ignored, counts are clamped to the vaccine's dose limit, and 0 removes it.
+ * Replace an infant's manually encoded vaccines. $vaccines maps vaccine card name =>
+ * ['doses' => int, 'date' => 'Y-m-d']; unknown vaccines are ignored, counts are clamped to the
+ * vaccine's dose limit, 0 doses removes it, and an invalid or future date is stored as NULL.
  */
-function save_infant_manual_vaccines(int $infantProfileId, array $doses, string $encodedBy = ''): bool
+function save_infant_manual_vaccines(int $infantProfileId, array $vaccines, string $encodedBy = ''): bool
 {
     if ($infantProfileId <= 0) {
         return false;
@@ -4703,17 +4712,20 @@ function save_infant_manual_vaccines(int $infantProfileId, array $doses, string 
         $del->bind_param('i', $infantProfileId);
         $del->execute();
 
-        $ins = $db->prepare('INSERT INTO infant_manual_vaccines (infant_profile_id, vaccine_type, doses, encoded_by) VALUES (?, ?, ?, ?)');
-        foreach ($doses as $vaccine => $count) {
+        $ins = $db->prepare('INSERT INTO infant_manual_vaccines (infant_profile_id, vaccine_type, doses, administered_date, encoded_by) VALUES (?, ?, ?, ?, ?)');
+        foreach ($vaccines as $vaccine => $entry) {
             $vaccine = (string) $vaccine;
             if (!isset($limits[$vaccine])) {
                 continue;
             }
-            $count = max(0, min((int) $count, $limits[$vaccine]));
+            $count = max(0, min((int) ($entry['doses'] ?? 0), $limits[$vaccine]));
             if ($count === 0) {
                 continue;
             }
-            $ins->bind_param('isis', $infantProfileId, $vaccine, $count, $encodedBy);
+            $date = trim((string) ($entry['date'] ?? ''));
+            $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+            $date = ($parsed !== false && $parsed->format('Y-m-d') === $date && $date <= date('Y-m-d')) ? $date : null;
+            $ins->bind_param('isiss', $infantProfileId, $vaccine, $count, $date, $encodedBy);
             $ins->execute();
         }
 

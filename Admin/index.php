@@ -6705,13 +6705,17 @@ window.renderAdminSelectedInfant = function(targetInfant) {
     // Doses staff encoded by hand (given elsewhere, e.g. BCG / Hepatitis B at the birth hospital)
     const manualVaccines = (infant.manual_vaccines && typeof infant.manual_vaccines === 'object') ? infant.manual_vaccines : {};
     Object.keys(manualVaccines).forEach(canon => {
-        const manualCount = Number(manualVaccines[canon]) || 0;
+        const entry = manualVaccines[canon] || {};
+        const manualCount = Number(entry.doses) || 0;
         if (!nipLimits[canon] || manualCount <= 0) return;
         if (!cardSummary[canon]) {
             cardSummary[canon] = { count: 0, latestDate: '' };
         }
         cardSummary[canon].count = Math.min(cardSummary[canon].count + manualCount, nipLimits[canon]);
         cardSummary[canon].manual = manualCount;
+        if (entry.date && (!cardSummary[canon].latestDate || entry.date > cardSummary[canon].latestDate)) {
+            cardSummary[canon].latestDate = entry.date;
+        }
     });
     const vNames = Object.keys(nipLimits).filter(canon => cardSummary[canon]);
     if (vNames.length > 0) {
