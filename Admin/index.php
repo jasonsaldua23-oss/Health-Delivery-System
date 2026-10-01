@@ -6621,6 +6621,24 @@ window.selectAdminInfantFromList = function(idx) {
     window.renderAdminSelectedInfant(infant);
 };
 
+// Infant profile picture failed to load: try the next visit photo, then show the baby icon
+window.adminInfantPhotoFallback = function(img) {
+    const queue = (img.dataset.fallbacks || '').split('|').filter(Boolean);
+    const next = queue.shift();
+    if (next) {
+        img.dataset.fallbacks = queue.join('|');
+        img.src = next;
+        return;
+    }
+    img.onerror = null;
+    const wrap = img.parentElement;
+    if (!wrap) return;
+    wrap.style.display = 'flex';
+    wrap.style.alignItems = 'center';
+    wrap.style.justifyContent = 'center';
+    wrap.innerHTML = `<?= addslashes(admin_icon('baby')); ?>`;
+};
+
 window.renderAdminSelectedInfant = function(targetInfant) {
     const infant = (targetInfant && typeof targetInfant === 'object') ? targetInfant : currentAdminInfantData;
     if (!infant) return;
@@ -6628,11 +6646,16 @@ window.renderAdminSelectedInfant = function(targetInfant) {
     if (!body) return;
 
     let photoHtml = '';
-    const photoRaw = (infant.latest_photo || infant.photo_path || '').trim();
-    const photoSrc = resolveAdminPhotoUrl(photoRaw);
+    // Profile picture: newest infant immunization photo, then older visit photos, then the baby icon
+    const photoCandidates = [];
+    [infant.latest_photo, infant.photo_path, ...((infant.appointments || []).map(a => a.photo_path))].forEach(raw => {
+        const src = resolveAdminPhotoUrl((raw || '').trim());
+        if (src && !photoCandidates.includes(src)) photoCandidates.push(src);
+    });
+    const photoSrc = photoCandidates[0] || '';
     const babySvg = `<?= addslashes(admin_icon('baby')); ?>`;
     if (photoSrc) {
-        photoHtml = `<img src="${adminEscapeHtml(photoSrc)}" alt="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer;" onclick="window.previewAdminPhotoInModal('${adminEscapeHtml(photoSrc)}')" title="Click to view full photo" onerror="this.onerror=null; this.parentElement.style.display='flex'; this.parentElement.style.alignItems='center'; this.parentElement.style.justifyContent='center'; this.parentElement.innerHTML='${babySvg}';">`;
+        photoHtml = `<img src="${adminEscapeHtml(photoSrc)}" alt="" data-fallbacks="${adminEscapeHtml(photoCandidates.slice(1).join('|'))}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer;" onclick="window.previewAdminPhotoInModal(this.src)" title="Click to view full photo" onerror="window.adminInfantPhotoFallback(this)">`;
     } else {
         photoHtml = `<div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">${babySvg}</div>`;
     }
@@ -6743,12 +6766,12 @@ window.renderAdminSelectedInfant = function(targetInfant) {
             const badgeLabel = isCompleted ? `${info.count}/${maxDose} Doses (Limit Reached)` : `${info.count}/${maxDose} Doses Taken`;
 
             dosesHtml += `
-            <div style="background: ${isCompleted ? '#ecfdf5' : '#f5f3ff'}; border: 1.5px solid ${isCompleted ? '#a7f3d0' : '#ddd6fe'}; color: ${isCompleted ? '#065f46' : '#6d28d9'}; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);">
-                <span style="display: inline-flex; align-items: center; color: ${isCompleted ? '#059669' : '#7c3aed'};"><?= admin_icon('syringe'); ?></span>
+            <div style="background: ${isCompleted ? '#ede9fe' : '#f5f3ff'}; border: 1.5px solid ${isCompleted ? '#c4b5fd' : '#ddd6fe'}; color: ${isCompleted ? '#4c1d95' : '#6d28d9'}; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);">
+                <span style="display: inline-flex; align-items: center; color: ${isCompleted ? '#5b21b6' : '#7c3aed'};"><?= admin_icon('syringe'); ?></span>
                 <span>${adminEscapeHtml(vName)}</span>
-                ${badgeLabel ? `<span style="background: ${isCompleted ? '#059669' : '#7c3aed'}; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${badgeLabel}</span>` : ''}
-                ${dateStr ? `<span style="font-size: 0.74rem; color: ${isCompleted ? '#047857' : '#7c3aed'}; font-weight: 600; opacity: 0.85;">(${adminEscapeHtml(dateStr)})</span>` : ''}
-                ${info.manual ? `<span style="font-size: 0.72rem; color: #92400e; background: #fef3c7; border: 1px solid #fde68a; padding: 1px 7px; border-radius: 999px; font-weight: 700;" title="${info.manual} dose(s) encoded manually by staff">Encoded</span>` : ''}
+                ${badgeLabel ? `<span style="background: ${isCompleted ? '#5b21b6' : '#7c3aed'}; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${badgeLabel}</span>` : ''}
+                ${dateStr ? `<span style="font-size: 0.74rem; color: ${isCompleted ? '#5b21b6' : '#7c3aed'}; font-weight: 600; opacity: 0.85;">(${adminEscapeHtml(dateStr)})</span>` : ''}
+                ${info.manual ? `<span style="font-size: 0.72rem; color: #5b21b6; background: #f5f3ff; border: 1px solid #c4b5fd; padding: 1px 7px; border-radius: 999px; font-weight: 700;" title="${info.manual} dose(s) encoded manually by staff">Encoded</span>` : ''}
             </div>`;
         });
         dosesHtml += '</div>';

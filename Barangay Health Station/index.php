@@ -7826,6 +7826,24 @@ window.previewPhotoInModal = function(src) {
     overlay.style.display = 'flex';
 };
 
+// Infant profile picture failed to load: try the next visit photo, then show the baby icon
+window.staffInfantPhotoFallback = function(img) {
+    const queue = (img.dataset.fallbacks || '').split('|').filter(Boolean);
+    const next = queue.shift();
+    if (next) {
+        img.dataset.fallbacks = queue.join('|');
+        img.src = next;
+        return;
+    }
+    img.onerror = null;
+    const wrap = img.parentElement;
+    if (!wrap) return;
+    wrap.style.display = 'flex';
+    wrap.style.alignItems = 'center';
+    wrap.style.justifyContent = 'center';
+    wrap.innerHTML = `<?= addslashes(staff_icon('baby')); ?>`;
+};
+
 window.openStaffInfantModal = function(infant) {
     if (!infant) return;
     // Encoded vaccines saved this page session override the (older) data embedded in the list
@@ -7841,11 +7859,16 @@ window.openStaffInfantModal = function(infant) {
     const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '<?= h($csrf); ?>';
     
     let photoHtml = '';
-    const photoRaw = (infant.latest_photo || infant.photo_path || '').trim();
-    const photoSrc = resolveStaffPhotoUrl(photoRaw);
+    // Profile picture: newest infant immunization photo, then older visit photos, then the baby icon
+    const photoCandidates = [];
+    [infant.latest_photo, infant.photo_path, ...((infant.appointments || []).map(a => a.photo_path))].forEach(raw => {
+        const src = resolveStaffPhotoUrl((raw || '').trim());
+        if (src && !photoCandidates.includes(src)) photoCandidates.push(src);
+    });
+    const photoSrc = photoCandidates[0] || '';
     const babySvg = `<?= addslashes(staff_icon('baby')); ?>`;
     if (photoSrc) {
-        photoHtml = `<img src="${staffEscapeHtml(photoSrc)}" alt="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer;" onclick="window.previewPhotoInModal('${staffEscapeHtml(photoSrc)}')" title="Click to view full photo" onerror="this.onerror=null; this.parentElement.style.display='flex'; this.parentElement.style.alignItems='center'; this.parentElement.style.justifyContent='center'; this.parentElement.innerHTML='${babySvg}';">`;
+        photoHtml = `<img src="${staffEscapeHtml(photoSrc)}" alt="" data-fallbacks="${staffEscapeHtml(photoCandidates.slice(1).join('|'))}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer;" onclick="window.previewPhotoInModal(this.src)" title="Click to view full photo" onerror="window.staffInfantPhotoFallback(this)">`;
     } else {
         photoHtml = `<div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">${babySvg}</div>`;
     }
