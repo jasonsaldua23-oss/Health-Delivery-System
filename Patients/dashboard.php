@@ -4746,7 +4746,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
         <div>
             <h3>Contact Information</h3>
             <ul class="footer-list">
-                <li><span class="inline-icon"><?= iconSvg('phone'); ?></span><?= h($contact['phone']); ?></li>
                 <li><span class="inline-icon"><?= iconSvg('map'); ?></span><?= h($contact['address']); ?></li>
                 <li><span class="inline-icon"><?= iconSvg('clock'); ?></span><?= h($contact['hours']); ?></li>
             </ul>
