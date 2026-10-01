@@ -3235,9 +3235,33 @@ if (!function_exists('extract_vital_numeric')) {
     }
 }
 
+/**
+ * Immunization booked for someone other than the account holder (an infant / child).
+ */
+function appointment_is_infant_immunization(array $appointment): bool
+{
+    $rec = appointment_recipient_details($appointment);
+    return $rec['is_immunization']
+        && !$rec['is_self']
+        && !in_array(strtolower((string) $rec['relationship']), ['myself', 'self', 'me'], true);
+}
+
+/**
+ * Vital sign fields required for an appointment. Blood pressure is not taken for infant
+ * immunizations; it is still required when the account holder is the vaccine recipient.
+ */
+function appointment_required_vital_fields(array $appointment): array
+{
+    $fields = ['body_temperature', 'pulse_rate', 'respiration_rate'];
+    if (!appointment_is_infant_immunization($appointment)) {
+        $fields[] = 'blood_pressure';
+    }
+    return $fields;
+}
+
 function appointment_has_vitals(array $appointment): bool
 {
-    foreach (['body_temperature', 'pulse_rate', 'respiration_rate', 'blood_pressure'] as $field) {
+    foreach (appointment_required_vital_fields($appointment) as $field) {
         if (trim((string) ($appointment[$field] ?? '')) === '') {
             return false;
         }

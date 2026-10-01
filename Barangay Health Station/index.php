@@ -732,10 +732,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
             $postData['vaccine_type'] = implode(', ', $finalVaccines);
         }
         if (($_POST['action'] ?? '') === 'save_vitals') {
-            if (empty($postData['body_temperature']) || empty($postData['pulse_rate']) || empty($postData['respiration_rate']) || empty($postData['blood_pressure'])) {
-                $_SESSION['staff_flash'] = 'Please fill out all required vital signs before saving.';
+            // Every field shown in the vitals modal is required; which ones apply depends on the appointment
+            $vitalsAppt = fetch_appointment_by_id($appointmentId) ?? [];
+            $vitalsIsInfant = appointment_is_infant_immunization($vitalsAppt);
+            $vitalsIsVaccination = is_vaccination_service((string) ($vitalsAppt['service_slug'] ?? ''), (string) ($vitalsAppt['service_name'] ?? ''));
+            $vitalsIsTb = is_tb_service((string) ($vitalsAppt['service_slug'] ?? ''), (string) ($vitalsAppt['service_name'] ?? ''));
+            $rawField = static fn(string $name): string => trim((string) ($_POST[$name] ?? ''));
+            $vitalsErrors = [];
+
+            $tempVal = (string) ($postData['body_temperature'] ?? '');
+            if ($tempVal === '') {
+                $vitalsErrors['body_temperature'] = 'Body temperature is required.';
+            } elseif ((float) $tempVal < 30 || (float) $tempVal > 45) {
+                $vitalsErrors['body_temperature'] = 'Please enter a realistic body temperature (°C).';
+            }
+            if ((string) ($postData['pulse_rate'] ?? '') === '') {
+                $vitalsErrors['pulse_rate'] = 'Pulse rate is required.';
+            }
+            if ((string) ($postData['respiration_rate'] ?? '') === '') {
+                $vitalsErrors['respiration_rate'] = 'Respiration rate is required.';
+            }
+            if (in_array('blood_pressure', appointment_required_vital_fields($vitalsAppt), true)) {
+                $bpVal = (string) ($postData['blood_pressure'] ?? '');
+                if ($bpVal === '') {
+                    $vitalsErrors['blood_pressure'] = 'Blood pressure is required.';
+                } elseif (!preg_match('/^\d{2,3}\/\d{2,3}$/', $bpVal)) {
+                    $vitalsErrors['blood_pressure'] = 'Please enter blood pressure in systolic/diastolic format (e.g. 120/80).';
+                }
+            } else {
+                // Infant immunization: blood pressure is not taken
+                unset($postData['blood_pressure']);
+            }
+            if ($vitalsIsVaccination && $vitalsIsInfant) {
+                if (preg_replace('/[^0-9.]/', '', $rawField('height')) === '') {
+                    $vitalsErrors['height'] = 'Height is required for infant immunization.';
+                }
+                if (preg_replace('/[^0-9.]/', '', $rawField('weight')) === '') {
+                    $vitalsErrors['weight'] = 'Weight is required for infant immunization.';
+                }
+                if (trim((string) ($postData['vaccine_type'] ?? '')) === '') {
+                    $vitalsErrors['vaccine_type_select[]'] = 'Please select at least one vaccine type.';
+                }
+            } elseif ($vitalsIsVaccination && $rawField('vaccine_type') === '') {
+                $vitalsErrors['vaccine_type'] = 'Vaccine type is required.';
+            }
+            if ($vitalsIsTb && $rawField('chest_xray') === '') {
+                $vitalsErrors['chest_xray'] = 'Chest X-ray screening result is required.';
+            }
+
+            if (!empty($vitalsErrors)) {
+                $oldInput = [];
+                foreach (['body_temperature', 'pulse_rate', 'respiration_rate', 'blood_pressure', 'height', 'weight', 'vaccine_type', 'vaccine_type_other', 'chest_xray'] as $oldField) {
+                    if (isset($_POST[$oldField]) && !is_array($_POST[$oldField])) {
+                        $oldInput[$oldField] = (string) $_POST[$oldField];
+                    }
+                }
+                $_SESSION['staff_vitals_errors'] = [
+                    'appointment_id' => $appointmentId,
+                    'errors' => $vitalsErrors,
+                    'old' => $oldInput,
+                ];
+                $_SESSION['staff_flash'] = 'Please complete all required fields before saving.';
+                $_SESSION['staff_flash_type'] = 'error';
+                // Reopen the vitals modal so the errors show under their fields
                 $returnUrl = trim((string) ($_POST['return_url'] ?? ''));
-                header('Location: ' . ($returnUrl !== '' ? $returnUrl : 'index.php?page=queue'));
+                $returnUrl = $returnUrl !== '' ? $returnUrl : 'index.php?page=queue';
+                $vitalsCode = (string) ($vitalsAppt['appointment_code'] ?? '');
+                if ($vitalsCode !== '') {
+                    $returnUrl .= (str_contains($returnUrl, '?') ? '&' : '?') . 'encode_vitals=' . urlencode($vitalsCode);
+                }
+                header('Location: ' . $returnUrl);
                 exit;
             }
         }
@@ -2796,7 +2862,17 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
             <?php if ($selectedVitalsAppointment !== null): ?>
                 <?php
                 $vitalsReturnUrl = '?page=queue' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($queueDate !== '' ? '&queue_date=' . urlencode($queueDate) : '');
+                // Infant immunization: no blood pressure field
+                $vitalsShowBloodPressure = in_array('blood_pressure', appointment_required_vital_fields($selectedVitalsAppointment), true);
+                $vitalsServerErrors = $_SESSION['staff_vitals_errors'] ?? null;
+                unset($_SESSION['staff_vitals_errors']);
+                if (!is_array($vitalsServerErrors) || (int) ($vitalsServerErrors['appointment_id'] ?? 0) !== (int) $selectedVitalsAppointment['id']) {
+                    $vitalsServerErrors = null;
+                }
                 ?>
+                <?php if ($vitalsServerErrors !== null): ?>
+                    <script type="application/json" id="staffVitalsServerErrors"><?= json_encode(['errors' => $vitalsServerErrors['errors'] ?? [], 'old' => $vitalsServerErrors['old'] ?? []], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
+                <?php endif; ?>
                 <section class="account-modal-backdrop" id="vitalsModalBackdrop">
                     <div class="account-modal-card clinical-dialog-card" role="dialog" aria-modal="true">
                         <div class="account-modal-header">
@@ -2976,6 +3052,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         </div>
                                         <small class="field-subnote">Numbers only. Unit (cpm) is automatically set by the system.</small>
                                     </div>
+                                    <?php if ($vitalsShowBloodPressure): ?>
                                     <div class="form-group-item">
                                         <label for="queue_blood_pres" class="form-field-label">
                                             <span>Blood Pressure (BP)</span>
@@ -2998,6 +3075,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         </div>
                                         <small class="field-subnote">Numbers and slash only (e.g. 120/80). Unit (mmHg) is automatically set.</small>
                                     </div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <?php
@@ -8877,6 +8955,40 @@ window.handleVitalNumericKeydown = handleVitalNumericKeydown;
             return false;
         }
     }, true);
+
+    // Errors the server rejected the save with: restore what was typed and show each error under its field
+    (function applyServerVitalsErrors() {
+        const dataEl = document.getElementById('staffVitalsServerErrors');
+        const form = document.getElementById('staffVitalsForm');
+        if (!dataEl || !form) return;
+        let payload = {};
+        try {
+            payload = JSON.parse(dataEl.textContent || '{}');
+        } catch (err) {
+            return;
+        }
+        const old = payload.old || {};
+        Object.keys(old).forEach(name => {
+            const input = form.querySelector(`[name="${CSS.escape(name)}"]`);
+            if (input && input.tagName !== 'SELECT' && input.type !== 'hidden' && input.value.trim() === '') {
+                input.value = String(old[name]).replace(/\s*(cm|kg)$/i, '');
+            }
+        });
+        let firstInvalid = null;
+        const errors = payload.errors || {};
+        Object.keys(errors).forEach(name => {
+            let target = form.querySelector(`[name="${CSS.escape(name)}"]`);
+            if (name === 'vaccine_type_select[]') {
+                target = document.getElementById('vaccine_multiselect_trigger') || target;
+            }
+            if (!target) return;
+            setStaffVitalsError(target, errors[name]);
+            if (!firstInvalid) firstInvalid = target;
+        });
+        if (firstInvalid) {
+            firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    })();
 
     // Live clearing on input / change
     document.addEventListener('input', function(e) {
