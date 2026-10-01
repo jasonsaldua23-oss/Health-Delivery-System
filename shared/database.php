@@ -2781,7 +2781,7 @@ function save_patient_photo_for_patient_id(string $patientId, string $capturedPh
  * Handles relative paths, leading slashes, Windows backslashes, missing 'uploads/' prefix,
  * and verifies that relative local files actually exist on disk before returning.
  */
-function resolve_patient_photo_url(?string $rawPath, string $context = 'staff'): string
+function resolve_patient_photo_url(?string $rawPath, string $context = 'staff', bool $requireFileOnDisk = true): string
 {
     $raw = trim((string) $rawPath);
     if ($raw === '') {
@@ -2808,9 +2808,10 @@ function resolve_patient_photo_url(?string $rawPath, string $context = 'staff'):
         $clean = 'uploads/' . $clean;
     }
 
-    // Check disk existence for local file
+    // Check disk existence for local file. Callers that render the image directly can skip this
+    // and rely on the browser's onerror, since the check can miss files the web server still serves.
     $diskPath = dirname(__DIR__) . '/Patients/' . $clean;
-    if (!file_exists($diskPath) || !is_file($diskPath)) {
+    if ($requireFileOnDisk && (!file_exists($diskPath) || !is_file($diskPath))) {
         return '';
     }
 

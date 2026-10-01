@@ -134,7 +134,9 @@ if (!function_exists('render_patient_profile_body')) {
     {
         ob_start();
         $patInitials = strtoupper(substr((string) ($prof['first_name'] ?? 'P'), 0, 1) . substr((string) ($prof['last_name'] ?? 'U'), 0, 1));
-        $patPhotoUrl = resolve_patient_photo_url((string) ($prof['photo_path'] ?? ''), 'staff');
+        $patPhotoUrl = resolve_patient_photo_url((string) ($prof['photo_path'] ?? ''), 'staff', false);
+        // Keep the profile list's search when jumping to a medical file so closing it lands back here
+        $profileSearchParam = trim((string) ($_GET['patient_search'] ?? ''));
         ?>
         <!-- Patient Identity & Demographics Header -->
         <div class="patient-profile-header-card">
@@ -321,19 +323,11 @@ if (!function_exists('render_patient_profile_body')) {
 
                     <!-- Specific Consultation Photo Capture if taken during this visit -->
                     <?php 
-                    $apptPhotoUrl = resolve_patient_photo_url((string) ($appt['photo_path'] ?? ''), 'staff');
-                    $apptPhotoFileMissing = $apptPhotoUrl === '' && trim((string) ($appt['photo_path'] ?? '')) !== '';
-                    if ($apptPhotoFileMissing):
+                    $apptPhotoUrl = resolve_patient_photo_url((string) ($appt['photo_path'] ?? ''), 'staff', false);
+                    if ($apptPhotoUrl !== ''): 
                     ?>
-                        <div class="history-visit-photo-card" style="border-style: dashed;">
-                            <div class="history-visit-photo-info">
-                                <span class="photo-info-label" style="color:#b45309;"><?= staff_icon('camera'); ?> Consultation Photo Unavailable</span>
-                                <span class="photo-info-date">A photo was recorded for #<?= h($apptCode); ?>, but the image file could not be found on the server.</span>
-                            </div>
-                        </div>
-                    <?php elseif ($apptPhotoUrl !== ''): ?>
                         <div class="history-visit-photo-card">
-                            <img src="<?= h($apptPhotoUrl); ?>" alt="Visit Photo on <?= h((string) $appt['preferred_date']); ?>" class="history-visit-photo-thumb" onclick="if(window.previewPhotoInModal)window.previewPhotoInModal('<?= h(addslashes($apptPhotoUrl)); ?>')" style="cursor:pointer;" title="Click to view full photo">
+                            <img src="<?= h($apptPhotoUrl); ?>" alt="Visit Photo on <?= h((string) $appt['preferred_date']); ?>" class="history-visit-photo-thumb" onclick="if(window.previewPhotoInModal)window.previewPhotoInModal('<?= h(addslashes($apptPhotoUrl)); ?>')" style="cursor:pointer;" title="Click to view full photo" onerror="this.onerror=null; this.closest('.history-visit-photo-card').remove();">
                             <div class="history-visit-photo-info">
                                 <span class="photo-info-label"><?= staff_icon('camera'); ?> Consultation Photo Captured</span>
                                 <span class="photo-info-date">Record #<?= h($apptCode); ?> • <?= h(date('M j, Y', strtotime((string) $appt['preferred_date']))); ?></span>
@@ -355,11 +349,11 @@ if (!function_exists('render_patient_profile_body')) {
 
                     <!-- Footer Action -->
                     <div class="history-entry-actions">
-                        <a class="view-medical-file-btn slim-btn" href="?page=patients<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>&appointment_view=<?= h($apptCode); ?>" title="View complete medical file">
+                        <a class="view-medical-file-btn slim-btn" href="?page=patients&view=profiles<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?><?= $profileSearchParam !== '' ? '&patient_search=' . h(urlencode($profileSearchParam)) : ''; ?>&patient_profile=<?= h(urlencode((string) $prof['key'])); ?>&appointment_view=<?= h($apptCode); ?>" title="View complete medical file">
                             <?= staff_icon('eye'); ?>
                             <span>View Full Medical Record</span>
                         </a>
-                        <a class="set-followup-btn slim-btn" href="?page=patients<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>&appointment_followup=<?= h($apptCode); ?>" title="Schedule or edit follow-up check-up">
+                        <a class="set-followup-btn slim-btn" href="?page=patients&view=profiles<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?><?= $profileSearchParam !== '' ? '&patient_search=' . h(urlencode($profileSearchParam)) : ''; ?>&patient_profile=<?= h(urlencode((string) $prof['key'])); ?>&appointment_followup=<?= h($apptCode); ?>" title="Schedule or edit follow-up check-up">
                             <?= staff_icon('calendar'); ?>
                             <span><?= $hasFollowUp ? 'Edit Follow-up' : 'Schedule Follow-up'; ?></span>
                         </a>
@@ -1164,10 +1158,9 @@ foreach ($patientRecordEntries as $record) {
             return ((int) ($b['id'] ?? 0)) <=> ((int) ($a['id'] ?? 0));
         });
         $patPhoto = '';
-        // Skip photos whose file is missing on disk so an older real photo is used instead of a blank avatar
         foreach (array_merge($patientAllCompleted, $allPatAppts, [$record]) as $photoCandidate) {
-            $candidatePath = (string) ($photoCandidate['photo_path'] ?? '');
-            if ($candidatePath !== '' && resolve_patient_photo_url($candidatePath, 'staff') !== '') {
+            $candidatePath = trim((string) ($photoCandidate['photo_path'] ?? ''));
+            if ($candidatePath !== '') {
                 $patPhoto = $candidatePath;
                 break;
             }
@@ -4093,8 +4086,14 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
 
             <!-- Clinical View Modal -->
             <?php if ($selectedViewAppointment !== null): ?>
-                <?php $hasFollowUp = !empty($selectedViewAppointment['follow_up_date']); ?>
-                <section class="account-modal-backdrop" id="viewClinicalModalBackdrop">
+                <?php
+                $hasFollowUp = !empty($selectedViewAppointment['follow_up_date']);
+                // Opened from a patient profile: closing returns to that profile modal on the profiles view
+                $viewModalReturnUrl = $selectedPatientProfile !== null
+                    ? '?page=patients&view=profiles' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($patientDateFilter !== '' ? '&patient_date=' . urlencode($patientDateFilter) : '') . ($patientSearch !== '' ? '&patient_search=' . urlencode($patientSearch) : '') . '&patient_profile=' . urlencode((string) $selectedPatientProfile['key'])
+                    : '?page=patients' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($patientDateFilter !== '' ? '&patient_date=' . urlencode($patientDateFilter) : '');
+                ?>
+                <section class="account-modal-backdrop" id="viewClinicalModalBackdrop" data-return-url="<?= h($viewModalReturnUrl); ?>">
                     <div class="account-modal-card clinical-dialog-card" role="dialog" aria-modal="true">
                         <div class="account-modal-header">
                             <div class="account-modal-title-group">
@@ -4104,7 +4103,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     <p>Official Health Record • #<?= h((string) $selectedViewAppointment['appointment_code']); ?></p>
                                 </div>
                             </div>
-                            <a class="account-modal-close" href="?page=patients<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>" onclick="return window.closeClinicalModal(event, '?page=patients<?= $programFilter !== '' ? '&program=' . h($programFilter) : ''; ?><?= $patientDateFilter !== '' ? '&patient_date=' . h($patientDateFilter) : ''; ?>');" aria-label="Close modal">×</a>
+                            <a class="account-modal-close" href="<?= h($viewModalReturnUrl); ?>" onclick="return window.closeClinicalModal(event, '<?= h($viewModalReturnUrl); ?>');" aria-label="Close modal">×</a>
                         </div>
 
                         <div class="account-modal-body">
@@ -4348,9 +4347,12 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
             <?php if ($selectedFollowUpAppointment !== null): ?>
                 <?php 
                 $fuApptHasFollowUp = !empty($selectedFollowUpAppointment['follow_up_date']); 
-                $fuReturnUrl = '?page=patients' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($patientDateFilter !== '' ? '&patient_date=' . urlencode($patientDateFilter) : '');
+                // Opened from a patient profile: closing or saving returns to that profile modal
+                $fuReturnUrl = $selectedPatientProfile !== null
+                    ? '?page=patients&view=profiles' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($patientDateFilter !== '' ? '&patient_date=' . urlencode($patientDateFilter) : '') . ($patientSearch !== '' ? '&patient_search=' . urlencode($patientSearch) : '') . '&patient_profile=' . urlencode((string) $selectedPatientProfile['key'])
+                    : '?page=patients' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($patientDateFilter !== '' ? '&patient_date=' . urlencode($patientDateFilter) : '');
                 ?>
-                <section class="account-modal-backdrop" id="followUpModalBackdrop">
+                <section class="account-modal-backdrop" id="followUpModalBackdrop" data-return-url="<?= h($fuReturnUrl); ?>">
                     <div class="account-modal-card clinical-dialog-card followup-dialog-card" role="dialog" aria-modal="true">
                         <div class="account-modal-header">
                             <div class="account-modal-title-group">
@@ -4467,7 +4469,8 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
             <?php
             $profileReturnUrl = '?page=patients' . ($view === 'profiles' ? '&view=profiles' : '') . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($patientDateFilter !== '' ? '&patient_date=' . urlencode($patientDateFilter) : '') . ($patientSearch !== '' ? '&patient_search=' . urlencode($patientSearch) : '');
             ?>
-            <section class="account-modal-backdrop <?= $selectedPatientProfile !== null ? 'is-active-modal' : 'hidden'; ?>" id="patientProfileModalBackdrop" style="<?= $selectedPatientProfile !== null ? 'display:flex;align-items:center;justify-content:center;' : 'display:none;'; ?>">
+            <?php $profileModalVisible = $selectedPatientProfile !== null && $selectedViewAppointment === null && $selectedFollowUpAppointment === null; ?>
+            <section class="account-modal-backdrop <?= $profileModalVisible ? 'is-active-modal' : 'hidden'; ?>" id="patientProfileModalBackdrop" style="<?= $profileModalVisible ? 'display:flex;align-items:center;justify-content:center;' : 'display:none;'; ?>">
                 <div class="account-modal-card clinical-dialog-card patient-profile-dialog-card" role="dialog" aria-modal="true" style="margin: auto; max-width: 840px; width: min(100%, 840px); max-height: 90vh; overflow-y: auto; background: #ffffff; border-radius: 20px; box-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.35);">
                     <div class="account-modal-header patient-profile-modal-header" style="background: linear-gradient(135deg, #1e40af, #2563eb); color: #ffffff; padding: 20px 24px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center;">
                         <div class="account-modal-title-group" style="display: flex; align-items: center; gap: 14px;">
@@ -7248,10 +7251,29 @@ window.closeClinicalModal = function(e, returnUrl) {
         e.stopPropagation();
     }
     const currentScrollY = window.pageYOffset || document.documentElement.scrollTop || window.scrollY || 0;
+    // The medical file and follow-up modals remember where they were opened from (e.g. a patient profile modal)
+    const originModal = document.querySelector('#viewClinicalModalBackdrop[data-return-url], #followUpModalBackdrop[data-return-url]');
+    if (!returnUrl && originModal) {
+        returnUrl = originModal.dataset.returnUrl;
+    }
+    let returnProfileKey = null;
+    try {
+        returnProfileKey = returnUrl ? new URL(returnUrl, window.location.href).searchParams.get('patient_profile') : null;
+    } catch (err) {}
+    const profileModal = document.getElementById('patientProfileModalBackdrop');
     const modals = document.querySelectorAll('#clinicalModalBackdrop, #viewClinicalModalBackdrop, #followUpModalBackdrop, #vitalsModalBackdrop, #patientProfileModalBackdrop');
     modals.forEach(m => {
+        if (returnProfileKey && m === profileModal) return;
         m.remove();
     });
+    if (returnProfileKey && profileModal) {
+        profileModal.classList.remove('hidden');
+        profileModal.classList.add('is-active-modal');
+        profileModal.style.display = 'flex';
+        profileModal.style.alignItems = 'center';
+        profileModal.style.justifyContent = 'center';
+        document.body.style.overflow = 'hidden';
+    }
     try {
         let targetUrl;
         if (returnUrl) {
