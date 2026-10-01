@@ -433,20 +433,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'crea
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'update_event')) {
     if (verify_csrf($_POST['csrf_token'] ?? null)) {
-        $eventId = (int) ($_POST['event_id'] ?? 0);
-        if ($eventId > 0) {
-            $updated = update_upcoming_event($eventId, [
-                'title' => trim((string) ($_POST['title'] ?? '')),
-                'description' => trim((string) ($_POST['description'] ?? '')),
-                'target_month' => trim((string) ($_POST['target_month'] ?? '')),
-                'event_date' => trim((string) ($_POST['event_date'] ?? '')),
-                'icon' => trim((string) ($_POST['icon'] ?? 'calendar')),
-                'accent' => trim((string) ($_POST['accent'] ?? 'blue')),
-                'status' => trim((string) ($_POST['status'] ?? 'inactive')),
-            ]);
-            $_SESSION['admin_flash'] = $updated ? 'Event updated successfully.' : 'Unable to update event.';
+        // One event, or every station copy of a multi-station dispatch (event_ids)
+        $eventIds = array_values(array_filter(array_map('intval', explode(',', (string) ($_POST['event_ids'] ?? ''))), static fn(int $id): bool => $id > 0));
+        if ($eventIds === [] && (int) ($_POST['event_id'] ?? 0) > 0) {
+            $eventIds = [(int) $_POST['event_id']];
+        }
+        // Only the fields on the edit form; each station's own date, times and status stay as they are
+        $eventChanges = [];
+        foreach (['title', 'description', 'target_month', 'icon', 'accent'] as $eventField) {
+            if (array_key_exists($eventField, $_POST)) {
+                $eventChanges[$eventField] = trim((string) $_POST[$eventField]);
+            }
+        }
+        if ($eventIds !== []) {
+            $updated = true;
+            foreach ($eventIds as $eventId) {
+                $updated = update_upcoming_event($eventId, $eventChanges) && $updated;
+            }
+            $_SESSION['admin_flash'] = $updated
+                ? (count($eventIds) > 1 ? 'Event updated for all ' . count($eventIds) . ' stations.' : 'Event updated successfully.')
+                : 'Unable to update event.';
             if ($updated) {
-                log_activity('admin', (string) ($adminAccount['email'] ?? 'admin'), 'event_updated', 'event', (string) $eventId);
+                log_activity('admin', (string) ($adminAccount['email'] ?? 'admin'), 'event_updated', 'event', implode(',', $eventIds));
             }
         }
     }
@@ -456,12 +464,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'upda
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'delete_event')) {
     if (verify_csrf($_POST['csrf_token'] ?? null)) {
-        $eventId = (int) ($_POST['event_id'] ?? 0);
-        if ($eventId > 0) {
-            $deleted = delete_upcoming_event($eventId);
-            $_SESSION['admin_flash'] = $deleted ? 'Event removed successfully.' : 'Unable to remove event.';
+        // One event, or every station copy of a multi-station dispatch (event_ids)
+        $eventIds = array_values(array_filter(array_map('intval', explode(',', (string) ($_POST['event_ids'] ?? ''))), static fn(int $id): bool => $id > 0));
+        if ($eventIds === [] && (int) ($_POST['event_id'] ?? 0) > 0) {
+            $eventIds = [(int) $_POST['event_id']];
+        }
+        if ($eventIds !== []) {
+            $deleted = true;
+            foreach ($eventIds as $eventId) {
+                $deleted = delete_upcoming_event($eventId) && $deleted;
+            }
+            $_SESSION['admin_flash'] = $deleted
+                ? (count($eventIds) > 1 ? 'Event removed from all ' . count($eventIds) . ' stations.' : 'Event removed successfully.')
+                : 'Unable to remove event.';
             if ($deleted) {
-                log_activity('admin', (string) ($adminAccount['email'] ?? 'admin'), 'event_deleted', 'event', (string) $eventId);
+                log_activity('admin', (string) ($adminAccount['email'] ?? 'admin'), 'event_deleted', 'event', implode(',', $eventIds));
             }
         }
     }
@@ -987,6 +1004,7 @@ try {
             static fn(array $item): bool => !in_array((string) ($item['status'] ?? ''), ['Confirmed', 'Serving', 'Completed'], true)
         ));
     }
+    ensure_event_dispatch_group_column();
     $allUpcomingEvents = fetch_upcoming_events();
     $countAllEvents = count($allUpcomingEvents);
     $countActiveEvents = count(array_filter($allUpcomingEvents, static fn(array $e): bool => (string) ($e['status'] ?? '') === 'active'));
@@ -1133,6 +1151,18 @@ $filteredUpcomingEvents = array_values(array_filter(
         return true;
     }
 ));
+// Event cards: a multi-station dispatch shows as one card if any of its stations matches the filters
+$filteredEventIds = array_flip(array_map(static fn(array $e): int => (int) $e['id'], $filteredUpcomingEvents));
+$adminEventCards = [];
+foreach (group_upcoming_events_by_dispatch($allUpcomingEvents) as $groupKey => $groupRows) {
+    $matching = array_values(array_filter($groupRows, static fn(array $e): bool => isset($filteredEventIds[(int) $e['id']])));
+    if ($matching === []) {
+        continue;
+    }
+    $adminEventCards[] = count($groupRows) > 1
+        ? ['type' => 'group', 'key' => $groupKey, 'rows' => $groupRows, 'event' => $groupRows[0]]
+        : ['type' => 'single', 'event' => $groupRows[0]];
+}
 $appointmentsPageRows = array_values(array_filter(
     $appointments,
     static fn(array $item): bool => in_array((string) ($item['status'] ?? ''), ['Pending', 'Cancelled'], true)
@@ -3692,8 +3722,81 @@ if (!function_exists('peso')) {
                         <?php endif; ?>
                     </div>
                 <?php else: ?>
-                    <?php foreach ($filteredUpcomingEvents as $event): ?>
+                    <?php foreach ($adminEventCards as $eventCard): ?>
+                        <?php if ($eventCard['type'] === 'group'): ?>
+                            <?php
+                            // One card for an event dispatched to several stations; click it to see each station's schedule
+                            $groupRows = $eventCard['rows'];
+                            $event = $eventCard['event'];
+                            $groupIds = array_map(static fn(array $e): int => (int) $e['id'], $groupRows);
+                            $groupActiveCount = count(array_filter($groupRows, static fn(array $e): bool => (string) ($e['status'] ?? '') === 'active'));
+                            $groupTotal = count($groupRows);
+                            $targetMonthStr = (string) ($event['target_month'] ?? '');
+                            $formattedMonth = $targetMonthStr !== '' ? date('F Y', strtotime($targetMonthStr . '-01')) : '';
+                            $groupPayload = [
+                                'group_key' => $eventCard['key'],
+                                'ids' => $groupIds,
+                                'id' => (int) $event['id'],
+                                'title' => (string) $event['title'],
+                                'description' => (string) $event['description'],
+                                'target_month' => $targetMonthStr,
+                                'icon' => (string) ($event['icon'] ?? 'calendar'),
+                                'station_count' => $groupTotal,
+                                'stations' => array_map(static fn(array $e): array => [
+                                    'station_name' => (string) $e['station_name'],
+                                    'status' => (string) ($e['status'] ?? 'inactive'),
+                                    'event_date' => (string) ($e['event_date'] ?? ''),
+                                    'time_label' => (string) ($e['time_label'] ?? ''),
+                                    'end_time_label' => (string) ($e['end_time_label'] ?? ''),
+                                ], $groupRows),
+                            ];
+                            ?>
+                            <article class="admin-event-card admin-event-group-card <?= $groupActiveCount === $groupTotal ? 'is-active' : 'is-pending'; ?>" role="button" tabindex="0" style="cursor:pointer;" title="View the schedule each station picked" onclick="openAdminEventGroupModal(<?= htmlspecialchars(json_encode($groupPayload), ENT_QUOTES, 'UTF-8'); ?>)" onkeydown="if (event.key === 'Enter') this.click();">
+                                <div class="admin-event-card-header">
+                                    <div class="admin-event-card-top">
+                                        <div class="admin-event-pill-row">
+                                            <span class="admin-event-pill icon-pill">
+                                                <?= admin_icon('sprout'); ?>
+                                            </span>
+                                            <span class="admin-status-pill <?= $groupActiveCount === $groupTotal ? 'status-active-pill' : 'status-pending-pill'; ?>">
+                                                <?= $groupActiveCount === $groupTotal ? admin_icon('check') : admin_icon('clock'); ?>
+                                                <span><?= $groupActiveCount; ?> of <?= $groupTotal; ?> Stations Scheduled</span>
+                                            </span>
+                                        </div>
+                                        <div class="admin-event-actions-top" onclick="event.stopPropagation();">
+                                            <button type="button" class="admin-event-action-btn edit" title="Edit Event (all stations)" onclick="editAdminEvent(<?= htmlspecialchars(json_encode($groupPayload), ENT_QUOTES, 'UTF-8'); ?>)">
+                                                <?= admin_icon('edit'); ?>
+                                            </button>
+                                            <form method="post" style="margin:0;display:inline;" onsubmit="return confirm('Remove this event from all <?= $groupTotal; ?> stations?');">
+                                                <input type="hidden" name="action" value="delete_event">
+                                                <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                                                <input type="hidden" name="event_ids" value="<?= h(implode(',', $groupIds)); ?>">
+                                                <button type="submit" class="admin-event-action-btn delete" title="Delete Event (all stations)">
+                                                    <?= admin_icon('trash'); ?>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    <h3><?= h($event['title']); ?></h3>
+                                </div>
+                                <div class="admin-event-card-body">
+                                    <p><?= nl2br(h($event['description'])); ?></p>
+                                    <div class="admin-event-schedule-box box-pending">
+                                        <div class="admin-event-meta-line pending-month">
+                                            <?= admin_icon('calendar'); ?>
+                                            <span>Suggested Month: <strong><?= $formattedMonth ?: 'Awaiting Station Assignment'; ?></strong></span>
+                                        </div>
+                                        <div class="admin-event-meta-line">
+                                            <?= admin_icon('map'); ?>
+                                            <span>Dispatched to <strong><?= $groupTotal; ?> Health Stations</strong> &middot; click to view schedules</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </article>
+                            <?php continue; ?>
+                        <?php endif; ?>
                         <?php
+                        $event = $eventCard['event'];
                         $isEventActive = (string) ($event['status'] ?? 'inactive') === 'active';
                         $hasConfirmedDate = !empty($event['event_date']);
                         $targetMonthStr = (string) ($event['target_month'] ?? '');
@@ -3768,6 +3871,25 @@ if (!function_exists('peso')) {
                 <?php endif; ?>
             </section>
 
+            <!-- Multi-station event: the schedule each station picked -->
+            <div class="event-modal-backdrop" id="adminEventGroupModal" style="display:none;" onclick="if(event.target===this)closeAdminEventGroupModal()">
+                <div class="event-modal-card" style="max-width: 640px;">
+                    <div class="event-modal-head">
+                        <div class="event-modal-head-left">
+                            <div class="event-modal-icon-badge">
+                                <?= admin_icon('calendar'); ?>
+                            </div>
+                            <div>
+                                <h2 id="adminEventGroupTitle">Event Schedules</h2>
+                                <p id="adminEventGroupSubtitle">Schedules set by each Barangay Health Station</p>
+                            </div>
+                        </div>
+                        <button type="button" class="event-modal-close-btn" onclick="closeAdminEventGroupModal()" title="Close dialog">&times;</button>
+                    </div>
+                    <div id="adminEventGroupBody" style="padding: 18px 24px 24px; max-height: 65vh; overflow-y: auto;"></div>
+                </div>
+            </div>
+
             <!-- Admin Create / Edit Event Modal -->
             <div class="event-modal-backdrop" id="adminEventModalBackdrop" style="<?= $showEventModal ? 'display:flex;' : 'display:none;'; ?>" onclick="if(event.target===this)closeAdminEventModal()">
                 <div class="event-modal-card" id="adminEventModalCard">
@@ -3788,6 +3910,7 @@ if (!function_exists('peso')) {
                         <input type="hidden" name="action" id="adminEventAction" value="<?= $eventEditing !== null ? 'update_event' : 'create_event'; ?>">
                         <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
                         <input type="hidden" name="event_id" id="adminEventId" value="<?= h((string) ($eventEditing['id'] ?? '')); ?>">
+                        <input type="hidden" name="event_ids" id="adminEventIds" value="">
 
                         <div class="event-form-body">
                             <div class="event-form-group">
@@ -3887,6 +4010,8 @@ if (!function_exists('peso')) {
                 if (title) title.textContent = 'Create & Dispatch Community Event';
                 if (action) action.value = 'create_event';
                 if (eventId) eventId.value = '';
+                const eventIds = document.getElementById('adminEventIds');
+                if (eventIds) eventIds.value = '';
                 if (submitText) submitText.textContent = 'Create & Dispatch';
                 if (form) form.reset();
                 resetAdminEventStationPicker();
@@ -4016,6 +4141,43 @@ if (!function_exists('peso')) {
                 }
             });
 
+            function openAdminEventGroupModal(group) {
+                if (!group) return;
+                const modal = document.getElementById('adminEventGroupModal');
+                const body = document.getElementById('adminEventGroupBody');
+                const title = document.getElementById('adminEventGroupTitle');
+                const subtitle = document.getElementById('adminEventGroupSubtitle');
+                if (!modal || !body) return;
+                const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
+                const stations = (group.stations || []).slice().sort((a, b) => String(a.station_name).localeCompare(String(b.station_name)));
+                const scheduled = stations.filter(st => st.status === 'active' && st.event_date).length;
+                if (title) title.textContent = group.title || 'Event Schedules';
+                if (subtitle) subtitle.textContent = scheduled + ' of ' + stations.length + ' stations have set a schedule';
+                body.innerHTML = stations.map(st => {
+                    const isScheduled = st.status === 'active' && st.event_date;
+                    const dateText = isScheduled
+                        ? new Date(String(st.event_date).slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+                        : 'No schedule yet';
+                    const timeText = isScheduled && st.time_label ? esc(st.time_label) + (st.end_time_label ? ' - ' + esc(st.end_time_label) : '') : '';
+                    return `
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:10px;background:${isScheduled ? '#f5f3ff' : '#f8fafc'};">
+                        <div style="min-width:0;">
+                            <strong style="display:block;color:#0f172a;font-size:0.92rem;">${esc(st.station_name)}</strong>
+                            <span style="font-size:0.82rem;color:${isScheduled ? '#5b21b6' : '#64748b'};font-weight:600;">${esc(dateText)}${timeText ? ' &middot; ' + timeText : ''}</span>
+                        </div>
+                        <span style="flex-shrink:0;font-size:0.74rem;font-weight:800;padding:3px 10px;border-radius:999px;${isScheduled ? 'background:#ede9fe;color:#5b21b6;' : 'background:#fef3c7;color:#92400e;'}">${isScheduled ? 'Scheduled' : 'Pending'}</span>
+                    </div>`;
+                }).join('') || '<p style="color:#64748b;">No stations found for this event.</p>';
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeAdminEventGroupModal() {
+                const modal = document.getElementById('adminEventGroupModal');
+                if (modal) modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+
             function editAdminEvent(eventData) {
                 if (!eventData) return;
                 const modal = document.getElementById('adminEventModalBackdrop');
@@ -4031,12 +4193,14 @@ if (!function_exists('peso')) {
                 if (title) title.textContent = 'Update Health Event';
                 if (action) action.value = 'update_event';
                 if (eventId) eventId.value = eventData.id || '';
+                const eventIds = document.getElementById('adminEventIds');
+                if (eventIds) eventIds.value = Array.isArray(eventData.ids) ? eventData.ids.join(',') : '';
                 if (submitText) submitText.textContent = 'Save Changes';
                 if (titleInput) titleInput.value = eventData.title || '';
                 if (descInput) descInput.value = eventData.description || '';
                 if (iconSelect) iconSelect.value = eventData.icon || 'calendar';
                 if (monthInput) monthInput.value = eventData.target_month || (eventData.event_date ? eventData.event_date.substring(0, 7) : '');
-                lockAdminEventStationPicker(eventData.station_slug || '', eventData.station_name || '');
+                lockAdminEventStationPicker(eventData.station_slug || '', eventData.station_count ? ('All ' + eventData.station_count + ' dispatched stations') : (eventData.station_name || ''));
 
                 if (modal) modal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
@@ -7007,7 +7171,7 @@ document.addEventListener('keydown', function(e) {
 <script>
 // Keep JavaScript-opened modals open across a refresh (URL-driven modals already persist)
 ModalPersist.init({
-    modals: ['adminInfantModal', 'manageScheduleModal', 'addFacilityModal', 'editCapacityModal', 'managePuroksModal', 'adminEventModalBackdrop', 'reportsFilterModal', 'reportVisitModal', 'addServiceModal', 'accountModal', 'editStaffModalBackdrop', 'userModalBackdrop'],
+    modals: ['adminInfantModal', 'adminEventGroupModal', 'manageScheduleModal', 'addFacilityModal', 'editCapacityModal', 'managePuroksModal', 'adminEventModalBackdrop', 'reportsFilterModal', 'reportVisitModal', 'addServiceModal', 'accountModal', 'editStaffModalBackdrop', 'userModalBackdrop'],
     openers: {
         openAdminInfantViewer: { modal: 'adminInfantModal', reset: true, freshFrom: 'openAdminInfantViewer', matchKeys: ['parent_id'] },
         selectAdminInfantFromList: { modal: 'adminInfantModal' },
@@ -7018,6 +7182,7 @@ ModalPersist.init({
         openManagePuroksModal: { modal: 'managePuroksModal', reset: true },
         openAdminEventModal: { modal: 'adminEventModalBackdrop', reset: true },
         editAdminEvent: { modal: 'adminEventModalBackdrop', reset: true, freshFrom: 'editAdminEvent', matchKeys: ['id'] },
+        openAdminEventGroupModal: { modal: 'adminEventGroupModal', reset: true, freshFrom: 'openAdminEventGroupModal', matchKeys: ['group_key'] },
         openReportsFilterModal: { modal: 'reportsFilterModal', reset: true },
         openReportVisitModal: { modal: 'reportVisitModal', reset: true }
     }

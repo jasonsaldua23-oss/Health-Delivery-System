@@ -5829,6 +5829,27 @@ function fetch_upcoming_events(array $filters = []): array
     return [];
 }
 
+/**
+ * One admin dispatch to several stations creates one upcoming_events row per station; they share a
+ * dispatch_group id so the admin events page can show them as a single card.
+ */
+function ensure_event_dispatch_group_column(): void
+{
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
+    try {
+        $db = db();
+        if (!db_column_exists($db, 'upcoming_events', 'dispatch_group')) {
+            $db->query('ALTER TABLE upcoming_events ADD COLUMN dispatch_group VARCHAR(40) NULL DEFAULT NULL AFTER created_by, ADD INDEX idx_event_dispatch_group (dispatch_group)');
+        }
+    } catch (Throwable $e) {
+        error_log('ensure_event_dispatch_group_column error: ' . $e->getMessage());
+    }
+    $ensured = true;
+}
+
 function create_upcoming_event(array $eventData): bool
 {
     $stationSlugInput = trim((string) ($eventData['station_slug'] ?? ''));
@@ -5878,22 +5899,48 @@ function create_upcoming_event(array $eventData): bool
         return false;
     }
 
+    ensure_event_dispatch_group_column();
+    $dispatchGroup = count($targetStations) > 1 ? uniqid('evt_', true) : null;
+
     $success = true;
     foreach ($targetStations as $station) {
         $stSlug = (string) $station['slug'];
         $stName = (string) $station['name'];
 
         $stmt = db()->prepare(
-            'INSERT INTO upcoming_events (station_slug, station_name, title, description, target_month, event_date, time_label, end_time_label, icon, accent, status, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO upcoming_events (station_slug, station_name, title, description, target_month, event_date, time_label, end_time_label, icon, accent, status, created_by, dispatch_group)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
-        $stmt->bind_param('ssssssssssss', $stSlug, $stName, $title, $description, $targetMonth, $eventDateVal, $timeLabel, $endTimeLabel, $icon, $accent, $status, $createdBy);
+        $stmt->bind_param('sssssssssssss', $stSlug, $stName, $title, $description, $targetMonth, $eventDateVal, $timeLabel, $endTimeLabel, $icon, $accent, $status, $createdBy, $dispatchGroup);
         if (!$stmt->execute()) {
             $success = false;
         }
     }
 
     return $success;
+}
+
+/**
+ * Group admin event rows into display cards: rows from one multi-station dispatch become one group.
+ * Rows created before dispatch_group existed are grouped by title, month, creator and creation time.
+ * Returns [groupKey => [rows...]] in the order the rows were given.
+ */
+function group_upcoming_events_by_dispatch(array $events): array
+{
+    $groups = [];
+    foreach ($events as $event) {
+        $dispatch = trim((string) ($event['dispatch_group'] ?? ''));
+        $key = $dispatch !== ''
+            ? 'g:' . $dispatch
+            : 'l:' . md5(implode('|', [
+                (string) ($event['title'] ?? ''),
+                (string) ($event['target_month'] ?? ''),
+                (string) ($event['created_by'] ?? ''),
+                (string) ($event['created_at'] ?? ''),
+            ]));
+        $groups[$key][] = $event;
+    }
+    return $groups;
 }
 
 function delete_upcoming_event(int $eventId, ?string $stationScope = null): bool
