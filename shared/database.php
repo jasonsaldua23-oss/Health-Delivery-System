@@ -6732,9 +6732,34 @@ function recent_activity(): array
     return $items;
 }
 
+/**
+ * SQL expressions for the person an appointment actually served: the infant / child recipient of an
+ * immunization booked by the account holder for someone else, otherwise the account holder. Mirrors
+ * appointment_is_infant_immunization(). Used so report demographics and the gender / age filters count
+ * infants as infants rather than under their parent or guardian.
+ */
+function report_served_person_sql(string $prefix = ''): array
+{
+    $isInfant = "((LOWER({$prefix}service_slug) LIKE '%immuniz%' OR LOWER({$prefix}service_slug) LIKE '%vaccin%'"
+        . " OR LOWER({$prefix}service_name) LIKE '%immuniz%' OR LOWER({$prefix}service_name) LIKE '%vaccin%')"
+        . " AND LOWER(TRIM(COALESCE({$prefix}immunization_relationship, ''))) NOT IN ('self', 'myself', 'me')"
+        . " AND (TRIM(COALESCE({$prefix}immunization_relationship, '')) <> ''"
+        . " OR (COALESCE({$prefix}recipient_first_name, '') <> '' AND COALESCE({$prefix}recipient_last_name, '') <> '')))";
+
+    return [
+        'is_infant' => $isInfant,
+        'gender' => "(CASE WHEN {$isInfant} THEN COALESCE(NULLIF(TRIM({$prefix}recipient_gender), ''), {$prefix}gender) ELSE {$prefix}gender END)",
+        'birth_date' => "(CASE WHEN {$isInfant} THEN COALESCE({$prefix}recipient_birth_date, {$prefix}birth_date) ELSE {$prefix}birth_date END)",
+        // One key per real person: an infant is identified by its account holder + its own name and birth date
+        'key' => "(CASE WHEN {$isInfant} THEN CONCAT('infant|', COALESCE({$prefix}patient_id, ''), '|', COALESCE({$prefix}recipient_first_name, ''), '|', COALESCE({$prefix}recipient_last_name, ''), '|', COALESCE({$prefix}recipient_birth_date, ''))"
+            . " ELSE COALESCE(NULLIF({$prefix}patient_id, ''), CONCAT({$prefix}first_name, '|', {$prefix}last_name, '|', {$prefix}birth_date)) END)",
+    ];
+}
+
 function build_report_filter_sql(array $filters, string $tableAlias = ''): array
 {
     $prefix = $tableAlias !== '' ? $tableAlias . '.' : '';
+    $served = report_served_person_sql($prefix);
     $conditions = [];
     $params = [];
     $types = '';
@@ -6758,25 +6783,26 @@ function build_report_filter_sql(array $filters, string $tableAlias = ''): array
         $types .= 's';
     }
     if ($gender !== '' && strtolower($gender) !== 'all') {
-        $conditions[] = "LOWER({$prefix}gender) = LOWER(?)";
+        // Gender / age of the person served (the infant for infant immunizations)
+        $conditions[] = "LOWER({$served['gender']}) = LOWER(?)";
         $params[] = $gender;
         $types .= 's';
     }
     if ($ageGroup !== '' && $ageGroup !== 'all') {
         if ($ageGroup === '0-12' || $ageGroup === 'pediatric') {
-            $conditions[] = "TIMESTAMPDIFF(YEAR, {$prefix}birth_date, CURDATE()) BETWEEN 0 AND 12";
+            $conditions[] = "TIMESTAMPDIFF(YEAR, {$served['birth_date']}, CURDATE()) BETWEEN 0 AND 12";
         } elseif ($ageGroup === '13-17' || $ageGroup === 'adolescent') {
-            $conditions[] = "TIMESTAMPDIFF(YEAR, {$prefix}birth_date, CURDATE()) BETWEEN 13 AND 17";
+            $conditions[] = "TIMESTAMPDIFF(YEAR, {$served['birth_date']}, CURDATE()) BETWEEN 13 AND 17";
         } elseif ($ageGroup === '18-30' || $ageGroup === 'young_adult') {
-            $conditions[] = "TIMESTAMPDIFF(YEAR, {$prefix}birth_date, CURDATE()) BETWEEN 18 AND 30";
+            $conditions[] = "TIMESTAMPDIFF(YEAR, {$served['birth_date']}, CURDATE()) BETWEEN 18 AND 30";
         } elseif ($ageGroup === '31-45' || $ageGroup === 'mid_adult') {
-            $conditions[] = "TIMESTAMPDIFF(YEAR, {$prefix}birth_date, CURDATE()) BETWEEN 31 AND 45";
+            $conditions[] = "TIMESTAMPDIFF(YEAR, {$served['birth_date']}, CURDATE()) BETWEEN 31 AND 45";
         } elseif ($ageGroup === '46-59' || $ageGroup === 'mature_adult') {
-            $conditions[] = "TIMESTAMPDIFF(YEAR, {$prefix}birth_date, CURDATE()) BETWEEN 46 AND 59";
+            $conditions[] = "TIMESTAMPDIFF(YEAR, {$served['birth_date']}, CURDATE()) BETWEEN 46 AND 59";
         } elseif ($ageGroup === '18-59' || $ageGroup === 'adult') {
-            $conditions[] = "TIMESTAMPDIFF(YEAR, {$prefix}birth_date, CURDATE()) BETWEEN 18 AND 59";
+            $conditions[] = "TIMESTAMPDIFF(YEAR, {$served['birth_date']}, CURDATE()) BETWEEN 18 AND 59";
         } elseif ($ageGroup === '60+' || $ageGroup === 'senior') {
-            $conditions[] = "TIMESTAMPDIFF(YEAR, {$prefix}birth_date, CURDATE()) >= 60";
+            $conditions[] = "TIMESTAMPDIFF(YEAR, {$served['birth_date']}, CURDATE()) >= 60";
         }
     }
     if ($stationSlug !== '' && $stationSlug !== 'all') {
@@ -7136,6 +7162,8 @@ function demographics_breakdown_data(array $filters = []): array
     try {
         $builder = build_report_filter_sql($filters);
         $where = $builder['where'];
+        // Count the person served: an infant immunization counts the infant, not the parent / guardian
+        $served = report_served_person_sql();
 
         $sql = 'SELECT
                     SUM(CASE WHEN LOWER(gender) = \'female\' THEN 1 ELSE 0 END) AS count_female,
@@ -7150,9 +7178,9 @@ function demographics_breakdown_data(array $filters = []): array
                     COUNT(*) AS total
                 FROM (
                     SELECT
-                        COALESCE(NULLIF(patient_id, \'\'), CONCAT(first_name, \'|\', last_name, \'|\', birth_date)) AS unique_patient_key,
-                        MAX(gender) AS gender,
-                        MAX(birth_date) AS birth_date
+                        ' . $served['key'] . ' AS unique_patient_key,
+                        MAX(' . $served['gender'] . ') AS gender,
+                        MAX(' . $served['birth_date'] . ') AS birth_date
                     FROM appointments
                     ' . $where . '
                     GROUP BY unique_patient_key

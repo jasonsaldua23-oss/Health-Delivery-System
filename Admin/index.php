@@ -1053,7 +1053,8 @@ try {
 try {
     $reportStats         = report_summary_stats($reportFilters);
     $monthlyTrends       = monthly_trends_data($reportFilters);
-    $demographics        = demographics_breakdown_data($reportFilters);
+    // Demographics count only patients with completed appointments (other report filters still apply)
+    $demographics        = demographics_breakdown_data(array_merge($reportFilters, ['status' => 'Completed']));
     $stationPerformance  = station_performance_data($reportFilters);
     $servicePerformance  = service_performance_data($reportFilters);
     $barangayCompletedStats = barangay_completed_analytics($reportFilters);
@@ -4861,8 +4862,10 @@ if (!function_exists('peso')) {
                 ];
                 $selectedAgeLabel = $ageGroupLabels[$reportAgeGroup] ?? $reportAgeGroup;
 
-                $maxAppts    = max(1, max($monthlyTrends['appointments'] ?: [1]));
-                $maxPatients = max(1, max($monthlyTrends['patients'] ?: [1]));
+                // One shared scale for Bookings and Patients, so bar heights are comparable
+                $maxTrendValue = max(1, max($monthlyTrends['appointments'] ?: [1]), max($monthlyTrends['patients'] ?: [1]));
+                $maxAppts    = $maxTrendValue;
+                $maxPatients = $maxTrendValue;
                 $maxBarHeight = 160;
             ?>
             <section class="page-header action-head reports-page-head">
@@ -5031,7 +5034,7 @@ if (!function_exists('peso')) {
                         </div>
                         <div>
                             <h3>Completed Appointments by Barangay</h3>
-                            <p>Number of patients who have completed their appointments per health station. Hover over any bar to view utilized services.</p>
+                            <p>Number of completed appointments per health station. Hover over any bar to view its total.</p>
                         </div>
                     </div>
                     <div class="brgy-graph-meta-right">
@@ -5058,7 +5061,6 @@ if (!function_exists('peso')) {
                             <?php foreach ($barangayCompletedStats as $idx => $st): ?>
                                 <?php
                                     $cCount = (int) $st['completed_count'];
-                                    $uPatients = (int) $st['unique_patients'];
                                     $barHeight = $maxCompletedCount > 0 ? round(($cCount / $maxCompletedCount) * 160) : 0;
                                     $hasCompleted = $cCount > 0;
                                     $srvList = $st['services'] ?? [];
@@ -5085,54 +5087,16 @@ if (!function_exists('peso')) {
                                         <span class="brgy-bar-name" title="<?= h($st['station_name']); ?>"><?= h($st['barangay_name']); ?></span>
                                     </div>
 
-                                    <!-- Interactive Floating Pop-up Details Card -->
+                                    <!-- Hover card: completed appointments for this barangay under the active filters -->
                                     <div class="brgy-hover-card">
                                         <div class="brgy-hover-head">
                                             <div class="brgy-hover-station-name">
                                                 <strong><?= h($st['station_name']); ?></strong>
                                                 <span class="brgy-hover-badge <?= $hasCompleted ? 'completed' : 'muted'; ?>">
                                                     <?= $hasCompleted ? admin_icon('check') : admin_icon('clock'); ?>
-                                                    <?= $cCount; ?> Completed (<?= $uPatients; ?> Patient<?= $uPatients === 1 ? '' : 's'; ?>)
+                                                    <?= number_format($cCount); ?> Completed Appointment<?= $cCount === 1 ? '' : 's'; ?>
                                                 </span>
                                             </div>
-                                        </div>
-
-                                        <div class="brgy-hover-body">
-                                            <?php if ($hasCompleted && !empty($srvList)): ?>
-                                                <div class="brgy-hover-section-title">
-                                                    <?= admin_icon('activity'); ?>
-                                                    <span>Services Utilized</span>
-                                                </div>
-                                                <div class="brgy-hover-services-list">
-                                                    <?php foreach ($srvList as $srv): ?>
-                                                        <?php
-                                                            $srvIcon = $srv['icon'] ?? 'appointments';
-                                                            $srvColor = $srv['color'] ?? 'mint';
-                                                        ?>
-                                                        <div class="brgy-hover-srv-item">
-                                                            <div class="brgy-hover-srv-row">
-                                                                <div class="brgy-hover-srv-info">
-                                                                    <span class="brgy-srv-icon-badge <?= h($srvColor); ?>">
-                                                                        <?= admin_icon($srvIcon); ?>
-                                                                    </span>
-                                                                    <span class="brgy-srv-name"><?= h($srv['service_name']); ?></span>
-                                                                </div>
-                                                                <div class="brgy-hover-srv-stat">
-                                                                    <strong><?= $srv['count']; ?></strong>
-                                                                    <small>(<?= $srv['pct']; ?>%)</small>
-                                                                </div>
-                                                            </div>
-                                                            <div class="brgy-hover-srv-progress">
-                                                                <div class="brgy-hover-srv-bar <?= h($srvColor); ?>" style="width: <?= max(6, $srv['pct']); ?>%;"></div>
-                                                            </div>
-                                                        </div>
-                                                    <?php endforeach; ?>
-                                                </div>
-                                            <?php else: ?>
-                                                <div class="brgy-hover-empty">
-                                                    <p>No completed appointments in this period</p>
-                                                </div>
-                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
@@ -5236,7 +5200,7 @@ if (!function_exists('peso')) {
                     <div class="dash-card-head">
                         <div>
                             <h3>Demographic Distribution</h3>
-                            <p>Age group and gender breakdown of unique patients</p>
+                            <p>Age group and gender breakdown of unique patients with completed appointments</p>
                         </div>
                     </div>
                     
