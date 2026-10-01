@@ -3819,6 +3819,10 @@ button, input, select { font: inherit; }
   max-width: 560px;
 }
 
+.schedule-modal-card .modal-actions {
+  gap: 24px;
+}
+
 .schedule-days-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

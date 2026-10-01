@@ -3062,7 +3062,6 @@ if (!function_exists('peso')) {
                                         3 => ['name' => 'Wednesday', 'short' => 'Wed'],
                                         4 => ['name' => 'Thursday', 'short' => 'Thu'],
                                         5 => ['name' => 'Friday', 'short' => 'Fri'],
-                                        6 => ['name' => 'Saturday', 'short' => 'Sat'],
                                     ];
                                     ?>
                                     <?php foreach ($dayOptions as $dayNum => $dayData): ?>
@@ -3082,7 +3081,6 @@ if (!function_exists('peso')) {
                                 <label style="font-size: 0.8rem; font-weight: 600; color: #64748b; display: block; margin-bottom: 6px;">Quick Presets</label>
                                 <div style="display: flex; flex-wrap: wrap; gap: 6px;">
                                     <button type="button" class="blue-btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="applySchedulePreset([1,2,3,4,5])">Mon – Fri (Standard)</button>
-                                    <button type="button" class="blue-btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="applySchedulePreset([1,2,3,4,5,6])">Mon – Sat (Full Week)</button>
                                     <button type="button" class="blue-btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="applySchedulePreset([1,3,5])">Mon / Wed / Fri</button>
                                     <button type="button" class="blue-btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="applySchedulePreset([2,4])">Tue / Thu</button>
                                     <button type="button" class="blue-btn" style="padding: 4px 10px; font-size: 0.78rem;" onclick="applySchedulePreset([3])">Wednesday Only</button>
