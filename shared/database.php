@@ -7349,9 +7349,15 @@ function report_summary_stats($fromDateOrFilters = '', string $toDate = ''): arr
     try {
         $builder = build_report_filter_sql($filters);
         $where = $builder['where'];
+        $served = report_served_person_sql();
+        // Patients served = patient profiles + infant profiles: each account holder with a completed
+        // appointment and each infant with a completed immunization, counted once however many visits
+        $holderKey = "COALESCE(NULLIF(patient_id, ''), CONCAT(first_name, '|', last_name, '|', birth_date))";
 
         $sqlStats = 'SELECT
                         COUNT(DISTINCT COALESCE(patient_id, CONCAT(first_name, last_name, birth_date))) AS total_unique_patients,
+                        COUNT(DISTINCT CASE WHEN status = \'Completed\' THEN ' . $holderKey . ' END) AS served_holders,
+                        COUNT(DISTINCT CASE WHEN status = \'Completed\' AND ' . $served['is_infant'] . ' THEN ' . $served['key'] . ' END) AS served_infants,
                         SUM(status = \'Completed\') AS completed_count,
                         SUM(status = \'Cancelled\') AS cancelled_count,
                         SUM(status = \'Confirmed\') AS confirmed_count,
@@ -7382,6 +7388,8 @@ function report_summary_stats($fromDateOrFilters = '', string $toDate = ''): arr
 
             return [
                 'total_patients'    => (int) ($statsRow['total_unique_patients'] ?? 0),
+                'served_patients'   => (int) ($statsRow['served_holders'] ?? 0) + (int) ($statsRow['served_infants'] ?? 0),
+                'served_infants'    => (int) ($statsRow['served_infants'] ?? 0),
                 'services_rendered' => $totalBookings - $cancelledCount,
                 'total_bookings'    => $totalBookings,
                 'completed_count'   => $completedCount,
@@ -7401,6 +7409,8 @@ function report_summary_stats($fromDateOrFilters = '', string $toDate = ''): arr
 
     return [
         'total_patients'    => 0,
+        'served_patients'   => 0,
+        'served_infants'    => 0,
         'services_rendered' => 0,
         'total_bookings'    => 0,
         'completed_count'   => 0,

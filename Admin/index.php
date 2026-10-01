@@ -5131,11 +5131,11 @@ if (!function_exists('peso')) {
                         <span class="dash-stat-tag">♀ <?= $demographics['gender']['female']['pct']; ?>% | ♂ <?= $demographics['gender']['male']['pct']; ?>%</span>
                     </div>
                     <div class="dash-stat-body">
-                        <h3><?= number_format($reportStats['completed_count']); ?></h3>
+                        <h3><?= number_format((int) ($reportStats['served_patients'] ?? 0)); ?></h3>
                         <p>Patients Served</p>
                     </div>
                     <div class="dash-stat-footer">
-                        <span>Completed appointments in period</span>
+                        <span>Patient &amp; infant profiles with a completed appointment<?= (int) ($reportStats['served_infants'] ?? 0) > 0 ? ' (incl. ' . number_format((int) $reportStats['served_infants']) . ' infant' . ((int) $reportStats['served_infants'] === 1 ? '' : 's') . ')' : ''; ?></span>
                     </div>
                 </article>
 
