@@ -3247,16 +3247,15 @@ function appointment_is_infant_immunization(array $appointment): bool
 }
 
 /**
- * Vital sign fields required for an appointment. Blood pressure is not taken for infant
- * immunizations; it is still required when the account holder is the vaccine recipient.
+ * Vital sign fields required for an appointment. Pulse rate and blood pressure are not taken for
+ * infant immunizations; both are still required when the account holder is the vaccine recipient.
  */
 function appointment_required_vital_fields(array $appointment): array
 {
-    $fields = ['body_temperature', 'pulse_rate', 'respiration_rate'];
-    if (!appointment_is_infant_immunization($appointment)) {
-        $fields[] = 'blood_pressure';
+    if (appointment_is_infant_immunization($appointment)) {
+        return ['body_temperature', 'respiration_rate'];
     }
-    return $fields;
+    return ['body_temperature', 'pulse_rate', 'respiration_rate', 'blood_pressure'];
 }
 
 function appointment_has_vitals(array $appointment): bool

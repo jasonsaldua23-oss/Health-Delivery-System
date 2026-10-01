@@ -746,13 +746,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
             } elseif ((float) $tempVal < 30 || (float) $tempVal > 45) {
                 $vitalsErrors['body_temperature'] = 'Please enter a realistic body temperature (°C).';
             }
-            if ((string) ($postData['pulse_rate'] ?? '') === '') {
+            $vitalsRequired = appointment_required_vital_fields($vitalsAppt);
+            if (!in_array('pulse_rate', $vitalsRequired, true)) {
+                // Infant immunization: pulse rate is not taken
+                unset($postData['pulse_rate']);
+            } elseif ((string) ($postData['pulse_rate'] ?? '') === '') {
                 $vitalsErrors['pulse_rate'] = 'Pulse rate is required.';
             }
             if ((string) ($postData['respiration_rate'] ?? '') === '') {
                 $vitalsErrors['respiration_rate'] = 'Respiration rate is required.';
             }
-            if (in_array('blood_pressure', appointment_required_vital_fields($vitalsAppt), true)) {
+            if (in_array('blood_pressure', $vitalsRequired, true)) {
                 $bpVal = (string) ($postData['blood_pressure'] ?? '');
                 if ($bpVal === '') {
                     $vitalsErrors['blood_pressure'] = 'Blood pressure is required.';
@@ -2862,8 +2866,10 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
             <?php if ($selectedVitalsAppointment !== null): ?>
                 <?php
                 $vitalsReturnUrl = '?page=queue' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($queueDate !== '' ? '&queue_date=' . urlencode($queueDate) : '');
-                // Infant immunization: no blood pressure field
-                $vitalsShowBloodPressure = in_array('blood_pressure', appointment_required_vital_fields($selectedVitalsAppointment), true);
+                // Infant immunization: no pulse rate or blood pressure fields
+                $vitalsRequiredFields = appointment_required_vital_fields($selectedVitalsAppointment);
+                $vitalsShowPulseRate = in_array('pulse_rate', $vitalsRequiredFields, true);
+                $vitalsShowBloodPressure = in_array('blood_pressure', $vitalsRequiredFields, true);
                 $vitalsServerErrors = $_SESSION['staff_vitals_errors'] ?? null;
                 unset($_SESSION['staff_vitals_errors']);
                 if (!is_array($vitalsServerErrors) || (int) ($vitalsServerErrors['appointment_id'] ?? 0) !== (int) $selectedVitalsAppointment['id']) {
@@ -3005,6 +3011,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         </div>
                                         <small class="field-subnote">Numbers only. Unit (°C) is automatically set by the system.</small>
                                     </div>
+                                    <?php if ($vitalsShowPulseRate): ?>
                                     <div class="form-group-item">
                                         <label for="queue_pulse_rate" class="form-field-label">
                                             <span>Pulse Rate (PR)</span>
@@ -3027,6 +3034,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         </div>
                                         <small class="field-subnote">Numbers only. Unit (bpm) is automatically set by the system.</small>
                                     </div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <div class="form-row-grid">
