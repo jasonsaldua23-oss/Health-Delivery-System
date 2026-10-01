@@ -3324,7 +3324,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                                     </div>
                                                     <div class="vaccine-menu-footer">
                                                         <span style="font-size: 0.74rem; color: #64748b;">Multiple routine vaccines can be co-administered per DOH guidelines.</span>
-                                                        <button type="button" class="btn btn-sm btn-primary" onclick="closeVaccineDropdown(event)" style="padding: 4px 14px; font-size: 0.8rem; background: #2563eb; border-color: #2563eb; border-radius: 6px; font-weight: 600;">Done</button>
+                                                        <button type="button" class="btn btn-sm btn-primary" onclick="closeVaccineDropdown(event)" style="padding: 4px 14px; font-size: 0.8rem; background: #2563eb; border-color: #2563eb; color: #ffffff; border-radius: 6px; font-weight: 600;">Done</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -4112,7 +4112,8 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 </div>
 
                                 <!-- Non-Clickable Vital Signs Display -->
-                                <div class="vitals-display-grid readonly-vitals-grid">
+                                <?php $vitalsGridIsInfant_selectedRemarksAppointment = appointment_is_infant_immunization($selectedRemarksAppointment); ?>
+                                <div class="vitals-display-grid readonly-vitals-grid"<?= $vitalsGridIsInfant_selectedRemarksAppointment ? ' style="grid-template-columns: repeat(2, minmax(0, 1fr));"' : ''; ?>>
                                     <div class="vital-display-box is-readonly">
                                         <div class="vital-box-header">
                                             <span class="vital-box-icon"><?= staff_icon('pulse'); ?></span>
@@ -4120,6 +4121,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         </div>
                                         <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['body_temperature'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['body_temperature'], '°C') : 'Not recorded')); ?></strong>
                                     </div>
+                                    <?php if (!$vitalsGridIsInfant_selectedRemarksAppointment): ?>
                                     <div class="vital-display-box is-readonly">
                                         <div class="vital-box-header">
                                             <span class="vital-box-icon"><?= staff_icon('heart'); ?></span>
@@ -4127,6 +4129,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         </div>
                                         <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['pulse_rate'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['pulse_rate'], 'bpm') : 'Not recorded')); ?></strong>
                                     </div>
+                                    <?php endif; ?>
                                     <div class="vital-display-box is-readonly">
                                         <div class="vital-box-header">
                                             <span class="vital-box-icon"><?= staff_icon('sparkle'); ?></span>
@@ -4134,6 +4137,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         </div>
                                         <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['respiration_rate'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['respiration_rate'], 'cpm') : 'Not recorded')); ?></strong>
                                     </div>
+                                    <?php if (!$vitalsGridIsInfant_selectedRemarksAppointment): ?>
                                     <div class="vital-display-box is-readonly">
                                         <div class="vital-box-header">
                                             <span class="vital-box-icon"><?= staff_icon('stethoscope'); ?></span>
@@ -4141,10 +4145,11 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         </div>
                                         <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['blood_pressure'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['blood_pressure'], 'mmHg') : 'Not recorded')); ?></strong>
                                     </div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <?php if (!empty($selectedRemarksAppointment['height']) || !empty($selectedRemarksAppointment['weight'])): ?>
-                                    <div class="vitals-display-grid readonly-vitals-grid" style="margin-top: 10px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                                    <div class="vitals-display-grid readonly-vitals-grid" style="margin-top: 10px; grid-template-columns: <?= $vitalsGridIsInfant_selectedRemarksAppointment ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(140px, 1fr))'; ?>;">
                                         <?php if (!empty($selectedRemarksAppointment['height'])): ?>
                                             <div class="vital-display-box is-readonly" style="background:#f0fdf4; border-color:#86efac;">
                                                 <div class="vital-box-header">
@@ -4393,7 +4398,8 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 <span>Recorded Vital Signs</span>
                             </div>
 
-                            <div class="vitals-display-grid">
+                            <?php $vitalsGridIsInfant_selectedViewAppointment = appointment_is_infant_immunization($selectedViewAppointment); ?>
+                            <div class="vitals-display-grid"<?= $vitalsGridIsInfant_selectedViewAppointment ? ' style="grid-template-columns: repeat(2, minmax(0, 1fr));"' : ''; ?>>
                                 <div class="vital-display-box">
                                     <div class="vital-box-header">
                                         <span class="vital-box-icon"><?= staff_icon('pulse'); ?></span>
@@ -4401,6 +4407,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     </div>
                                     <strong class="vital-box-val"><?= h((string) (($selectedViewAppointment['body_temperature'] ?? '') !== '' ? format_vital_reading($selectedViewAppointment['body_temperature'], '°C') : 'N/A')); ?></strong>
                                 </div>
+                                <?php if (!$vitalsGridIsInfant_selectedViewAppointment): ?>
                                 <div class="vital-display-box">
                                     <div class="vital-box-header">
                                         <span class="vital-box-icon"><?= staff_icon('heart'); ?></span>
@@ -4408,6 +4415,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     </div>
                                     <strong class="vital-box-val"><?= h((string) (($selectedViewAppointment['pulse_rate'] ?? '') !== '' ? format_vital_reading($selectedViewAppointment['pulse_rate'], 'bpm') : 'N/A')); ?></strong>
                                 </div>
+                                <?php endif; ?>
                                 <div class="vital-display-box">
                                     <div class="vital-box-header">
                                         <span class="vital-box-icon"><?= staff_icon('sparkle'); ?></span>
@@ -4415,6 +4423,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     </div>
                                     <strong class="vital-box-val"><?= h((string) (($selectedViewAppointment['respiration_rate'] ?? '') !== '' ? format_vital_reading($selectedViewAppointment['respiration_rate'], 'cpm') : 'N/A')); ?></strong>
                                 </div>
+                                <?php if (!$vitalsGridIsInfant_selectedViewAppointment): ?>
                                 <div class="vital-display-box">
                                     <div class="vital-box-header">
                                         <span class="vital-box-icon"><?= staff_icon('stethoscope'); ?></span>
@@ -4422,10 +4431,11 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     </div>
                                     <strong class="vital-box-val"><?= h((string) (($selectedViewAppointment['blood_pressure'] ?? '') !== '' ? format_vital_reading($selectedViewAppointment['blood_pressure'], 'mmHg') : 'N/A')); ?></strong>
                                 </div>
+                                <?php endif; ?>
                             </div>
 
                             <?php if (!empty($selectedViewAppointment['height']) || !empty($selectedViewAppointment['weight'])): ?>
-                                <div class="vitals-display-grid" style="margin-top: 10px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                                <div class="vitals-display-grid" style="margin-top: 10px; grid-template-columns: <?= $vitalsGridIsInfant_selectedViewAppointment ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(140px, 1fr))'; ?>;">
                                     <?php if (!empty($selectedViewAppointment['height'])): ?>
                                         <div class="vital-display-box" style="background:#f0fdf4; border-color:#86efac;">
                                             <div class="vital-box-header">
@@ -6288,7 +6298,8 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     </div>
 
                                     <!-- Non-Clickable Vital Signs Display -->
-                                    <div class="vitals-display-grid readonly-vitals-grid">
+                                    <?php $vitalsGridIsInfant_selectedRemarksAppointment = appointment_is_infant_immunization($selectedRemarksAppointment); ?>
+                                    <div class="vitals-display-grid readonly-vitals-grid"<?= $vitalsGridIsInfant_selectedRemarksAppointment ? ' style="grid-template-columns: repeat(2, minmax(0, 1fr));"' : ''; ?>>
                                         <div class="vital-display-box is-readonly">
                                             <div class="vital-box-header">
                                                 <span class="vital-box-icon"><?= staff_icon('pulse'); ?></span>
@@ -6296,6 +6307,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                             </div>
                                             <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['body_temperature'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['body_temperature'], '°C') : 'Not recorded')); ?></strong>
                                         </div>
+                                        <?php if (!$vitalsGridIsInfant_selectedRemarksAppointment): ?>
                                         <div class="vital-display-box is-readonly">
                                             <div class="vital-box-header">
                                                 <span class="vital-box-icon"><?= staff_icon('heart'); ?></span>
@@ -6303,6 +6315,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                             </div>
                                             <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['pulse_rate'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['pulse_rate'], 'bpm') : 'Not recorded')); ?></strong>
                                         </div>
+                                        <?php endif; ?>
                                         <div class="vital-display-box is-readonly">
                                             <div class="vital-box-header">
                                                 <span class="vital-box-icon"><?= staff_icon('sparkle'); ?></span>
@@ -6310,6 +6323,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                             </div>
                                             <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['respiration_rate'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['respiration_rate'], 'cpm') : 'Not recorded')); ?></strong>
                                         </div>
+                                        <?php if (!$vitalsGridIsInfant_selectedRemarksAppointment): ?>
                                         <div class="vital-display-box is-readonly">
                                             <div class="vital-box-header">
                                                 <span class="vital-box-icon"><?= staff_icon('stethoscope'); ?></span>
@@ -6317,6 +6331,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                             </div>
                                             <strong class="vital-box-val"><?= h((string) (($selectedRemarksAppointment['blood_pressure'] ?? '') !== '' ? format_vital_reading($selectedRemarksAppointment['blood_pressure'], 'mmHg') : 'Not recorded')); ?></strong>
                                         </div>
+                                        <?php endif; ?>
                                     </div>
 
                                     <div class="account-section-divider">
