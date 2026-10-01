@@ -7712,18 +7712,31 @@ window.openStaffInfantModal = function(infant) {
         if (l.includes('measles') || l.includes('rubella') || l.includes('amv')) return 'Measles-Rubella (MR) or AMV-1';
         return name;
     };
-    const vNames = Object.keys(vaccineSummary);
+    // Vaccine card: only NIP antigens with dose limits, in DOH schedule order (nipLimits key order).
+    // Other vaccine types are listed only in the appointments timeline below.
+    const cardSummary = {};
+    Object.keys(vaccineSummary).forEach(rawName => {
+        const canon = normalizeVac(rawName);
+        if (!nipLimits[canon]) return;
+        const info = vaccineSummary[rawName];
+        if (!cardSummary[canon]) {
+            cardSummary[canon] = { count: info.count, latestDate: info.latestDate };
+            return;
+        }
+        cardSummary[canon].count = Math.max(cardSummary[canon].count, info.count);
+        if (info.latestDate && info.latestDate > cardSummary[canon].latestDate) {
+            cardSummary[canon].latestDate = info.latestDate;
+        }
+    });
+    const vNames = Object.keys(nipLimits).filter(canon => cardSummary[canon]);
     if (vNames.length > 0) {
         dosesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">';
         vNames.forEach(vName => {
-            const info = vaccineSummary[vName];
-            const canon = normalizeVac(vName);
-            const maxDose = nipLimits[canon] || null;
-            const isCompleted = maxDose !== null && info.count >= maxDose;
+            const info = cardSummary[vName];
+            const maxDose = nipLimits[vName];
+            const isCompleted = info.count >= maxDose;
             const dateStr = info.latestDate ? new Date(info.latestDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-            const badgeLabel = maxDose !== null
-                ? (isCompleted ? `${info.count}/${maxDose} Doses (Limit Reached)` : `${info.count}/${maxDose} Doses Taken`)
-                : '';
+            const badgeLabel = isCompleted ? `${info.count}/${maxDose} Doses (Limit Reached)` : `${info.count}/${maxDose} Doses Taken`;
 
             dosesHtml += `
             <div style="background: ${isCompleted ? '#ecfdf5' : '#f0f9ff'}; border: 1.5px solid ${isCompleted ? '#a7f3d0' : '#7dd3fc'}; color: ${isCompleted ? '#065f46' : '#0369a1'}; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);">
@@ -7735,7 +7748,7 @@ window.openStaffInfantModal = function(infant) {
         });
         dosesHtml += '</div>';
     } else {
-        dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 8px 0 0 0;">No immunization doses recorded yet for this infant.</p>';
+        dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 8px 0 0 0;">No NIP vaccine doses recorded yet for this infant.</p>';
     }
 
     const formatInfantHeight = (val) => {
@@ -7854,7 +7867,7 @@ window.openStaffInfantModal = function(infant) {
             <span style="color: #0284c7;"><?= staff_icon('syringe'); ?></span>
             <span>Types of Vaccines Taken &amp; Dose Summary</span>
         </div>
-        <p style="font-size: 0.82rem; color: #64748b; margin: 3px 0 0 0;">Summary of all completed antigens and number of doses administered to this infant.</p>
+        <p style="font-size: 0.82rem; color: #64748b; margin: 3px 0 0 0;">Vaccine card of DOH National Immunization Program antigens, in order of the standard schedule.</p>
         ${dosesHtml}
     </div>
 
