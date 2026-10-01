@@ -1669,6 +1669,63 @@ if (!function_exists('peso')) {
                     </div>
                 </article>
             </section>
+            <!-- Recent Patient Visits & Appointments (latest completed records, moved here from Reports) -->
+            <section class="panel-card report-appointments-table-card" style="margin-top:20px;">
+                <div class="dash-card-head">
+                    <div>
+                        <h3>Recent Patient Visits &amp; Appointments</h3>
+                        <p>Showing <?= count($reportAppointmentsList); ?> latest completed patient visits</p>
+                    </div>
+                </div>
+                <?php if ($reportAppointmentsList === []): ?>
+                    <div class="empty-state">No completed appointments match the selected filter combination.</div>
+                <?php else: ?>
+                    <div class="table-scroll-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:center;">Patient Name</th>
+                                    <th style="text-align:center;">Age / Gender</th>
+                                    <th style="text-align:center;">Health Station</th>
+                                    <th style="text-align:center;">Service</th>
+                                    <th style="text-align:center;">Date</th>
+                                    <th style="text-align:center;">Status</th>
+                                    <th style="text-align:center;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($reportAppointmentsList as $appt): ?>
+                                    <?php 
+                                        $apptBirth = (string) ($appt['birth_date'] ?? '');
+                                        $apptAge = $apptBirth !== '' ? (int) date_diff(new DateTimeImmutable($apptBirth), new DateTimeImmutable('today'))->y : 0;
+                                        $statusClass = strtolower(str_replace(' ', '-', (string) ($appt['status'] ?? 'pending')));
+                                        $cleanStationName = trim(str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', (string) ($appt['station_name'] ?? '')));
+                                    ?>
+                                    <tr>
+                                        <td style="text-align:center;">
+                                            <strong><?= h(full_name($appt)); ?></strong>
+                                        </td>
+                                        <td style="text-align:center;"><?= $apptAge; ?>y / <?= h((string) ($appt['gender'] ?? '')); ?></td>
+                                        <td style="text-align:center;"><?= h($cleanStationName); ?></td>
+                                        <td style="text-align:center;"><span class="report-service-tag"><?= h((string) $appt['service_name']); ?></span></td>
+                                        <td style="text-align:center;white-space:nowrap;">
+                                            <div><?= h(date('M j, Y', strtotime((string) $appt['preferred_date']))); ?></div>
+                                        </td>
+                                        <td style="text-align:center;">
+                                            <span class="status-pill status-<?= h($statusClass); ?>"><?= h((string) $appt['status']); ?></span>
+                                        </td>
+                                        <td style="text-align:center;">
+                                            <button type="button" class="patient-action-btn view" title="View Consultation Details" data-record="<?= htmlspecialchars(json_encode($appt), ENT_QUOTES, 'UTF-8'); ?>" onclick="openReportVisitModal(this)" style="margin:0 auto;">
+                                                <?= admin_icon('eye'); ?>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </section>
         <?php elseif ($page === 'patients' && ($patientViewId !== '' || $patientViewAppointmentId > 0)): ?>
             <?php 
                 $patientFullName = $patientProfile !== null 
@@ -5583,67 +5640,6 @@ if (!function_exists('peso')) {
                 </div>
             </section>
 
-            <!-- Recent Appointment Records Table -->
-            <section class="panel-card report-appointments-table-card" style="margin-top:20px;">
-                <div class="dash-card-head">
-                    <div>
-                        <h3>Recent Patient Visits &amp; Appointments</h3>
-                        <p>Showing <?= count($reportAppointmentsList); ?> latest completed records matching active filter criteria</p>
-                    </div>
-                </div>
-                <?php if ($reportAppointmentsList === []): ?>
-                    <div class="empty-state">No completed appointments match the selected filter combination.</div>
-                <?php else: ?>
-                    <div class="table-scroll-wrapper">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th style="text-align:center;">Appt #</th>
-                                    <th style="text-align:center;">Patient Name</th>
-                                    <th style="text-align:center;">Age / Gender</th>
-                                    <th style="text-align:center;">Health Station</th>
-                                    <th style="text-align:center;">Service</th>
-                                    <th style="text-align:center;">Date</th>
-                                    <th style="text-align:center;">Status</th>
-                                    <th style="text-align:center;">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($reportAppointmentsList as $appt): ?>
-                                    <?php 
-                                        $apptBirth = (string) ($appt['birth_date'] ?? '');
-                                        $apptAge = $apptBirth !== '' ? (int) date_diff(new DateTimeImmutable($apptBirth), new DateTimeImmutable('today'))->y : 0;
-                                        $statusClass = strtolower(str_replace(' ', '-', (string) ($appt['status'] ?? 'pending')));
-                                        $cleanStationName = trim(str_ireplace([' Barangay Health Station', ' Health Station', ' Barangay Health Center'], '', (string) ($appt['station_name'] ?? '')));
-                                    ?>
-                                    <tr>
-                                        <td style="text-align:center;font-family:monospace;font-weight:700;color:#3b82f6;">
-                                            #<?= h((string) ($appt['appointment_code'] ?: $appt['reference_code'])); ?>
-                                        </td>
-                                        <td style="text-align:center;">
-                                            <strong><?= h(full_name($appt)); ?></strong>
-                                        </td>
-                                        <td style="text-align:center;"><?= $apptAge; ?>y / <?= h((string) ($appt['gender'] ?? '')); ?></td>
-                                        <td style="text-align:center;"><?= h($cleanStationName); ?></td>
-                                        <td style="text-align:center;"><span class="report-service-tag"><?= h((string) $appt['service_name']); ?></span></td>
-                                        <td style="text-align:center;white-space:nowrap;">
-                                            <div><?= h(date('M j, Y', strtotime((string) $appt['preferred_date']))); ?></div>
-                                        </td>
-                                        <td style="text-align:center;">
-                                            <span class="status-pill status-<?= h($statusClass); ?>"><?= h((string) $appt['status']); ?></span>
-                                        </td>
-                                        <td style="text-align:center;">
-                                            <button type="button" class="patient-action-btn view" title="View Consultation Details" data-record="<?= htmlspecialchars(json_encode($appt), ENT_QUOTES, 'UTF-8'); ?>" onclick="openReportVisitModal(this)" style="margin:0 auto;">
-                                                <?= admin_icon('eye'); ?>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
-            </section>
 
             <!-- Multi-Filter Interactive Modal -->
             <div id="reportsFilterModal" style="display:none;" class="service-modal-overlay report-modal-backdrop" onclick="if(event.target===this)closeReportsFilterModal()">
@@ -5808,6 +5804,37 @@ if (!function_exists('peso')) {
                 </div>
             </div>
 
+            <script>
+            function openReportsFilterModal() {
+                const modal = document.getElementById('reportsFilterModal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                }
+            }
+            function closeReportsFilterModal() {
+                const modal = document.getElementById('reportsFilterModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                    const visitModal = document.getElementById('reportVisitModal');
+                    if (!visitModal || visitModal.style.display === 'none') {
+                        document.body.style.overflow = '';
+                    }
+                }
+            }
+
+
+            // Close modal on Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeReportsFilterModal();
+                    closeReportVisitModal();
+                }
+            });
+            </script>
+        <?php endif; ?>
+
+        <!-- Consultation details modal for the Recent Patient Visits table (dashboard) -->
             <!-- Consultation Record Inspection Modal on Reports Page -->
             <div id="reportVisitModal" style="display:none;" class="service-modal-overlay report-modal-backdrop" onclick="if(event.target===this)closeReportVisitModal()">
                 <div class="service-modal-card clinical-modal-card-modern">
@@ -5895,24 +5922,6 @@ if (!function_exists('peso')) {
             </div>
 
             <script>
-            function openReportsFilterModal() {
-                const modal = document.getElementById('reportsFilterModal');
-                if (modal) {
-                    modal.style.display = 'flex';
-                    document.body.style.overflow = 'hidden';
-                }
-            }
-            function closeReportsFilterModal() {
-                const modal = document.getElementById('reportsFilterModal');
-                if (modal) {
-                    modal.style.display = 'none';
-                    const visitModal = document.getElementById('reportVisitModal');
-                    if (!visitModal || visitModal.style.display === 'none') {
-                        document.body.style.overflow = '';
-                    }
-                }
-            }
-
             function openReportVisitModal(buttonEl) {
                 if (!buttonEl) return;
                 try {
@@ -6053,16 +6062,7 @@ if (!function_exists('peso')) {
                     }
                 }
             }
-
-            // Close modal on Escape
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    closeReportsFilterModal();
-                    closeReportVisitModal();
-                }
-            });
             </script>
-        <?php endif; ?>
     </main>
 </div>
 
