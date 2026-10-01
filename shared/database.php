@@ -2796,7 +2796,7 @@ function save_patient_photo_for_patient_id(string $patientId, string $capturedPh
  * Handles relative paths, leading slashes, Windows backslashes, missing 'uploads/' prefix,
  * and verifies that relative local files actually exist on disk before returning.
  */
-function resolve_patient_photo_url(?string $rawPath, string $context = 'staff', bool $requireFileOnDisk = true): string
+function resolve_patient_photo_url(?string $rawPath, string $context = 'staff', bool $requireFileOnDisk = false): string
 {
     $raw = trim((string) $rawPath);
     if ($raw === '') {
@@ -2823,8 +2823,8 @@ function resolve_patient_photo_url(?string $rawPath, string $context = 'staff', 
         $clean = 'uploads/' . $clean;
     }
 
-    // Check disk existence for local file. Callers that render the image directly can skip this
-    // and rely on the browser's onerror, since the check can miss files the web server still serves.
+    // Optional disk check, off by default: on the live server it reports existing uploads as missing,
+    // which hid every photo. Pages show the image directly and handle a missing file with onerror.
     $diskPath = dirname(__DIR__) . '/Patients/' . $clean;
     if ($requireFileOnDisk && (!file_exists($diskPath) || !is_file($diskPath))) {
         return '';
@@ -3576,23 +3576,20 @@ function fetch_patient_profile_by_patient_id(string $patientId): ?array
     $profile = $profileRow ?? ($visits[0] ?? []);
     $birthDate = (string) ($profile['birth_date'] ?? '');
     
-    // Resolve patient profile photo from their very recent appointment regardless of service
+    // Profile photo: the photo taken on the patient's most recent completed appointment, whatever the
+    // service (including immunizations booked for an infant). Visits are sorted newest first.
     $photoPath = '';
-    // Check non-cancelled visits where the patient was the recipient (self / not an infant)
     foreach ($visits as $visit) {
-        if (!empty($visit['photo_path']) && trim((string) $visit['photo_path']) !== '') {
-            $vRec = appointment_recipient_details($visit);
-            if ($vRec['is_self']) {
-                $photoPath = (string) $visit['photo_path'];
-                break;
-            }
+        if ((string) ($visit['status'] ?? '') === 'Completed' && trim((string) ($visit['photo_path'] ?? '')) !== '') {
+            $photoPath = (string) $visit['photo_path'];
+            break;
         }
     }
 
-    // If no self-recipient appointment has a photo, check any visit of this patient regardless of service
+    // No completed visit has a photo yet: use the newest photo on any other visit
     if ($photoPath === '') {
         foreach ($visits as $visit) {
-            if (!empty($visit['photo_path']) && trim((string) $visit['photo_path']) !== '') {
+            if (trim((string) ($visit['photo_path'] ?? '')) !== '') {
                 $photoPath = (string) $visit['photo_path'];
                 break;
             }
