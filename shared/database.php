@@ -2729,6 +2729,141 @@ function update_patient_profile_info(string $patientId, array $data): bool
     return true;
 }
 
+/**
+ * Patient photos are kept in the database as well as in Patients/uploads. Deployments reset the
+ * uploads folder (it is tracked in git), which deleted photos taken on the live site; the database
+ * copy survives, and Patients/photo.php serves from disk or falls back to it.
+ */
+function ensure_photo_store_table(mysqli $connection): void
+{
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
+    $connection->query(
+        'CREATE TABLE IF NOT EXISTS patient_photo_store (
+            file_name VARCHAR(191) NOT NULL PRIMARY KEY,
+            mime VARCHAR(40) NOT NULL,
+            data MEDIUMBLOB NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
+    );
+    $ensured = true;
+}
+
+/**
+ * The upload file name ("patient_xxx.jpg") from a stored photo path, or '' if it isn't an upload.
+ */
+function photo_file_name(?string $rawPath): string
+{
+    $name = basename(str_replace('\\', '/', trim((string) $rawPath)));
+    $name = preg_replace('/[?#].*$/', '', $name);
+    return preg_match('/^patient_[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp)$/i', $name) ? $name : '';
+}
+
+function photo_upload_disk_path(string $fileName): string
+{
+    return dirname(__DIR__) . '/Patients/uploads/' . $fileName;
+}
+
+function photo_mime_for(string $fileName): string
+{
+    $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+    return match ($ext) {
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        default => 'image/jpeg',
+    };
+}
+
+function save_photo_to_store(string $fileName, string $binary): bool
+{
+    if ($fileName === '' || $binary === '') {
+        return false;
+    }
+    try {
+        $db = db();
+        ensure_photo_store_table($db);
+        $mime = photo_mime_for($fileName);
+        $stmt = $db->prepare('INSERT INTO patient_photo_store (file_name, mime, data) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE mime = VALUES(mime), data = VALUES(data)');
+        $null = null;
+        $stmt->bind_param('ssb', $fileName, $mime, $null);
+        $stmt->send_long_data(2, $binary);
+        return $stmt->execute();
+    } catch (Throwable $e) {
+        error_log('save_photo_to_store error: ' . $e->getMessage());
+        return false;
+    }
+}
+
+function fetch_photo_from_store(string $fileName): ?array
+{
+    if ($fileName === '') {
+        return null;
+    }
+    try {
+        $db = db();
+        ensure_photo_store_table($db);
+        $stmt = $db->prepare('SELECT mime, data FROM patient_photo_store WHERE file_name = ? LIMIT 1');
+        $stmt->bind_param('s', $fileName);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc() ?: null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+function photo_in_store(string $fileName): bool
+{
+    try {
+        $db = db();
+        ensure_photo_store_table($db);
+        $stmt = $db->prepare('SELECT 1 FROM patient_photo_store WHERE file_name = ? LIMIT 1');
+        $stmt->bind_param('s', $fileName);
+        $stmt->execute();
+        return (bool) $stmt->get_result()->fetch_row();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+/**
+ * Photo files referenced by a station's appointments that exist neither on disk nor in the database
+ * (deleted by a deployment before database copies existed). Used to recover them from staff browser caches.
+ */
+function fetch_missing_station_photos(string $stationSlug, int $limit = 60): array
+{
+    try {
+        $db = db();
+        ensure_photo_store_table($db);
+        $stmt = $db->prepare('SELECT DISTINCT photo_path FROM appointments WHERE station_slug = ? AND photo_path IS NOT NULL AND photo_path <> "" ORDER BY id DESC');
+        $stmt->bind_param('s', $stationSlug);
+        $stmt->execute();
+        $names = [];
+        foreach ($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+            $name = photo_file_name((string) $row['photo_path']);
+            if ($name !== '' && !is_file(photo_upload_disk_path($name))) {
+                $names[$name] = true;
+            }
+        }
+        if (empty($names)) {
+            return [];
+        }
+        $stored = [];
+        $placeholders = implode(',', array_fill(0, count($names), '?'));
+        $check = $db->prepare("SELECT file_name FROM patient_photo_store WHERE file_name IN ({$placeholders})");
+        $list = array_keys($names);
+        $check->bind_param(str_repeat('s', count($list)), ...$list);
+        $check->execute();
+        foreach ($check->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+            $stored[$row['file_name']] = true;
+        }
+        return array_slice(array_values(array_filter($list, static fn(string $n): bool => !isset($stored[$n]))), 0, $limit);
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
 function store_patient_photo(string $capturedPhotoData): ?string
 {
     if (!preg_match('/^data:image\/(png|jpeg|jpg|webp);base64,/i', $capturedPhotoData, $matches)) {
@@ -2743,13 +2878,16 @@ function store_patient_photo(string $capturedPhotoData): ?string
     $extMatch = strtolower((string) $matches[1]);
     $extension = in_array($extMatch, ['png', 'jpg', 'jpeg', 'webp'], true) ? ($extMatch === 'jpeg' ? 'jpg' : $extMatch) : 'jpg';
     $uploadDir = dirname(__DIR__) . '/Patients/uploads';
-    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0777, true) && !is_dir($uploadDir)) {
-        return null;
+    if (!is_dir($uploadDir)) {
+        @mkdir($uploadDir, 0777, true);
     }
 
     $fileName = uniqid('patient_', true) . '.' . $extension;
-    $destination = $uploadDir . '/' . $fileName;
-    if (file_put_contents($destination, $binary) === false) {
+    $savedToDisk = @file_put_contents($uploadDir . '/' . $fileName, $binary) !== false;
+    // The database copy is what survives deployments
+    $savedToStore = save_photo_to_store($fileName, $binary);
+
+    if (!$savedToDisk && !$savedToStore) {
         return null;
     }
 
@@ -2792,9 +2930,8 @@ function save_patient_photo_for_patient_id(string $patientId, string $capturedPh
 }
 
 /**
- * Normalizes and resolves a patient or infant photo URL for web display.
- * Handles relative paths, leading slashes, Windows backslashes, missing 'uploads/' prefix,
- * and verifies that relative local files actually exist on disk before returning.
+ * Display URL for a patient or infant photo. Uploaded photos go through Patients/photo.php, which
+ * serves the file from disk or, if a deployment removed it, from the database copy.
  */
 function resolve_patient_photo_url(?string $rawPath, string $context = 'staff', bool $requireFileOnDisk = false): string
 {
@@ -2807,36 +2944,20 @@ function resolve_patient_photo_url(?string $rawPath, string $context = 'staff', 
         return $raw;
     }
 
-    // Normalize slashes
-    $clean = str_replace('\\', '/', $raw);
+    $prefix = $context === 'patient' ? '' : '../Patients/';
 
-    // Strip leading ../, Patients/, or leading slash
-    $clean = preg_replace('#^(\.\./)?(Patients/)?#i', '', $clean);
-    $clean = ltrim($clean, '/');
-
-    if ($clean === '') {
-        return '';
+    // Uploaded photos are served by Patients/photo.php (disk first, database copy as fallback)
+    $fileName = photo_file_name($raw);
+    if ($fileName !== '') {
+        if ($requireFileOnDisk && !is_file(photo_upload_disk_path($fileName)) && !photo_in_store($fileName)) {
+            return '';
+        }
+        return $prefix . 'photo.php?f=' . rawurlencode($fileName);
     }
 
-    // Ensure uploads/ prefix if not an asset
-    if (!str_starts_with($clean, 'uploads/') && !str_starts_with($clean, 'assets/')) {
-        $clean = 'uploads/' . $clean;
-    }
-
-    // Optional disk check, off by default: on the live server it reports existing uploads as missing,
-    // which hid every photo. Pages show the image directly and handle a missing file with onerror.
-    $diskPath = dirname(__DIR__) . '/Patients/' . $clean;
-    if ($requireFileOnDisk && (!file_exists($diskPath) || !is_file($diskPath))) {
-        return '';
-    }
-
-    if ($context === 'staff' || $context === 'admin') {
-        return '../Patients/' . $clean;
-    } elseif ($context === 'patient') {
-        return $clean;
-    }
-
-    return '../Patients/' . $clean;
+    // Bundled assets keep their direct path
+    $clean = ltrim(preg_replace('#^(\.\./)?(Patients/)?#i', '', str_replace('\\', '/', $raw)), '/');
+    return $clean !== '' && str_starts_with($clean, 'assets/') ? $prefix . $clean : '';
 }
 
 function appointment_time_slots(): array

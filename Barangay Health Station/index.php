@@ -1030,6 +1030,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'sche
     }
     exit;
 }
+// Recovery of photos a deployment deleted from Patients/uploads: the staff browser still holds a cached
+// copy and sends it back here, so it is saved to the database (and disk) again.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'restore_cached_photo')) {
+    header('Content-Type: application/json');
+    if (!verify_staff_csrf($_POST['csrf_token'] ?? null)) {
+        echo json_encode(['success' => false]);
+        exit;
+    }
+    $fileName = photo_file_name((string) ($_POST['file_name'] ?? ''));
+    $binary = base64_decode((string) ($_POST['image_data'] ?? ''), true);
+    // Only photos referenced by this station's appointments, only real images, at most 8 MB
+    $belongsToStation = false;
+    if ($fileName !== '') {
+        $stmt = db()->prepare('SELECT 1 FROM appointments WHERE station_slug = ? AND photo_path LIKE ? LIMIT 1');
+        $stationSlugParam = (string) $station['slug'];
+        $likeParam = '%' . $fileName;
+        $stmt->bind_param('ss', $stationSlugParam, $likeParam);
+        $stmt->execute();
+        $belongsToStation = (bool) $stmt->get_result()->fetch_row();
+    }
+    $isImage = $binary !== false && $binary !== '' && strlen($binary) <= 8 * 1024 * 1024 && @getimagesizefromstring($binary) !== false;
+    $saved = false;
+    if ($belongsToStation && $isImage && !photo_in_store($fileName)) {
+        $saved = save_photo_to_store($fileName, $binary);
+        if ($saved && is_dir(dirname(photo_upload_disk_path($fileName))) && !is_file(photo_upload_disk_path($fileName))) {
+            @file_put_contents(photo_upload_disk_path($fileName), $binary);
+        }
+    }
+    echo json_encode(['success' => $saved]);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'save_photo')) {
     if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
         $photoAppointmentId = (int) ($_POST['appointment_id'] ?? 0);
@@ -2290,7 +2322,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     <div class="dash-recent-item">
                                         <div class="dash-recent-avatar" style="<?= $actHasPhoto ? 'background:transparent;' : ''; ?>">
                                             <?php if ($actHasPhoto): ?>
-                                                <img src="../Patients/<?= h((string) $act['photo_path']); ?>" alt="<?= h(full_name($act)); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+                                                <img src="<?= h(resolve_patient_photo_url((string) $act['photo_path'], 'staff')); ?>" alt="<?= h(full_name($act)); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
                                             <?php else: ?>
                                                 <?= h($actInitial); ?>
                                             <?php endif; ?>
@@ -2910,7 +2942,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 <div class="patient-modal-banner">
                                     <div class="patient-modal-avatar-wrap">
                                         <?php if ((string) ($selectedVitalsAppointment['photo_path'] ?? '') !== ''): ?>
-                                            <img src="../Patients/<?= h((string) $selectedVitalsAppointment['photo_path']); ?>" alt="<?= h(full_name($selectedVitalsAppointment)); ?> photo" class="patient-modal-thumb">
+                                            <img src="<?= h(resolve_patient_photo_url((string) $selectedVitalsAppointment['photo_path'], 'staff')); ?>" alt="<?= h(full_name($selectedVitalsAppointment)); ?> photo" class="patient-modal-thumb">
                                         <?php else: ?>
                                             <div class="patient-modal-initials">
                                                 <?= strtoupper(substr((string) ($selectedVitalsAppointment['first_name'] ?? 'P'), 0, 1) . substr((string) ($selectedVitalsAppointment['last_name'] ?? 'U'), 0, 1)); ?>
@@ -3858,7 +3890,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     <div class="pat-card-left">
                                         <div class="pat-card-avatar" style="<?= $patHasPhoto ? 'background:transparent;' : ''; ?>">
                                             <?php if ($patHasPhoto): ?>
-                                                <img src="../Patients/<?= h((string) $appointment['photo_path']); ?>" alt="<?= h(full_name($appointment)); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">
+                                                <img src="<?= h(resolve_patient_photo_url((string) $appointment['photo_path'], 'staff')); ?>" alt="<?= h(full_name($appointment)); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">
                                             <?php else: ?>
                                                 <?= h($patInitials); ?>
                                             <?php endif; ?>
@@ -3971,7 +4003,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     <div class="pat-card-left">
                                         <div class="pat-card-avatar" style="<?= $patHasPhoto ? 'background:transparent;' : ''; ?>">
                                             <?php if ($patHasPhoto): ?>
-                                                <img src="../Patients/<?= h((string) $appointment['photo_path']); ?>" alt="<?= h(full_name($appointment)); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">
+                                                <img src="<?= h(resolve_patient_photo_url((string) $appointment['photo_path'], 'staff')); ?>" alt="<?= h(full_name($appointment)); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">
                                             <?php else: ?>
                                                 <?= h($patInitials); ?>
                                             <?php endif; ?>
@@ -4059,7 +4091,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 <div class="patient-modal-banner">
                                     <div class="patient-modal-avatar-wrap">
                                         <?php if ((string) ($selectedRemarksAppointment['photo_path'] ?? '') !== ''): ?>
-                                            <img src="../Patients/<?= h((string) $selectedRemarksAppointment['photo_path']); ?>" alt="<?= h(full_name($selectedRemarksAppointment)); ?> photo" class="patient-modal-thumb">
+                                            <img src="<?= h(resolve_patient_photo_url((string) $selectedRemarksAppointment['photo_path'], 'staff')); ?>" alt="<?= h(full_name($selectedRemarksAppointment)); ?> photo" class="patient-modal-thumb">
                                         <?php else: ?>
                                             <div class="patient-modal-initials">
                                                 <?= strtoupper(substr((string) ($selectedRemarksAppointment['first_name'] ?? 'P'), 0, 1) . substr((string) ($selectedRemarksAppointment['last_name'] ?? 'U'), 0, 1)); ?>
@@ -4312,7 +4344,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                             <div class="patient-modal-banner">
                                 <div class="patient-modal-avatar-wrap">
                                     <?php if ((string) ($selectedViewAppointment['photo_path'] ?? '') !== ''): ?>
-                                        <img src="../Patients/<?= h((string) $selectedViewAppointment['photo_path']); ?>" alt="<?= h(full_name($selectedViewAppointment)); ?> photo" class="patient-modal-thumb">
+                                        <img src="<?= h(resolve_patient_photo_url((string) $selectedViewAppointment['photo_path'], 'staff')); ?>" alt="<?= h(full_name($selectedViewAppointment)); ?> photo" class="patient-modal-thumb">
                                     <?php else: ?>
                                         <div class="patient-modal-initials">
                                             <?= strtoupper(substr((string) ($selectedViewAppointment['first_name'] ?? 'P'), 0, 1) . substr((string) ($selectedViewAppointment['last_name'] ?? 'U'), 0, 1)); ?>
@@ -4582,7 +4614,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 <div class="patient-modal-banner">
                                     <div class="patient-modal-avatar-wrap">
                                         <?php if ((string) ($selectedFollowUpAppointment['photo_path'] ?? '') !== ''): ?>
-                                            <img src="../Patients/<?= h((string) $selectedFollowUpAppointment['photo_path']); ?>" alt="<?= h(full_name($selectedFollowUpAppointment)); ?> photo" class="patient-modal-thumb">
+                                            <img src="<?= h(resolve_patient_photo_url((string) $selectedFollowUpAppointment['photo_path'], 'staff')); ?>" alt="<?= h(full_name($selectedFollowUpAppointment)); ?> photo" class="patient-modal-thumb">
                                         <?php else: ?>
                                             <div class="patient-modal-initials">
                                                 <?= strtoupper(substr((string) ($selectedFollowUpAppointment['first_name'] ?? 'P'), 0, 1) . substr((string) ($selectedFollowUpAppointment['last_name'] ?? 'U'), 0, 1)); ?>
@@ -4915,7 +4947,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 <div class="patient-id-card-hero">
                                     <div class="patient-hero-avatar-wrap">
                                         <?php if ($hasPhoto): ?>
-                                            <img src="../Patients/<?= h((string) $captureAppointment['photo_path']); ?>" alt="<?= h(full_name($captureAppointment)); ?>" class="patient-hero-photo-img" id="currentPatientPortraitImg">
+                                            <img src="<?= h(resolve_patient_photo_url((string) $captureAppointment['photo_path'], 'staff')); ?>" alt="<?= h(full_name($captureAppointment)); ?>" class="patient-hero-photo-img" id="currentPatientPortraitImg">
                                         <?php else: ?>
                                             <div class="patient-hero-avatar-placeholder">
                                                 <?= h($patInitials); ?>
@@ -7802,12 +7834,13 @@ function resolveStaffPhotoUrl(raw) {
         return '';
     }
     s = s.replace(/\\/g, '/');
-    s = s.replace(/^(\.\.\/)?(Patients\/)?/i, '');
-    s = s.replace(/^\/+/, '');
-    if (!s.startsWith('uploads/') && !s.startsWith('assets/')) {
-        s = 'uploads/' + s;
+    // Uploaded photos go through Patients/photo.php (file on disk, or its database copy)
+    const fileName = s.split('/').pop().replace(/[?#].*$/, '');
+    if (/^patient_[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp)$/i.test(fileName)) {
+        return '../Patients/photo.php?f=' + encodeURIComponent(fileName);
     }
-    return '../Patients/' + s;
+    s = s.replace(/^(\.\.\/)?(Patients\/)?/i, '').replace(/^\/+/, '');
+    return s.startsWith('assets/') ? '../Patients/' + s : '';
 }
 
 window.previewPhotoInModal = function(src) {
@@ -9130,6 +9163,49 @@ window.handleVitalNumericKeydown = handleVitalNumericKeydown;
     }, true);
 })();
 </script>
+<?php $missingStationPhotos = fetch_missing_station_photos((string) $station['slug']); ?>
+<?php if (!empty($missingStationPhotos)): ?>
+<script>
+// One-time recovery: photos deleted from the server by a deployment may still be cached in this browser
+// (old /Patients/uploads/ URLs). Send any cached copy back so it is stored in the database again.
+(function () {
+    const missing = <?= json_encode($missingStationPhotos); ?>;
+    const csrf = <?= json_encode($csrf); ?>;
+    const toBase64 = blob => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+    const restoreOne = async name => {
+        const url = new URL('../Patients/uploads/' + name, window.location.href).href;
+        let response = null;
+        if (window.caches) {
+            response = await caches.match(url);
+        }
+        if (!response) {
+            response = await fetch(url, { cache: 'force-cache' }).catch(() => null);
+        }
+        if (!response || !response.ok) return;
+        const blob = await response.blob();
+        if (!blob.type.startsWith('image/') || blob.size === 0) return;
+        const body = new FormData();
+        body.append('action', 'restore_cached_photo');
+        body.append('csrf_token', csrf);
+        body.append('file_name', name);
+        body.append('image_data', await toBase64(blob));
+        await fetch('index.php', { method: 'POST', body, headers: { 'X-Requested-With': 'XMLHttpRequest' } }).catch(() => null);
+    };
+    window.addEventListener('load', () => {
+        setTimeout(async () => {
+            for (const name of missing) {
+                try { await restoreOne(name); } catch (e) { /* skip this photo */ }
+            }
+        }, 1500);
+    });
+})();
+</script>
+<?php endif; ?>
 <script src="../shared/modal-persist.js?v=<?= (int) @filemtime(__DIR__ . '/../shared/modal-persist.js'); ?>"></script>
 <script>
 // Keep JavaScript-opened modals open across a refresh (URL-driven modals already persist)

@@ -5836,7 +5836,7 @@ if (!function_exists('peso')) {
                     const photoEl = document.getElementById('reportVisitPhoto');
                     const avatarEl = document.getElementById('reportVisitAvatar');
                     if (data.photo_path) {
-                        if (photoEl) photoEl.src = '../Patients/' + data.photo_path;
+                        if (photoEl) photoEl.src = resolveAdminPhotoUrl(data.photo_path);
                         if (photoWrap) photoWrap.style.display = 'block';
                         if (avatarEl) avatarEl.style.display = 'none';
                     } else {
@@ -6467,12 +6467,13 @@ function resolveAdminPhotoUrl(raw) {
         return '';
     }
     s = s.replace(/\\/g, '/');
-    s = s.replace(/^(\.\.\/)?(Patients\/)?/i, '');
-    s = s.replace(/^\/+/, '');
-    if (!s.startsWith('uploads/') && !s.startsWith('assets/')) {
-        s = 'uploads/' + s;
+    // Uploaded photos go through Patients/photo.php (file on disk, or its database copy)
+    const fileName = s.split('/').pop().replace(/[?#].*$/, '');
+    if (/^patient_[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp)$/i.test(fileName)) {
+        return '../Patients/photo.php?f=' + encodeURIComponent(fileName);
     }
-    return '../Patients/' + s;
+    s = s.replace(/^(\.\.\/)?(Patients\/)?/i, '').replace(/^\/+/, '');
+    return s.startsWith('assets/') ? '../Patients/' + s : '';
 }
 
 window.previewAdminPhotoInModal = function(src) {
