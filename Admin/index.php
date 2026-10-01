@@ -1942,18 +1942,22 @@ if (!function_exists('peso')) {
                                             <span class="vital-label">Body Temperature</span>
                                             <strong class="vital-value"><?= !empty($selectedAdminVisit['body_temperature']) ? h(format_vital_reading((string) $selectedAdminVisit['body_temperature'], '°C')) : '<em class="not-set">Not recorded</em>'; ?></strong>
                                         </div>
+                                        <?php if (!appointment_is_infant_immunization($selectedAdminVisit)): ?>
                                         <div class="vital-metric-card">
                                             <span class="vital-label">Pulse Rate</span>
                                             <strong class="vital-value"><?= !empty($selectedAdminVisit['pulse_rate']) ? h(format_vital_reading((string) $selectedAdminVisit['pulse_rate'], 'bpm')) : '<em class="not-set">Not recorded</em>'; ?></strong>
                                         </div>
+                                        <?php endif; ?>
                                         <div class="vital-metric-card">
                                             <span class="vital-label">Respiration Rate</span>
                                             <strong class="vital-value"><?= !empty($selectedAdminVisit['respiration_rate']) ? h(format_vital_reading((string) $selectedAdminVisit['respiration_rate'], 'cpm')) : '<em class="not-set">Not recorded</em>'; ?></strong>
                                         </div>
+                                        <?php if (!appointment_is_infant_immunization($selectedAdminVisit)): ?>
                                         <div class="vital-metric-card">
                                             <span class="vital-label">Blood Pressure</span>
                                             <strong class="vital-value"><?= !empty($selectedAdminVisit['blood_pressure']) ? h(format_vital_reading((string) $selectedAdminVisit['blood_pressure'], 'mmHg')) : '<em class="not-set">Not recorded</em>'; ?></strong>
                                         </div>
+                                        <?php endif; ?>
                                         <?php if (!$admRec['is_immunization'] && !empty($selectedAdminVisit['vaccine_type'])): ?>
                                             <div class="vital-metric-card" style="grid-column: 1 / -1; background: #eff6ff; border: 1px solid #bfdbfe;">
                                                 <span class="vital-label" style="color: #1e40af; font-weight: 700;">Type of Vaccine Administered</span>
@@ -2143,7 +2147,7 @@ if (!function_exists('peso')) {
                                                         'infants' => $adminInfants,
                                                         'parent_name' => h((string) ($patient['first_name'] ?? '') . ' ' . ($patient['middle_name'] ?? '') . ' ' . ($patient['last_name'] ?? '')),
                                                         'parent_id' => (string) $patient['patient_id'],
-                                                    ]), ENT_QUOTES, 'UTF-8'); ?>)" title="View Registered Infant Sub-Profiles (<?= count($adminInfants); ?>)">
+                                                    ]), ENT_QUOTES, 'UTF-8'); ?>)" title="View Registered Infant Profiles (<?= count($adminInfants); ?>)">
                                                         <?= admin_icon('baby'); ?>
                                                         <?php if (count($adminInfants) > 1): ?>
                                                             <span class="admin-infant-count-badge"><?= count($adminInfants); ?></span>
@@ -5879,6 +5883,16 @@ if (!function_exists('peso')) {
                     const respEl = document.getElementById('reportVisitResp');
                     const bpEl = document.getElementById('reportVisitBp');
                     
+                    // Infant immunization (booked for someone other than the account holder): no pulse rate / blood pressure
+                    const svcText = ((data.service_slug || '') + ' ' + (data.service_name || '')).toLowerCase();
+                    const relText = String(data.immunization_relationship || '').trim().toLowerCase();
+                    const isInfantImmunization = /immuniz|vaccin/.test(svcText)
+                        && !!(data.recipient_first_name && data.recipient_last_name)
+                        && !['', 'self', 'myself', 'me'].includes(relText);
+                    [pulseEl, bpEl].forEach(el => {
+                        const card = el ? el.closest('.vital-metric-card') : null;
+                        if (card) card.style.display = isInfantImmunization ? 'none' : '';
+                    });
                     tempEl.innerHTML = data.body_temperature ? (data.body_temperature + ' &deg;C') : '<em class="not-set">Not recorded</em>';
                     pulseEl.innerHTML = data.pulse_rate ? (data.pulse_rate + ' bpm') : '<em class="not-set">Not recorded</em>';
                     respEl.innerHTML = data.respiration_rate ? (data.respiration_rate + ' cpm') : '<em class="not-set">Not recorded</em>';
@@ -6532,7 +6546,7 @@ window.openAdminInfantViewer = function(data) {
     if (infants.length > 1) {
         window.renderAdminInfantSelectionList(infants, parentName);
         const title = document.getElementById('adminInfantModalTitle');
-        if (title) title.textContent = 'Registered Infant Sub-Profiles';
+        if (title) title.textContent = 'Registered Infant Profiles';
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         return;
@@ -6549,7 +6563,7 @@ window.renderAdminInfantSelectionList = function(infants, parentName) {
         <div style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #f5f3ff, #ede9fe); color: #7c3aed; font-size: 1.5rem; margin-bottom: 10px;">
             ${babySvg}
         </div>
-        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #1e1b4b;">Select an Infant Sub-Profile</h3>
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #1e1b4b;">Select an Infant Profile</h3>
         <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">
             ${infants.length} infant${infants.length !== 1 ? 's' : ''} registered under 
             <strong style="color: #4c1d95;">${adminEscapeHtml(parentName.replace(/\s+/g, ' ').trim())}</strong>
@@ -6785,9 +6799,7 @@ window.renderAdminSelectedInfant = function(targetInfant) {
                 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; font-size: 0.8rem; color: #475569; background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #f1f5f9;">
                     <div><strong>Temp:</strong> ${adminEscapeHtml(appt.body_temperature || 'N/A')} °C</div>
-                    <div><strong>PR:</strong> ${adminEscapeHtml(appt.pulse_rate || 'N/A')} bpm</div>
                     <div><strong>RR:</strong> ${adminEscapeHtml(appt.respiration_rate || 'N/A')} cpm</div>
-                    <div><strong>BP:</strong> ${adminEscapeHtml(appt.blood_pressure || 'N/A')}</div>
                     ${appt.height ? `<div><strong>Height:</strong> ${adminEscapeHtml(formatInfantHeight(appt.height))}</div>` : ''}
                     ${appt.weight ? `<div><strong>Weight:</strong> ${adminEscapeHtml(formatInfantWeight(appt.weight))}</div>` : ''}
                 </div>
@@ -6834,7 +6846,7 @@ window.renderAdminSelectedInfant = function(targetInfant) {
 
     const backBtnHtml = (currentAdminInfantsList && currentAdminInfantsList.length > 1)
         ? `<div style="margin-bottom: 14px;">
-               <button type="button" onclick="window.renderAdminInfantSelectionList(currentAdminInfantsList, ''); var t = document.getElementById('adminInfantModalTitle'); if(t) t.textContent='Registered Infant Sub-Profiles';" style="background: #f5f3ff; color: #6d28d9; border: 1.5px solid #ddd6fe; padding: 7px 16px; border-radius: 10px; font-weight: 700; font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s;">
+               <button type="button" onclick="window.renderAdminInfantSelectionList(currentAdminInfantsList, ''); var t = document.getElementById('adminInfantModalTitle'); if(t) t.textContent='Registered Infant Profiles';" style="background: #f5f3ff; color: #6d28d9; border: 1.5px solid #ddd6fe; padding: 7px 16px; border-radius: 10px; font-weight: 700; font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s;">
                    <span style="font-size: 1rem;">&larr;</span> Back to Infant List
                </button>
            </div>`

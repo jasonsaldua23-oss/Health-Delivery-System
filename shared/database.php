@@ -4566,11 +4566,8 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 if (!str_starts_with($clean, 'uploads/') && !str_starts_with($clean, 'assets/')) {
                     $clean = 'uploads/' . $clean;
                 }
-                // Verify the file actually exists on disk
-                $diskPath = $uploadsDir . $clean;
-                if (!file_exists($diskPath) || !is_file($diskPath)) {
-                    return '';
-                }
+                // No disk-existence check: it fails on the live server for files the web server still serves.
+                // The modals hide an image that really can't load (onerror).
                 return $clean;
             };
 

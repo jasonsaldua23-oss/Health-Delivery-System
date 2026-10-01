@@ -234,19 +234,24 @@ if (!function_exists('render_patient_profile_body')) {
                     </div>
 
                     <!-- Vital Signs Strip -->
-                    <div class="history-vitals-strip">
+                    <?php $apptIsInfant = appointment_is_infant_immunization($appt); ?>
+                    <div class="history-vitals-strip"<?= $apptIsInfant ? ' style="grid-template-columns: repeat(2, minmax(0, 1fr));"' : ''; ?>>
                         <div class="vitals-micro-item">
                             <span class="vitals-micro-lbl"><?= staff_icon('pulse'); ?> Temp</span>
                             <strong><?= h((string) (($appt['body_temperature'] ?? '') !== '' ? format_vital_reading($appt['body_temperature'], '°C') : 'N/A')); ?></strong>
                         </div>
+                        <?php if (!$apptIsInfant): ?>
                         <div class="vitals-micro-item">
                             <span class="vitals-micro-lbl"><?= staff_icon('stethoscope'); ?> BP</span>
                             <strong><?= h((string) (($appt['blood_pressure'] ?? '') !== '' ? format_vital_reading($appt['blood_pressure'], 'mmHg') : 'N/A')); ?></strong>
                         </div>
+                        <?php endif; ?>
+                        <?php if (!$apptIsInfant): ?>
                         <div class="vitals-micro-item">
                             <span class="vitals-micro-lbl"><?= staff_icon('heart'); ?> Pulse</span>
                             <strong><?= h((string) (($appt['pulse_rate'] ?? '') !== '' ? format_vital_reading($appt['pulse_rate'], 'bpm') : 'N/A')); ?></strong>
                         </div>
+                        <?php endif; ?>
                         <div class="vitals-micro-item">
                             <span class="vitals-micro-lbl"><?= staff_icon('sparkle'); ?> Resp</span>
                             <strong><?= h((string) (($appt['respiration_rate'] ?? '') !== '' ? format_vital_reading($appt['respiration_rate'], 'cpm') : 'N/A')); ?></strong>
@@ -3586,7 +3591,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         </div>
                                         <div class="pat-card-right" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                                             <?php if (!empty($infantSubProfiles)): ?>
-                                                <button type="button" class="patient-infant-toggle-btn" id="infantToggleBtn_<?= h($prof['key']); ?>" onclick="togglePatientInfantsTray('<?= h($prof['key']); ?>')" title="Registered Infant Sub-Profiles (<?= count($infantSubProfiles); ?>)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 10px 14px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.28); transition: transform 0.15s, background 0.15s;">
+                                                <button type="button" class="patient-infant-toggle-btn" id="infantToggleBtn_<?= h($prof['key']); ?>" onclick="togglePatientInfantsTray('<?= h($prof['key']); ?>')" title="Registered Infant Profiles (<?= count($infantSubProfiles); ?>)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 10px 14px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.28); transition: transform 0.15s, background 0.15s;">
                                                     <?= staff_icon('baby'); ?>
                                                 </button>
                                             <?php endif; ?>
@@ -3609,11 +3614,11 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                                     <div class="infant-popup-title">
                                                         <span class="infant-popup-title-icon"><?= staff_icon('baby'); ?></span>
                                                         <div>
-                                                            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0c4a6e;">Registered Infant Sub-Profiles</h4>
+                                                            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0c4a6e;">Registered Infant Profiles</h4>
                                                             <p style="margin: 2px 0 0 0; font-size: 0.78rem; color: #64748b;">Booked under <?= h($prof['full_name']); ?> &bull; <?= count($infantSubProfiles); ?> <?= count($infantSubProfiles) === 1 ? 'record' : 'records'; ?></p>
                                                         </div>
                                                     </div>
-                                                    <button type="button" class="infant-popup-close-btn" onclick="togglePatientInfantsTray('<?= h($prof['key']); ?>')" title="Close Infant Sub-Profile Window">
+                                                    <button type="button" class="infant-popup-close-btn" onclick="togglePatientInfantsTray('<?= h($prof['key']); ?>')" title="Close Infant Profile Window">
                                                         ✕ Close
                                                     </button>
                                                 </div>
@@ -8035,9 +8040,7 @@ window.openStaffInfantModal = function(infant) {
                 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; font-size: 0.8rem; color: #475569; background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #f1f5f9;">
                     <div><strong>Temp:</strong> ${staffEscapeHtml(appt.body_temperature || 'N/A')} °C</div>
-                    <div><strong>PR:</strong> ${staffEscapeHtml(appt.pulse_rate || 'N/A')} bpm</div>
                     <div><strong>RR:</strong> ${staffEscapeHtml(appt.respiration_rate || 'N/A')} cpm</div>
-                    <div><strong>BP:</strong> ${staffEscapeHtml(appt.blood_pressure || 'N/A')}</div>
                     ${appt.height ? `<div><strong>Height:</strong> ${staffEscapeHtml(formatInfantHeight(appt.height))}</div>` : ''}
                     ${appt.weight ? `<div><strong>Weight:</strong> ${staffEscapeHtml(formatInfantWeight(appt.weight))}</div>` : ''}
                 </div>
