@@ -2782,13 +2782,51 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // Inline field errors for the Patient, Volunteer and Admin login forms
+    function setupLoginFieldErrors(fields) {
+        Object.values(fields).forEach(input => {
+            input?.addEventListener('input', () => clearFirstTimerFieldError(input));
+        });
+        return {
+            clear() {
+                Object.values(fields).forEach(input => clearFirstTimerFieldError(input));
+            },
+            show(fieldKey, message) {
+                setFirstTimerFieldError(fields[fieldKey] || fields.password, message);
+            },
+            requireAll(messages) {
+                let valid = true;
+                Object.keys(fields).forEach(key => {
+                    if (!fields[key]?.value.trim()) {
+                        setFirstTimerFieldError(fields[key], messages[key]);
+                        valid = false;
+                    }
+                });
+                return valid;
+            }
+        };
+    }
+
+    const patientLoginErrors = setupLoginFieldErrors({
+        email: document.getElementById('loginEmail'),
+        password: document.getElementById('loginPassword')
+    });
+    const volunteerLoginErrors = setupLoginFieldErrors({
+        email: document.getElementById('volunteerEmail'),
+        password: document.getElementById('volunteerPassword')
+    });
+    const adminLoginErrors = setupLoginFieldErrors({
+        username: document.getElementById('adminUsername'),
+        password: document.getElementById('adminPassword')
+    });
+
     loginForm?.addEventListener('submit', function (event) {
         event.preventDefault();
         const email = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value.trim();
 
-        if (!email || !password) {
-            window.showSystemToast?.('Please enter both your email address and password.', { type: 'warning', theme: 'patient', title: 'Missing Information' });
+        patientLoginErrors.clear();
+        if (!patientLoginErrors.requireAll({ email: 'Please enter your email address.', password: 'Please enter your password.' })) {
             return;
         }
 
@@ -2797,7 +2835,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('email', email);
         formData.append('password', password);
         
-        const submitBtn = document.getElementById('loginSubmitBtn');
+        const submitBtn = document.getElementById('patientLoginBtn');
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.textContent = 'Signing in...';
@@ -2811,18 +2849,18 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(data => {
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Sign In';
+                submitBtn.textContent = 'Log In';
             }
             if (data.success) {
                 window.location.href = data.redirect || 'dashboard.php';
             } else {
-                window.showSystemToast?.(data.message || 'Login failed. Please check your credentials.', { type: 'error', theme: 'patient', title: 'Login Failed' });
+                patientLoginErrors.show(data.field, data.message || 'Login failed. Please check your credentials.');
             }
         })
         .catch(err => {
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Sign In';
+                submitBtn.textContent = 'Log In';
             }
             console.error('Patient login error:', err);
             window.showSystemToast?.('Unable to connect to the login service. Please verify your connection.', { type: 'error', theme: 'patient', title: 'Connection Error' });
@@ -2834,8 +2872,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const email = document.getElementById('volunteerEmail').value.trim();
         const password = document.getElementById('volunteerPassword').value.trim();
 
-        if (!email || !password) {
-            window.showSystemToast?.('Please enter both your work email and password.', { type: 'warning', theme: 'volunteer', title: 'Missing Information' });
+        volunteerLoginErrors.clear();
+        if (!volunteerLoginErrors.requireAll({ email: 'Please enter your work email.', password: 'Please enter your password.' })) {
             return;
         }
 
@@ -2863,7 +2901,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.success) {
                 window.location.href = data.redirect || '../Barangay Health Station/index.php';
             } else {
-                window.showSystemToast?.(data.message || 'Staff login failed. Please check your credentials.', { type: 'error', theme: 'volunteer', title: 'Authentication Failed' });
+                volunteerLoginErrors.show(data.field, data.message || 'Staff login failed. Please check your credentials.');
             }
         })
         .catch(err => {
@@ -2881,8 +2919,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const username = document.getElementById('adminUsername').value.trim();
         const password = document.getElementById('adminPassword').value.trim();
 
-        if (!username || !password) {
-            window.showSystemToast?.('Please enter both your username and password.', { type: 'warning', theme: 'admin', title: 'Missing Information' });
+        adminLoginErrors.clear();
+        if (!adminLoginErrors.requireAll({ username: 'Please enter your username.', password: 'Please enter your password.' })) {
             return;
         }
 
@@ -2910,7 +2948,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.success) {
                 window.location.href = data.redirect || '../Admin/index.php?page=dashboard';
             } else {
-                window.showSystemToast?.(data.message || 'Invalid admin credentials.', { type: 'error', theme: 'admin', title: 'Authentication Failed' });
+                adminLoginErrors.show(data.field, data.message || 'Invalid admin credentials.');
             }
         })
         .catch(err => {

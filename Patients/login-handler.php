@@ -156,6 +156,14 @@ if ($action === 'login_patient') {
 
     if ($email !== '' && $password !== '') {
         $patientAccount = fetch_patient_account_by_email($email);
+        if ($patientAccount === null) {
+            echo json_encode([
+                'success' => false,
+                'field' => 'email',
+                'message' => 'No account found with this email address.'
+            ], JSON_THROW_ON_ERROR);
+            exit;
+        }
         if ($patientAccount !== null) {
             $hash = (string) ($patientAccount['password_hash'] ?? '');
             if (password_verify($password, $hash)) {
@@ -191,7 +199,8 @@ if ($action === 'login_patient') {
 
         echo json_encode([
             'success' => false,
-            'message' => 'Invalid email or password. Please check your credentials or create an account.'
+            'field' => 'password',
+            'message' => 'Incorrect password. Please try again.'
         ], JSON_THROW_ON_ERROR);
     } else {
         echo json_encode([
@@ -216,14 +225,9 @@ if ($action === 'login_admin') {
     if ($adminAccount === null) {
         $adminAccount = fetch_admin_account_by_username($username);
     }
-    if ($adminAccount === null) {
-        $adminAccount = fetch_admin_account_by_email('admintest@gmail.com');
-    }
-    if ($adminAccount === null) {
-        $allAdmins = fetch_admin_accounts();
-        if (!empty($allAdmins)) {
-            $adminAccount = fetch_admin_account_by_id((int) $allAdmins[0]['id']);
-        }
+    if ($adminAccount === null && !empty(fetch_admin_accounts())) {
+        echo json_encode(['success' => false, 'field' => 'username', 'message' => 'No admin account found with this username or email.'], JSON_THROW_ON_ERROR);
+        exit;
     }
 
     $targetHash = is_array($adminAccount) && !empty($adminAccount['password_hash'])
@@ -261,7 +265,7 @@ if ($action === 'login_admin') {
             'redirect' => '../Admin/index.php?page=dashboard'
         ], JSON_THROW_ON_ERROR);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Invalid admin email or password.'], JSON_THROW_ON_ERROR);
+        echo json_encode(['success' => false, 'field' => 'password', 'message' => 'Incorrect password. Please try again.'], JSON_THROW_ON_ERROR);
     }
     exit;
 }
@@ -294,6 +298,11 @@ if ($action === 'login_staff') {
         }
     }
 
+    if (!is_array($staffAccount)) {
+        echo json_encode(['success' => false, 'field' => 'email', 'message' => 'No staff account found with this work email.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
     if (is_array($staffAccount)) {
         $hash = (string) ($staffAccount['password_hash'] ?? default_staff_password_hash());
         if (password_verify($password, $hash) || $password === 'StaffPassword123!' || $password === 'staff123') {
@@ -315,7 +324,7 @@ if ($action === 'login_staff') {
         }
     }
 
-    echo json_encode(['success' => false, 'message' => 'Invalid staff work email or password.'], JSON_THROW_ON_ERROR);
+    echo json_encode(['success' => false, 'field' => 'password', 'message' => 'Incorrect password. Please try again.'], JSON_THROW_ON_ERROR);
     exit;
 }
 
