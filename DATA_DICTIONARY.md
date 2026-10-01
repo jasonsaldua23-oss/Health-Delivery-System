@@ -151,7 +151,7 @@ The following tables document every field in the system with the exact required 
 | `weight` | VARCHAR | 50 | NULL | Physical measurement: Patient weight (e.g., in kg) |
 | `vaccine_type` | VARCHAR | 150 | NULL | Type of vaccine administered (for immunization appointments) |
 | `doctor_notes` | TEXT | 65535 | NULL | Healthcare provider findings, diagnosis, and prescription details |
-| `reminder_sms_sent` | TINYINT | 1 | NOT NULL, DEFAULT 0 | Flag indicating if SMS reminder was sent (1 = Sent, 0 = Pending) |
+| `reminder_sms_sent` | TINYINT | 1 | NOT NULL, DEFAULT 0 | Flag indicating if the follow-up day SMS was sent for a follow-up appointment (1 = Sent, 0 = Pending; reset when the follow-up is rescheduled) |
 | `reminder_sent_at` | TIMESTAMP | — | NULL | Exact timestamp when SMS notification was dispatched |
 | `photo_path` | VARCHAR | 255 | NULL | File system path to uploaded verification document or proof |
 | `status` | VARCHAR | 30 | NOT NULL, DEFAULT 'Pending' | Workflow state ('Pending', 'Confirmed', 'Serving', 'Completed', 'Cancelled', 'Declined') |

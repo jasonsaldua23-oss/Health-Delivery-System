@@ -310,6 +310,8 @@ $patientEmailVal = (string) ($patientAccount['email'] ?? $_SESSION['patient_emai
 $patientAppointments = fetch_patient_appointments($patientId, $patientEmailVal, $patientName, $contactNumber);
 // Notify before loading notifications so a newly missed appointment shows up on this page load
 notify_patient_unserved_appointments($patientAppointments);
+// Text patients whose follow-up consultation is today (once per follow-up, after 7 AM)
+auto_dispatch_follow_up_day_sms();
 $patientNotifications = fetch_patient_appointment_notifications($patientId, $patientEmailVal, $patientName);
 $unreadNotifCount = count(array_filter($patientNotifications, static fn(array $n): bool => (int) ($n['is_read'] ?? 0) === 0));
 $displayedNotifications = filter_patient_notifications_for_bubble($patientNotifications, 5);

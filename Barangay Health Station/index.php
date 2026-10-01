@@ -869,7 +869,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'sche
 
         if ($appointmentId > 0 && $followUpDate !== '') {
             if (schedule_appointment_follow_up($appointmentId, $followUpDate, $followUpTime, $followUpNotes, (string) ($staffAccount['email'] ?? ''))) {
-                $_SESSION['staff_flash'] = 'Follow-up consultation scheduled for ' . date('F j, Y', strtotime($followUpDate)) . '. The patient has been notified via SMS and on their dashboard!';
+                $_SESSION['staff_flash'] = 'Follow-up consultation scheduled for ' . date('F j, Y', strtotime($followUpDate)) . '. The patient has been notified on their dashboard and will receive an SMS reminder on the day of the follow-up.';
                 log_activity('staff', (string) ($staffAccount['email'] ?? ''), 'follow_up_scheduled', 'appointment', (string) $appointmentId, '', '', (string) $station['slug']);
             } else {
                 $_SESSION['staff_flash'] = 'Unable to schedule follow-up. Please try again.';
@@ -1236,6 +1236,8 @@ $patientsTotalCount = $patientsOngoingCount + $patientsHoldCount + $patientsReco
 
 // Synchronize and load unattended appointments & queue audit data
 sync_unattended_records((string) $station['slug']);
+// Text patients whose follow-up consultation is today (once per follow-up, after 7 AM)
+auto_dispatch_follow_up_day_sms();
 $unattendedStats = count_unattended_records((string) $station['slug']);
 $unattendedApptsList = fetch_unattended_appointments(['station_slug' => (string) $station['slug']]);
 $unattendedQueueList = fetch_unattended_queue(['station_slug' => (string) $station['slug']]);

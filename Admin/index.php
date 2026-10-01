@@ -919,6 +919,8 @@ if ($page === 'reports' && (($_GET['export'] ?? '') === 'csv')) {
 // 1. Stats and Station Counts
 try {
     sync_unattended_records();
+    // Text patients whose follow-up consultation is today (once per follow-up, after 7 AM)
+    auto_dispatch_follow_up_day_sms();
     $stats = appointment_stats();
     $stationCounts = fetch_station_counts('Pending', 'both');
     $stationQueueCounts = fetch_station_queue_counts();

@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 /**
- * Automated Cron Script: Send 1-Day Prior SMS Reminders for Scheduled Appointments
+ * Automated Cron Script: Send day-of SMS for staff-scheduled follow-up consultations.
+ * (Confirm/cancel SMS are sent instantly when staff change an appointment's status.)
  *
  * Usage:
  *   CLI:  php cron/send_appointment_reminders.php
@@ -34,15 +35,15 @@ if (PHP_SAPI === 'cli' && isset($argv[1]) && preg_match('/^\d{4}-\d{2}-\d{2}$/',
     $targetDate = (string) $_GET['date'];
 }
 
-$result = send_appointment_reminders_due($targetDate);
+$result = send_follow_up_day_sms_due($targetDate);
 
 if (PHP_SAPI === 'cli') {
     echo "====================================================\n";
-    echo " Health Delivery System - Appointment Reminder Cron \n";
+    echo " Health Delivery System - Follow-up Day SMS Cron    \n";
     echo "====================================================\n";
-    echo "Target Appointment Date: " . $result['target_date'] . "\n";
-    echo "Appointments Processed:  " . $result['processed'] . "\n";
-    echo "Reminders Dispatched:    " . $result['sent'] . "\n";
+    echo "Follow-up Date:          " . $result['target_date'] . "\n";
+    echo "Follow-ups Processed:    " . $result['processed'] . "\n";
+    echo "SMS Dispatched:          " . $result['sent'] . "\n";
     echo "Failed / Logged:         " . $result['failed'] . "\n";
     echo "Timestamp:               " . date('Y-m-d H:i:s') . "\n";
     echo "====================================================\n";

@@ -5222,19 +5222,14 @@ function update_appointment_status(int $appointmentId, string $newStatus, ?strin
             $dateFormatted = !empty($appointment['preferred_date']) ? date('M j, Y', strtotime((string)$appointment['preferred_date'])) : '';
             $timeFormatted = !empty($appointment['preferred_time']) ? ' at ' . (string)$appointment['preferred_time'] : '';
 
+            // SMS rule 1: the patient is texted whenever their booking is confirmed or cancelled
             if ($newStatus === 'Confirmed') {
-                $message = "Health Delivery System: Hello {$patientName}, your appointment on "
-                    . ($appointment['preferred_date'] ?? '')
-                    . " at "
-                    . ($appointment['preferred_time'] ?? '')
-                    . " has been CONFIRMED.";
+                $message = "Health Delivery System: Hello {$patientName}, your {$serviceName} appointment at {$stationName} on {$dateFormatted}{$timeFormatted} has been CONFIRMED. Please arrive 10-15 minutes early.";
                 sendBrevoSMS($phone, $message, $appointmentId);
             }
 
             if ($newStatus === 'Cancelled') {
-                $message = "Health Delivery System: Hello {$patientName}, your appointment on "
-                    . ($appointment['preferred_date'] ?? '')
-                    . " has been CANCELLED. Please contact the Barangay Health Station.";
+                $message = "Health Delivery System: Hello {$patientName}, your {$serviceName} appointment at {$stationName} on {$dateFormatted}{$timeFormatted} has been CANCELLED. Please contact the health station or book a new appointment if needed.";
                 sendBrevoSMS($phone, $message, $appointmentId);
             }
         }
@@ -7378,7 +7373,7 @@ function schedule_appointment_follow_up(
     if ($existingFollowUp && !empty($existingFollowUp['id'])) {
         $updateApptStmt = $connection->prepare(
             'UPDATE appointments 
-             SET preferred_date = ?, preferred_time = ?, notes = ? 
+             SET preferred_date = ?, preferred_time = ?, notes = ?, reminder_sms_sent = 0, reminder_sent_at = NULL 
              WHERE id = ?'
         );
         $fuId = (int) $existingFollowUp['id'];
@@ -7470,17 +7465,7 @@ function schedule_appointment_follow_up(
         $nStmt->execute();
     } catch (Throwable $e) {}
 
-    // Send instant SMS notification to the patient the moment staff submits follow-up
-    $patientPhone = trim((string) ($appointment['contact_number'] ?? ''));
-    if ($patientPhone !== '') {
-        $patientFullName = trim(($appointment['first_name'] ?? '') . ' ' . ($appointment['last_name'] ?? ''));
-        if ($patientFullName === '') {
-            $patientFullName = 'Patient';
-        }
-        $timeStr = $followUpTime !== '' ? " at {$followUpTime}" : "";
-        $smsFollowUpMsg = "Health Delivery System: Hello {$patientFullName}, you have been scheduled for a follow-up consultation for {$serviceName} at {$stationName} on {$formattedDate}{$timeStr}. Please arrive 10-15 minutes prior to your schedule.";
-        sendBrevoSMS($patientPhone, $smsFollowUpMsg, $appointmentId);
-    }
+    // No SMS here: the patient is texted on the day of the follow-up (send_follow_up_day_sms_due)
 
     $stationSlug = (string) ($appointment['station_slug'] ?? '');
     log_activity(
@@ -7498,20 +7483,24 @@ function schedule_appointment_follow_up(
 }
 
 /**
- * Send automated SMS reminders to patients with appointments scheduled for a target date (defaults to tomorrow).
+ * SMS rule 2: on the day of a staff-scheduled follow-up consultation, text the patient once.
+ * Follow-up appointments are the rows created by schedule_appointment_follow_up(), tagged in
+ * their notes with "[Follow-up for Appointment #...]". reminder_sms_sent prevents repeats.
+ * These two rules (confirm/cancel and follow-up day) are the only SMS the system sends.
  */
-function send_appointment_reminders_due(?string $targetDate = null): array
+function send_follow_up_day_sms_due(?string $targetDate = null): array
 {
     $connection = db();
     if ($targetDate === null || $targetDate === '') {
-        $targetDate = date('Y-m-d', strtotime('+1 day'));
+        $targetDate = date('Y-m-d');
     }
 
     $formattedTargetDate = date('F j, Y', strtotime($targetDate));
 
     $sql = 'SELECT * FROM appointments 
             WHERE preferred_date = ? 
-              AND status IN ("Confirmed", "Pending")
+              AND status = "Confirmed"
+              AND notes LIKE "%[Follow-up for Appointment #%"
               AND (reminder_sms_sent = 0 OR reminder_sms_sent IS NULL)
               AND contact_number IS NOT NULL 
               AND TRIM(contact_number) != ""';
@@ -7531,49 +7520,32 @@ function send_appointment_reminders_due(?string $targetDate = null): array
     while ($appt = $result->fetch_assoc()) {
         $processed++;
         $apptId = (int) $appt['id'];
+
+        // Mark first so overlapping page loads can't text the patient twice
+        $updateStmt->bind_param('i', $apptId);
+        $updateStmt->execute();
+        if ($updateStmt->affected_rows === 0) {
+            continue;
+        }
+
         $phone = trim((string) ($appt['contact_number'] ?? ''));
-        $firstName = trim((string) ($appt['first_name'] ?? ''));
-        $lastName = trim((string) ($appt['last_name'] ?? ''));
-        $patientName = trim($firstName . ' ' . $lastName);
+        $patientName = trim(trim((string) ($appt['first_name'] ?? '')) . ' ' . trim((string) ($appt['last_name'] ?? '')));
         if ($patientName === '') {
             $patientName = 'Patient';
         }
         $serviceName = trim((string) ($appt['service_name'] ?? 'Medical Consultation'));
         $stationName = trim((string) ($appt['station_name'] ?? 'Barangay Health Station'));
         $timeSlot = trim((string) ($appt['preferred_time'] ?? ''));
-        $timeStr = $timeSlot !== '' ? " at {$timeSlot}" : "";
+        $timeStr = ($timeSlot !== '' && strcasecmp($timeSlot, 'Regular Hours') !== 0) ? " at {$timeSlot}" : '';
 
-        $reminderMessage = "Health Delivery System Reminder: Hello {$patientName}, this is a reminder for your scheduled {$serviceName} appointment at {$stationName} tomorrow, {$formattedTargetDate}{$timeStr}. Please bring a valid ID and arrive 10-15 minutes early.";
+        $message = "Health Delivery System: Hello {$patientName}, you have a FOLLOW-UP CONSULTATION today, {$formattedTargetDate}{$timeStr}, for {$serviceName} at {$stationName}. Please arrive 10-15 minutes early.";
 
-        $isSuccess = sendBrevoSMS($phone, $reminderMessage, $apptId);
-
-        // Update reminder flag so we don't duplicate
-        $updateStmt->bind_param('i', $apptId);
-        $updateStmt->execute();
-
+        $isSuccess = sendBrevoSMS($phone, $message, $apptId);
         if ($isSuccess) {
             $sent++;
         } else {
             $failed++;
         }
-
-        // Add in-app reminder notification
-        $refCode = (string) ($appt['appointment_code'] ?? $appt['reference_code'] ?? '');
-        $patientId = (string) ($appt['patient_id'] ?? '');
-        if ($patientId === '') {
-            $patientId = (string) ($appt['email'] ?? $refCode);
-        }
-        $inAppNotif = "Appointment Reminder: You have a scheduled appointment for {$serviceName} at {$stationName} tomorrow, {$formattedTargetDate}{$timeStr}.";
-
-        try {
-            $nStmt = $connection->prepare(
-                'INSERT INTO ' . DB_TABLE_APPOINTMENT_NOTIFICATIONS . ' 
-                 (appointment_id, reference_code, patient_id, status, message, is_read) 
-                 VALUES (?, ?, ?, "Reminder", ?, 0)'
-            );
-            $nStmt->bind_param('isss', $apptId, $refCode, $patientId, $inAppNotif);
-            $nStmt->execute();
-        } catch (Throwable $e) {}
 
         $details[] = [
             'appointment_id' => $apptId,
@@ -7594,9 +7566,10 @@ function send_appointment_reminders_due(?string $targetDate = null): array
 }
 
 /**
- * Opportunistic auto-dispatcher: Runs seamlessly in the background on web requests.
+ * Runs the follow-up day SMS on ordinary page loads, so texts go out even without a cron job.
+ * Waits until 7:00 AM so patients are not texted overnight.
  */
-function auto_dispatch_due_appointment_reminders(): array
+function auto_dispatch_follow_up_day_sms(): array
 {
     static $alreadyRan = false;
     if ($alreadyRan) {
@@ -7604,26 +7577,28 @@ function auto_dispatch_due_appointment_reminders(): array
     }
     $alreadyRan = true;
 
+    if ((int) date('G') < 7) {
+        return ['skipped' => true, 'reason' => 'before_7am'];
+    }
+
     try {
-        $tomorrow = date('Y-m-d', strtotime('+1 day'));
-        $connection = db();
-        $checkStmt = $connection->prepare(
+        $today = date('Y-m-d');
+        $checkStmt = db()->prepare(
             'SELECT COUNT(*) AS cnt FROM appointments 
              WHERE preferred_date = ? 
-               AND status IN ("Confirmed", "Pending") 
-               AND (reminder_sms_sent = 0 OR reminder_sms_sent IS NULL) 
-               AND contact_number IS NOT NULL 
-               AND TRIM(contact_number) != ""'
+               AND status = "Confirmed"
+               AND notes LIKE "%[Follow-up for Appointment #%"
+               AND (reminder_sms_sent = 0 OR reminder_sms_sent IS NULL)'
         );
-        $checkStmt->bind_param('s', $tomorrow);
+        $checkStmt->bind_param('s', $today);
         $checkStmt->execute();
         $row = $checkStmt->get_result()->fetch_assoc();
         if ((int) ($row['cnt'] ?? 0) > 0) {
-            return send_appointment_reminders_due($tomorrow);
+            return send_follow_up_day_sms_due($today);
         }
     } catch (Throwable $e) {}
 
-    return ['skipped' => true, 'reason' => 'no_due_reminders'];
+    return ['skipped' => true, 'reason' => 'no_follow_ups_due'];
 }
 
 /**
