@@ -7957,12 +7957,12 @@ window.openStaffInfantModal = function(infant) {
             const badgeLabel = isCompleted ? `${info.count}/${maxDose} Doses (Limit Reached)` : `${info.count}/${maxDose} Doses Taken`;
 
             dosesHtml += `
-            <div style="background: ${isCompleted ? '#ecfdf5' : '#f0f9ff'}; border: 1.5px solid ${isCompleted ? '#a7f3d0' : '#7dd3fc'}; color: ${isCompleted ? '#065f46' : '#0369a1'}; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);">
-                <span style="display: inline-flex; align-items: center; color: ${isCompleted ? '#059669' : '#0284c7'};"><?= staff_icon('syringe'); ?></span>
+            <div style="background: ${isCompleted ? '#eff6ff' : '#f0f9ff'}; border: 1.5px solid ${isCompleted ? '#93c5fd' : '#7dd3fc'}; color: ${isCompleted ? '#1e3a8a' : '#0369a1'}; padding: 8px 14px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);">
+                <span style="display: inline-flex; align-items: center; color: ${isCompleted ? '#1d4ed8' : '#0284c7'};"><?= staff_icon('syringe'); ?></span>
                 <span>${staffEscapeHtml(vName)}</span>
-                ${badgeLabel ? `<span style="background: ${isCompleted ? '#059669' : '#0284c7'}; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${badgeLabel}</span>` : ''}
-                ${dateStr ? `<span style="font-size: 0.74rem; color: ${isCompleted ? '#047857' : '#0284c7'}; font-weight: 600; opacity: 0.85;">(${staffEscapeHtml(dateStr)})</span>` : ''}
-                ${info.manual ? `<span style="font-size: 0.72rem; color: #92400e; background: #fef3c7; border: 1px solid #fde68a; padding: 1px 7px; border-radius: 999px; font-weight: 700;" title="${info.manual} dose(s) encoded manually by staff">Encoded</span>` : ''}
+                ${badgeLabel ? `<span style="background: ${isCompleted ? '#1d4ed8' : '#0284c7'}; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${badgeLabel}</span>` : ''}
+                ${dateStr ? `<span style="font-size: 0.74rem; color: ${isCompleted ? '#1d4ed8' : '#0284c7'}; font-weight: 600; opacity: 0.85;">(${staffEscapeHtml(dateStr)})</span>` : ''}
+                ${info.manual ? `<span style="font-size: 0.72rem; color: #1e40af; background: #dbeafe; border: 1px solid #93c5fd; padding: 1px 7px; border-radius: 999px; font-weight: 700;" title="${info.manual} dose(s) encoded manually by staff">Encoded</span>` : ''}
             </div>`;
         });
         dosesHtml += '</div>';
@@ -8114,8 +8114,8 @@ window.openStaffInfantModal = function(infant) {
         <p style="font-size: 0.82rem; color: #64748b; margin: 3px 0 0 0;">Vaccine card of DOH National Immunization Program antigens, in order of the standard schedule.</p>
         ${dosesHtml}
 
-        <button type="button" id="manualVaxToggleBtn" onclick="const f = document.getElementById('manualVaxForm'); f.style.display = f.style.display === 'none' ? 'block' : 'none';" style="margin-top: 14px; background: #f0f9ff; color: #0369a1; border: 1.5px solid #7dd3fc; padding: 7px 14px; border-radius: 10px; font-weight: 700; font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-            <?= staff_icon('edit'); ?> <span>Encode Previous Vaccines</span>
+        <button type="button" id="manualVaxToggleBtn" onclick="const f = document.getElementById('manualVaxForm'); f.style.display = f.style.display === 'none' ? 'block' : 'none';" style="margin-top: 16px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; border: 0; padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);" title="Record vaccines this infant already received elsewhere (e.g. BCG / Hepatitis B at the hospital)">
+            <?= staff_icon('syringe'); ?> <span>Encode Previous Vaccines</span>
         </button>
 
         <div id="manualVaxForm" style="display: none; margin-top: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
