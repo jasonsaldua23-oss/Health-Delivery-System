@@ -8143,7 +8143,7 @@ window.openStaffInfantModal = function(infant) {
                 : 'Registered under patient account holder (' + staffEscapeHtml(infant.role_label || 'Parent') + ').'}
         </p>
 
-        <form method="post" action="index.php?page=patients&view=profiles" id="staffInfantEditForm" onsubmit="event.preventDefault(); window.saveStaffInfantProfile(document.getElementById('saveInfantProfileBtn')); return false;">
+        <form method="post" action="index.php?page=patients&view=profiles" id="staffInfantEditForm" onsubmit="event.preventDefault(); if (this.dataset.locked !== '1') { window.saveStaffInfantProfile(document.getElementById('saveInfantProfileBtn')); } return false;">
             <input type="hidden" name="action" value="save_infant_profile">
             <input type="hidden" name="csrf_token" value="${csrfToken}">
             <input type="hidden" name="return_url" value="${staffEscapeHtml(curUrl)}">
@@ -8169,22 +8169,22 @@ window.openStaffInfantModal = function(infant) {
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
                 <div>
                     <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Biological Mother's Name:</label>
-                    <input type="text" name="mother_name" value="${staffEscapeHtml(isMother ? (parentName || infant.mother_name || '') : (infant.mother_name || ''))}" ${isMother ? 'readonly' : ''} placeholder="${isGuardian ? 'Biological Mother (optional)' : (isMother ? 'Account Holder (Mother)' : 'e.g. Maria Santos')}" class="form-input-field" style="width: 100%; border: 1.5px solid ${isMother ? '#cbd5e1' : '#94a3b8'}; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; ${isMother ? 'background-color: #f1f5f9; color: #475569; cursor: not-allowed;' : 'background-color: #ffffff;'}">
+                    <input type="text" name="mother_name" value="${staffEscapeHtml(isMother ? (parentName || infant.mother_name || '') : (infant.mother_name || ''))}" ${isMother ? 'readonly' : 'data-infant-editable="1"'} placeholder="${isGuardian ? 'Biological Mother (optional)': (isMother ? 'Account Holder (Mother)' : 'e.g. Maria Santos')}" class="form-input-field" style="width: 100%; border: 1.5px solid ${isMother ? '#cbd5e1' : '#94a3b8'}; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; ${isMother ? 'background-color: #f1f5f9; color: #475569; cursor: not-allowed;' : 'background-color: #ffffff;'}">
                 </div>
                 <div>
                     <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Biological Father's Name:</label>
-                    <input type="text" name="father_name" value="${staffEscapeHtml(isFather ? (parentName || infant.father_name || '') : (infant.father_name || ''))}" ${isFather ? 'readonly' : ''} placeholder="${isGuardian ? 'Biological Father (optional)' : (isFather ? 'Account Holder (Father)' : 'e.g. Juan Santos')}" class="form-input-field" style="width: 100%; border: 1.5px solid ${isFather ? '#cbd5e1' : '#94a3b8'}; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; ${isFather ? 'background-color: #f1f5f9; color: #475569; cursor: not-allowed;' : 'background-color: #ffffff;'}">
+                    <input type="text" name="father_name" value="${staffEscapeHtml(isFather ? (parentName || infant.father_name || '') : (infant.father_name || ''))}" ${isFather ? 'readonly' : 'data-infant-editable="1"'} placeholder="${isGuardian ? 'Biological Father (optional)': (isFather ? 'Account Holder (Father)' : 'e.g. Juan Santos')}" class="form-input-field" style="width: 100%; border: 1.5px solid ${isFather ? '#cbd5e1' : '#94a3b8'}; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; ${isFather ? 'background-color: #f1f5f9; color: #475569; cursor: not-allowed;' : 'background-color: #ffffff;'}">
                 </div>
             </div>
 
             <div style="margin-bottom: 16px;">
                 <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 5px;">Staff Notes / Pediatric Remarks:</label>
-                <textarea name="notes" rows="2" placeholder="Enter any notes, pediatric remarks, or allergies..." class="form-input-field" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; resize: vertical;">${staffEscapeHtml(infant.custom_notes || infant.notes || '')}</textarea>
+                <textarea name="notes" data-infant-editable="1" rows="2" placeholder="Enter any notes, pediatric remarks, or allergies..." class="form-input-field"style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; font-size: 0.9rem; resize: vertical;">${staffEscapeHtml(infant.custom_notes || infant.notes || '')}</textarea>
             </div>
 
             <div id="staffInfantSaveAlert" style="display: none; margin-bottom: 14px; padding: 10px 14px; border-radius: 10px; font-size: 0.86rem; font-weight: 600;"></div>
 
-            <button type="button" class="primary-btn blue-btn" id="saveInfantProfileBtn" onclick="window.saveStaffInfantProfile(this)" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 9px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
+            <button type="button" class="primary-btn blue-btn" id="saveInfantProfileBtn" onclick="window.handleStaffInfantProfileButton(this)"style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: none; padding: 9px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
                 <?= staff_icon('check'); ?>
                 <span>Save Infant Profile Details</span>
             </button>
@@ -8210,6 +8210,49 @@ window.openStaffInfantModal = function(infant) {
     window.currentStaffEditingInfant = infant;
     window.currentStaffEditingIsMother = isMother;
     window.currentStaffEditingIsFather = isFather;
+
+    // Details already saved: open read-only with an Edit button
+    const hasSavedDetails = !!(infant.id && (
+        (infant.custom_notes || '').trim()
+        || (!isMother && (infant.mother_name || '').trim())
+        || (!isFather && (infant.father_name || '').trim())
+    ));
+    window.setStaffInfantFormLocked(hasSavedDetails);
+};
+
+// Lock (read-only + Edit button) or unlock (editable + Save button) the infant details form
+window.setStaffInfantFormLocked = function(locked) {
+    const form = document.getElementById('staffInfantEditForm');
+    const btn = document.getElementById('saveInfantProfileBtn');
+    if (!form) return;
+    form.dataset.locked = locked ? '1' : '0';
+    form.querySelectorAll('[data-infant-editable="1"]').forEach(field => {
+        field.readOnly = locked;
+        field.style.background = locked ? '#f8fafc' : '#ffffff';
+        field.style.color = locked ? '#475569' : '';
+        field.style.cursor = locked ? 'default' : '';
+    });
+    if (btn) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.background = 'linear-gradient(135deg, #0284c7, #0369a1)';
+        btn.innerHTML = locked
+            ? `<?= staff_icon('edit'); ?> <span>Edit</span>`
+            : `<?= staff_icon('check'); ?> <span>Save Infant Profile Details</span>`;
+    }
+};
+
+window.handleStaffInfantProfileButton = function(btn) {
+    const form = document.getElementById('staffInfantEditForm');
+    if (form && form.dataset.locked === '1') {
+        window.setStaffInfantFormLocked(false);
+        const alertBox = document.getElementById('staffInfantSaveAlert');
+        if (alertBox) alertBox.style.display = 'none';
+        const firstField = form.querySelector('[data-infant-editable="1"]');
+        if (firstField) firstField.focus();
+        return;
+    }
+    window.saveStaffInfantProfile(btn);
 };
 
 // Global function to save infant profile via AJAX while keeping modal open
@@ -8341,14 +8384,8 @@ window.saveStaffInfantProfile = function(btn) {
                 currentInfant.notes = formData.get('notes');
             }
 
-            if (submitBtn) {
-                submitBtn.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
-                submitBtn.innerHTML = `<?= staff_icon('check'); ?> <span>✓ Saved Successfully</span>`;
-                setTimeout(() => {
-                    submitBtn.style.background = 'linear-gradient(135deg, #0284c7, #0369a1)';
-                    submitBtn.innerHTML = originalBtnHtml;
-                }, 2500);
-            }
+            // Saved: fields become read-only and the button turns into Edit
+            window.setStaffInfantFormLocked(true);
 
             if (alertBox) {
                 alertBox.style.display = 'flex';
@@ -8357,7 +8394,7 @@ window.saveStaffInfantProfile = function(btn) {
                 alertBox.style.background = '#f0fdf4';
                 alertBox.style.border = '1.5px solid #86efac';
                 alertBox.style.color = '#15803d';
-                alertBox.innerHTML = `<span>✓</span> <span>Infant profile details saved successfully! You can review or continue editing, and close the profile when you are finished.</span>`;
+                alertBox.innerHTML = `<span>✓</span> <span>Infant profile details saved successfully! Click Edit to make changes.</span>`;
             }
 
             if (window.showSystemToast) {
