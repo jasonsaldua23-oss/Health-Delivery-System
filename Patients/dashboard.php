@@ -3977,12 +3977,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                 </span>
             </a>
         </div>
-        <div class="nav-right-group">
-            <a class="contact-link" href="tel:<?= h($contact['phone']); ?>">
-                <span class="inline-icon"><?= iconSvg('phone'); ?></span>
-                <span><?= h($contact['phone']); ?></span>
-            </a>
-        </div>
+        <div class="nav-right-group"></div>
     </div>
 </header>
 
@@ -4498,7 +4493,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                     <div class="services-grid">
                         <?php foreach ($servicesForBarangay as $service): ?>
                             <?php 
-                                $scheduleLabel = service_schedule_label($stationSlug, $service['slug']);
+                                $scheduleLabel = service_schedule_days_label($stationSlug, $service['slug']);
                             ?>
                             <a href="index.php?barangay=<?= h(strtolower($stationSlug)); ?>&service=<?= h($service['slug']); ?>" class="service-card">
                                 <div class="service-card-top">

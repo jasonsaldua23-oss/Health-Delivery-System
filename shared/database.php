@@ -731,6 +731,21 @@ function service_schedule_label(string $stationSlug, string $serviceSlug): strin
     return (string) $schedule['label'];
 }
 
+/**
+ * Patient-facing schedule: only the days a service runs (from the days the admin selected),
+ * without the morning / afternoon wording or any custom note in the admin label.
+ */
+function service_schedule_days_label(string $stationSlug, string $serviceSlug): string
+{
+    $schedule = station_service_schedule($stationSlug, $serviceSlug);
+
+    if ($schedule === null) {
+        return array_key_exists($stationSlug, station_service_schedule_map()) ? 'Schedule to be announced' : 'Monday - Friday';
+    }
+
+    return format_schedule_days_label(array_keys($schedule['days'] ?? []));
+}
+
 function service_is_scheduled_on_date(string $stationSlug, string $serviceSlug, DateTimeImmutable $date): bool
 {
     $schedule = station_service_schedule($stationSlug, $serviceSlug);
