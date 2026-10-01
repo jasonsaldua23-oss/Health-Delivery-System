@@ -7007,6 +7007,26 @@ document.addEventListener('keydown', function(e) {
     });
 })();
 </script>
+<script src="../shared/modal-persist.js?v=<?= (int) @filemtime(__DIR__ . '/../shared/modal-persist.js'); ?>"></script>
+<script>
+// Keep JavaScript-opened modals open across a refresh (URL-driven modals already persist)
+ModalPersist.init({
+    modals: ['adminInfantModal', 'manageScheduleModal', 'addFacilityModal', 'editCapacityModal', 'managePuroksModal', 'adminEventModalBackdrop', 'reportsFilterModal', 'reportVisitModal', 'addServiceModal', 'accountModal', 'editStaffModalBackdrop', 'userModalBackdrop'],
+    openers: {
+        openAdminInfantViewer: { modal: 'adminInfantModal', reset: true, freshFrom: 'openAdminInfantViewer', matchKeys: ['parent_id'] },
+        selectAdminInfantFromList: { modal: 'adminInfantModal' },
+        openManageScheduleModal: { modal: 'manageScheduleModal', reset: true },
+        openAddFacilityModal: { modal: 'addFacilityModal', reset: true },
+        openStationCapacityModal: { modal: 'editCapacityModal', reset: true },
+        openCapacityModal: { modal: 'editCapacityModal', reset: true },
+        openManagePuroksModal: { modal: 'managePuroksModal', reset: true },
+        openAdminEventModal: { modal: 'adminEventModalBackdrop', reset: true },
+        editAdminEvent: { modal: 'adminEventModalBackdrop', reset: true, freshFrom: 'editAdminEvent', matchKeys: ['id'] },
+        openReportsFilterModal: { modal: 'reportsFilterModal', reset: true },
+        openReportVisitModal: { modal: 'reportVisitModal', reset: true }
+    }
+});
+</script>
 <script src="../shared/pwa-install.js" defer></script>
 </body>
 </html>

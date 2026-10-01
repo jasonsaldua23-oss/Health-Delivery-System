@@ -9107,6 +9107,17 @@ window.handleVitalNumericKeydown = handleVitalNumericKeydown;
     }, true);
 })();
 </script>
+<script src="../shared/modal-persist.js?v=<?= (int) @filemtime(__DIR__ . '/../shared/modal-persist.js'); ?>"></script>
+<script>
+// Keep JavaScript-opened modals open across a refresh (URL-driven modals already persist)
+ModalPersist.init({
+    modals: ['staffInfantModalBackdrop', 'unattendedModal', 'accountModal'],
+    openers: {
+        openStaffInfantModal: { modal: 'staffInfantModalBackdrop', reset: true, freshFrom: 'openStaffInfantModal', matchKeys: ['infant_key', 'patient_id'] },
+        openUnattendedModal: { modal: 'unattendedModal', reset: true }
+    }
+});
+</script>
 <script src="../shared/pwa-install.js" defer></script>
 </body>
 </html>
