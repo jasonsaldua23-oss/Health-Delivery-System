@@ -3036,9 +3036,12 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         <small class="field-subnote">Numbers only. Unit (bpm) is automatically set by the system.</small>
                                     </div>
                                     <?php endif; ?>
+                                <?php if ($vitalsShowPulseRate): ?>
                                 </div>
 
                                 <div class="form-row-grid">
+                                <?php endif; ?>
+                                    <!-- Infant immunization (no pulse / BP): respiration rate sits beside temperature in the same row -->
                                     <div class="form-group-item">
                                         <label for="queue_resp_rate" class="form-field-label">
                                             <span>Respiration Rate (RR)</span>
