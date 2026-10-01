@@ -951,8 +951,8 @@ if ($queueDate === '') {
 }
 $patientSearch = trim((string) ($_GET['patient_search'] ?? ''));
 $captureFilter = trim((string) ($_GET['capture_filter'] ?? ''));
-if ($captureFilter === '' || !in_array($captureFilter, ['needs_photo', 'ongoing', 'verified'], true)) {
-    $captureFilter = 'needs_photo';
+if ($captureFilter === '' || !in_array($captureFilter, ['ongoing', 'verified'], true)) {
+    $captureFilter = 'ongoing';
 }
 $patientDateFilter = trim((string) ($_GET['patient_date'] ?? ''));
 $patientStatus = trim((string) ($_GET['patient_status'] ?? 'both'));
@@ -4581,23 +4581,31 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                     }
                 ));
             }
-            $photosVerifiedTodayAppointments = array_values(array_filter(
+            // Directory has two sections:
+            // - In-Queue & Serving: today's Confirmed/Serving patients that still need a photo
+            // - Photo Verified: the 5 most recent appointments with a photo taken
+            // Taking a photo moves a patient from the first section to the second.
+            $queueNeedingPhoto = array_values(array_filter(
                 $allCaptureCandidates,
-                static fn(array $item): bool => !empty($item['photo_path']) 
-                    && (string) ($item['status'] ?? '') === 'Completed' 
+                static fn(array $item): bool => empty($item['photo_path'])
+                    && in_array((string) ($item['status'] ?? ''), ['Serving', 'Confirmed'], true)
                     && (string) ($item['preferred_date'] ?? '') === $todayDate
             ));
-            $photosVerifiedTodayTotal = count($photosVerifiedTodayAppointments);
+            $recentPhotoVerified = array_values(array_filter(
+                $allCaptureCandidates,
+                static fn(array $item): bool => !empty($item['photo_path'])
+            ));
+            usort($recentPhotoVerified, static function(array $a, array $b): int {
+                $cmp = strcmp((string) ($b['preferred_date'] ?? ''), (string) ($a['preferred_date'] ?? ''));
+                if ($cmp !== 0) return $cmp;
+                $cmp = strcmp((string) ($b['updated_at'] ?? ''), (string) ($a['updated_at'] ?? ''));
+                if ($cmp !== 0) return $cmp;
+                return ((int) ($b['id'] ?? 0)) <=> ((int) ($a['id'] ?? 0));
+            });
+            $recentPhotoVerified = array_slice($recentPhotoVerified, 0, 5);
 
-            if ($captureFilter === 'verified') {
-                $initialCandidates = $photosVerifiedTodayAppointments;
-            } elseif ($captureFilter === 'ongoing') {
-                $initialCandidates = array_values(array_filter($allCaptureCandidates, static fn(array $item): bool => in_array((string) ($item['status'] ?? ''), ['Serving', 'Confirmed'], true)));
-            } else {
-                $captureFilter = 'needs_photo';
-                $initialCandidates = array_values(array_filter($allCaptureCandidates, static fn(array $item): bool => empty($item['photo_path'])));
-            }
-            $displayCandidates = $initialCandidates;
+            $displayCandidates = $captureFilter === 'verified' ? $recentPhotoVerified : $queueNeedingPhoto;
+            $captureDirectoryItems = array_merge($queueNeedingPhoto, $recentPhotoVerified);
             $ongoingAwaitingPhoto = array_values(array_filter($allCaptureCandidates, static fn(array $item): bool => empty($item['photo_path'])));
             $activeFrontDeskQueue = array_values(array_filter($allCaptureCandidates, static fn(array $item): bool => in_array((string) ($item['status'] ?? ''), ['Serving', 'Confirmed'], true)));
             $photosVerifiedTotal = count(array_filter($allCaptureCandidates, static fn(array $item): bool => !empty($item['photo_path'])));
@@ -4936,19 +4944,15 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 </div>
                             </div>
 
-                            <!-- Filter Chips (Needs Photo, In-Queue & Serving, Photo Verified) -->
+                            <!-- Filter Chips (In-Queue & Serving needing a photo, 5 most recent Photo Verified) -->
                             <div class="capture-filter-chips" id="captureFilterChips">
-                                <button type="button" class="filter-chip-btn urgent <?= $captureFilter === 'needs_photo' ? 'active' : ''; ?>" data-capture-filter="needs_photo" onclick="return window.applyCaptureFilter(this, event, 'needs_photo');">
-                                    <?= staff_icon('camera'); ?>
-                                    <span>⚡ Needs Photo (<?= count($ongoingAwaitingPhoto); ?>)</span>
-                                </button>
                                 <button type="button" class="filter-chip-btn <?= $captureFilter === 'ongoing' ? 'active' : ''; ?>" data-capture-filter="ongoing" onclick="return window.applyCaptureFilter(this, event, 'ongoing');">
                                     <?= staff_icon('pulse'); ?>
-                                    <span>In-Queue &amp; Serving (<?= count($activeFrontDeskQueue); ?>)</span>
+                                    <span>In-Queue &amp; Serving (<?= count($queueNeedingPhoto); ?>)</span>
                                 </button>
                                 <button type="button" class="filter-chip-btn <?= $captureFilter === 'verified' ? 'active' : ''; ?>" data-capture-filter="verified" onclick="return window.applyCaptureFilter(this, event, 'verified');">
                                     <?= staff_icon('check'); ?>
-                                    <span>Photo Verified (<?= $photosVerifiedTodayTotal; ?>)</span>
+                                    <span>Photo Verified (Recent <?= count($recentPhotoVerified); ?>)</span>
                                 </button>
                             </div>
 
@@ -4959,7 +4963,7 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     <p style="margin:0;color:#64748b;font-size:0.85rem;">No patient appointments found under this filter.<br>Newly booked appointments and ongoing consultations will automatically appear here.</p>
                                 </div>
 
-                                <?php foreach ($allCaptureCandidates as $pat): ?>
+                                <?php foreach ($captureDirectoryItems as $pat): ?>
                                     <?php 
                                     $isSelected = $captureAppointment !== null && (int) $pat['id'] === (int) $captureAppointment['id'];
                                     $patHasPhoto = !empty($pat['photo_path']);
@@ -4968,23 +4972,12 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     $isServing = $patQueueStatus === 'Serving';
                                     $isOngoing = in_array($patQueueStatus, ['Serving', 'Confirmed'], true);
                                     $isApptToday = (string) ($pat['preferred_date'] ?? '') === date('Y-m-d');
-                                    $isCompletedToday = $patQueueStatus === 'Completed' && $isApptToday;
-                                    $patHasPhotoVerifiedToday = $patHasPhoto && $isCompletedToday;
                                     $canCapture = $isApptToday && $isOngoing && !$patHasPhoto;
 
-                                    $matchesCurrentFilter = false;
-                                    if ($captureFilter === 'needs_photo' && !$patHasPhoto) {
-                                        $matchesCurrentFilter = true;
-                                    } elseif ($captureFilter === 'ongoing' && $isOngoing) {
-                                        $matchesCurrentFilter = true;
-                                    } elseif ($captureFilter === 'verified' && $patHasPhotoVerifiedToday) {
-                                        $matchesCurrentFilter = true;
-                                    }
+                                    $matchesCurrentFilter = $captureFilter === 'verified' ? $patHasPhoto : !$patHasPhoto;
                                     ?>
-                                    <div class="capture-pat-item <?= $isSelected ? 'is-active' : ''; ?>" 
-                                         data-has-photo="<?= $patHasPhoto ? '1' : '0'; ?>" 
-                                         data-is-ongoing="<?= $isOngoing ? '1' : '0'; ?>"
-                                         data-is-verified-today="<?= $patHasPhotoVerifiedToday ? '1' : '0'; ?>"
+                                    <div class="capture-pat-item <?= $isSelected ? 'is-active' : ''; ?>"
+                                         data-capture-section="<?= $patHasPhoto ? 'verified' : 'ongoing'; ?>"
                                          style="<?= $matchesCurrentFilter ? 'display:flex;' : 'display:none;'; ?>">
                                         <div class="capture-pat-avatar">
                                             <?php 
@@ -7196,18 +7189,7 @@ window.applyCaptureFilter = function(btnElem, evt, filterType) {
     let matchCount = 0;
 
     allItems.forEach(item => {
-        const hasPhoto = item.getAttribute('data-has-photo') === '1';
-        const isOngoing = item.getAttribute('data-is-ongoing') === '1';
-        const isVerifiedToday = item.getAttribute('data-is-verified-today') === '1';
-        let shouldShow = false;
-
-        if (filterType === 'needs_photo') {
-            shouldShow = !hasPhoto;
-        } else if (filterType === 'ongoing') {
-            shouldShow = isOngoing;
-        } else if (filterType === 'verified') {
-            shouldShow = isVerifiedToday;
-        }
+        const shouldShow = item.getAttribute('data-capture-section') === filterType;
 
         if (shouldShow) {
             item.style.display = 'flex';
