@@ -8531,9 +8531,9 @@ window.closeStaffInfantModal = function() {
     }
 };
 
-// Preserve scroll position when opening records or modals across the station
+// Preserve scroll position when opening records or modals across the station (and when switching report periods)
 document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.report-record-btn, .remarks-btn, .view-medical-file-btn, .set-followup-btn, .queue-vitals-btn, .appt-action-btn, .queue-call-btn, .queue-done-btn, .confirm-save-btn, .select-patient-btn, .photo-req, .patient-profile-open-btn, .patient-infant-toggle-btn');
+    const btn = e.target.closest('.report-record-btn, .remarks-btn, .view-medical-file-btn, .set-followup-btn, .queue-vitals-btn, .appt-action-btn, .queue-call-btn, .queue-done-btn, .confirm-save-btn, .select-patient-btn, .photo-req, .patient-profile-open-btn, .patient-infant-toggle-btn, .reports-quick-pill');
     if (btn) {
         sessionStorage.setItem('station_scroll_pos', window.scrollY);
         if (btn.classList.contains('select-patient-btn') && !btn.classList.contains('is-disabled') && !btn.classList.contains('is-active-badge') && !btn.classList.contains('is-completed-badge')) {
