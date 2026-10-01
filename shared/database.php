@@ -3301,7 +3301,8 @@ function appointment_can_complete(array $appointment): bool
 
 function appointment_has_completed_clinical_details(array $appointment): bool
 {
-    foreach (['body_temperature', 'pulse_rate', 'respiration_rate', 'blood_pressure', 'doctor_notes'] as $field) {
+    // Same vitals rule as encoding (infant immunizations have no pulse rate / blood pressure) plus doctor's notes
+    foreach (array_merge(appointment_required_vital_fields($appointment), ['doctor_notes']) as $field) {
         if (trim((string) ($appointment[$field] ?? '')) === '') {
             return false;
         }

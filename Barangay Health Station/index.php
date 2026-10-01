@@ -1217,9 +1217,10 @@ if ($patientSearch !== '') {
         }
     ));
 }
+// Serving consultations stay here until completed; once remarks are saved the card offers Edit / Complete
 $recentStationAppointments = array_values(array_filter(
     $patientDateFilteredAppointments,
-    static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Serving' && !appointment_has_completed_clinical_details($item)
+    static fn(array $item): bool => (string) ($item['status'] ?? '') === 'Serving'
 ));
 $holdStationAppointments = array_values(array_filter(
     $patientDateFilteredAppointments,
@@ -3883,19 +3884,50 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         <span class="status-pill status-queue-serving">
                                             ⚡ Serving Now
                                         </span>
-                                        <form method="post" style="margin:0; display:inline-block;" onsubmit="return confirm('Put this consultation on hold? You can resume it anytime to continue.');">
-                                            <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
-                                            <input type="hidden" name="appointment_id" value="<?= h((string) $appointment['id']); ?>">
-                                            <input type="hidden" name="new_status" value="On Hold">
-                                            <button type="submit" class="hold-btn" title="Put consultation on hold (pause)">
-                                                <?= staff_icon('pause'); ?>
-                                                <span>Hold</span>
-                                            </button>
-                                        </form>
-                                        <a class="remarks-btn is-active" href="?page=patients&program=<?= h($programFilter); ?><?= $patientSearch !== '' ? '&patient_search=' . urlencode($patientSearch) : ''; ?>&appointment_remarks=<?= h($apptCode); ?>" title="Encode doctor remarks & clinical assessment">
-                                            <?= staff_icon('edit'); ?>
-                                            <span>Remarks</span>
-                                        </a>
+                                        <?php $remarksUrl = '?page=patients&program=' . urlencode($programFilter) . ($patientSearch !== '' ? '&patient_search=' . urlencode($patientSearch) : '') . '&appointment_remarks=' . urlencode($apptCode); ?>
+                                        <?php if (appointment_has_clinical_notes($appointment)): ?>
+                                            <?php
+                                            // Remarks saved: Edit reopens them, Complete finishes the same appointment the queue's Complete button does
+                                            $cardCanComplete = appointment_can_complete($appointment);
+                                            $cardMissing = [];
+                                            if (!appointment_has_vitals($appointment)) $cardMissing[] = 'Vital Signs';
+                                            if (!appointment_has_photo($appointment)) $cardMissing[] = 'Patient Photo';
+                                            ?>
+                                            <a class="hold-btn" href="<?= h($remarksUrl); ?>" title="Edit the saved clinical remarks">
+                                                <?= staff_icon('edit'); ?>
+                                                <span>Edit</span>
+                                            </a>
+                                            <?php if ($cardCanComplete): ?>
+                                                <form method="post" style="margin:0; display:inline-block;" onsubmit="return confirm('Complete this consultation? It will be moved to the patient records.');">
+                                                    <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                                                    <input type="hidden" name="appointment_id" value="<?= h((string) $appointment['id']); ?>">
+                                                    <input type="hidden" name="new_status" value="Completed">
+                                                    <button type="submit" class="remarks-btn is-active" title="Complete consultation">
+                                                        <?= staff_icon('check'); ?>
+                                                        <span>Complete</span>
+                                                    </button>
+                                                </form>
+                                            <?php else: ?>
+                                                <button type="button" class="remarks-btn" disabled style="opacity:0.55;cursor:not-allowed;" title="<?= h('Cannot complete yet. Missing: ' . implode(', ', $cardMissing)); ?>">
+                                                    <?= staff_icon('check'); ?>
+                                                    <span>Complete</span>
+                                                </button>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <form method="post" style="margin:0; display:inline-block;" onsubmit="return confirm('Put this consultation on hold? You can resume it anytime to continue.');">
+                                                <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                                                <input type="hidden" name="appointment_id" value="<?= h((string) $appointment['id']); ?>">
+                                                <input type="hidden" name="new_status" value="On Hold">
+                                                <button type="submit" class="hold-btn" title="Put consultation on hold (pause)">
+                                                    <?= staff_icon('pause'); ?>
+                                                    <span>Hold</span>
+                                                </button>
+                                            </form>
+                                            <a class="remarks-btn is-active" href="<?= h($remarksUrl); ?>" title="Encode doctor remarks & clinical assessment">
+                                                <?= staff_icon('edit'); ?>
+                                                <span>Remarks</span>
+                                            </a>
+                                        <?php endif; ?>
                                     </div>
                                 </article>
                             <?php endforeach; ?>
