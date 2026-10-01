@@ -767,6 +767,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
     exit;
 }
 
+// Manually encoded vaccines already given elsewhere (e.g. BCG / Hepatitis B at the birth hospital)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'save_infant_manual_vaccines')) {
+    header('Content-Type: application/json');
+    if (!verify_staff_csrf($_POST['csrf_token'] ?? null)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid security token. Please refresh and try again.']);
+        exit;
+    }
+
+    $patientId = trim((string) ($_POST['patient_id'] ?? ''));
+    $infantId = (int) ($_POST['infant_id'] ?? 0);
+    if ($infantId <= 0 && $patientId !== '') {
+        // Profile row missing: create it from the infant's identity so the doses have somewhere to live
+        $infantId = (int) (save_or_update_infant_profile([
+            'patient_id' => $patientId,
+            'first_name' => trim((string) ($_POST['first_name'] ?? '')),
+            'middle_name' => trim((string) ($_POST['middle_name'] ?? '')),
+            'last_name' => trim((string) ($_POST['last_name'] ?? '')),
+            'birth_date' => trim((string) ($_POST['birth_date'] ?? '')),
+            'gender' => trim((string) ($_POST['gender'] ?? '')),
+        ]) ?? 0);
+    }
+
+    $infantProfile = $infantId > 0 ? fetch_infant_profile_by_id($infantId) : null;
+    if ($infantProfile === null || strcasecmp((string) ($infantProfile['patient_id'] ?? ''), $patientId) !== 0) {
+        echo json_encode(['success' => false, 'message' => 'Infant profile not found.']);
+        exit;
+    }
+
+    $doses = [];
+    foreach ((array) ($_POST['manual_vaccines'] ?? []) as $vaccine => $count) {
+        $doses[(string) $vaccine] = (int) $count;
+    }
+
+    if (save_infant_manual_vaccines($infantId, $doses, (string) ($staffAccount['email'] ?? ''))) {
+        log_activity('staff', (string) ($staffAccount['email'] ?? ''), 'infant_manual_vaccines_saved', 'infant', (string) $infantId, '', '', (string) ($station['slug'] ?? ''));
+        echo json_encode([
+            'success' => true,
+            'message' => 'Previously administered vaccines saved.',
+            'infant_id' => $infantId,
+            'manual_vaccines' => fetch_infant_manual_vaccines($infantId),
+        ]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Unable to save the encoded vaccines. Please try again.']);
+    }
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'save_infant_profile')) {
     $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
               || (isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json'))
@@ -7619,6 +7666,11 @@ window.previewPhotoInModal = function(src) {
 
 window.openStaffInfantModal = function(infant) {
     if (!infant) return;
+    // Encoded vaccines saved this page session override the (older) data embedded in the list
+    window.staffInfantManualVaccinesCache = window.staffInfantManualVaccinesCache || {};
+    if (infant.infant_key && window.staffInfantManualVaccinesCache[infant.infant_key]) {
+        infant.manual_vaccines = window.staffInfantManualVaccinesCache[infant.infant_key];
+    }
     const modal = document.getElementById('staffInfantModalBackdrop');
     const body = document.getElementById('staffInfantModalBody');
     if (!modal || !body) return;
@@ -7716,6 +7768,17 @@ window.openStaffInfantModal = function(infant) {
             cardSummary[canon].latestDate = info.latestDate;
         }
     });
+    // Doses staff encoded by hand (given elsewhere, e.g. BCG / Hepatitis B at the birth hospital)
+    const manualVaccines = (infant.manual_vaccines && typeof infant.manual_vaccines === 'object') ? infant.manual_vaccines : {};
+    Object.keys(manualVaccines).forEach(canon => {
+        const manualCount = Number(manualVaccines[canon]) || 0;
+        if (!nipLimits[canon] || manualCount <= 0) return;
+        if (!cardSummary[canon]) {
+            cardSummary[canon] = { count: 0, latestDate: '' };
+        }
+        cardSummary[canon].count = Math.min(cardSummary[canon].count + manualCount, nipLimits[canon]);
+        cardSummary[canon].manual = manualCount;
+    });
     const vNames = Object.keys(nipLimits).filter(canon => cardSummary[canon]);
     if (vNames.length > 0) {
         dosesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">';
@@ -7732,12 +7795,29 @@ window.openStaffInfantModal = function(infant) {
                 <span>${staffEscapeHtml(vName)}</span>
                 ${badgeLabel ? `<span style="background: ${isCompleted ? '#059669' : '#0284c7'}; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${badgeLabel}</span>` : ''}
                 ${dateStr ? `<span style="font-size: 0.74rem; color: ${isCompleted ? '#047857' : '#0284c7'}; font-weight: 600; opacity: 0.85;">(${staffEscapeHtml(dateStr)})</span>` : ''}
+                ${info.manual ? `<span style="font-size: 0.72rem; color: #92400e; background: #fef3c7; border: 1px solid #fde68a; padding: 1px 7px; border-radius: 999px; font-weight: 700;" title="${info.manual} dose(s) encoded manually by staff">Encoded</span>` : ''}
             </div>`;
         });
         dosesHtml += '</div>';
     } else {
         dosesHtml = '<p style="color: #64748b; font-size: 0.85rem; margin: 8px 0 0 0;">No NIP vaccine doses recorded yet for this infant.</p>';
     }
+
+    const manualVaccineRowsHtml = Object.keys(nipLimits).map(canon => {
+        const saved = Number(manualVaccines[canon]) || 0;
+        let options = '';
+        for (let n = 1; n <= nipLimits[canon]; n++) {
+            options += `<option value="${n}" ${saved === n ? 'selected' : ''}>${n} dose${n > 1 ? 's' : ''}</option>`;
+        }
+        return `
+            <label style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; cursor: pointer;">
+                <span style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.86rem; font-weight: 600; color: #0f172a;">
+                    <input type="checkbox" class="manual-vax-check" data-vaccine="${staffEscapeHtml(canon)}" ${saved > 0 ? 'checked' : ''} onchange="this.closest('label').querySelector('select').disabled = !this.checked;">
+                    ${staffEscapeHtml(canon)}
+                </span>
+                <select class="manual-vax-doses" data-vaccine="${staffEscapeHtml(canon)}" ${saved > 0 ? '' : 'disabled'} style="padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.82rem;">${options}</select>
+            </label>`;
+    }).join('');
 
     const formatInfantHeight = (val) => {
         if (!val) return '';
@@ -7857,6 +7937,22 @@ window.openStaffInfantModal = function(infant) {
         </div>
         <p style="font-size: 0.82rem; color: #64748b; margin: 3px 0 0 0;">Vaccine card of DOH National Immunization Program antigens, in order of the standard schedule.</p>
         ${dosesHtml}
+
+        <button type="button" id="manualVaxToggleBtn" onclick="const f = document.getElementById('manualVaxForm'); f.style.display = f.style.display === 'none' ? 'block' : 'none';" style="margin-top: 14px; background: #f0f9ff; color: #0369a1; border: 1.5px solid #7dd3fc; padding: 7px 14px; border-radius: 10px; font-weight: 700; font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+            <?= staff_icon('edit'); ?> <span>Encode Previous Vaccines</span>
+        </button>
+
+        <div id="manualVaxForm" style="display: none; margin-top: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+            <p style="font-size: 0.82rem; color: #475569; margin: 0 0 10px 0;">Tick the vaccines this infant already received outside the station (e.g. <strong>BCG</strong> and <strong>Hepatitis B</strong> given at the hospital at birth) and how many doses.</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px;">
+                ${manualVaccineRowsHtml}
+            </div>
+            <div id="manualVaxAlert" style="display: none; margin-top: 10px; font-size: 0.82rem; font-weight: 600;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px;">
+                <button type="button" onclick="document.getElementById('manualVaxForm').style.display = 'none';" style="background: #ffffff; color: #475569; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 10px; font-weight: 600; font-size: 0.82rem; cursor: pointer;">Cancel</button>
+                <button type="button" id="manualVaxSaveBtn" onclick="window.saveStaffInfantManualVaccines(this);" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff; border: 0; padding: 8px 16px; border-radius: 10px; font-weight: 700; font-size: 0.82rem; cursor: pointer;">Save Encoded Vaccines</button>
+            </div>
+        </div>
     </div>
 
     <!-- Section 2: Editable Infant Information Form (Mother, Father, Guardian, Notes) -->
@@ -7941,6 +8037,63 @@ window.openStaffInfantModal = function(infant) {
 };
 
 // Global function to save infant profile via AJAX while keeping modal open
+window.saveStaffInfantManualVaccines = function(btn) {
+    const infant = window.currentStaffEditingInfant;
+    const form = document.getElementById('manualVaxForm');
+    const alertBox = document.getElementById('manualVaxAlert');
+    if (!infant || !form) return;
+
+    const formData = new FormData();
+    formData.append('action', 'save_infant_manual_vaccines');
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]')?.value || '<?= h($csrf); ?>');
+    formData.append('infant_id', infant.id ? String(infant.id) : '');
+    ['patient_id', 'first_name', 'middle_name', 'last_name', 'birth_date', 'gender'].forEach(key => {
+        formData.append(key, infant[key] || '');
+    });
+    form.querySelectorAll('.manual-vax-check').forEach(check => {
+        const vaccine = check.dataset.vaccine;
+        const select = form.querySelector(`.manual-vax-doses[data-vaccine="${CSS.escape(vaccine)}"]`);
+        formData.append(`manual_vaccines[${vaccine}]`, check.checked && select ? select.value : '0');
+    });
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+    }
+
+    fetch('index.php?page=patients&view=profiles', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data && data.success) {
+            infant.id = data.infant_id || infant.id;
+            infant.manual_vaccines = data.manual_vaccines || {};
+            if (infant.infant_key) {
+                window.staffInfantManualVaccinesCache = window.staffInfantManualVaccinesCache || {};
+                window.staffInfantManualVaccinesCache[infant.infant_key] = infant.manual_vaccines;
+            }
+            // Re-render so the dose summary above shows the encoded vaccines right away
+            window.openStaffInfantModal(infant);
+            return;
+        }
+        throw new Error((data && data.message) || 'Unable to save the encoded vaccines.');
+    })
+    .catch(err => {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Save Encoded Vaccines';
+        }
+        if (alertBox) {
+            alertBox.style.display = 'block';
+            alertBox.style.color = '#dc2626';
+            alertBox.textContent = err.message || 'Unable to save the encoded vaccines.';
+        }
+    });
+};
+
 window.saveStaffInfantProfile = function(btn) {
     const infantForm = document.getElementById('staffInfantEditForm');
     if (!infantForm) return;

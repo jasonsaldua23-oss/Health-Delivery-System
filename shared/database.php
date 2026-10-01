@@ -4606,6 +4606,7 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
                 'latest_photo' => $latestInfantPhoto,
                 'vaccine_counts' => $vaccineCounts,
                 'vaccine_doses' => $inf['vaccine_doses'],
+                'manual_vaccines' => fetch_infant_manual_vaccines((int) $inf['profile_id']),
                 'total_doses' => count($inf['vaccine_doses']),
                 'appointments' => $infAppts,
             ];
@@ -4615,6 +4616,116 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
     }
 
     return $infants;
+}
+
+/**
+ * Dose limits of the DOH National Immunization Program antigens shown on the infant vaccine card,
+ * in schedule order. Keys match the vaccine card names used by the staff and admin modals.
+ */
+function nip_vaccine_dose_limits(): array
+{
+    return [
+        'BCG' => 1,
+        'Hepatitis B' => 1,
+        'Pentavalent (DTP-HepB-Hib)' => 3,
+        'OPV (Oral Polio Vaccine)' => 3,
+        'PCV (Pneumococcal Conjugate Vaccine)' => 3,
+        'IPV (Inactivated Polio Vaccine)' => 2,
+        'Measles-Rubella (MR) or AMV-1' => 1,
+        'MMR (Measles, Mumps, Rubella)' => 1,
+    ];
+}
+
+function ensure_infant_manual_vaccines_table(mysqli $connection): void
+{
+    static $ensured = false;
+    if ($ensured) {
+        return;
+    }
+    $connection->query(
+        'CREATE TABLE IF NOT EXISTS infant_manual_vaccines (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            infant_profile_id INT UNSIGNED NOT NULL,
+            vaccine_type VARCHAR(100) NOT NULL,
+            doses TINYINT UNSIGNED NOT NULL DEFAULT 1,
+            encoded_by VARCHAR(150) NOT NULL DEFAULT "",
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_infant_vaccine (infant_profile_id, vaccine_type)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
+    );
+    $ensured = true;
+}
+
+/**
+ * Vaccine doses staff encoded by hand for an infant (e.g. BCG / Hepatitis B given at the birth hospital).
+ * Returns [vaccine card name => doses].
+ */
+function fetch_infant_manual_vaccines(int $infantProfileId): array
+{
+    if ($infantProfileId <= 0) {
+        return [];
+    }
+    try {
+        $db = db();
+        ensure_infant_manual_vaccines_table($db);
+        $stmt = $db->prepare('SELECT vaccine_type, doses FROM infant_manual_vaccines WHERE infant_profile_id = ?');
+        $stmt->bind_param('i', $infantProfileId);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $manual = [];
+        foreach ($rows as $row) {
+            $manual[(string) $row['vaccine_type']] = (int) $row['doses'];
+        }
+        return $manual;
+    } catch (Throwable $e) {
+        error_log('fetch_infant_manual_vaccines error: ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Replace an infant's manually encoded vaccines. $doses maps vaccine card name => dose count;
+ * unknown vaccines are ignored, counts are clamped to the vaccine's dose limit, and 0 removes it.
+ */
+function save_infant_manual_vaccines(int $infantProfileId, array $doses, string $encodedBy = ''): bool
+{
+    if ($infantProfileId <= 0) {
+        return false;
+    }
+    $limits = nip_vaccine_dose_limits();
+    try {
+        $db = db();
+        ensure_infant_manual_vaccines_table($db);
+        $db->begin_transaction();
+
+        $del = $db->prepare('DELETE FROM infant_manual_vaccines WHERE infant_profile_id = ?');
+        $del->bind_param('i', $infantProfileId);
+        $del->execute();
+
+        $ins = $db->prepare('INSERT INTO infant_manual_vaccines (infant_profile_id, vaccine_type, doses, encoded_by) VALUES (?, ?, ?, ?)');
+        foreach ($doses as $vaccine => $count) {
+            $vaccine = (string) $vaccine;
+            if (!isset($limits[$vaccine])) {
+                continue;
+            }
+            $count = max(0, min((int) $count, $limits[$vaccine]));
+            if ($count === 0) {
+                continue;
+            }
+            $ins->bind_param('isis', $infantProfileId, $vaccine, $count, $encodedBy);
+            $ins->execute();
+        }
+
+        $db->commit();
+        return true;
+    } catch (Throwable $e) {
+        try {
+            db()->rollback();
+        } catch (Throwable $ignored) {}
+        error_log('save_infant_manual_vaccines error: ' . $e->getMessage());
+        return false;
+    }
 }
 
 /**

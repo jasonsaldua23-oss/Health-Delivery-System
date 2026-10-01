@@ -6702,6 +6702,17 @@ window.renderAdminSelectedInfant = function(targetInfant) {
             cardSummary[canon].latestDate = info.latestDate;
         }
     });
+    // Doses staff encoded by hand (given elsewhere, e.g. BCG / Hepatitis B at the birth hospital)
+    const manualVaccines = (infant.manual_vaccines && typeof infant.manual_vaccines === 'object') ? infant.manual_vaccines : {};
+    Object.keys(manualVaccines).forEach(canon => {
+        const manualCount = Number(manualVaccines[canon]) || 0;
+        if (!nipLimits[canon] || manualCount <= 0) return;
+        if (!cardSummary[canon]) {
+            cardSummary[canon] = { count: 0, latestDate: '' };
+        }
+        cardSummary[canon].count = Math.min(cardSummary[canon].count + manualCount, nipLimits[canon]);
+        cardSummary[canon].manual = manualCount;
+    });
     const vNames = Object.keys(nipLimits).filter(canon => cardSummary[canon]);
     if (vNames.length > 0) {
         dosesHtml = '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">';
@@ -6718,6 +6729,7 @@ window.renderAdminSelectedInfant = function(targetInfant) {
                 <span>${adminEscapeHtml(vName)}</span>
                 ${badgeLabel ? `<span style="background: ${isCompleted ? '#059669' : '#7c3aed'}; color: #ffffff; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800;">${badgeLabel}</span>` : ''}
                 ${dateStr ? `<span style="font-size: 0.74rem; color: ${isCompleted ? '#047857' : '#7c3aed'}; font-weight: 600; opacity: 0.85;">(${adminEscapeHtml(dateStr)})</span>` : ''}
+                ${info.manual ? `<span style="font-size: 0.72rem; color: #92400e; background: #fef3c7; border: 1px solid #fde68a; padding: 1px 7px; border-radius: 999px; font-weight: 700;" title="${info.manual} dose(s) encoded manually by staff">Encoded</span>` : ''}
             </div>`;
         });
         dosesHtml += '</div>';
