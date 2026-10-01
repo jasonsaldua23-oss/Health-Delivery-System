@@ -3108,3 +3108,17 @@ select#immunization_relationship:focus {
     caret-color: #0f172a;
     transition: background-color 9999s ease-out 0s;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   ANIMAL BITE BOOKING (PATIENT PORTAL)
+   ══════════════════════════════════════════════════════════════════════ */
+.animal-bite-card .animal-bite-grid { margin-top: 4px; }
+.animal-bite-card .animal-bite-label { font-size: 0.88rem; font-weight: 600; color: #1e293b; margin-bottom: 8px; display: block; }
+.animal-bite-card .animal-bite-options { display: flex; flex-wrap: wrap; gap: 12px; }
+.animal-bite-card .animal-bite-options .radio-option { flex: 1 1 140px; }
+.animal-bite-card .animal-other-input { display: block; margin-top: 12px; }
+.animal-bite-card .animal-other-input input { width: 100%; }
+@media (max-width: 760px) {
+    .animal-bite-card .animal-bite-options { flex-direction: column; }
+    .animal-bite-card .animal-bite-options .radio-option { flex: 0 0 auto; width: 100%; }
+}

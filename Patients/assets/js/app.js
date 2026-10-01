@@ -638,3 +638,26 @@ window.showSystemToast = function (message, options = {}) {
 
     return toast;
 };
+
+/* ── Animal Bite: show the "specify the animal" field when Type of Animal is Others ── */
+const animalTypeRadios = document.querySelectorAll('input[name="animal_type"]');
+const animalTypeOtherWrap = document.getElementById('animalTypeOtherWrap');
+const animalTypeOtherInput = document.getElementById('animal_type_other');
+
+function toggleAnimalTypeOther() {
+    if (!animalTypeOtherWrap) return;
+    const selected = document.querySelector('input[name="animal_type"]:checked');
+    const isOther = !!selected && selected.value === 'Others';
+    animalTypeOtherWrap.style.display = isOther ? 'block' : 'none';
+    if (animalTypeOtherInput) {
+        animalTypeOtherInput.required = isOther;
+        if (isOther) {
+            animalTypeOtherInput.setAttribute('data-required', '');
+        } else {
+            animalTypeOtherInput.removeAttribute('data-required');
+        }
+    }
+}
+
+animalTypeRadios.forEach((radio) => radio.addEventListener('change', toggleAnimalTypeOther));
+toggleAnimalTypeOther();

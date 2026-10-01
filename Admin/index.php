@@ -1752,6 +1752,14 @@ if (!function_exists('peso')) {
                     </div>
                 </section>
 
+                <!-- Animal Bite Cases: each case is a series of PEP visits (Day 0, 3, 7, 14, 28) -->
+                <?php $adminBiteCases = fetch_animal_bite_cases_for_patient((string) $patientProfile['patient_id']); ?>
+                <?php if ($adminBiteCases !== []): ?>
+                    <section class="panel-card admin-bite-cases-card" style="margin-bottom: 20px;">
+                        <?= render_animal_bite_case_cards($adminBiteCases, 'admin'); ?>
+                    </section>
+                <?php endif; ?>
+
                 <!-- Two-Column Information & Clinical History Grid -->
                 <section class="patient-detail-grid-modern">
                     <!-- Left Column: Personal & Contact Profile -->
@@ -2006,6 +2014,10 @@ if (!function_exists('peso')) {
                                         <?php endif; ?>
                                     </div>
                                 </div>
+
+                                <?php if (appointment_is_animal_bite($selectedAdminVisit)): ?>
+                                    <?= render_animal_bite_visit_summary($selectedAdminVisit, 'admin'); ?>
+                                <?php endif; ?>
 
                                 <!-- Doctor's Notes -->
                                 <div class="clinical-notes-section">

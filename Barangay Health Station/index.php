@@ -198,6 +198,18 @@ if (!function_exists('render_patient_profile_body')) {
             </div>
         </div>
 
+        <!-- Animal Bite Cases: each case is a series of PEP visits (Day 0, 3, 7, 14, 28) -->
+        <?php
+        $profileBiteCases = [];
+        foreach ($prof['appointments'] as $profileAppt) {
+            if (!empty($profileAppt['bite_case_id'])) {
+                $profileBiteCases = fetch_animal_bite_cases_for_patient((string) $prof['patient_id'], (string) $station['slug']);
+                break;
+            }
+        }
+        ?>
+        <?= render_animal_bite_case_cards($profileBiteCases, 'staff'); ?>
+
         <!-- Appointment History Section Header -->
         <div class="profile-history-section-head">
             <div class="history-title-group">
@@ -789,10 +801,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
             if ($vitalsIsTb && $rawField('chest_xray') === '') {
                 $vitalsErrors['chest_xray'] = 'Chest X-ray screening result is required.';
             }
+            $vitalsBiteCase = appointment_is_animal_bite($vitalsAppt) ? fetch_animal_bite_case_for_appointment($vitalsAppt) : null;
+            if ($vitalsBiteCase !== null && !array_key_exists($rawField('bite_category'), animal_bite_categories())) {
+                $vitalsErrors['bite_category'] = 'Please select the category of exposure (I, II, or III).';
+            }
 
             if (!empty($vitalsErrors)) {
                 $oldInput = [];
-                foreach (['body_temperature', 'pulse_rate', 'respiration_rate', 'blood_pressure', 'height', 'weight', 'vaccine_type', 'vaccine_type_other', 'chest_xray'] as $oldField) {
+                foreach (['body_temperature', 'pulse_rate', 'respiration_rate', 'blood_pressure', 'height', 'weight', 'vaccine_type', 'vaccine_type_other', 'chest_xray', 'bite_category'] as $oldField) {
                     if (isset($_POST[$oldField]) && !is_array($_POST[$oldField])) {
                         $oldInput[$oldField] = (string) $_POST[$oldField];
                     }
@@ -815,8 +831,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array(($_POST['action'] ?? ''), 
                 exit;
             }
         }
+        // Animal bite clinical remarks: vaccines given (type, dose, route & site) for Category II / III
+        $remarksBiteCase = null;
+        $remarksBiteRows = [];
+        if (($_POST['action'] ?? '') === 'save_clinical_remarks') {
+            $remarksAppt = fetch_appointment_by_id($appointmentId) ?? [];
+            $remarksBiteCase = appointment_is_animal_bite($remarksAppt) && (string) ($remarksAppt['station_slug'] ?? '') === (string) ($station['slug'] ?? '')
+                ? fetch_animal_bite_case_for_appointment($remarksAppt)
+                : null;
+            if ($remarksBiteCase !== null && animal_bite_category_needs_vaccine($remarksBiteCase['category'] ?? null)) {
+                $parsedBite = parse_animal_bite_dose_rows($_POST, (string) $remarksBiteCase['category']);
+                if ($parsedBite['error'] !== null) {
+                    $_SESSION['staff_flash'] = $parsedBite['error'] . ' Your clinical remarks were not saved.';
+                    $_SESSION['staff_flash_type'] = 'error';
+                    $returnUrl = trim((string) ($_POST['return_url'] ?? ''));
+                    $returnUrl = $returnUrl !== '' ? $returnUrl : 'index.php?page=patients';
+                    $remarksCode = (string) ($remarksAppt['appointment_code'] ?? '');
+                    if ($remarksCode !== '') {
+                        $returnUrl .= (str_contains($returnUrl, '?') ? '&' : '?') . 'appointment_remarks=' . urlencode($remarksCode);
+                    }
+                    header('Location: ' . $returnUrl);
+                    exit;
+                }
+                $remarksBiteRows = $parsedBite['rows'];
+            }
+        }
         try {
             if (save_appointment_clinical_details($appointmentId, $postData, (string) ($station['slug'] ?? ''))) {
+                if (($vitalsBiteCase ?? null) !== null) {
+                    save_animal_bite_category((int) $vitalsBiteCase['id'], trim((string) ($_POST['bite_category'] ?? '')));
+                }
+                if ($remarksBiteCase !== null && $remarksBiteRows !== []) {
+                    save_animal_bite_doses(
+                        (int) $remarksBiteCase['id'],
+                        $appointmentId,
+                        appointment_bite_session_day($remarksAppt),
+                        $remarksBiteRows,
+                        (string) ($staffAccount['email'] ?? '')
+                    );
+                }
                 if (($_POST['action'] ?? '') === 'save_vitals') {
                     $_SESSION['staff_flash'] = 'Vital signs recorded successfully.';
                 } elseif (($_POST['action'] ?? '') === 'save_clinical_remarks') {
@@ -1010,8 +1063,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'sche
         $followUpTime = trim((string) ($_POST['follow_up_time'] ?? ''));
         $followUpNotes = trim((string) ($_POST['follow_up_notes'] ?? ''));
 
+        $postedBiteDay = trim((string) ($_POST['bite_session_day'] ?? ''));
+        $biteSessionDay = $postedBiteDay !== '' && array_key_exists((int) $postedBiteDay, animal_bite_schedule()) ? (int) $postedBiteDay : null;
+
         if ($appointmentId > 0 && $followUpDate !== '') {
-            if (schedule_appointment_follow_up($appointmentId, $followUpDate, $followUpTime, $followUpNotes, (string) ($staffAccount['email'] ?? ''))) {
+            if (schedule_appointment_follow_up($appointmentId, $followUpDate, $followUpTime, $followUpNotes, (string) ($staffAccount['email'] ?? ''), $biteSessionDay)) {
                 $_SESSION['staff_flash'] = 'Follow-up consultation scheduled for ' . date('F j, Y', strtotime($followUpDate)) . '. The patient has been notified on their dashboard and will receive an SMS reminder on the day of the follow-up.';
                 log_activity('staff', (string) ($staffAccount['email'] ?? ''), 'follow_up_scheduled', 'appointment', (string) $appointmentId, '', '', (string) $station['slug']);
             } else {
@@ -3036,6 +3092,11 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     </div>
                                 <?php endif; ?>
 
+                                <?php $vitalsIsAnimalBite = appointment_is_animal_bite($selectedVitalsAppointment) && fetch_animal_bite_case_for_appointment($selectedVitalsAppointment) !== null; ?>
+                                <?php if ($vitalsIsAnimalBite): ?>
+                                    <?= render_animal_bite_visit_summary($selectedVitalsAppointment, 'staff', false); ?>
+                                <?php endif; ?>
+
                                 <div class="account-section-divider">
                                     <?= staff_icon('pulse'); ?>
                                     <span>Vital Signs Measurement</span>
@@ -3441,6 +3502,35 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         <input type="text" id="queue_chest_xray" name="chest_xray" value="<?= h((string) ($selectedVitalsAppointment['chest_xray'] ?? '')); ?>" placeholder="e.g. Normal / Clear, Suggestive of Active PTB, Cavitary Lesions, Fibrotic Changes..." required class="form-input-field" style="border-color: #d8b4fe; background: #ffffff; font-size: 0.95rem;">
                                         <small style="display: block; margin-top: 6px; color: #7e22ce; font-size: 0.82rem;">Required screening record for TB DOTS patient triage, treatment enrollment, and clinical history.</small>
                                     </div>
+                                <?php endif; ?>
+
+                                <?php if ($vitalsIsAnimalBite): ?>
+                                    <!-- Animal Bite: body weight (for RIG dosing) and category of exposure -->
+                                    <div class="form-row-grid" style="margin-top: 14px;">
+                                        <div class="form-group-item">
+                                            <label for="queue_bite_weight" class="form-field-label">
+                                                <span>Body Weight</span>
+                                                <span style="color:#64748b;font-weight:500;">(optional)</span>
+                                            </label>
+                                            <div class="vital-input-group">
+                                                <input type="text"
+                                                       id="queue_bite_weight"
+                                                       name="weight"
+                                                       value="<?= h(extract_vital_numeric($selectedVitalsAppointment['weight'] ?? '')); ?>"
+                                                       placeholder="e.g. 55"
+                                                       autocomplete="off"
+                                                       inputmode="decimal"
+                                                       data-vital-mode="decimal"
+                                                       data-optional="1"
+                                                       class="form-input-field vital-numeric-input"
+                                                       oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');"
+                                                       onkeydown="handleVitalNumericKeydown(event, 'decimal');">
+                                                <span class="vital-unit-addon">kg</span>
+                                            </div>
+                                            <small class="field-subnote">Used to compute rabies immunoglobulin (ERIG / HRIG) doses for Category III.</small>
+                                        </div>
+                                    </div>
+                                    <?= render_animal_bite_category_field($selectedVitalsAppointment, isset($vitalsServerErrors['old']['bite_category']) ? (string) $vitalsServerErrors['old']['bite_category'] : null); ?>
                                 <?php endif; ?>
                             </div>
 
@@ -4284,6 +4374,12 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     </div>
                                 <?php endif; ?>
 
+                                <?php if (appointment_is_animal_bite($selectedRemarksAppointment) && fetch_animal_bite_case_for_appointment($selectedRemarksAppointment) !== null): ?>
+                                    <!-- Animal Bite: case details and vaccines given (Category II / III) -->
+                                    <?= render_animal_bite_visit_summary($selectedRemarksAppointment, 'staff', false); ?>
+                                    <?= render_animal_bite_remarks_fields($selectedRemarksAppointment, !$isFinishedRecord); ?>
+                                <?php endif; ?>
+
                                 <div class="account-section-divider">
                                     <?= staff_icon('edit'); ?>
                                     <span>Doctor's Clinical Notes &amp; Findings</span>
@@ -4570,6 +4666,10 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                 </div>
                             <?php endif; ?>
 
+                            <?php if (appointment_is_animal_bite($selectedViewAppointment)): ?>
+                                <?= render_animal_bite_visit_summary($selectedViewAppointment, 'staff'); ?>
+                            <?php endif; ?>
+
                             <div class="account-section-divider">
                                 <?= staff_icon('edit'); ?>
                                 <span>Doctor's Assessment &amp; Clinical Notes</span>
@@ -4655,6 +4755,49 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                     <?= staff_icon('calendar'); ?>
                                     <span>Follow-up Consultation Date &amp; Time</span>
                                 </div>
+
+                                <?php
+                                $fuBiteSessions = appointment_is_animal_bite($selectedFollowUpAppointment) ? animal_bite_upcoming_sessions($selectedFollowUpAppointment) : [];
+                                $fuBiteCurrentDay = appointment_bite_session_day($selectedFollowUpAppointment);
+                                ?>
+                                <?php if ($fuBiteSessions !== []): ?>
+                                    <!-- Animal Bite: the follow-up is the next dose of the PEP schedule -->
+                                    <?= animal_bite_styles(); ?>
+                                    <div class="abc-theme-staff">
+                                        <div class="abc-form-block form-group-item" style="margin-top: 0; margin-bottom: 14px;">
+                                            <label for="modal_bite_session_day" class="abc-form-title"><?= abc_icon('paw', 18); ?> Next Anti-Rabies Dose <span class="required" style="color:#dc2626;">*</span></label>
+                                            <p class="abc-form-sub">This visit is the <?= h(animal_bite_session_label($fuBiteCurrentDay)); ?> dose. Target dates count from the Day 0 visit; picking a dose fills in its date.</p>
+                                            <select id="modal_bite_session_day" name="bite_session_day" class="form-input-field" required>
+                                                <?php foreach ($fuBiteSessions as $fuIndex => $fuSession): ?>
+                                                    <option value="<?= h((string) $fuSession['day']); ?>" data-date="<?= h(max($fuSession['date'], date('Y-m-d'))); ?>" data-label="<?= h($fuSession['label']); ?>" <?= $fuIndex === 0 ? 'selected' : ''; ?>>
+                                                        <?= h($fuSession['label']); ?> &middot; target <?= h(date('M j, Y', strtotime($fuSession['date']))); ?><?= $fuSession['required'] ? '' : ' (conditional)'; ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <small id="modal_bite_session_note" class="field-subnote"></small>
+                                        </div>
+                                    </div>
+                                    <script>
+                                    (function () {
+                                        var select = document.getElementById('modal_bite_session_day');
+                                        var notes = <?= json_encode(array_column($fuBiteSessions, 'note', 'day'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+                                        var hasExisting = <?= $fuApptHasFollowUp ? 'true' : 'false'; ?>;
+                                        function apply(fillDate) {
+                                            var opt = select.options[select.selectedIndex];
+                                            var noteEl = document.getElementById('modal_bite_session_note');
+                                            noteEl.textContent = notes[opt.value] || '';
+                                            if (fillDate) {
+                                                var dateInput = document.getElementById('modal_follow_up_date');
+                                                var notesInput = document.getElementById('modal_follow_up_notes');
+                                                if (dateInput) dateInput.value = opt.getAttribute('data-date');
+                                                if (notesInput) notesInput.value = 'Anti-rabies vaccine: ' + opt.getAttribute('data-label') + ' dose.';
+                                            }
+                                        }
+                                        select.addEventListener('change', function () { apply(true); });
+                                        document.addEventListener('DOMContentLoaded', function () { apply(!hasExisting); });
+                                    })();
+                                    </script>
+                                <?php endif; ?>
 
                                 <!-- Quick 1-Click Presets -->
                                 <div class="followup-presets-row">
@@ -6427,6 +6570,12 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                         </div>
                                         <?php endif; ?>
                                     </div>
+
+                                    <?php if (appointment_is_animal_bite($selectedRemarksAppointment) && fetch_animal_bite_case_for_appointment($selectedRemarksAppointment) !== null): ?>
+                                        <!-- Animal Bite: case details and vaccines given (Category II / III) -->
+                                        <?= render_animal_bite_visit_summary($selectedRemarksAppointment, 'staff', false); ?>
+                                        <?= render_animal_bite_remarks_fields($selectedRemarksAppointment, !$isFinishedRecord); ?>
+                                    <?php endif; ?>
 
                                     <div class="account-section-divider">
                                         <?= staff_icon('edit'); ?>
@@ -9070,7 +9219,7 @@ window.handleVitalNumericKeydown = handleVitalNumericKeydown;
 
         // 6. Weight (Infant Immunization)
         const weightInput = form.querySelector('[name="weight"]');
-        if (weightInput) {
+        if (weightInput && !weightInput.hasAttribute('data-optional')) {
             const weightVal = weightInput.value.trim();
             if (!weightVal) {
                 markVitalError(weightInput, 'Weight is required for infant immunization.');
@@ -9123,6 +9272,12 @@ window.handleVitalNumericKeydown = handleVitalNumericKeydown;
             if (!xrayVal) {
                 markVitalError(xrayInput, 'Chest X-ray screening result is required.');
             }
+        }
+
+        // 10. Category of Exposure (Animal Bite)
+        const biteCategoryRadio = form.querySelector('[name="bite_category"]');
+        if (biteCategoryRadio && !form.querySelector('[name="bite_category"]:checked')) {
+            markVitalError(biteCategoryRadio, 'Please select the category of exposure (I, II, or III).');
         }
 
         if (hasErrors) {

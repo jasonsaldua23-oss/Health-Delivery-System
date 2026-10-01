@@ -6,6 +6,7 @@ require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/brevo_sms.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/animal_bite.php';
 
 
 /**
@@ -56,6 +57,8 @@ function service_catalog(): array
         'pediatric' => ['slug' => 'pediatric', 'icon' => 'heart', 'title' => 'Pediatric Consultation', 'description' => 'Health visits for children', 'duration' => '30 mins', 'color' => 'red'],
         'senior' => ['slug' => 'senior', 'icon' => 'community', 'title' => 'Senior Citizen Care', 'description' => 'Monitoring and maintenance care', 'duration' => '20 mins', 'color' => 'gold'],
         'adolescent' => ['slug' => 'adolescent', 'icon' => 'user', 'title' => 'Adolescent Day', 'description' => 'Health services for adolescents', 'duration' => '30 mins', 'color' => 'blue'],
+        // Not part of any station's default services; admins assign it per station
+        'animal-bite' => ['slug' => 'animal-bite', 'icon' => 'shield', 'title' => 'Animal Bite', 'description' => 'Anti-rabies treatment after animal bites or scratches', 'duration' => '30 mins', 'color' => 'red'],
     ];
 }
 
@@ -1541,6 +1544,7 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
     ensure_infant_profiles_table($connection);
     ensure_station_service_schedules_table($connection);
     ensure_password_reset_otps_table($connection);
+    ensure_animal_bite_schema($connection);
     $log[] = 'Core tables verified';
 
     // Purge sample test account Juan Dela Cruz across appointments, profiles, accounts, and history
@@ -2128,7 +2132,9 @@ function db(): mysqli
             || !db_column_exists($connection, 'appointments', 'vaccine_type') 
             || !db_column_exists($connection, 'appointments', 'chest_xray') 
             || !db_column_exists($connection, 'appointments', 'reminder_sms_sent')
-            || !db_column_exists($connection, 'station_service_assignments', 'daily_capacity')) {
+            || !db_column_exists($connection, 'station_service_assignments', 'daily_capacity')
+            || !db_table_exists($connection, 'animal_bite_cases')
+            || !db_column_exists($connection, 'appointments', 'bite_session_day')) {
             run_database_migrations($connection, false);
         }
     } catch (Throwable $e) {
@@ -5425,8 +5431,13 @@ function appointment_recipient_details(array $appt): array
         } catch (Throwable $e) {}
     }
 
+    $isAnimalBite = is_animal_bite_service($serviceSlug, $serviceName);
+
     return [
         'is_immunization' => $isImmunization,
+        'is_animal_bite' => $isAnimalBite,
+        // Services booked for a recipient chosen with the "Relationship to Recipient" field
+        'has_recipient' => $isImmunization || $isAnimalBite,
         'is_self' => $isSelf,
         'relationship' => $relationshipLabel,
         'recipient_first_name' => $recipientFirstName,
@@ -7790,7 +7801,8 @@ function schedule_appointment_follow_up(
     string $followUpDate,
     string $followUpTime,
     string $followUpNotes,
-    string $scheduledBy = ''
+    string $scheduledBy = '',
+    ?int $biteSessionDay = null
 ): bool {
     $connection = db();
     $appointment = fetch_appointment_by_id($appointmentId);
@@ -7819,6 +7831,7 @@ function schedule_appointment_follow_up(
     $checkStmt->bind_param('s', $parentTag);
     $checkStmt->execute();
     $existingFollowUp = $checkStmt->get_result()->fetch_assoc();
+    $followUpApptId = 0;
 
     if ($existingFollowUp && !empty($existingFollowUp['id'])) {
         $updateApptStmt = $connection->prepare(
@@ -7829,6 +7842,7 @@ function schedule_appointment_follow_up(
         $fuId = (int) $existingFollowUp['id'];
         $updateApptStmt->bind_param('sssi', $followUpDate, $timeVal, $followUpFullNotes, $fuId);
         $updateApptStmt->execute();
+        $followUpApptId = $fuId;
     } else {
         $newRefCode = create_reference_code();
         $stationSlug = (string) ($appointment['station_slug'] ?? '');
@@ -7875,6 +7889,14 @@ function schedule_appointment_follow_up(
         );
         $insertStmt->execute();
         $newFollowUpApptId = (int) $connection->insert_id;
+        $followUpApptId = $newFollowUpApptId;
+
+        $recipientGender = (string) ($appointment['recipient_gender'] ?? '');
+        if ($newFollowUpApptId > 0 && $recipientGender !== '') {
+            $rgStmt = $connection->prepare('UPDATE appointments SET recipient_gender = ? WHERE id = ?');
+            $rgStmt->bind_param('si', $recipientGender, $newFollowUpApptId);
+            $rgStmt->execute();
+        }
 
         if ($serviceSlug === 'immunization' && $newFollowUpApptId > 0 && strcasecmp($immRel, 'Self') !== 0) {
             save_immunized_infant([
@@ -7890,6 +7912,18 @@ function schedule_appointment_follow_up(
                 'station_slug' => $stationSlug,
                 'vaccine_type' => (string) ($appointment['vaccine_type'] ?? ''),
             ]);
+        }
+    }
+
+    // Animal bite: the follow-up is the next dose of the same case
+    $biteCaseId = (int) ($appointment['bite_case_id'] ?? 0);
+    if ($biteCaseId > 0 && $followUpApptId > 0) {
+        if ($biteSessionDay === null || !array_key_exists($biteSessionDay, animal_bite_schedule())) {
+            $nextSessions = animal_bite_upcoming_sessions($appointment);
+            $biteSessionDay = $nextSessions !== [] ? (int) $nextSessions[0]['day'] : null;
+        }
+        if ($biteSessionDay !== null) {
+            link_appointment_to_animal_bite_case($followUpApptId, $biteCaseId, $biteSessionDay);
         }
     }
 

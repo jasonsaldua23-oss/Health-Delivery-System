@@ -152,6 +152,12 @@ $formData = [
     'recipient_last_name' => '',
     'recipient_birth_date' => '',
     'recipient_gender' => '',
+    'exposure_date' => '',
+    'exposure_place' => '',
+    'exposure_type' => '',
+    'animal_type' => '',
+    'animal_type_other' => '',
+    'animal_condition' => '',
     'preferred_date' => '',
     'preferred_time' => '',
     'notes' => '',
@@ -344,6 +350,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
         }
     }
 
+    $isAnimalBiteBooking = is_animal_bite_service((string) $selectedProgram['slug'], (string) $selectedProgram['title']);
+    if ($isAnimalBiteBooking) {
+        $biteRel = $formData['immunization_relationship'];
+        if (!in_array($biteRel, animal_bite_relationship_options(), true)) {
+            $errors[] = 'Please select your relationship to the patient who was bitten or scratched (Self, Parent, or Guardian).';
+        } elseif ($biteRel !== 'Self' && ($formData['recipient_first_name'] === '' || $formData['recipient_last_name'] === '' || $formData['recipient_birth_date'] === '' || $formData['recipient_gender'] === '')) {
+            $errors[] = 'Please provide the First Name, Last Name, Date of Birth, and Gender of the patient who was bitten or scratched.';
+        }
+
+        $exposureDate = DateTimeImmutable::createFromFormat('Y-m-d', $formData['exposure_date']);
+        if (!$exposureDate || $exposureDate->format('Y-m-d') !== $formData['exposure_date']) {
+            $errors[] = 'Please enter the date of exposure.';
+        } elseif ($formData['exposure_date'] > date('Y-m-d')) {
+            $errors[] = 'The date of exposure cannot be in the future.';
+        }
+        if (!in_array($formData['exposure_place'], animal_bite_exposure_places(), true)) {
+            $errors[] = 'Please select the place of exposure.';
+        }
+        if (!in_array($formData['exposure_type'], animal_bite_exposure_types(), true)) {
+            $errors[] = 'Please select the type of exposure (Bite or Scratch).';
+        }
+        if (!in_array($formData['animal_type'], animal_bite_animal_types(), true)) {
+            $errors[] = 'Please select the type of animal.';
+        } elseif ($formData['animal_type'] === 'Others' && $formData['animal_type_other'] === '') {
+            $errors[] = 'Please specify the animal.';
+        }
+        if ($formData['animal_type'] !== 'Others') {
+            $formData['animal_type_other'] = '';
+        }
+        if (!in_array($formData['animal_condition'], animal_bite_animal_conditions(), true)) {
+            $errors[] = 'Please select the condition of the animal.';
+        }
+    }
+
     if (
         $formData['preferred_date'] !== ''
         && $formData['preferred_time'] !== ''
@@ -388,7 +428,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
             $recipientBirth = $formData['recipient_birth_date'] !== '' ? $formData['recipient_birth_date'] : null;
             $recipientGender = $formData['recipient_gender'];
 
-            if ($selectedProgram['slug'] === 'immunization' && $formData['immunization_relationship'] === 'Self') {
+            if (($selectedProgram['slug'] === 'immunization' || $isAnimalBiteBooking) && $formData['immunization_relationship'] === 'Self') {
                 $recipientFirst = $formData['first_name'];
                 $recipientMiddle = $formData['middle_name'];
                 $recipientLast = $formData['last_name'];
@@ -462,6 +502,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     'station_slug' => $selectedStation['slug'],
                     'vaccine_type' => null,
                 ]);
+            }
+
+            if ($isAnimalBiteBooking) {
+                // Opens the animal bite case; this booking is its Day 0 visit
+                create_animal_bite_case([
+                    'patient_id' => $patientId,
+                    'station_slug' => $selectedStation['slug'],
+                    'relationship' => $formData['immunization_relationship'],
+                    'recipient_first_name' => $recipientFirst,
+                    'recipient_middle_name' => $recipientMiddle,
+                    'recipient_last_name' => $recipientLast,
+                    'recipient_birth_date' => $recipientBirth,
+                    'recipient_gender' => $recipientGender,
+                    'exposure_date' => $formData['exposure_date'],
+                    'exposure_place' => $formData['exposure_place'],
+                    'exposure_type' => $formData['exposure_type'],
+                    'animal_type' => $formData['animal_type'],
+                    'animal_type_other' => $formData['animal_type_other'],
+                    'animal_condition' => $formData['animal_condition'],
+                ], $newApptId);
             }
 
             log_activity('patient', $patientId, 'appointment_booked', 'appointment', $reference, '', 'Pending', $selectedStation['slug']);
@@ -576,6 +636,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                         <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('heart'); ?></span><div><small>Relationship to Recipient</small><strong class="relationship-pill-tag"><?= h($recipientInfo['relationship']); ?></strong></div></div>
                         <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('calendar'); ?></span><div><small>Recipient Birthdate &amp; Age</small><strong><?= !empty($recipientInfo['recipient_birth_date']) ? h(date('F j, Y', strtotime($recipientInfo['recipient_birth_date']))) . ' (' . h($recipientInfo['recipient_age_label']) . (!empty($recipientInfo['recipient_gender']) ? ' • ' . h($recipientInfo['recipient_gender']) : '') . ')' : 'Not specified'; ?></strong></div></div>
                         <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('shield'); ?></span><div><small>Booked By (Account Holder)</small><strong><?= h($recipientInfo['patient_full_name']); ?> (ID: #<?= h((string)($confirmedAppointment['patient_id'] ?? 'N/A')); ?>)</strong></div></div>
+                    </div>
+                <?php endif; ?>
+
+                <?php $confirmedBiteCase = $recipientInfo['is_animal_bite'] ? fetch_animal_bite_case_for_appointment($confirmedAppointment) : null; ?>
+                <?php if ($confirmedBiteCase !== null): ?>
+                    <div class="divider"></div>
+                    <div class="immunization-slip-header">
+                        <h2>Animal Bite Case #<?= h((string) $confirmedBiteCase['case_code']); ?></h2>
+                        <p>Patient &amp; history of exposure. This visit is your Day 0 dose.</p>
+                    </div>
+                    <div class="detail-grid two-col recipient-details-box">
+                        <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('user'); ?></span><div><small>Patient Bitten / Scratched</small><strong><?= h($recipientInfo['recipient_full_name']); ?><?= !$recipientInfo['is_self'] ? ' (' . h($recipientInfo['relationship']) . ' booking)' : ''; ?></strong></div></div>
+                        <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('calendar'); ?></span><div><small>Date of Exposure</small><strong><?= h(date('F j, Y', strtotime((string) $confirmedBiteCase['exposure_date']))); ?></strong></div></div>
+                        <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('map'); ?></span><div><small>Place &amp; Type of Exposure</small><strong><?= h((string) $confirmedBiteCase['exposure_place']); ?> &bull; <?= h((string) $confirmedBiteCase['exposure_type']); ?></strong></div></div>
+                        <div class="detail-line"><span class="inline-icon light-icon"><?= iconSvg('heart'); ?></span><div><small>Animal &amp; Its Condition</small><strong><?= h(animal_bite_animal_label($confirmedBiteCase)); ?> &bull; <?= h((string) $confirmedBiteCase['animal_condition']); ?></strong></div></div>
                     </div>
                 <?php endif; ?>
 
@@ -807,6 +882,152 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (is_animal_bite_service((string) $selectedProgram['slug'], (string) $selectedProgram['title'])): ?>
+                            <!-- Animal Bite: who was bitten / scratched (same relationship field as immunization) -->
+                            <div class="full-span immunization-recipient-card animal-bite-card" id="animalBiteRecipientCard">
+                                <div class="recipient-section-head">
+                                    <span class="recipient-badge-icon"><?= iconSvg('shield'); ?></span>
+                                    <div>
+                                        <strong>Patient Bitten / Scratched</strong>
+                                        <p>Specify who will receive the anti-rabies treatment.</p>
+                                    </div>
+                                </div>
+
+                                <div class="form-grid two-col" style="margin-top: 14px;">
+                                    <label class="full-span">
+                                        <span>Relationship to Recipient <em>*</em></span>
+                                        <select data-required name="immunization_relationship" id="immunization_relationship" class="form-select-field">
+                                            <option value="">-- Select Relationship --</option>
+                                            <?php foreach (animal_bite_relationship_options() as $relOption): ?>
+                                                <option value="<?= h($relOption); ?>" <?= $formData['immunization_relationship'] === $relOption ? 'selected' : ''; ?>><?= h($relOption); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </label>
+                                </div>
+
+                                <div id="extraRecipientFields" class="extra-recipient-fields-wrap" style="<?= in_array($formData['immunization_relationship'], ['Parent', 'Guardian'], true) ? '' : 'display:none;'; ?>">
+                                    <div class="recipient-subheading">
+                                        <span class="subheading-icon"><?= iconSvg('user'); ?></span>
+                                        <strong>Recipient Details</strong>
+                                    </div>
+                                    <div class="form-grid three-col-desktop">
+                                        <label>
+                                            <span>First Name <em>*</em></span>
+                                            <input type="text" name="recipient_first_name" id="recipient_first_name" value="<?= h($formData['recipient_first_name']); ?>" placeholder="First name" class="capitalize-input">
+                                        </label>
+                                        <label>
+                                            <span>Middle Name</span>
+                                            <input type="text" name="recipient_middle_name" id="recipient_middle_name" value="<?= h($formData['recipient_middle_name']); ?>" placeholder="Middle name (optional)" class="capitalize-input">
+                                        </label>
+                                        <label>
+                                            <span>Last Name <em>*</em></span>
+                                            <input type="text" name="recipient_last_name" id="recipient_last_name" value="<?= h($formData['recipient_last_name']); ?>" placeholder="Last name" class="capitalize-input">
+                                        </label>
+                                        <label>
+                                            <span>Date of Birth <em>*</em></span>
+                                            <input type="date" name="recipient_birth_date" id="recipient_birth_date" value="<?= h($formData['recipient_birth_date']); ?>" max="<?= date('Y-m-d'); ?>">
+                                        </label>
+                                        <div class="gender-radio-group full-span-desktop" style="margin-top: 4px;">
+                                            <span class="gender-label" style="font-size: 0.88rem; font-weight: 600; color: #1e293b; margin-bottom: 8px; display: block;">Gender <em>*</em></span>
+                                            <div class="gender-options" style="display: flex; gap: 14px;">
+                                                <?php foreach (['Male', 'Female'] as $genderOption): ?>
+                                                    <label class="radio-option <?= $formData['recipient_gender'] === $genderOption ? 'is-selected' : 'is-unselected'; ?>" style="flex: 1;">
+                                                        <input type="radio" name="recipient_gender" value="<?= h($genderOption); ?>" <?= $formData['recipient_gender'] === $genderOption ? 'checked' : ''; ?>>
+                                                        <span class="radio-custom"></span>
+                                                        <span><?= h($genderOption); ?></span>
+                                                    </label>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Animal Bite: History of Exposure -->
+                            <div class="full-span immunization-recipient-card animal-bite-card" id="animalBiteExposureCard">
+                                <div class="recipient-section-head">
+                                    <span class="recipient-badge-icon"><?= iconSvg('calendar'); ?></span>
+                                    <div>
+                                        <strong>History of Exposure</strong>
+                                        <p>Tell us when, where, and how the bite or scratch happened.</p>
+                                    </div>
+                                </div>
+
+                                <div class="form-grid two-col animal-bite-grid">
+                                    <label>
+                                        <span>Date of Exposure <em>*</em></span>
+                                        <input data-required type="date" name="exposure_date" id="exposure_date" value="<?= h($formData['exposure_date']); ?>" max="<?= date('Y-m-d'); ?>">
+                                        <small>The day the bite or scratch happened.</small>
+                                    </label>
+
+                                    <div class="gender-radio-group">
+                                        <span class="gender-label animal-bite-label">Type of Exposure <em>*</em></span>
+                                        <div class="gender-options animal-bite-options">
+                                            <?php foreach (animal_bite_exposure_types() as $exposureType): ?>
+                                                <label class="radio-option <?= $formData['exposure_type'] === $exposureType ? 'is-selected' : 'is-unselected'; ?>">
+                                                    <input type="radio" name="exposure_type" value="<?= h($exposureType); ?>" <?= $formData['exposure_type'] === $exposureType ? 'checked' : ''; ?>>
+                                                    <span class="radio-custom"></span>
+                                                    <span><?= h($exposureType); ?></span>
+                                                </label>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+
+                                    <div class="gender-radio-group full-span">
+                                        <span class="gender-label animal-bite-label">Place of Exposure <em>*</em></span>
+                                        <div class="gender-options animal-bite-options">
+                                            <?php foreach (animal_bite_exposure_places() as $exposurePlace): ?>
+                                                <label class="radio-option <?= $formData['exposure_place'] === $exposurePlace ? 'is-selected' : 'is-unselected'; ?>">
+                                                    <input type="radio" name="exposure_place" value="<?= h($exposurePlace); ?>" <?= $formData['exposure_place'] === $exposurePlace ? 'checked' : ''; ?>>
+                                                    <span class="radio-custom"></span>
+                                                    <span><?= h($exposurePlace); ?></span>
+                                                </label>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+
+                                    <div class="gender-radio-group full-span">
+                                        <span class="gender-label animal-bite-label">Type of Animal <em>*</em></span>
+                                        <div class="gender-options animal-bite-options">
+                                            <?php foreach (animal_bite_animal_types() as $animalType): ?>
+                                                <label class="radio-option <?= $formData['animal_type'] === $animalType ? 'is-selected' : 'is-unselected'; ?>">
+                                                    <input type="radio" name="animal_type" value="<?= h($animalType); ?>" <?= $formData['animal_type'] === $animalType ? 'checked' : ''; ?>>
+                                                    <span class="radio-custom"></span>
+                                                    <span><?= h($animalType); ?></span>
+                                                </label>
+                                            <?php endforeach; ?>
+                                        </div>
+                                        <label id="animalTypeOtherWrap" class="animal-other-input" style="<?= $formData['animal_type'] === 'Others' ? '' : 'display:none;'; ?>">
+                                            <span>Please specify the animal <em>*</em></span>
+                                            <input type="text" name="animal_type_other" id="animal_type_other" value="<?= h($formData['animal_type_other']); ?>" maxlength="100" placeholder="e.g. Monkey, Rat, Bat" class="capitalize-input">
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Animal Bite: Condition of the Animal -->
+                            <div class="full-span immunization-recipient-card animal-bite-card" id="animalBiteConditionCard">
+                                <div class="recipient-section-head">
+                                    <span class="recipient-badge-icon"><?= iconSvg('heart'); ?></span>
+                                    <div>
+                                        <strong>Condition of the Animal</strong>
+                                        <p>The animal's condition helps the health station plan your vaccine schedule.</p>
+                                    </div>
+                                </div>
+                                <div class="form-grid two-col">
+                                    <label class="full-span">
+                                        <span>Condition of the Animal <em>*</em></span>
+                                        <select data-required name="animal_condition" id="animal_condition" class="form-select-field">
+                                            <option value="">-- Select Condition --</option>
+                                            <?php foreach (animal_bite_animal_conditions() as $condition): ?>
+                                                <option value="<?= h($condition); ?>" <?= $formData['animal_condition'] === $condition ? 'selected' : ''; ?>><?= h($condition); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </label>
                                 </div>
                             </div>
                         <?php endif; ?>
