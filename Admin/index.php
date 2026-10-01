@@ -5509,7 +5509,6 @@ if (!function_exists('peso')) {
                                 <th style="text-align:center;">Unserved Queue</th>
                                 <th style="text-align:center;">Total Items</th>
                                 <th style="text-align:center;">Status</th>
-                                <th style="text-align:center;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -5554,16 +5553,6 @@ if (!function_exists('peso')) {
                                             <span class="status-pill" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;">⚠ High Attention</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td style="text-align:center;">
-                                        <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
-                                            <a href="?page=appointments&station=<?= urlencode($stSlug); ?>" class="dash-hero-btn secondary" style="font-size:0.75rem;padding:4px 9px;border-radius:8px;" title="View appointments for <?= h($stName); ?>">
-                                                <span>Appts</span>
-                                            </a>
-                                            <a href="?page=queue&station=<?= urlencode($stSlug); ?>" class="dash-hero-btn secondary" style="font-size:0.75rem;padding:4px 9px;border-radius:8px;" title="View queue for <?= h($stName); ?>">
-                                                <span>Queue</span>
-                                            </a>
-                                        </div>
-                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -5587,9 +5576,6 @@ if (!function_exists('peso')) {
                                     <?php else: ?>
                                         <span class="status-pill" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;">⚡ Follow-up Required</span>
                                     <?php endif; ?>
-                                </td>
-                                <td style="text-align:center;padding:14px 18px;color:#64748b;font-size:0.8rem;">
-                                    <span><?= count($unattendedStationSummary['stations']); ?> Stations</span>
                                 </td>
                             </tr>
                         </tfoot>
