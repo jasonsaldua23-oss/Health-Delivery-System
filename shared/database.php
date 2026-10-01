@@ -2309,7 +2309,7 @@ function seed_staff_accounts(mysqli $connection): void
     $stmt = $connection->prepare(
         'INSERT INTO staff_accounts (station_slug, station_name, staff_name, email, password_hash)
          VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE station_name = VALUES(station_name), staff_name = VALUES(staff_name), password_hash = VALUES(password_hash)'
+         ON DUPLICATE KEY UPDATE station_name = VALUES(station_name), staff_name = VALUES(staff_name)'
     );
 
     $passwordHash = default_staff_password_hash();

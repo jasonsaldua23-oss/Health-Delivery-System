@@ -230,25 +230,13 @@ if ($action === 'login_admin') {
         exit;
     }
 
+    // Only the account's stored password is accepted. The default hash is used solely
+    // when no admin account exists yet, so a fresh install can still sign in.
     $targetHash = is_array($adminAccount) && !empty($adminAccount['password_hash'])
         ? (string) $adminAccount['password_hash']
         : default_admin_password_hash();
 
-    $isPasswordCorrect = false;
-    if (password_verify($password, $targetHash)
-        || password_verify($password, default_admin_password_hash())
-        || (defined('ADMIN_PASSWORD_HASH') && password_verify($password, ADMIN_PASSWORD_HASH))
-        || in_array($password, [
-            'AdminSecure2026!',
-            'admin',
-            'Admin123!',
-            'Admin2026!',
-            'Password123!',
-            'password',
-            '123456'
-        ], true)) {
-        $isPasswordCorrect = true;
-    }
+    $isPasswordCorrect = password_verify($password, $targetHash);
 
     if ($isPasswordCorrect) {
         session_regenerate_id(true);
@@ -303,8 +291,8 @@ if ($action === 'login_staff') {
     }
 
     if (is_array($staffAccount)) {
-        $hash = (string) ($staffAccount['password_hash'] ?? default_staff_password_hash());
-        if (password_verify($password, $hash) || $password === 'StaffPassword123!' || $password === 'staff123') {
+        $hash = (string) (($staffAccount['password_hash'] ?? '') ?: default_staff_password_hash());
+        if (password_verify($password, $hash)) {
             session_regenerate_id(true);
             $_SESSION['staff_authenticated'] = true;
             $_SESSION['staff_email'] = (string) $staffAccount['email'];

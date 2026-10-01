@@ -120,7 +120,7 @@ recordTest(
 // =========================================================================
 
 // WB-007: Condition: username/password required
-$adminUser = ''; $adminPass = 'AdminSecure2026!';
+$adminUser = ''; $adminPass = 'adminadminadmin';
 $adminMissing = ($adminUser === '' || $adminPass === '');
 recordTest(
     'WB-007',
@@ -135,13 +135,13 @@ recordTest(
 
 // WB-008: Fallback branch for admin/admin test email
 $adminEmail = 'admintest@gmail.com';
-$adminDirectPass = 'AdminSecure2026!';
-$adminDirectAuth = in_array($adminEmail, ['admin', 'admin_root', 'admintest@gmail.com'], true) && ($adminDirectPass === 'AdminSecure2026!');
+$adminDirectPass = 'adminadminadmin';
+$adminDirectAuth = in_array($adminEmail, ['admin', 'admin_root', 'admintest@gmail.com'], true) && $adminDirectPass === 'adminadminadmin';
 recordTest(
     'WB-008',
     'login_admin',
     'Validate direct admin fallback credentials',
-    'Email="admintest@gmail.com"; Password="AdminSecure2026!"',
+    'Email="admintest@gmail.com"; Password="adminadminadmin"',
     'Admin authentication session set and redirect to admin dashboard',
     'Admin session authenticated and redirected to admin dashboard',
     $adminDirectAuth,
@@ -164,7 +164,7 @@ recordTest(
 
 // WB-010: Failure branch: neither direct nor database authentication succeeds
 $adminInvalidPass = 'WrongAdminPass!';
-$adminReject = !password_verify($adminInvalidPass, $adminDbHash) && $adminInvalidPass !== 'AdminSecure2026!';
+$adminReject = !password_verify($adminInvalidPass, $adminDbHash);
 recordTest(
     'WB-010',
     'login_admin',
@@ -181,7 +181,7 @@ recordTest(
 // =========================================================================
 
 // WB-011: Condition: email/password required
-$staffEmail = ''; $staffPass = 'StaffPassword123!';
+$staffEmail = ''; $staffPass = 'staff123';
 $staffMissing = ($staffEmail === '' || $staffPass === '');
 recordTest(
     'WB-011',
@@ -195,8 +195,8 @@ recordTest(
 );
 
 // WB-012: Existing staff account branch
-$staffDbHash = password_hash('StaffPassword123!', PASSWORD_DEFAULT);
-$staffAuthSuccess = password_verify('StaffPassword123!', $staffDbHash) || 'StaffPassword123!' === 'StaffPassword123!';
+$staffDbHash = password_hash('staff123', PASSWORD_DEFAULT);
+$staffAuthSuccess = password_verify('staff123', $staffDbHash);
 recordTest(
     'WB-012',
     'login_staff',
@@ -209,7 +209,7 @@ recordTest(
 );
 
 // WB-013: Existing staff account invalid-password branch
-$staffPassMismatch = !password_verify('wrongstaffpass', $staffDbHash) && 'wrongstaffpass' !== 'StaffPassword123!' && 'wrongstaffpass' !== 'staff123';
+$staffPassMismatch = !password_verify('wrongstaffpass', $staffDbHash);
 recordTest(
     'WB-013',
     'login_staff',
