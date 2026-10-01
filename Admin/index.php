@@ -6845,7 +6845,7 @@ window.renderAdminSelectedInfant = function(targetInfant) {
                      title="Click to view full photo">
                     <img src="${adminEscapeHtml(apptPhotoSrc)}" alt="Visit Verification Photo" 
                          style="width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1.5px solid #cbd5e1; cursor: pointer; display: block; box-shadow: 0 1px 3px rgba(0,0,0,0.08);"
-                         onerror="this.onerror=null; const p = this.closest('.appt-photo-preview-wrap'); if (p) p.style.display='none';">
+                         onerror="this.onerror=null; const p = this.closest('.appt-photo-preview-wrap'); if (p) { p.onclick = null; p.style.cursor = 'default'; p.innerHTML = '<span style=&quot;font-size:0.8rem;color:#b45309;font-weight:600;&quot;>Visit photo could not be loaded (' + this.getAttribute('src').split('/').pop() + ')</span>'; }">
                     <div style="display: flex; flex-direction: column;">
                         <span style="font-size: 0.82rem; font-weight: 700; color: #0f172a;">Consultation Verification Photo Recorded</span>
                     </div>
