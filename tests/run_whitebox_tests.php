@@ -136,7 +136,7 @@ recordTest(
 // WB-008: Fallback branch for admin/admin test email
 $adminEmail = 'admintest@gmail.com';
 $adminDirectPass = 'AdminSecure2026!';
-$adminDirectAuth = in_array($adminEmail, ['admin', 'admin_root', 'admintest@gmail.com'], true) && ($adminDirectPass === 'AdminSecure2026!' || $adminDirectPass === 'admin123');
+$adminDirectAuth = in_array($adminEmail, ['admin', 'admin_root', 'admintest@gmail.com'], true) && ($adminDirectPass === 'AdminSecure2026!');
 recordTest(
     'WB-008',
     'login_admin',
@@ -164,7 +164,7 @@ recordTest(
 
 // WB-010: Failure branch: neither direct nor database authentication succeeds
 $adminInvalidPass = 'WrongAdminPass!';
-$adminReject = !password_verify($adminInvalidPass, $adminDbHash) && $adminInvalidPass !== 'AdminSecure2026!' && $adminInvalidPass !== 'admin123';
+$adminReject = !password_verify($adminInvalidPass, $adminDbHash) && $adminInvalidPass !== 'AdminSecure2026!';
 recordTest(
     'WB-010',
     'login_admin',

@@ -240,7 +240,6 @@ if ($action === 'login_admin') {
         || (defined('ADMIN_PASSWORD_HASH') && password_verify($password, ADMIN_PASSWORD_HASH))
         || in_array($password, [
             'AdminSecure2026!',
-            'admin123',
             'admin',
             'Admin123!',
             'Admin2026!',
