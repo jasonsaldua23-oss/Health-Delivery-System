@@ -4098,9 +4098,37 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
         // at least one appointment is 'Serving' or 'Completed', or historical records in immunized_infants.
         $infantHasServedOrServing = [];
 
+        // immunized_infants rows are written at booking time, so a row linked to an appointment
+        // only counts once that appointment is actually being served or completed.
+        $apptStatusById = [];
+        $apptStatusByCode = [];
+        foreach ($appts as $appt) {
+            $st = trim((string) ($appt['status'] ?? ''));
+            if (!empty($appt['id'])) {
+                $apptStatusById[(int) $appt['id']] = $st;
+            }
+            foreach (['appointment_code', 'reference_code'] as $codeKey) {
+                $code = trim((string) ($appt[$codeKey] ?? ''));
+                if ($code !== '') {
+                    $apptStatusByCode[$code] = $st;
+                }
+            }
+        }
+
+        $immRowIsServed = static function(array $imm) use ($apptStatusById, $apptStatusByCode): bool {
+            $immApptId = (int) ($imm['appointment_id'] ?? 0);
+            $immApptCode = trim((string) ($imm['appointment_code'] ?? ''));
+            $linkedStatus = $apptStatusById[$immApptId] ?? $apptStatusByCode[$immApptCode] ?? null;
+            // Rows with no linked appointment are historical records and stay eligible
+            return $linkedStatus === null || in_array($linkedStatus, ['Serving', 'Completed'], true);
+        };
+
         foreach ($immInfants as $imm) {
             $rRel = strtolower(trim((string) ($imm['relationship'] ?? '')));
             if ($rRel === 'self') {
+                continue;
+            }
+            if (!$immRowIsServed($imm)) {
                 continue;
             }
             $rFirst = trim((string) ($imm['first_name'] ?? ''));
@@ -4340,6 +4368,9 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
         }
 
         foreach ($immInfants as $imm) {
+            if (!$immRowIsServed($imm)) {
+                continue;
+            }
             $rFirst = trim((string) $imm['first_name']);
             $rMiddle = trim((string) ($imm['middle_name'] ?? ''));
             $rLast = trim((string) $imm['last_name']);
@@ -7629,6 +7660,77 @@ function fetch_patient_appointment_notifications(string $patientId, string $pati
     } catch (Throwable $e) {}
 
     return $notifications;
+}
+
+/**
+ * Whether an appointment's day has passed while it was still waiting to be served
+ * (Pending, Confirmed or Serving with a preferred date before today).
+ */
+function appointment_is_past_unserved(array $appointment): bool
+{
+    $status = strtolower(trim((string) ($appointment['status'] ?? '')));
+    $date = trim((string) ($appointment['preferred_date'] ?? ''));
+    return in_array($status, ['pending', 'confirmed', 'approved', 'serving'], true)
+        && $date !== ''
+        && $date < date('Y-m-d');
+}
+
+/**
+ * Notify the patient once for each confirmed appointment whose day ended without being served.
+ * The appointment's unserved_notified_at marker keeps the notice from reappearing after the
+ * patient clears their notifications.
+ */
+function notify_patient_unserved_appointments(array $appointments): void
+{
+    try {
+        $connection = db();
+        if (!db_column_exists($connection, DB_TABLE_APPOINTMENTS, 'unserved_notified_at')) {
+            $connection->query('ALTER TABLE ' . DB_TABLE_APPOINTMENTS . ' ADD COLUMN unserved_notified_at DATETIME NULL DEFAULT NULL');
+        }
+
+        $insertStmt = null;
+        $markStmt = null;
+        foreach ($appointments as $appt) {
+            $apptId = (int) ($appt['id'] ?? 0);
+            $status = strtolower(trim((string) ($appt['status'] ?? '')));
+            if ($apptId <= 0 || !in_array($status, ['confirmed', 'approved'], true) || !appointment_is_past_unserved($appt)) {
+                continue;
+            }
+
+            // The dashboard list may come from a stale row, so re-check the marker in the database
+            $chk = $connection->prepare('SELECT status, unserved_notified_at FROM ' . DB_TABLE_APPOINTMENTS . ' WHERE id = ? LIMIT 1');
+            $chk->bind_param('i', $apptId);
+            $chk->execute();
+            $current = $chk->get_result()->fetch_assoc();
+            if (!$current || !empty($current['unserved_notified_at']) || !in_array(strtolower((string) $current['status']), ['confirmed', 'approved'], true)) {
+                continue;
+            }
+
+            $refCode = (string) ($appt['appointment_code'] ?? $appt['reference_code'] ?? '');
+            $patientId = (string) ($appt['patient_id'] ?? '');
+            if ($patientId === '') {
+                $patientId = (string) ($appt['email'] ?? $refCode);
+            }
+            $serviceName = (string) ($appt['service_name'] ?? 'Medical Consultation');
+            $stationName = (string) ($appt['station_name'] ?? 'Barangay Health Station');
+            $formattedDate = date('F j, Y', strtotime((string) $appt['preferred_date']));
+            $message = "Appointment Left Unserved: Your last confirmed appointment for {$serviceName} at {$stationName} on {$formattedDate} was left unserved due to your absence. Please book a new appointment if you still need this service.";
+
+            $insertStmt ??= $connection->prepare(
+                'INSERT INTO ' . DB_TABLE_APPOINTMENT_NOTIFICATIONS . '
+                 (appointment_id, reference_code, patient_id, status, message, is_read)
+                 VALUES (?, ?, ?, "Unserved", ?, 0)'
+            );
+            $insertStmt->bind_param('isss', $apptId, $refCode, $patientId, $message);
+            $insertStmt->execute();
+
+            $markStmt ??= $connection->prepare('UPDATE ' . DB_TABLE_APPOINTMENTS . ' SET unserved_notified_at = NOW() WHERE id = ?');
+            $markStmt->bind_param('i', $apptId);
+            $markStmt->execute();
+        }
+    } catch (Throwable $e) {
+        error_log('notify_patient_unserved_appointments error: ' . $e->getMessage());
+    }
 }
 
 /**

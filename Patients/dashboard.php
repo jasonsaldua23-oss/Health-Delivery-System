@@ -307,11 +307,13 @@ usort($upcomingEvents, static function (array $a, array $b): int {
 
 // Load Patient Notifications, Follow-ups, and Booked Appointments
 $patientEmailVal = (string) ($patientAccount['email'] ?? $_SESSION['patient_email'] ?? '');
+$patientAppointments = fetch_patient_appointments($patientId, $patientEmailVal, $patientName, $contactNumber);
+// Notify before loading notifications so a newly missed appointment shows up on this page load
+notify_patient_unserved_appointments($patientAppointments);
 $patientNotifications = fetch_patient_appointment_notifications($patientId, $patientEmailVal, $patientName);
 $unreadNotifCount = count(array_filter($patientNotifications, static fn(array $n): bool => (int) ($n['is_read'] ?? 0) === 0));
 $displayedNotifications = filter_patient_notifications_for_bubble($patientNotifications, 5);
 $upcomingFollowUps = fetch_patient_upcoming_follow_ups($patientId, $patientEmailVal, $patientName);
-$patientAppointments = fetch_patient_appointments($patientId, $patientEmailVal, $patientName, $contactNumber);
 
 
 
@@ -1167,6 +1169,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
         }
         .notif-tag.tag-info {
             color: #2563eb;
+        }
+        .notif-tag.tag-unserved {
+            color: #dc2626;
+        }
+        .notif-item-card.is-unserved {
+            border-left: 3.5px solid #dc2626;
+        }
+        .notif-item-card.is-unserved .notif-item-icon {
+            background: #fef2f2;
+            color: #dc2626;
         }
 
         .notif-time {
@@ -4000,14 +4012,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                             <?php else: ?>
                                 <?php foreach ($displayedNotifications as $notif): ?>
                                     <?php $isFollowUp = ($notif['status'] ?? '') === 'Follow-up'; ?>
-                                    <div class="notif-item-card <?= (int) ($notif['is_read'] ?? 0) === 0 ? 'is-unread' : ''; ?> <?= $isFollowUp ? 'is-followup' : ''; ?>" data-notif-id="<?= (int) $notif['id']; ?>">
+                                    <?php $isUnserved = ($notif['status'] ?? '') === 'Unserved'; ?>
+                                    <div class="notif-item-card <?= (int) ($notif['is_read'] ?? 0) === 0 ? 'is-unread' : ''; ?> <?= $isFollowUp ? 'is-followup' : ''; ?> <?= $isUnserved ? 'is-unserved' : ''; ?>" data-notif-id="<?= (int) $notif['id']; ?>">
                                         <div class="notif-item-icon">
-                                            <?= $isFollowUp ? iconSvg('calendar') : iconSvg('check-circle'); ?>
+                                            <?= $isFollowUp ? iconSvg('calendar') : ($isUnserved ? iconSvg('x') : iconSvg('check-circle')); ?>
                                         </div>
                                         <div class="notif-item-content">
                                             <div class="notif-item-title-row">
-                                                <span class="notif-tag <?= $isFollowUp ? 'tag-followup' : 'tag-info'; ?>">
-                                                    <?= $isFollowUp ? '📅 Follow-up' : 'Notice'; ?>
+                                                <span class="notif-tag <?= $isFollowUp ? 'tag-followup' : ($isUnserved ? 'tag-unserved' : 'tag-info'); ?>">
+                                                    <?= $isFollowUp ? '📅 Follow-up' : ($isUnserved ? 'Missed Appointment' : 'Notice'); ?>
                                                 </span>
                                                 <span class="notif-time"><?= date('M j, g:i A', strtotime((string) $notif['created_at'])); ?></span>
                                             </div>
@@ -4081,7 +4094,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                     </div>
                 </div>
 
-                <?php if (!empty($patientAppointments)): ?>
+                <?php
+                // Appointments whose day ended without being served are no longer upcoming,
+                // so they are dropped from the featured card (the patient is notified instead).
+                $featuredPoolAppts = array_values(array_filter(
+                    $patientAppointments,
+                    static fn(array $a): bool => !appointment_is_past_unserved($a)
+                ));
+                ?>
+                <?php if (!empty($featuredPoolAppts)): ?>
                     <?php
                     // Categorize appointments into active/upcoming vs completed/cancelled
                     $activeAppts = [];
@@ -4091,7 +4112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                     $historyCancelledCount = 0;
                     $historyAllCount = count($patientAppointments);
 
-                    foreach ($patientAppointments as $aItem) {
+                    foreach ($featuredPoolAppts as $aItem) {
                         $st = strtolower((string) ($aItem['status'] ?? 'pending'));
                         if (in_array($st, ['pending', 'confirmed', 'serving', 'approved'], true)) {
                             $activeAppts[] = $aItem;
@@ -4111,7 +4132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                     // 2. Once that appointment is completed (or if all appointments are done), show the newest completed/past appointment.
                     // 3. The cycle repeats automatically whenever a new booking is made.
                     $isUpcomingFeatured = !empty($activeAppts);
-                    $appt = $isUpcomingFeatured ? $activeAppts[0] : $patientAppointments[0];
+                    $appt = $isUpcomingFeatured ? $activeAppts[0] : $featuredPoolAppts[0];
 
                     $apptCode = (string) ($appt['appointment_code'] ?? $appt['reference_code'] ?? '');
                     $apptDate = (string) ($appt['preferred_date'] ?? '');
