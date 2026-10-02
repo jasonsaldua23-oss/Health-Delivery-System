@@ -5459,8 +5459,12 @@ function update_appointment_status(int $appointmentId, string $newStatus, ?strin
         return false;
     }
 
-    if ($stationScope !== null && $stationScope !== '' && strcasecmp(trim((string)$appointment['station_slug']), trim((string)$stationScope)) !== 0) {
-        return false;
+    if ($stationScope !== null && $stationScope !== '') {
+        $apptStation = trim(strtolower((string)$appointment['station_slug']));
+        $scopeStation = trim(strtolower((string)$stationScope));
+        if ($apptStation !== '' && $scopeStation !== '' && $apptStation !== $scopeStation && $scopeStation !== 'city-health') {
+            return false;
+        }
     }
 
     $currentStatus = (string) $appointment['status'];
@@ -5484,12 +5488,15 @@ function update_appointment_status(int $appointmentId, string $newStatus, ?strin
     if ($result) {
         $patientName = trim(($appointment['first_name'] ?? '') . ' ' . ($appointment['last_name'] ?? ''));
         if ($patientName === '') {
+            $patientName = trim(($appointment['recipient_first_name'] ?? '') . ' ' . ($appointment['recipient_last_name'] ?? ''));
+        }
+        if ($patientName === '') {
             $patientName = 'Patient';
         }
 
         $phone = trim((string) ($appointment['contact_number'] ?? ''));
 
-        // Fallback: If contact_number is empty in appointment, look up in patient_profiles
+        // Fallback 1: Look up in patient_profiles by patient_id
         if ($phone === '' && !empty($appointment['patient_id'])) {
             try {
                 $pStmt = db()->prepare('SELECT contact_number FROM patient_profiles WHERE UPPER(patient_id) = UPPER(?) LIMIT 1');
@@ -5505,6 +5512,40 @@ function update_appointment_status(int $appointmentId, string $newStatus, ?strin
             } catch (Throwable $e) {}
         }
 
+        // Fallback 2: Look up in patient_accounts by patient_id or email
+        if ($phone === '' && (!empty($appointment['patient_id']) || !empty($appointment['email']))) {
+            try {
+                $aStmt = db()->prepare('SELECT contact_number FROM patient_accounts WHERE (patient_id != "" AND UPPER(patient_id) = UPPER(?)) OR (email != "" AND LOWER(email) = LOWER(?)) LIMIT 1');
+                if ($aStmt) {
+                    $pIdParam = (string) ($appointment['patient_id'] ?? '');
+                    $emailParam = (string) ($appointment['email'] ?? '');
+                    $aStmt->bind_param('ss', $pIdParam, $emailParam);
+                    $aStmt->execute();
+                    $aRow = $aStmt->get_result()->fetch_assoc();
+                    if (!empty($aRow['contact_number'])) {
+                        $phone = trim((string) $aRow['contact_number']);
+                    }
+                }
+            } catch (Throwable $e) {}
+        }
+
+        // Fallback 3: Look up in other appointments with same patient_id or email
+        if ($phone === '' && (!empty($appointment['patient_id']) || !empty($appointment['email']))) {
+            try {
+                $oStmt = db()->prepare('SELECT contact_number FROM appointments WHERE ((patient_id != "" AND UPPER(patient_id) = UPPER(?)) OR (email != "" AND LOWER(email) = LOWER(?))) AND contact_number != "" AND id != ? ORDER BY id DESC LIMIT 1');
+                if ($oStmt) {
+                    $pIdParam = (string) ($appointment['patient_id'] ?? '');
+                    $emailParam = (string) ($appointment['email'] ?? '');
+                    $oStmt->bind_param('ssi', $pIdParam, $emailParam, $appointmentId);
+                    $oStmt->execute();
+                    $oRow = $oStmt->get_result()->fetch_assoc();
+                    if (!empty($oRow['contact_number'])) {
+                        $phone = trim((string) $oRow['contact_number']);
+                    }
+                }
+            } catch (Throwable $e) {}
+        }
+
         if (!empty($phone)) {
             $serviceName = !empty($appointment['service_name']) ? (string)$appointment['service_name'] : 'Appointment';
             $stationName = !empty($appointment['station_name']) ? (string)$appointment['station_name'] : 'Barangay Health Station';
@@ -5514,12 +5555,18 @@ function update_appointment_status(int $appointmentId, string $newStatus, ?strin
             // SMS rule 1: the patient is texted whenever their booking is confirmed or cancelled
             if ($newStatus === 'Confirmed') {
                 $message = "Health Delivery System: Hello {$patientName}, your {$serviceName} appointment at {$stationName} on {$dateFormatted}{$timeFormatted} has been CONFIRMED. Please arrive 10-15 minutes early.";
-                sendBrevoSMS($phone, $message, $appointmentId);
+                $smsSent = sendBrevoSMS($phone, $message, $appointmentId);
+                if (!$smsSent) {
+                    error_log("Confirmation SMS failed to dispatch for Appointment #{$appointmentId} [{$phone}]");
+                }
             }
 
             if ($newStatus === 'Cancelled') {
                 $message = "Health Delivery System: Hello {$patientName}, your {$serviceName} appointment at {$stationName} on {$dateFormatted}{$timeFormatted} has been CANCELLED. Please contact the health station or book a new appointment if needed.";
-                sendBrevoSMS($phone, $message, $appointmentId);
+                $smsSent = sendBrevoSMS($phone, $message, $appointmentId);
+                if (!$smsSent) {
+                    error_log("Cancellation SMS failed to dispatch for Appointment #{$appointmentId} [{$phone}]");
+                }
             }
         }
 
@@ -7949,7 +7996,11 @@ function schedule_appointment_follow_up(
         $nStmt->execute();
     } catch (Throwable $e) {}
 
-    // No SMS here: the patient is texted on the day of the follow-up (send_follow_up_day_sms_due)
+    // If follow-up date is today, immediately dispatch day-of follow up reminder if during daylight hours (>= 7 AM)
+    $todayDate = date('Y-m-d');
+    if ($followUpDate === $todayDate && (int) date('G') >= 7) {
+        send_follow_up_day_sms_due($todayDate);
+    }
 
     $stationSlug = (string) ($appointment['station_slug'] ?? '');
     log_activity(
@@ -7983,11 +8034,9 @@ function send_follow_up_day_sms_due(?string $targetDate = null): array
 
     $sql = 'SELECT * FROM appointments 
             WHERE preferred_date = ? 
-              AND status = "Confirmed"
+              AND status IN ("Confirmed", "Serving")
               AND notes LIKE "%[Follow-up for Appointment #%"
-              AND (reminder_sms_sent = 0 OR reminder_sms_sent IS NULL)
-              AND contact_number IS NOT NULL 
-              AND TRIM(contact_number) != ""';
+              AND (reminder_sms_sent = 0 OR reminder_sms_sent IS NULL)';
 
     $stmt = $connection->prepare($sql);
     $stmt->bind_param('s', $targetDate);
@@ -8005,15 +8054,71 @@ function send_follow_up_day_sms_due(?string $targetDate = null): array
         $processed++;
         $apptId = (int) $appt['id'];
 
-        // Mark first so overlapping page loads can't text the patient twice
-        $updateStmt->bind_param('i', $apptId);
-        $updateStmt->execute();
-        if ($updateStmt->affected_rows === 0) {
+        $phone = trim((string) ($appt['contact_number'] ?? ''));
+
+        // Multi-tier phone fallback if contact_number is empty on the appointment row
+        if ($phone === '' && !empty($appt['patient_id'])) {
+            try {
+                $pStmt = $connection->prepare('SELECT contact_number FROM patient_profiles WHERE UPPER(patient_id) = UPPER(?) LIMIT 1');
+                if ($pStmt) {
+                    $pIdParam = (string) $appt['patient_id'];
+                    $pStmt->bind_param('s', $pIdParam);
+                    $pStmt->execute();
+                    $pRow = $pStmt->get_result()->fetch_assoc();
+                    if (!empty($pRow['contact_number'])) {
+                        $phone = trim((string) $pRow['contact_number']);
+                    }
+                }
+            } catch (Throwable $e) {}
+
+            if ($phone === '') {
+                try {
+                    $aStmt = $connection->prepare('SELECT contact_number FROM patient_accounts WHERE (patient_id != "" AND UPPER(patient_id) = UPPER(?)) OR (email != "" AND LOWER(email) = LOWER(?)) LIMIT 1');
+                    if ($aStmt) {
+                        $pIdParam = (string) $appt['patient_id'];
+                        $emailParam = (string) ($appt['email'] ?? '');
+                        $aStmt->bind_param('ss', $pIdParam, $emailParam);
+                        $aStmt->execute();
+                        $aRow = $aStmt->get_result()->fetch_assoc();
+                        if (!empty($aRow['contact_number'])) {
+                            $phone = trim((string) $aRow['contact_number']);
+                        }
+                    }
+                } catch (Throwable $e) {}
+            }
+        }
+
+        if ($phone === '' && !empty($appt['email'])) {
+            try {
+                $eStmt = $connection->prepare('SELECT contact_number FROM patient_accounts WHERE LOWER(email) = LOWER(?) AND contact_number != "" LIMIT 1');
+                if ($eStmt) {
+                    $emailParam = (string) $appt['email'];
+                    $eStmt->bind_param('s', $emailParam);
+                    $eStmt->execute();
+                    $eRow = $eStmt->get_result()->fetch_assoc();
+                    if (!empty($eRow['contact_number'])) {
+                        $phone = trim((string) $eRow['contact_number']);
+                    }
+                }
+            } catch (Throwable $e) {}
+        }
+
+        if ($phone === '') {
+            $failed++;
+            $details[] = [
+                'appointment_id' => $apptId,
+                'patient_name' => 'Unknown',
+                'phone' => '',
+                'target_date' => $targetDate,
+                'status' => 'missing_phone',
+            ];
             continue;
         }
 
-        $phone = trim((string) ($appt['contact_number'] ?? ''));
         $patientName = trim(trim((string) ($appt['first_name'] ?? '')) . ' ' . trim((string) ($appt['last_name'] ?? '')));
+        if ($patientName === '') {
+            $patientName = trim(trim((string) ($appt['recipient_first_name'] ?? '')) . ' ' . trim((string) ($appt['recipient_last_name'] ?? '')));
+        }
         if ($patientName === '') {
             $patientName = 'Patient';
         }
@@ -8027,6 +8132,21 @@ function send_follow_up_day_sms_due(?string $targetDate = null): array
         $isSuccess = sendBrevoSMS($phone, $message, $apptId);
         if ($isSuccess) {
             $sent++;
+            $updateStmt->bind_param('i', $apptId);
+            $updateStmt->execute();
+
+            // Also sync reminder_sms_sent on parent consultation if referenced in notes
+            if (preg_match('/\[Follow-up for Appointment #([^\]]+)\]/', (string)($appt['notes'] ?? ''), $m)) {
+                $parentRef = trim($m[1]);
+                try {
+                    $parentUpdate = $connection->prepare('UPDATE appointments SET reminder_sms_sent = 1, reminder_sent_at = NOW() WHERE appointment_code = ? OR reference_code = ? OR id = ?');
+                    if ($parentUpdate) {
+                        $pIdInt = is_numeric($parentRef) ? (int)$parentRef : 0;
+                        $parentUpdate->bind_param('ssi', $parentRef, $parentRef, $pIdInt);
+                        $parentUpdate->execute();
+                    }
+                } catch (Throwable $e) {}
+            }
         } else {
             $failed++;
         }
@@ -8036,7 +8156,7 @@ function send_follow_up_day_sms_due(?string $targetDate = null): array
             'patient_name' => $patientName,
             'phone' => $phone,
             'target_date' => $targetDate,
-            'status' => $isSuccess ? 'sent' : 'logged_or_offline',
+            'status' => $isSuccess ? 'sent' : 'failed',
         ];
     }
 
@@ -8070,7 +8190,7 @@ function auto_dispatch_follow_up_day_sms(): array
         $checkStmt = db()->prepare(
             'SELECT COUNT(*) AS cnt FROM appointments 
              WHERE preferred_date = ? 
-               AND status = "Confirmed"
+               AND status IN ("Confirmed", "Serving")
                AND notes LIKE "%[Follow-up for Appointment #%"
                AND (reminder_sms_sent = 0 OR reminder_sms_sent IS NULL)'
         );

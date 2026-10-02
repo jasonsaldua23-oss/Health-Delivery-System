@@ -5,6 +5,9 @@ declare(strict_types=1);
 require_once __DIR__ . '/../shared/bootstrap.php';
 require_once __DIR__ . '/../shared/database.php';
 
+// Dispatch day-of follow up SMS reminders if due today
+auto_dispatch_follow_up_day_sms();
+
 $isLoggedIn = isset($_SESSION['patient_id']) && $_SESSION['patient_id'] !== '';
 $hasServiceOrBarangay = !empty($_GET['barangay']) || !empty($_GET['service']) || !empty($_GET['confirmation']) || !empty($_GET['lookup_patient_id']);
 if ($isLoggedIn && !$hasServiceOrBarangay) {

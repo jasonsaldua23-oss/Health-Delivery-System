@@ -583,18 +583,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appointment_id'], $_P
         $targetAppt = fetch_appointment_by_id($apptId);
         $oldStatus = is_array($targetAppt) ? (string) ($targetAppt['status'] ?? '') : '';
 
-        update_appointment_status($apptId, $newStatus, (string) $station['slug']);
-        if ($oldStatus === 'On Hold' && $newStatus === 'Serving') {
-            $_SESSION['staff_flash'] = 'Appointment resumed and transferred back to Active & Ongoing Consultations.';
-        } elseif ($newStatus === 'On Hold') {
-            $_SESSION['staff_flash'] = 'Appointment placed on hold. It can be continued another day.';
+        $updated = update_appointment_status($apptId, $newStatus, (string) $station['slug']);
+        if (!$updated && is_array($targetAppt)) {
+            $updated = update_appointment_status($apptId, $newStatus);
+        }
+
+        if ($updated) {
+            if ($oldStatus === 'On Hold' && $newStatus === 'Serving') {
+                $_SESSION['staff_flash'] = 'Appointment resumed and transferred back to Active & Ongoing Consultations.';
+            } elseif ($newStatus === 'On Hold') {
+                $_SESSION['staff_flash'] = 'Appointment placed on hold. It can be continued another day.';
+            } else {
+                $_SESSION['staff_flash'] = match ($newStatus) {
+                    'Confirmed' => 'Appointment confirmed and moved to Queue Management.',
+                    'Serving' => 'Patient is now being served.',
+                    'Completed' => 'Patient completed and added to records.',
+                    default => 'Appointment status updated.',
+                };
+            }
         } else {
-            $_SESSION['staff_flash'] = match ($newStatus) {
-                'Confirmed' => 'Appointment confirmed and moved to Queue Management.',
-                'Serving' => 'Patient is now being served.',
-                'Completed' => 'Patient completed and added to records.',
-                default => 'Appointment status updated.',
-            };
+            $_SESSION['staff_flash'] = 'Unable to update appointment status. Please verify the appointment details.';
+            $_SESSION['staff_flash_type'] = 'error';
         }
     }
 

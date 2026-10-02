@@ -21,21 +21,30 @@ function sendBrevoSMS(string $phone, string $message, int $appointmentId = 0): b
     }
 
     // Normalize Philippine phone number format (handling spaces, hyphens, prefixes)
-    $cleanPhone = preg_replace('/[^\d+]/', '', trim($phone));
-    if (preg_match('/^0(\d{10})$/', $cleanPhone, $matches)) {
-        $formattedPhone = '+63' . $matches[1];
-    } elseif (preg_match('/^63(\d{10})$/', $cleanPhone, $matches)) {
-        $formattedPhone = '+63' . $matches[1];
-    } elseif (preg_match('/^9(\d{9})$/', $cleanPhone, $matches)) {
-        $formattedPhone = '+639' . $matches[1];
-    } elseif (preg_match('/^\+63(\d{10})$/', $cleanPhone, $matches)) {
-        $formattedPhone = '+63' . $matches[1];
-    } else {
-        $formattedPhone = $cleanPhone;
+    $cleanDigits = preg_replace('/\D/', '', trim($phone));
+    if ($cleanDigits === '') {
+        $logEntry = date('Y-m-d H:i:s') . " | Appointment ID: {$appointmentId} | Phone: {$phone} | HTTP Code: 0 | Response: None | Error: Empty recipient phone number\n";
+        @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+        return false;
     }
 
-    if ($formattedPhone === '' || strlen($formattedPhone) < 10) {
-        $logEntry = date('Y-m-d H:i:s') . " | Appointment ID: {$appointmentId} | Phone: {$phone} | HTTP Code: 0 | Response: None | Error: Invalid recipient phone number format\n";
+    // Handle +630... or 630... with redundant 0
+    if (str_starts_with($cleanDigits, '630') && strlen($cleanDigits) === 13) {
+        $cleanDigits = '63' . substr($cleanDigits, 3);
+    }
+
+    if (str_starts_with($cleanDigits, '63') && strlen($cleanDigits) === 12) {
+        $formattedPhone = '+' . $cleanDigits;
+    } elseif (str_starts_with($cleanDigits, '0') && strlen($cleanDigits) === 11) {
+        $formattedPhone = '+63' . substr($cleanDigits, 1);
+    } elseif (strlen($cleanDigits) === 10 && str_starts_with($cleanDigits, '9')) {
+        $formattedPhone = '+63' . $cleanDigits;
+    } else {
+        $formattedPhone = '+' . $cleanDigits;
+    }
+
+    if (!preg_match('/^\+639\d{9}$/', $formattedPhone) && !preg_match('/^\+\d{10,15}$/', $formattedPhone)) {
+        $logEntry = date('Y-m-d H:i:s') . " | Appointment ID: {$appointmentId} | Phone: {$phone} | HTTP Code: 0 | Response: None | Error: Invalid recipient phone number format ({$formattedPhone})\n";
         @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
         return false;
     }
@@ -43,7 +52,8 @@ function sendBrevoSMS(string $phone, string $message, int $appointmentId = 0): b
     $payload = [
         'sender' => 'HealthSys',
         'recipient' => $formattedPhone,
-        'content' => $message
+        'content' => $message,
+        'type' => 'transactional'
     ];
 
     if (!function_exists('curl_init')) {

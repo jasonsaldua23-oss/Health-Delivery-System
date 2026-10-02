@@ -7,6 +7,9 @@ declare(strict_types=1);
  * Centralized initialization for environment, security, sessions, and error handling.
  */
 
+// Set default timezone for Bacolod City, Philippines
+date_default_timezone_set('Asia/Manila');
+
 // 1. Load Environment Variables (.env or .env.example fallback)
 (function () {
     $candidates = [
