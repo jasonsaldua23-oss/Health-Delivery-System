@@ -6180,7 +6180,7 @@ if (!function_exists('peso')) {
                         <span class="station-pin-icon admin-role-icon"><?= admin_icon('shield'); ?></span>
                         <div class="station-info-text">
                             <strong>Central Health Network Administrator</strong>
-                            <span>Full System Access • All 6 Barangay Stations • City-wide Health Delivery Network</span>
+                            <span>Full System Access • All Barangay Stations • City-wide Health Delivery Network</span>
                         </div>
                     </div>
                 </div>
