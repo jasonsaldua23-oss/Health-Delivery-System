@@ -1880,6 +1880,74 @@ button, input, select { font: inherit; }
   background: #94a3b8;
 }
 
+.user-status-indicator.deactivated {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+.user-status-indicator.deactivated .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+.user-status-toggle-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.user-deactivate-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  color: #ea580c;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+.user-deactivate-icon-btn:hover {
+  background: #ffedd5;
+  color: #c2410c;
+  border-color: #fdba74;
+  transform: scale(1.05);
+}
+.user-deactivate-icon-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.user-activate-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #16a34a;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+.user-activate-icon-btn:hover {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+  transform: scale(1.05);
+}
+.user-activate-icon-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
 .user-edit-icon-btn {
   display: grid;
   place-items: center;

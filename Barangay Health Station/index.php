@@ -456,7 +456,10 @@ if (!is_staff_authenticated()) {
 record_user_activity('staff', (string) $_SESSION['staff_email']);
 
 $staffAccount = fetch_staff_account_by_email((string) $_SESSION['staff_email']);
-if (!is_array($staffAccount)) {
+if (!is_array($staffAccount) || ((int) ($staffAccount['is_active'] ?? 1)) === 0) {
+    if (!empty($_SESSION['staff_email'])) {
+        record_user_logout('staff', (string) $_SESSION['staff_email']);
+    }
     unset(
         $_SESSION['staff_authenticated'],
         $_SESSION['staff_email'],

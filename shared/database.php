@@ -982,6 +982,7 @@ function create_staff_accounts_table(mysqli $connection, string $engine = 'InnoD
             emergency_phone VARCHAR(30) DEFAULT NULL,
             last_active_at TIMESTAMP NULL DEFAULT NULL,
             is_logged_in TINYINT(1) NOT NULL DEFAULT 0,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_station_slug (station_slug),
@@ -1864,6 +1865,12 @@ function run_database_migrations(mysqli $connection, bool $verbose = false): arr
             $log[] = 'Added staff_accounts.is_logged_in';
         } catch (Throwable $e) {}
     }
+    if (!db_column_exists($connection, 'staff_accounts', 'is_active')) {
+        try {
+            $connection->query('ALTER TABLE staff_accounts ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1 AFTER is_logged_in');
+            $log[] = 'Added staff_accounts.is_active';
+        } catch (Throwable $e) {}
+    }
 
     try {
         $idxRes = $connection->query("SHOW INDEX FROM staff_accounts WHERE Key_name = 'station_slug'");
@@ -2007,48 +2014,51 @@ function db(): mysqli
     ];
 
     if ($isLocalDev) {
-        $configsToTry[] = [
-            'host' => '127.0.0.1',
-            'user' => 'root',
-            'pass' => '',
-            'name' => 'u763176290_hds',
-            'port' => 3306
+        $localConfigs = [
+            [
+                'host' => '127.0.0.1',
+                'user' => 'root',
+                'pass' => '',
+                'name' => 'u763176290_hds',
+                'port' => 3306
+            ],
+            [
+                'host' => '127.0.0.1',
+                'user' => 'root',
+                'pass' => '',
+                'name' => 'u763176290_HDS',
+                'port' => 3306
+            ],
+            [
+                'host' => '127.0.0.1',
+                'user' => 'root',
+                'pass' => '',
+                'name' => 'health_delivery_system',
+                'port' => 3306
+            ],
+            [
+                'host' => 'localhost',
+                'user' => 'root',
+                'pass' => '',
+                'name' => 'u763176290_hds',
+                'port' => 3306
+            ],
+            [
+                'host' => 'localhost',
+                'user' => 'root',
+                'pass' => '',
+                'name' => 'u763176290_HDS',
+                'port' => 3306
+            ],
+            [
+                'host' => 'localhost',
+                'user' => 'root',
+                'pass' => '',
+                'name' => 'health_delivery_system',
+                'port' => 3306
+            ],
         ];
-        $configsToTry[] = [
-            'host' => '127.0.0.1',
-            'user' => 'root',
-            'pass' => '',
-            'name' => 'u763176290_HDS',
-            'port' => 3306
-        ];
-        $configsToTry[] = [
-            'host' => '127.0.0.1',
-            'user' => 'root',
-            'pass' => '',
-            'name' => 'health_delivery_system',
-            'port' => 3306
-        ];
-        $configsToTry[] = [
-            'host' => 'localhost',
-            'user' => 'root',
-            'pass' => '',
-            'name' => 'u763176290_hds',
-            'port' => 3306
-        ];
-        $configsToTry[] = [
-            'host' => 'localhost',
-            'user' => 'root',
-            'pass' => '',
-            'name' => 'u763176290_HDS',
-            'port' => 3306
-        ];
-        $configsToTry[] = [
-            'host' => 'localhost',
-            'user' => 'root',
-            'pass' => '',
-            'name' => 'health_delivery_system',
-            'port' => 3306
-        ];
+        array_unshift($configsToTry, ...$localConfigs);
     }
 
     // Deduplicate configs
@@ -6342,6 +6352,7 @@ function ensure_account_schema_columns(?mysqli $connection = null): void
             'emergency_phone' => 'VARCHAR(30) DEFAULT NULL',
             'last_active_at' => 'TIMESTAMP NULL DEFAULT NULL',
             'is_logged_in' => 'TINYINT(1) NOT NULL DEFAULT 0',
+            'is_active' => 'TINYINT(1) NOT NULL DEFAULT 1',
         ];
         foreach ($staffColumns as $col => $def) {
             if (!db_column_exists($conn, 'staff_accounts', $col)) {
@@ -6373,7 +6384,7 @@ function fetch_staff_accounts(): array
 {
     try {
         ensure_account_schema_columns();
-        $result = db()->query('SELECT id, station_slug, station_name, staff_name, email, contact_number, recovery_email, emergency_phone, last_active_at, is_logged_in FROM staff_accounts ORDER BY station_name');
+        $result = db()->query('SELECT id, station_slug, station_name, staff_name, email, contact_number, recovery_email, emergency_phone, last_active_at, is_logged_in, is_active FROM staff_accounts ORDER BY station_name');
         $rows = [];
         if ($result) {
             while ($row = $result->fetch_assoc()) {
@@ -6391,6 +6402,7 @@ function fetch_staff_accounts(): array
                     $row['emergency_phone'] = '';
                     $row['last_active_at'] = null;
                     $row['is_logged_in'] = 0;
+                    $row['is_active'] = 1;
                     $rows[] = $row;
                 }
             }
@@ -6546,6 +6558,10 @@ function record_user_activity(string $role, string $email): void
 
 function is_user_active(array $account, int $thresholdMinutes = 5): bool
 {
+    if (((int) ($account['is_active'] ?? 1)) === 0) {
+        return false;
+    }
+
     $email = strtolower(trim((string) ($account['email'] ?? '')));
     if ($email === '') {
         return false;
@@ -6622,6 +6638,38 @@ function delete_staff_account(int $id): bool
     } catch (Throwable $e) {
         return false;
     }
+}
+
+function set_staff_account_active(int $staffId, bool $active): bool
+{
+    if ($staffId <= 0) {
+        return false;
+    }
+    try {
+        ensure_account_schema_columns();
+        $val = $active ? 1 : 0;
+        $stmt = db()->prepare('UPDATE staff_accounts SET is_active = ?, is_logged_in = CASE WHEN ? = 0 THEN 0 ELSE is_logged_in END WHERE id = ?');
+        if (!$stmt) {
+            return false;
+        }
+        $stmt->bind_param('iii', $val, $val, $staffId);
+        $res = $stmt->execute();
+        $stmt->close();
+        return $res;
+    } catch (Throwable $e) {
+        error_log('Error setting staff account active state: ' . $e->getMessage());
+        return false;
+    }
+}
+
+function deactivate_staff_account(int $staffId): bool
+{
+    return set_staff_account_active($staffId, false);
+}
+
+function activate_staff_account(int $staffId): bool
+{
+    return set_staff_account_active($staffId, true);
 }
 
 function appointment_stats(): array

@@ -290,6 +290,11 @@ if ($action === 'login_staff') {
         exit;
     }
 
+    if (((int) ($staffAccount['is_active'] ?? 1)) === 0) {
+        echo json_encode(['success' => false, 'field' => 'email', 'message' => 'This account has been deactivated. Please contact an administrator for assistance.'], JSON_THROW_ON_ERROR);
+        exit;
+    }
+
     if (is_array($staffAccount)) {
         $hash = (string) (($staffAccount['password_hash'] ?? '') ?: default_staff_password_hash());
         if (password_verify($password, $hash)) {
@@ -505,6 +510,11 @@ if ($action === 'request_password_otp') {
         }
         if ($account === null) {
             echo json_encode(['success' => false, 'message' => 'No staff account found with this work email address.'], JSON_THROW_ON_ERROR);
+            exit;
+        }
+
+        if (((int) ($account['is_active'] ?? 1)) === 0) {
+            echo json_encode(['success' => false, 'message' => 'This account has been deactivated. Please contact an administrator for assistance.'], JSON_THROW_ON_ERROR);
             exit;
         }
 

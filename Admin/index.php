@@ -57,6 +57,10 @@ if (!function_exists('admin_icon')) {
             'user' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'user-outline' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'user-add' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 8v6m3-3h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'user-x' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="17" y1="8" x2="22" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="22" y1="8" x2="17" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'user-check' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="16 11 18 13 22 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'deactivate' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="17" y1="8" x2="22" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><line x1="22" y1="8" x2="17" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'activate' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="16 11 18 13 22 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'eye' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'edit' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="m4 20 4.5-1 9.5-9.5-3.5-3.5L5 15.5 4 20Zm11-13 3.5 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             'dots' => '<svg width="16" height="16" viewBox="0 0 24 24" style="width:16px;height:16px;max-width:16px;max-height:16px;display:inline-block;vertical-align:middle;"><path d="M12 5.5a1.5 1.5 0 1 0 0 .01M12 12a1.5 1.5 0 1 0 0 .01M12 18.5a1.5 1.5 0 1 0 0 .01" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -600,6 +604,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'upda
     $redirectUrl = 'index.php?page=users&user_panel=staff-list';
     if ($redirectStation !== '') {
         $redirectUrl .= '&user_station=' . urlencode($redirectStation);
+    }
+    header('Location: ' . $redirectUrl);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'toggle_staff_active')) {
+    $redirectPanel = trim((string) ($_POST['user_panel_redirect'] ?? 'staff-list'));
+    $redirectStation = trim((string) ($_POST['user_station_redirect'] ?? ''));
+    if (verify_csrf($_POST['csrf_token'] ?? null)) {
+        $staffId = (int) ($_POST['staff_id'] ?? 0);
+        $targetActive = (int) ($_POST['target_active'] ?? 0);
+        $shouldActivate = ($targetActive === 1);
+
+        if ($staffId > 0) {
+            $staff = fetch_staff_account_by_id($staffId);
+            $staffName = is_array($staff) ? (string) ($staff['staff_name'] ?? 'Staff') : 'Staff';
+            $success = set_staff_account_active($staffId, $shouldActivate);
+            if ($success) {
+                $_SESSION['admin_flash'] = $shouldActivate
+                    ? 'Staff account for "' . $staffName . '" has been activated successfully.'
+                    : 'Staff account for "' . $staffName . '" has been deactivated successfully.';
+                if (!$shouldActivate && is_array($staff)) {
+                    record_user_logout('staff', (string) ($staff['email'] ?? ''));
+                }
+            } else {
+                $_SESSION['admin_flash'] = 'Unable to update staff account status.';
+            }
+        }
+    }
+
+    $redirectUrl = 'index.php?page=users';
+    if ($redirectPanel !== '') {
+        $redirectUrl .= '&user_panel=' . urlencode($redirectPanel);
+        if ($redirectStation !== '') {
+            $redirectUrl .= '&user_station=' . urlencode($redirectStation);
+        }
     }
     header('Location: ' . $redirectUrl);
     exit;
@@ -4470,23 +4510,36 @@ if (!function_exists('peso')) {
                                                 </div>
                                             </div>
                                             <div class="user-row-right">
-                                                <?php $isStaffActive = is_user_active($account); ?>
-                                                <span class="user-status-indicator <?= $isStaffActive ? 'active' : 'offline'; ?>">
-                                                    <span class="dot"></span> <?= $isStaffActive ? 'Online' : 'Offline'; ?>
-                                                </span>
-                                                <button type="button" 
-                                                        class="user-edit-icon-btn edit-staff-btn" 
-                                                        title="Edit Staff Account"
-                                                        data-staff-id="<?= (int) ($account['id'] ?? 0); ?>"
-                                                        data-staff-name="<?= h($account['staff_name']); ?>"
-                                                        data-station-slug="<?= h($station['slug']); ?>"
-                                                        data-email="<?= h($account['email']); ?>"
-                                                        data-recovery-email="<?= h($account['recovery_email'] ?? ''); ?>"
-                                                        data-contact-number="<?= h($account['contact_number'] ?? ''); ?>"
-                                                        data-emergency-phone="<?= h($account['emergency_phone'] ?? ''); ?>">
-                                                    <?= admin_icon('edit'); ?>
-                                                </button>
-                                                <form method="post" onsubmit="return confirm('Are you sure you want to remove staff account <?= h(addslashes($account['staff_name'])); ?>?');" style="margin:0;">
+                                                <?php 
+                                                    $isAccountActive = ((int) ($account['is_active'] ?? 1)) === 1;
+                                                    $isStaffOnline = $isAccountActive && is_user_active($account); 
+                                                ?>
+                                                <?php if (!$isAccountActive): ?>
+                                                    <span class="user-status-indicator deactivated" title="Account is deactivated">
+                                                        <span class="dot"></span> Deactivated
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="user-status-indicator <?= $isStaffOnline ? 'active' : 'offline'; ?>">
+                                                        <span class="dot"></span> <?= $isStaffOnline ? 'Online' : 'Offline'; ?>
+                                                    </span>
+                                                <?php endif; ?>
+
+                                                <form method="post" onsubmit="return confirm('Are you sure you want to <?= $isAccountActive ? 'deactivate' : 'activate'; ?> staff account <?= h(addslashes($account['staff_name'])); ?>?');" style="margin:0;display:inline-block;">
+                                                    <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                                                    <input type="hidden" name="action" value="toggle_staff_active">
+                                                    <input type="hidden" name="staff_id" value="<?= (int) ($account['id'] ?? 0); ?>">
+                                                    <input type="hidden" name="target_active" value="<?= $isAccountActive ? '0' : '1'; ?>">
+                                                    <input type="hidden" name="user_panel_redirect" value="staff-list">
+                                                    <input type="hidden" name="user_station_redirect" value="<?= h($station['slug']); ?>">
+                                                    <button type="submit" 
+                                                            class="user-status-toggle-btn <?= $isAccountActive ? 'user-deactivate-icon-btn' : 'user-activate-icon-btn'; ?>" 
+                                                            title="<?= $isAccountActive ? 'Deactivate Staff Account' : 'Activate Staff Account'; ?>"
+                                                            aria-label="<?= $isAccountActive ? 'Deactivate Staff Account' : 'Activate Staff Account'; ?>">
+                                                        <?= admin_icon($isAccountActive ? 'user-x' : 'user-check'); ?>
+                                                    </button>
+                                                </form>
+
+                                                <form method="post" onsubmit="return confirm('Are you sure you want to remove staff account <?= h(addslashes($account['staff_name'])); ?>?');" style="margin:0;display:inline-block;">
                                                     <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
                                                     <input type="hidden" name="action" value="delete_user_account">
                                                     <input type="hidden" name="user_role" value="Staff">
