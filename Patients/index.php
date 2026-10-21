@@ -587,6 +587,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
         .address-fields select { appearance: none !important; -webkit-appearance: none !important; -moz-appearance: none !important; background-image: none !important; cursor: not-allowed !important; pointer-events: none; }
         .address-fields select::-ms-expand { display: none !important; }
         .address-barangay-label, .address-purok-label { cursor: not-allowed; }
+        .booking-notes-section { margin-top: 28px !important; }
     </style>
 </head>
 <body>
@@ -1083,7 +1084,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                             <input type="hidden" name="complete_address" id="complete_address" value="<?= h($formData['complete_address']); ?>">
                         </div>
                     </div>
-                    <div class="form-grid">
+                    <div class="form-grid booking-notes-section" style="margin-top: 28px;">
                         <label class="full-span"><span>Additional Notes</span><textarea name="notes" rows="5" placeholder="Any additional information you'd like to share..."><?= h($formData['notes']); ?></textarea></label>
                     </div>
                     <div class="photo-notice amber-box"><strong>Important:</strong> This is a booking request. The health station will confirm your appointment via SMS or call. Please ensure your contact number is correct.</div>

@@ -848,6 +848,11 @@ textarea { resize: vertical; min-height: 120px; }
 .address-purok-label {
     cursor: not-allowed;
 }
+
+/* ── Spacing above Additional Notes in booking form ── */
+.booking-notes-section {
+    margin-top: 28px;
+}
 @media (max-width: 760px) { .address-fields { grid-template-columns: 1fr; } .gender-options { flex-direction: column; } .radio-option { min-width: unset; } }
 
 /* ── Ineditable / Readonly Fields on Booking Form ───── */
