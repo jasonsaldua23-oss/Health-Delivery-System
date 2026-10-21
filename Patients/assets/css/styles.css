@@ -824,6 +824,30 @@ textarea { resize: vertical; min-height: 120px; }
 .address-fields { display: grid; grid-template-columns: 180px 1fr 1.2fr; gap: 16px; }
 .address-purok-label span, .address-barangay-label span, .address-street-label span { display: block; margin-bottom: 8px; font-size: .88rem; color: #64748b; font-weight: 500; }
 .address-purok-label select, .address-barangay-label select, .address-street-label input { width: 100%; }
+
+/* ── Remove dropdown indicator from unclickable address fields on booking form ── */
+.address-fields select,
+.address-barangay-label select,
+.address-purok-label select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: none !important;
+    padding-right: 20px !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
+}
+
+.address-fields select::-ms-expand,
+.address-barangay-label select::-ms-expand,
+.address-purok-label select::-ms-expand {
+    display: none !important;
+}
+
+.address-barangay-label,
+.address-purok-label {
+    cursor: not-allowed;
+}
 @media (max-width: 760px) { .address-fields { grid-template-columns: 1fr; } .gender-options { flex-direction: column; } .radio-option { min-width: unset; } }
 
 /* ── Ineditable / Readonly Fields on Booking Form ───── */

@@ -584,6 +584,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
         .form-section-title:first-of-type { margin-top: 0 !important; }
         .account-info-banner + .form-section-title { margin-top: 8px !important; }
         .form-section-title h2 { margin: 0 !important; font-size: 1.25rem !important; font-weight: 700 !important; }
+        .address-fields select { appearance: none !important; -webkit-appearance: none !important; -moz-appearance: none !important; background-image: none !important; cursor: not-allowed !important; pointer-events: none; }
+        .address-fields select::-ms-expand { display: none !important; }
+        .address-barangay-label, .address-purok-label { cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -1054,7 +1057,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                             <div class="address-fields" data-puroks-by-barangay='<?= h(json_encode($purokOptionsByBarangay, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?: '{}'); ?>'>
                                 <label class="address-barangay-label">
                                     <span>Barangay <em>*</em></span>
-                                    <select data-required name="address_barangay_display" id="address_barangay" disabled class="form-readonly-input">
+                                    <select data-required name="address_barangay_display" id="address_barangay" disabled class="form-readonly-input" style="appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: none; cursor: not-allowed; pointer-events: none;">
                                         <option value="">Select Barangay</option>
                                         <?php foreach ($barangayOptions as $barangayOption): ?>
                                             <option value="<?= h($barangayOption); ?>" <?= $selectedAddressBarangay === $barangayOption ? 'selected' : ''; ?>><?= h($barangayOption); ?></option>
@@ -1064,7 +1067,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                                 <input type="hidden" name="address_barangay" value="<?= h($selectedAddressBarangay); ?>">
                                 <label class="address-purok-label">
                                     <span>Purok <em>*</em></span>
-                                    <select data-required name="purok_display" id="purok_select" disabled class="form-readonly-input">
+                                    <select data-required name="purok_display" id="purok_select" disabled class="form-readonly-input" style="appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: none; cursor: not-allowed; pointer-events: none;">
                                         <option value=""><?= $selectedAddressBarangay === '' ? 'Select Barangay First' : 'Select Purok'; ?></option>
                                         <?php foreach ($selectedPurokOptions as $purokOption): ?>
                                             <option value="<?= h($purokOption); ?>" <?= $selectedPurok === $purokOption ? 'selected' : ''; ?>><?= h($purokOption); ?></option>
