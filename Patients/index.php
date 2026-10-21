@@ -1458,22 +1458,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                     <form class="auth-form" id="firstTimerForm" novalidate>
                         <div class="form-row two-col">
                             <div class="field-group">
-                                <label for="firstName">First Name</label>
+                                <label for="firstName">First Name <em style="color:#ff4f4f;">*</em></label>
                                 <input id="firstName" name="first_name" type="text" value="" placeholder="" required>
                             </div>
                             <div class="field-group">
-                                <label for="middleName">Middle Name</label>
+                                <label for="middleName">Middle Name <em style="color:#ff4f4f;">*</em></label>
                                 <input id="middleName" name="middle_name" type="text" value="" placeholder="" required>
                             </div>
                         </div>
 
                         <div class="form-row two-col">
                             <div class="field-group">
-                                <label for="lastName">Last Name</label>
+                                <label for="lastName">Last Name <em style="color:#ff4f4f;">*</em></label>
                                 <input id="lastName" name="last_name" type="text" value="" placeholder="" required>
                             </div>
                             <div class="field-group">
-                                <label for="regBirthdate">Date of Birth</label>
+                                <label for="regBirthdate">Date of Birth <em style="color:#ff4f4f;">*</em></label>
                                 <input id="regBirthdate" name="birthdate" type="date" value="" max="<?= date('Y-m-d', strtotime('-1 day')); ?>" min="1900-01-01" required>
                             </div>
                         </div>
@@ -1503,11 +1503,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
 
                         <div class="form-row two-col">
                             <div class="field-group">
-                                <label for="regEmail">Email</label>
+                                <label for="regEmail">Email <em style="color:#ff4f4f;">*</em></label>
                                 <input id="regEmail" name="email" type="email" value="" placeholder="" required>
                             </div>
                             <div class="field-group">
-                                <label for="regPassword">Password</label>
+                                <label for="regPassword">Password <em style="color:#ff4f4f;">*</em></label>
                                 <div class="input-with-icon password-field">
                                     <input id="regPassword" name="password" type="password" value="" placeholder="Min. 8 characters (letters &amp; numbers)" minlength="8" required>
                                     <button type="button" class="toggle-password" aria-label="Show password"><?= iconSvg('eye'); ?></button>
@@ -1517,7 +1517,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
 
                         <div class="form-row two-col">
                             <div class="field-group">
-                                <label for="regBarangay">Barangay</label>
+                                <label for="regBarangay">Barangay <em style="color:#ff4f4f;">*</em></label>
                                 <select id="regBarangay" name="barangay" required>
                                     <option value="">Select Barangay</option>
                                     <?php foreach ($barangayOptions as $barangay): ?>
@@ -1526,7 +1526,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                                 </select>
                             </div>
                             <div class="field-group">
-                                <label for="regPurok">Purok / Zone</label>
+                                <label for="regPurok">Purok / Zone <em style="color:#ff4f4f;">*</em></label>
                                 <select id="regPurok" name="purok" required disabled>
                                     <option value="">Select Barangay First</option>
                                 </select>
