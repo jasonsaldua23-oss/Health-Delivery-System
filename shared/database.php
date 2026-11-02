@@ -5018,6 +5018,100 @@ function fetch_immunized_infants_by_patient_id(string $patientId): array
 }
 
 /**
+ * Fetch infant profiles associated with a patient ID
+ */
+function fetch_infant_profiles_by_patient_id(string $patientId): array
+{
+    $patientId = trim($patientId);
+    if ($patientId === '') {
+        return [];
+    }
+    try {
+        $db = db();
+        ensure_infant_profiles_table($db);
+        $stmt = $db->prepare('SELECT * FROM infant_profiles WHERE patient_id = ? ORDER BY created_at DESC, id DESC');
+        $stmt->bind_param('s', $patientId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    } catch (Throwable $e) {
+        error_log('Error in fetch_infant_profiles_by_patient_id: ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Fetch all registered infants for a patient (combining infant_profiles and any historical non-self immunized_infants)
+ */
+function fetch_registered_infants_for_patient(string $patientId): array
+{
+    $patientId = trim($patientId);
+    if ($patientId === '') {
+        return [];
+    }
+
+    $profiles = fetch_infant_profiles_by_patient_id($patientId);
+    $seenKeys = [];
+    $results = [];
+
+    foreach ($profiles as $p) {
+        $fn = trim((string)($p['first_name'] ?? ''));
+        $mn = trim((string)($p['middle_name'] ?? ''));
+        $ln = trim((string)($p['last_name'] ?? ''));
+        $dob = trim((string)($p['birth_date'] ?? ''));
+        $key = strtolower($fn) . '|' . strtolower($ln) . '|' . $dob;
+        $seenKeys[$key] = true;
+        $fullName = trim($fn . ' ' . ($mn !== '' ? $mn . ' ' : '') . $ln);
+        $results[] = [
+            'id' => (int) $p['id'],
+            'first_name' => $fn,
+            'middle_name' => $mn,
+            'last_name' => $ln,
+            'birth_date' => $dob,
+            'gender' => (string)($p['gender'] ?? ''),
+            'relationship' => (string)($p['relationship'] ?? 'Child'),
+            'full_name' => $fullName,
+            'source' => 'infant_profiles'
+        ];
+    }
+
+    // Also include historical infants from immunized_infants if not already present
+    try {
+        $immList = fetch_immunized_infants_by_patient_id($patientId);
+        foreach ($immList as $im) {
+            $rel = strtolower(trim((string)($im['relationship'] ?? '')));
+            if ($rel === 'self') {
+                continue;
+            }
+            $fn = trim((string)($im['first_name'] ?? ''));
+            $mn = trim((string)($im['middle_name'] ?? ''));
+            $ln = trim((string)($im['last_name'] ?? ''));
+            $dob = trim((string)($im['birth_date'] ?? ''));
+            if ($fn === '' || $ln === '') {
+                continue;
+            }
+            $key = strtolower($fn) . '|' . strtolower($ln) . '|' . $dob;
+            if (!isset($seenKeys[$key])) {
+                $seenKeys[$key] = true;
+                $fullName = trim($fn . ' ' . ($mn !== '' ? $mn . ' ' : '') . $ln);
+                $results[] = [
+                    'id' => (int) $im['id'],
+                    'first_name' => $fn,
+                    'middle_name' => $mn,
+                    'last_name' => $ln,
+                    'birth_date' => $dob,
+                    'gender' => (string)($im['gender'] ?? ''),
+                    'relationship' => (string)($im['relationship'] ?? 'Child'),
+                    'full_name' => $fullName,
+                    'source' => 'immunized_infants'
+                ];
+            }
+        }
+    } catch (Throwable $e) {}
+
+    return $results;
+}
+
+/**
  * Standard National Immunization Program (NIP) infant vaccine dose limits.
  * Based on DOH Infant Immunization Schedule:
  * - BCG: 1 dose (At Birth)

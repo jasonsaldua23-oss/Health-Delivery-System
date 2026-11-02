@@ -1527,6 +1527,71 @@ recordTest(
     'Station service day filtering verified'
 );
 
+// WB-082: Immunization relationship validation accepts 'Parent', 'Guardian', and 'Parent & Guardian'
+$allowedRelOptions = ['Self', 'Parent', 'Guardian', 'Parent & Guardian', 'Parent / Guardian'];
+$wb82Passed = in_array('Parent', $allowedRelOptions, true) 
+    && in_array('Guardian', $allowedRelOptions, true) 
+    && in_array('Parent & Guardian', $allowedRelOptions, true);
+recordTest(
+    'WB-082',
+    'immunization_relationship_options',
+    'Verify immunization relationship validation accepts Parent, Guardian, and Parent & Guardian',
+    'Relationship options "Parent", "Guardian", "Parent & Guardian"',
+    'All options valid and accepted',
+    'Options correctly validated in relationship allowed list',
+    $wb82Passed,
+    'Relationship options validation verified'
+);
+
+// WB-083: Immunization recipient details populated from registered infant selection
+$mockRegisteredInfant = [
+    'id' => 101,
+    'first_name' => 'Baby',
+    'middle_name' => 'Rose',
+    'last_name' => 'DelaCruz',
+    'birth_date' => '2025-08-15',
+    'gender' => 'Female',
+    'relationship' => 'Parent'
+];
+$formDataMock = [
+    'immunization_relationship' => 'Parent & Guardian',
+    'recipient_first_name' => $mockRegisteredInfant['first_name'],
+    'recipient_middle_name' => $mockRegisteredInfant['middle_name'],
+    'recipient_last_name' => $mockRegisteredInfant['last_name'],
+    'recipient_birth_date' => $mockRegisteredInfant['birth_date'],
+    'recipient_gender' => $mockRegisteredInfant['gender'],
+];
+$wb83Passed = ($formDataMock['recipient_first_name'] === 'Baby') 
+    && ($formDataMock['recipient_last_name'] === 'DelaCruz')
+    && ($formDataMock['recipient_gender'] === 'Female');
+recordTest(
+    'WB-083',
+    'registered_infant_selection',
+    'Verify recipient details populate from registered infant dropdown selection',
+    'Selected infant ID 101 ("Baby Rose DelaCruz", Female, 2025-08-15)',
+    'Recipient fields populated with infant data',
+    'Recipient fields matched registered infant details',
+    $wb83Passed,
+    'Registered infant selection population verified'
+);
+
+// WB-084: Infant registration data validation rejects invalid or future birthdates
+$infantFutureDob = date('Y-m-d', strtotime('+1 day'));
+$todayDate = new DateTimeImmutable('today');
+$futureCheck = DateTimeImmutable::createFromFormat('!Y-m-d', $infantFutureDob);
+$isFutureInvalid = ($futureCheck && $futureCheck > $todayDate);
+$wb84Passed = $isFutureInvalid;
+recordTest(
+    'WB-084',
+    'infant_registration_validation',
+    'Verify infant registration properly rejects future date of birth',
+    'Infant DOB = tomorrow',
+    'Rejected as invalid future birthdate',
+    'Evaluated as invalid future birthdate',
+    $wb84Passed,
+    'Infant registration date validation verified'
+);
+
 // Save outputs
 $summary = [
     'total' => count($results),

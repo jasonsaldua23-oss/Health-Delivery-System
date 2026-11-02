@@ -196,6 +196,9 @@ if ($isLoggedIn) {
     $formData['complete_address'] = (string) ($_SESSION['patient_complete_address'] ?? $patientAccount['complete_address'] ?? $patientProfile['complete_address'] ?? '');
 }
 
+$patientIdForInfants = (string) ($_SESSION['patient_id'] ?? $patientId ?? $formData['patient_id_number'] ?? '');
+$registeredInfants = $patientIdForInfants !== '' ? fetch_registered_infants_for_patient($patientIdForInfants) : [];
+
 foreach ($publicStations as $station) {
     if ($station['slug'] === $selectedSlug) {
         $selectedStation = $station;
@@ -226,6 +229,7 @@ if (isset($_GET['lookup_patient_id'])) {
         echo json_encode(['found' => false, 'message' => 'Patient ID not found.'], JSON_THROW_ON_ERROR);
     } else {
         $previousImmunizationRelationship = fetch_previous_immunization_relationship($patientId);
+        $regInfants = fetch_registered_infants_for_patient($patientId);
         echo json_encode([
             'found' => true,
             'profile' => [
@@ -239,6 +243,7 @@ if (isset($_GET['lookup_patient_id'])) {
                 'email' => (string) $profile['email'],
                 'complete_address' => (string) $profile['complete_address'],
                 'previous_immunization_relationship' => $previousImmunizationRelationship,
+                'registered_infants' => $regInfants,
             ],
         ], JSON_THROW_ON_ERROR);
     }
@@ -344,11 +349,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
 
     if ($selectedProgram['slug'] === 'immunization') {
         $immRel = $formData['immunization_relationship'];
-        if ($immRel === '' || !in_array($immRel, ['Self', 'Parent', 'Guardian'], true)) {
+        if ($immRel === '' || !in_array($immRel, ['Self', 'Parent', 'Guardian', 'Parent & Guardian', 'Parent / Guardian'], true)) {
             $errors[] = 'Please select your relationship to the recipient (Self, Parent, or Guardian).';
         } elseif ($immRel !== 'Self') {
+            $selectedInfantId = (int) ($_POST['selected_infant_id'] ?? 0);
+            if ($selectedInfantId > 0 && ($formData['recipient_first_name'] === '' || $formData['recipient_last_name'] === '')) {
+                $infantData = fetch_infant_profile_by_id($selectedInfantId);
+                if ($infantData && (string)$infantData['patient_id'] === $patientId) {
+                    $formData['recipient_first_name'] = $infantData['first_name'];
+                    $formData['recipient_middle_name'] = $infantData['middle_name'] ?? '';
+                    $formData['recipient_last_name'] = $infantData['last_name'];
+                    $formData['recipient_birth_date'] = $infantData['birth_date'];
+                    $formData['recipient_gender'] = $infantData['gender'] ?? '';
+                }
+            }
             if ($formData['recipient_first_name'] === '' || $formData['recipient_last_name'] === '' || $formData['recipient_birth_date'] === '' || $formData['recipient_gender'] === '') {
-                $errors[] = 'Please provide the recipient\'s First Name, Last Name, Date of Birth, and Gender.';
+                $errors[] = 'Please select a registered infant under your account.';
             }
         }
     }
@@ -845,50 +861,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                                         <select data-required name="immunization_relationship" id="immunization_relationship" class="form-select-field">
                                             <option value="">-- Select Relationship --</option>
                                             <option value="Self" <?= $formData['immunization_relationship'] === 'Self' ? 'selected' : ''; ?>>Self</option>
-                                            <option value="Parent" <?= $formData['immunization_relationship'] === 'Parent' ? 'selected' : ''; ?>>Parent</option>
+                                            <option value="Parent" <?= in_array($formData['immunization_relationship'], ['Parent', 'Parent & Guardian'], true) ? 'selected' : ''; ?>>Parent</option>
                                             <option value="Guardian" <?= $formData['immunization_relationship'] === 'Guardian' ? 'selected' : ''; ?>>Guardian</option>
+                                            <option value="Parent & Guardian" <?= $formData['immunization_relationship'] === 'Parent & Guardian' ? 'selected' : ''; ?>>Parent & Guardian</option>
                                         </select>
                                     </label>
                                 </div>
 
-                                <div id="extraRecipientFields" class="extra-recipient-fields-wrap" style="<?= in_array($formData['immunization_relationship'], ['Parent', 'Guardian'], true) ? '' : 'display:none;'; ?>">
+                                <div id="extraRecipientFields" class="extra-recipient-fields-wrap" style="<?= in_array($formData['immunization_relationship'], ['Parent', 'Guardian', 'Parent & Guardian', 'Parent / Guardian'], true) ? '' : 'display:none;'; ?>">
                                     <div class="recipient-subheading">
                                         <span class="subheading-icon" style="width: 18px; height: 18px; min-width: 18px; max-width: 18px; min-height: 18px; max-height: 18px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><?= iconSvg('baby'); ?></span>
-                                        <strong>Recipient Details (Infant / Child)</strong>
+                                        <strong>Select Registered Infant / Child</strong>
                                     </div>
-                                    <div class="form-grid three-col-desktop">
-                                        <label>
-                                            <span>First Name <em>*</em></span>
-                                            <input type="text" name="recipient_first_name" id="recipient_first_name" value="<?= h($formData['recipient_first_name']); ?>" placeholder="First name" class="capitalize-input">
+
+                                    <div class="form-grid full-span" style="margin-top: 10px;">
+                                        <label class="full-span">
+                                            <span>Registered Infant Under Your Account <em>*</em></span>
+                                            <select name="selected_infant_id" id="selected_infant_id" class="form-select-field">
+                                                <option value="">-- Choose Registered Infant --</option>
+                                                <?php foreach ($registeredInfants as $inf): ?>
+                                                    <?php 
+                                                        $isSelected = (!empty($_POST['selected_infant_id']) && (string)$_POST['selected_infant_id'] === (string)$inf['id']) || 
+                                                            (strcasecmp($formData['recipient_first_name'], $inf['first_name']) === 0 && strcasecmp($formData['recipient_last_name'], $inf['last_name']) === 0);
+                                                    ?>
+                                                    <option value="<?= h((string)$inf['id']); ?>" 
+                                                        data-first-name="<?= h($inf['first_name']); ?>"
+                                                        data-middle-name="<?= h($inf['middle_name']); ?>"
+                                                        data-last-name="<?= h($inf['last_name']); ?>"
+                                                        data-birth-date="<?= h($inf['birth_date']); ?>"
+                                                        data-gender="<?= h($inf['gender']); ?>"
+                                                        <?= $isSelected ? 'selected' : ''; ?>>
+                                                        <?= h($inf['full_name']); ?> (DOB: <?= h($inf['birth_date']); ?> &bull; <?= h($inf['gender']); ?>)
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
                                         </label>
-                                        <label>
-                                            <span>Middle Name</span>
-                                            <input type="text" name="recipient_middle_name" id="recipient_middle_name" value="<?= h($formData['recipient_middle_name']); ?>" placeholder="Middle name (optional)" class="capitalize-input">
-                                        </label>
-                                        <label>
-                                            <span>Last Name <em>*</em></span>
-                                            <input type="text" name="recipient_last_name" id="recipient_last_name" value="<?= h($formData['recipient_last_name']); ?>" placeholder="Last name" class="capitalize-input">
-                                        </label>
-                                        <label>
-                                            <span>Date of Birth <em>*</em></span>
-                                            <input type="date" name="recipient_birth_date" id="recipient_birth_date" value="<?= h($formData['recipient_birth_date']); ?>" max="<?= date('Y-m-d'); ?>">
-                                        </label>
-                                        <div class="gender-radio-group full-span-desktop" style="margin-top: 4px;">
-                                            <span class="gender-label" style="font-size: 0.88rem; font-weight: 600; color: #1e293b; margin-bottom: 8px; display: block;">Baby's Gender <em>*</em></span>
-                                            <div class="gender-options" style="display: flex; gap: 14px;">
-                                                <label class="radio-option <?= $formData['recipient_gender'] === 'Male' ? 'is-selected' : 'is-unselected'; ?>" style="flex: 1;">
-                                                    <input type="radio" name="recipient_gender" id="recipient_gender_male" value="Male" <?= $formData['recipient_gender'] === 'Male' ? 'checked' : ''; ?>>
-                                                    <span class="radio-custom"></span>
-                                                    <span>Male</span>
-                                                </label>
-                                                <label class="radio-option <?= $formData['recipient_gender'] === 'Female' ? 'is-selected' : 'is-unselected'; ?>" style="flex: 1;">
-                                                    <input type="radio" name="recipient_gender" id="recipient_gender_female" value="Female" <?= $formData['recipient_gender'] === 'Female' ? 'checked' : ''; ?>>
-                                                    <span class="radio-custom"></span>
-                                                    <span>Female</span>
-                                                </label>
+                                    </div>
+
+                                    <!-- Hidden recipient fields populated automatically upon choosing an infant -->
+                                    <input type="hidden" name="recipient_first_name" id="recipient_first_name" value="<?= h($formData['recipient_first_name']); ?>">
+                                    <input type="hidden" name="recipient_middle_name" id="recipient_middle_name" value="<?= h($formData['recipient_middle_name']); ?>">
+                                    <input type="hidden" name="recipient_last_name" id="recipient_last_name" value="<?= h($formData['recipient_last_name']); ?>">
+                                    <input type="hidden" name="recipient_birth_date" id="recipient_birth_date" value="<?= h($formData['recipient_birth_date']); ?>">
+                                    <input type="hidden" name="recipient_gender" id="recipient_gender" value="<?= h($formData['recipient_gender']); ?>">
+
+                                    <!-- Selected Infant Confirmation Card -->
+                                    <div id="selectedInfantSummaryCard" style="margin-top: 12px; padding: 12px 16px; background: #f0fdf4; border: 1.5px solid #a7f3d0; border-radius: 10px; display: <?= $formData['recipient_first_name'] !== '' ? 'flex' : 'none'; ?>; align-items: center; justify-content: space-between; gap: 12px;">
+                                        <div>
+                                            <div style="font-size: 0.76rem; font-weight: 700; color: #047857; text-transform: uppercase;">Confirmed Infant Recipient</div>
+                                            <div id="selectedInfantName" style="font-size: 0.98rem; font-weight: 700; color: #065f46; margin-top: 2px;">
+                                                <?= h(trim($formData['recipient_first_name'] . ' ' . $formData['recipient_middle_name'] . ' ' . $formData['recipient_last_name'])); ?>
+                                            </div>
+                                            <div id="selectedInfantMeta" style="font-size: 0.82rem; color: #047857; margin-top: 2px;">
+                                                DOB: <span id="summaryInfantDob"><?= h($formData['recipient_birth_date']); ?></span> &bull; Gender: <span id="summaryInfantGender"><?= h($formData['recipient_gender']); ?></span>
                                             </div>
                                         </div>
+                                        <span style="color: #059669; display: flex; align-items: center;"><?= iconSvg('check'); ?></span>
                                     </div>
+
+                                    <?php if (empty($registeredInfants)): ?>
+                                        <div id="noInfantsNotice" style="margin-top: 10px; padding: 14px 16px; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; color: #92400e;">
+                                            <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.92rem; margin-bottom: 4px;">
+                                                <span><?= iconSvg('sparkle'); ?></span>
+                                                <span>No Registered Infant Found</span>
+                                            </div>
+                                            <p style="font-size: 0.85rem; margin: 0 0 10px 0; line-height: 1.4;">
+                                                You haven't registered an infant under your account yet. Please register your infant in Account Settings before booking an infant immunization appointment.
+                                            </p>
+                                            <a href="dashboard.php" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: #d97706; color: #ffffff; padding: 7px 14px; border-radius: 7px; text-decoration: none; font-size: 0.84rem; font-weight: 600;">
+                                                <?= iconSvg('user'); ?>
+                                                <span>Go to Account Settings</span>
+                                            </a>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         <?php endif; ?>

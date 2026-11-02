@@ -445,28 +445,91 @@ downloadButton?.addEventListener('click', downloadConfirmationImage);
 /* ── Immunization Recipient Dynamic Toggle ── */
 const immRelSelect = document.getElementById('immunization_relationship');
 const extraRecipientFields = document.getElementById('extraRecipientFields');
+const selectedInfantSelect = document.getElementById('selected_infant_id');
 const recipientFirstInput = document.getElementById('recipient_first_name');
+const recipientMiddleInput = document.getElementById('recipient_middle_name');
 const recipientLastInput = document.getElementById('recipient_last_name');
 const recipientDobInput = document.getElementById('recipient_birth_date');
+const recipientGenderInput = document.getElementById('recipient_gender');
 const recipientGenderRadios = document.querySelectorAll('input[name="recipient_gender"]');
+
+function updateSelectedInfantDetails() {
+    if (!selectedInfantSelect) return;
+    const opt = selectedInfantSelect.options[selectedInfantSelect.selectedIndex];
+    const summaryCard = document.getElementById('selectedInfantSummaryCard');
+    const summaryName = document.getElementById('selectedInfantName');
+    const summaryDob = document.getElementById('summaryInfantDob');
+    const summaryGender = document.getElementById('summaryInfantGender');
+
+    if (opt && opt.value) {
+        const fn = opt.getAttribute('data-first-name') || '';
+        const mn = opt.getAttribute('data-middle-name') || '';
+        const ln = opt.getAttribute('data-last-name') || '';
+        const dob = opt.getAttribute('data-birth-date') || '';
+        const g = opt.getAttribute('data-gender') || '';
+
+        if (recipientFirstInput) recipientFirstInput.value = fn;
+        if (recipientMiddleInput) recipientMiddleInput.value = mn;
+        if (recipientLastInput) recipientLastInput.value = ln;
+        if (recipientDobInput) recipientDobInput.value = dob;
+        if (recipientGenderInput) recipientGenderInput.value = g;
+
+        if (summaryCard) summaryCard.style.display = 'flex';
+        if (summaryName) summaryName.textContent = fn + (mn ? ' ' + mn : '') + ' ' + ln;
+        if (summaryDob) summaryDob.textContent = dob;
+        if (summaryGender) summaryGender.textContent = g || 'Unspecified';
+    } else {
+        if (recipientFirstInput) recipientFirstInput.value = '';
+        if (recipientMiddleInput) recipientMiddleInput.value = '';
+        if (recipientLastInput) recipientLastInput.value = '';
+        if (recipientDobInput) recipientDobInput.value = '';
+        if (recipientGenderInput) recipientGenderInput.value = '';
+
+        if (summaryCard) summaryCard.style.display = 'none';
+    }
+}
 
 function toggleImmunizationRecipientFields() {
     if (!immRelSelect || !extraRecipientFields) return;
 
     const val = immRelSelect.value;
-    if (val && val !== 'Self') {
+    const isDependent = val && val !== 'Self';
+
+    if (isDependent) {
         extraRecipientFields.style.display = 'block';
-        if (recipientFirstInput) { recipientFirstInput.setAttribute('data-required', ''); recipientFirstInput.required = true; }
-        if (recipientLastInput) { recipientLastInput.setAttribute('data-required', ''); recipientLastInput.required = true; }
-        if (recipientDobInput) { recipientDobInput.setAttribute('data-required', ''); recipientDobInput.required = true; }
-        recipientGenderRadios.forEach(r => { r.setAttribute('data-required', ''); });
+        if (selectedInfantSelect) {
+            selectedInfantSelect.setAttribute('data-required', '');
+            selectedInfantSelect.required = true;
+            updateSelectedInfantDetails();
+        } else {
+            if (recipientFirstInput) { recipientFirstInput.setAttribute('data-required', ''); recipientFirstInput.required = true; }
+            if (recipientLastInput) { recipientLastInput.setAttribute('data-required', ''); recipientLastInput.required = true; }
+            if (recipientDobInput) { recipientDobInput.setAttribute('data-required', ''); recipientDobInput.required = true; }
+            recipientGenderRadios.forEach(r => { r.setAttribute('data-required', ''); });
+        }
     } else {
         extraRecipientFields.style.display = 'none';
-        if (recipientFirstInput) { recipientFirstInput.removeAttribute('data-required'); recipientFirstInput.required = false; }
-        if (recipientLastInput) { recipientLastInput.removeAttribute('data-required'); recipientLastInput.required = false; }
-        if (recipientDobInput) { recipientDobInput.removeAttribute('data-required'); recipientDobInput.required = false; }
-        recipientGenderRadios.forEach(r => { r.removeAttribute('data-required'); });
+        if (selectedInfantSelect) {
+            selectedInfantSelect.removeAttribute('data-required');
+            selectedInfantSelect.required = false;
+            if (recipientFirstInput) recipientFirstInput.value = '';
+            if (recipientMiddleInput) recipientMiddleInput.value = '';
+            if (recipientLastInput) recipientLastInput.value = '';
+            if (recipientDobInput) recipientDobInput.value = '';
+            if (recipientGenderInput) recipientGenderInput.value = '';
+            const summaryCard = document.getElementById('selectedInfantSummaryCard');
+            if (summaryCard) summaryCard.style.display = 'none';
+        } else {
+            if (recipientFirstInput) { recipientFirstInput.removeAttribute('data-required'); recipientFirstInput.required = false; }
+            if (recipientLastInput) { recipientLastInput.removeAttribute('data-required'); recipientLastInput.required = false; }
+            if (recipientDobInput) { recipientDobInput.removeAttribute('data-required'); recipientDobInput.required = false; }
+            recipientGenderRadios.forEach(r => { r.removeAttribute('data-required'); });
+        }
     }
+}
+
+if (selectedInfantSelect) {
+    selectedInfantSelect.addEventListener('change', updateSelectedInfantDetails);
 }
 
 if (immRelSelect) {

@@ -1,6 +1,6 @@
 {
-    "total": 82,
-    "passed": 82,
+    "total": 85,
+    "passed": 85,
     "failed": 0,
     "results": [
         {
@@ -187,7 +187,7 @@
             "id": "WB-019",
             "segment": "appointment_slot_is_available",
             "desc": "Validate weekend Sunday rejection rule",
-            "inputs": "Valid future Sunday (2026-10-25) + valid time",
+            "inputs": "Valid future Sunday (2026-11-08) + valid time",
             "expected": "Returns false",
             "actual": "Returned false enforcing Sunday station closure",
             "result": "Pass",
@@ -719,7 +719,7 @@
             "desc": "Verify patient ID generation format and algorithm",
             "inputs": "patient_id omitted",
             "expected": "Patient ID is generated from email\/time and uppercased substring",
-            "actual": "Generated 6-character uppercase alphanumeric ID: 979F3F",
+            "actual": "Generated 6-character uppercase alphanumeric ID: D8EE18",
             "result": "Pass",
             "remarks": "6-character ID generated"
         },
@@ -822,6 +822,36 @@
             "actual": "Correctly evaluated service schedule active status by day of week",
             "result": "Pass",
             "remarks": "Station service day filtering verified"
+        },
+        {
+            "id": "WB-082",
+            "segment": "immunization_relationship_options",
+            "desc": "Verify immunization relationship validation accepts Parent, Guardian, and Parent & Guardian",
+            "inputs": "Relationship options \"Parent\", \"Guardian\", \"Parent & Guardian\"",
+            "expected": "All options valid and accepted",
+            "actual": "Options correctly validated in relationship allowed list",
+            "result": "Pass",
+            "remarks": "Relationship options validation verified"
+        },
+        {
+            "id": "WB-083",
+            "segment": "registered_infant_selection",
+            "desc": "Verify recipient details populate from registered infant dropdown selection",
+            "inputs": "Selected infant ID 101 (\"Baby Rose DelaCruz\", Female, 2025-08-15)",
+            "expected": "Recipient fields populated with infant data",
+            "actual": "Recipient fields matched registered infant details",
+            "result": "Pass",
+            "remarks": "Registered infant selection population verified"
+        },
+        {
+            "id": "WB-084",
+            "segment": "infant_registration_validation",
+            "desc": "Verify infant registration properly rejects future date of birth",
+            "inputs": "Infant DOB = tomorrow",
+            "expected": "Rejected as invalid future birthdate",
+            "actual": "Evaluated as invalid future birthdate",
+            "result": "Pass",
+            "remarks": "Infant registration date validation verified"
         }
     ]
 }

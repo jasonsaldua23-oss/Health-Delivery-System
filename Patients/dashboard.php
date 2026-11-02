@@ -35,6 +35,96 @@ $purokOptionsByBarangay = bacolod_purok_catalog();
 $updateMessage = '';
 $updateSuccess = false;
 
+// Handle Infant Registration POST (AJAX or form)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'register_infant')) {
+    $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+        || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+
+    if (!verify_csrf($_POST['csrf_token'] ?? null)) {
+        if ($isAjax) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['success' => false, 'message' => 'Security token expired. Please refresh the page.'], JSON_THROW_ON_ERROR);
+            exit;
+        }
+        $updateMessage = 'Security validation failed. Please refresh the page and try again.';
+        $passwordError = true;
+    } else {
+        $infFirstName = trim((string) ($_POST['infant_first_name'] ?? ''));
+        $infMiddleName = trim((string) ($_POST['infant_middle_name'] ?? ''));
+        $infLastName = trim((string) ($_POST['infant_last_name'] ?? ''));
+        $infBirthDate = trim((string) ($_POST['infant_birth_date'] ?? ''));
+        $infGender = trim((string) ($_POST['infant_gender'] ?? ''));
+        $infRel = trim((string) ($_POST['infant_relationship'] ?? 'Parent'));
+
+        if ($infFirstName === '' || $infLastName === '' || $infBirthDate === '' || $infGender === '') {
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode(['success' => false, 'message' => 'Please fill in all required infant details (First Name, Last Name, Birthdate, Gender).'], JSON_THROW_ON_ERROR);
+                exit;
+            }
+            $updateMessage = 'Please fill in all required infant details.';
+            $passwordError = true;
+        } else {
+            $dobCheck = DateTimeImmutable::createFromFormat('!Y-m-d', $infBirthDate);
+            $today = new DateTimeImmutable('today');
+            if (!$dobCheck || $dobCheck > $today) {
+                if ($isAjax) {
+                    header('Content-Type: application/json; charset=UTF-8');
+                    echo json_encode(['success' => false, 'message' => 'Date of birth cannot be in the future.'], JSON_THROW_ON_ERROR);
+                    exit;
+                }
+                $updateMessage = 'Infant date of birth cannot be in the future.';
+                $passwordError = true;
+            } else {
+                $infId = save_or_update_infant_profile([
+                    'patient_id' => $patientId,
+                    'first_name' => $infFirstName,
+                    'middle_name' => $infMiddleName,
+                    'last_name' => $infLastName,
+                    'birth_date' => $infBirthDate,
+                    'gender' => $infGender,
+                    'relationship' => $infRel,
+                    'mother_name' => (strcasecmp((string)($_SESSION['patient_gender'] ?? ''), 'Female') === 0 ? (string)($_SESSION['patient_name'] ?? '') : ''),
+                    'father_name' => (strcasecmp((string)($_SESSION['patient_gender'] ?? ''), 'Male') === 0 ? (string)($_SESSION['patient_name'] ?? '') : ''),
+                    'guardian_name' => ($infRel === 'Guardian' ? (string)($_SESSION['patient_name'] ?? '') : ''),
+                ]);
+
+                if ($infId) {
+                    $fullName = trim($infFirstName . ' ' . ($infMiddleName !== '' ? $infMiddleName . ' ' : '') . $infLastName);
+                    if ($isAjax) {
+                        header('Content-Type: application/json; charset=UTF-8');
+                        echo json_encode([
+                            'success' => true,
+                            'message' => 'Infant registered successfully!',
+                            'infant' => [
+                                'id' => $infId,
+                                'first_name' => $infFirstName,
+                                'middle_name' => $infMiddleName,
+                                'last_name' => $infLastName,
+                                'full_name' => $fullName,
+                                'birth_date' => $infBirthDate,
+                                'gender' => $infGender,
+                                'relationship' => $infRel,
+                            ]
+                        ], JSON_THROW_ON_ERROR);
+                        exit;
+                    }
+                    $updateSuccess = true;
+                    $updateMessage = "Infant \"{$fullName}\" registered successfully under your account!";
+                } else {
+                    if ($isAjax) {
+                        header('Content-Type: application/json; charset=UTF-8');
+                        echo json_encode(['success' => false, 'message' => 'Failed to register infant record.'], JSON_THROW_ON_ERROR);
+                        exit;
+                    }
+                    $updateMessage = 'Failed to register infant record.';
+                    $passwordError = true;
+                }
+            }
+        }
+    }
+}
+
 // Handle Account Update POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'update_account')) {
     if (!verify_csrf($_POST['csrf_token'] ?? null)) {
@@ -134,6 +224,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'upda
                 }
             } catch (Throwable $e) {}
 
+            // If infant fields are filled, register infant as well
+            $infFirstName = trim((string) ($_POST['infant_first_name'] ?? ''));
+            $infMiddleName = trim((string) ($_POST['infant_middle_name'] ?? ''));
+            $infLastName = trim((string) ($_POST['infant_last_name'] ?? ''));
+            $infBirthDate = trim((string) ($_POST['infant_birth_date'] ?? ''));
+            $infGender = trim((string) ($_POST['infant_gender'] ?? ''));
+            $infRel = trim((string) ($_POST['infant_relationship'] ?? 'Parent'));
+
+            if ($infFirstName !== '' && $infLastName !== '' && $infBirthDate !== '' && $infGender !== '') {
+                save_or_update_infant_profile([
+                    'patient_id' => $patientId,
+                    'first_name' => $infFirstName,
+                    'middle_name' => $infMiddleName,
+                    'last_name' => $infLastName,
+                    'birth_date' => $infBirthDate,
+                    'gender' => $infGender,
+                    'relationship' => $infRel,
+                    'mother_name' => ($gender === 'Female' ? $patientName : ''),
+                    'father_name' => ($gender === 'Male' ? $patientName : ''),
+                    'guardian_name' => ($infRel === 'Guardian' ? $patientName : ''),
+                ]);
+            }
+
             $patientName = (string) $_SESSION['patient_name'];
             $updateSuccess = true;
             $updateMessage = 'Your account and personal details have been updated successfully!';
@@ -164,6 +277,9 @@ if (!empty($patientId)) {
         } catch (Throwable $e) {}
     }
 }
+
+// Load registered infants for current patient
+$registeredInfants = !empty($patientId) ? fetch_registered_infants_for_patient($patientId) : [];
 
 $rawAddress = (string) ($patientAccount['complete_address'] ?? $_SESSION['patient_complete_address'] ?? '');
 $stationName = (string) ($patientAccount['station_name'] ?? $patientAccount['station_slug'] ?? $patientBarangay);
@@ -4552,6 +4668,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
             <input type="hidden" name="action" value="update_account">
             <input type="hidden" name="change_password_active" id="changePasswordActive" value="0">
             <input type="hidden" name="change_address_active" id="changeAddressActive" value="0">
+            <input type="hidden" name="register_infant_active" id="registerInfantActive" value="0">
 
             <!-- Section 1: Personal & Contact Information -->
             <div class="account-section-divider">
@@ -4611,6 +4728,114 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                 <div class="form-group-item">
                     <label for="accPatientId">Patient ID Number</label>
                     <input type="text" id="accPatientId" class="form-input-field" value="<?= h($patientId); ?>" readonly>
+                </div>
+            </div>
+
+            <!-- Registered Infant Section (Below Email Address and Above Account Security) -->
+            <div class="account-section-divider">
+                <?= iconSvg('baby'); ?>
+                <span>Registered Infant / Child</span>
+            </div>
+
+            <div id="infantContainer">
+                <?php if (!empty($registeredInfants)): ?>
+                    <div class="registered-infants-list" id="registeredInfantsList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+                        <?php foreach ($registeredInfants as $regInf): ?>
+                            <div class="registered-infant-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #f0fdf4; border: 1.5px solid #a7f3d0; border-radius: 14px;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <span style="width: 38px; height: 38px; border-radius: 50%; background: #dcfce7; color: #059669; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><?= iconSvg('baby'); ?></span>
+                                    <div>
+                                        <strong style="font-size: 0.95rem; color: #065f46; display: block;"><?= h($regInf['full_name']); ?></strong>
+                                        <div style="font-size: 0.82rem; color: #047857; margin-top: 2px;">
+                                            DOB: <?= h($regInf['birth_date']); ?> &bull; Gender: <?= h($regInf['gender'] ?: 'Unspecified'); ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span style="font-size: 0.76rem; font-weight: 700; background: #bbf7d0; color: #166534; padding: 4px 10px; border-radius: 999px;">
+                                    <?= h($regInf['relationship'] ?? 'Child'); ?>
+                                </span>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="registered-infants-list" id="registeredInfantsList" style="display: none; flex-direction: column; gap: 8px; margin-bottom: 12px;"></div>
+                <?php endif; ?>
+
+                <div class="account-action-box" id="infantSummaryBox">
+                    <div class="action-box-info">
+                        <strong><?= !empty($registeredInfants) ? 'Register Another Infant' : 'Register Infant / Child'; ?></strong>
+                        <p><?= !empty($registeredInfants) ? count($registeredInfants) . ' infant(s) registered under your account' : 'Register your baby or child under your patient profile for immunization bookings'; ?></p>
+                    </div>
+                    <button type="button" class="btn-action-toggle" id="btnToggleInfantSection">
+                        <?= iconSvg('plus'); ?>
+                        <span>Register Infant</span>
+                    </button>
+                </div>
+
+                <div class="collapsible-panel" id="infantFieldsPanel">
+                    <div class="panel-header-inline">
+                        <strong>Recipient Details (Infant / Child)</strong>
+                        <button type="button" class="btn-text-cancel" id="btnCancelInfant">Cancel</button>
+                    </div>
+                    <p class="form-help-hint" style="margin-bottom: 14px;">
+                        Provide the recipient details of the infant to register them under your account name for immunization appointments.
+                    </p>
+
+                    <div id="infantRegAlert" style="display: none; padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; font-size: 0.88rem; font-weight: 600;"></div>
+
+                    <div class="form-row-grid">
+                        <div class="form-group-item">
+                            <label for="accInfantFirstName">First Name <span class="required">*</span></label>
+                            <input type="text" id="accInfantFirstName" name="infant_first_name" class="form-input-field capitalize-input" placeholder="First name">
+                        </div>
+                        <div class="form-group-item">
+                            <label for="accInfantMiddleName">Middle Name</label>
+                            <input type="text" id="accInfantMiddleName" name="infant_middle_name" class="form-input-field capitalize-input" placeholder="Middle name (optional)">
+                        </div>
+                    </div>
+
+                    <div class="form-row-grid">
+                        <div class="form-group-item">
+                            <label for="accInfantLastName">Last Name <span class="required">*</span></label>
+                            <input type="text" id="accInfantLastName" name="infant_last_name" class="form-input-field capitalize-input" placeholder="Last name">
+                        </div>
+                        <div class="form-group-item">
+                            <label for="accInfantBirthDate">Date of Birth <span class="required">*</span></label>
+                            <input type="date" id="accInfantBirthDate" name="infant_birth_date" class="form-input-field" max="<?= date('Y-m-d'); ?>">
+                        </div>
+                    </div>
+
+                    <div class="form-row-grid">
+                        <div class="form-group-item">
+                            <label>Baby's Gender <span class="required">*</span></label>
+                            <div class="gender-radio-options">
+                                <label class="gender-radio-card" id="cardInfantGenderMale">
+                                    <input type="radio" name="infant_gender" value="Male" id="accInfantGenderMale">
+                                    <span class="custom-radio-circle"></span>
+                                    <span class="radio-label-text">Male</span>
+                                </label>
+                                <label class="gender-radio-card" id="cardInfantGenderFemale">
+                                    <input type="radio" name="infant_gender" value="Female" id="accInfantGenderFemale">
+                                    <span class="custom-radio-circle"></span>
+                                    <span class="radio-label-text">Female</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group-item">
+                            <label for="accInfantRelationship">Relationship to Infant <span class="required">*</span></label>
+                            <select id="accInfantRelationship" name="infant_relationship" class="form-input-field">
+                                <option value="Parent" selected>Parent</option>
+                                <option value="Guardian">Guardian</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px;">
+                        <button type="button" class="btn-action-toggle" id="btnSaveInfantAction" style="background: #059669; color: #ffffff; border-color: #059669; padding: 10px 20px; font-weight: 700;">
+                            <?= iconSvg('plus'); ?>
+                            <span>Save & Register Infant</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -4931,6 +5156,166 @@ document.addEventListener('DOMContentLoaded', function () {
             addressFieldsPanel.classList.remove('open');
             addressSummaryBox.style.display = 'flex';
             changeAddressActive.value = '0';
+        });
+    }
+
+    // Toggle Infant Registration Section
+    const btnToggleInfantSection = document.getElementById('btnToggleInfantSection');
+    const btnCancelInfant = document.getElementById('btnCancelInfant');
+    const infantSummaryBox = document.getElementById('infantSummaryBox');
+    const infantFieldsPanel = document.getElementById('infantFieldsPanel');
+    const registerInfantActive = document.getElementById('registerInfantActive');
+    const accInfantFirstName = document.getElementById('accInfantFirstName');
+    const accInfantMiddleName = document.getElementById('accInfantMiddleName');
+    const accInfantLastName = document.getElementById('accInfantLastName');
+    const accInfantBirthDate = document.getElementById('accInfantBirthDate');
+    const btnSaveInfantAction = document.getElementById('btnSaveInfantAction');
+    const infantRegAlert = document.getElementById('infantRegAlert');
+
+    if (btnToggleInfantSection) {
+        btnToggleInfantSection.addEventListener('click', function () {
+            infantSummaryBox.style.display = 'none';
+            infantFieldsPanel.classList.add('open');
+            if (registerInfantActive) registerInfantActive.value = '1';
+            accInfantFirstName?.focus();
+        });
+    }
+
+    if (btnCancelInfant) {
+        btnCancelInfant.addEventListener('click', function () {
+            infantFieldsPanel.classList.remove('open');
+            infantSummaryBox.style.display = 'flex';
+            if (registerInfantActive) registerInfantActive.value = '0';
+            if (accInfantFirstName) accInfantFirstName.value = '';
+            if (accInfantMiddleName) accInfantMiddleName.value = '';
+            if (accInfantLastName) accInfantLastName.value = '';
+            if (accInfantBirthDate) accInfantBirthDate.value = '';
+            document.querySelectorAll('#infantFieldsPanel input[name="infant_gender"]').forEach(r => {
+                r.checked = false;
+                r.closest('.gender-radio-card')?.classList.remove('selected');
+            });
+            if (infantRegAlert) infantRegAlert.style.display = 'none';
+        });
+    }
+
+    // Gender radio cards inside infant panel
+    document.querySelectorAll('#infantFieldsPanel input[name="infant_gender"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+            document.querySelectorAll('#infantFieldsPanel .gender-radio-card').forEach(card => card.classList.remove('selected'));
+            if (this.checked) {
+                this.closest('.gender-radio-card')?.classList.add('selected');
+            }
+        });
+    });
+
+    // Save & Register Infant via AJAX
+    if (btnSaveInfantAction) {
+        btnSaveInfantAction.addEventListener('click', async function () {
+            const fn = accInfantFirstName ? accInfantFirstName.value.trim() : '';
+            const mn = accInfantMiddleName ? accInfantMiddleName.value.trim() : '';
+            const ln = accInfantLastName ? accInfantLastName.value.trim() : '';
+            const dob = accInfantBirthDate ? accInfantBirthDate.value.trim() : '';
+            const gEl = document.querySelector('#infantFieldsPanel input[name="infant_gender"]:checked');
+            const g = gEl ? gEl.value : '';
+            const rel = document.getElementById('accInfantRelationship') ? document.getElementById('accInfantRelationship').value : 'Parent';
+            const csrf = document.querySelector('#accountForm input[name="csrf_token"]')?.value || '';
+
+            if (!fn || !ln || !dob || !g) {
+                if (infantRegAlert) {
+                    infantRegAlert.style.display = 'block';
+                    infantRegAlert.style.background = '#fef2f2';
+                    infantRegAlert.style.border = '1px solid #fecaca';
+                    infantRegAlert.style.color = '#dc2626';
+                    infantRegAlert.textContent = 'Please fill in all required infant details (First Name, Last Name, Birthdate, and Gender).';
+                }
+                return;
+            }
+
+            btnSaveInfantAction.disabled = true;
+            btnSaveInfantAction.textContent = 'Saving Infant...';
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'register_infant');
+                formData.append('csrf_token', csrf);
+                formData.append('infant_first_name', fn);
+                formData.append('infant_middle_name', mn);
+                formData.append('infant_last_name', ln);
+                formData.append('infant_birth_date', dob);
+                formData.append('infant_gender', g);
+                formData.append('infant_relationship', rel);
+
+                const response = await fetch('dashboard.php', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    // Update infant list UI dynamically
+                    const listEl = document.getElementById('registeredInfantsList');
+                    if (listEl) {
+                        listEl.style.display = 'flex';
+                        const item = document.createElement('div');
+                        item.className = 'registered-infant-item';
+                        item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #f0fdf4; border: 1.5px solid #a7f3d0; border-radius: 14px;';
+                        item.innerHTML = `
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span style="width: 38px; height: 38px; border-radius: 50%; background: #dcfce7; color: #059669; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">👶</span>
+                                <div>
+                                    <strong style="font-size: 0.95rem; color: #065f46; display: block;">${result.infant.full_name}</strong>
+                                    <div style="font-size: 0.82rem; color: #047857; margin-top: 2px;">
+                                        DOB: ${result.infant.birth_date} &bull; Gender: ${result.infant.gender}
+                                    </div>
+                                </div>
+                            </div>
+                            <span style="font-size: 0.76rem; font-weight: 700; background: #bbf7d0; color: #166534; padding: 4px 10px; border-radius: 999px;">
+                                ${result.infant.relationship || 'Child'}
+                            </span>
+                        `;
+                        listEl.appendChild(item);
+                    }
+
+                    // Reset form and close
+                    if (accInfantFirstName) accInfantFirstName.value = '';
+                    if (accInfantMiddleName) accInfantMiddleName.value = '';
+                    if (accInfantLastName) accInfantLastName.value = '';
+                    if (accInfantBirthDate) accInfantBirthDate.value = '';
+                    document.querySelectorAll('#infantFieldsPanel input[name="infant_gender"]').forEach(r => {
+                        r.checked = false;
+                        r.closest('.gender-radio-card')?.classList.remove('selected');
+                    });
+                    if (registerInfantActive) registerInfantActive.value = '0';
+                    infantFieldsPanel.classList.remove('open');
+                    infantSummaryBox.style.display = 'flex';
+                    const summaryInfoStrong = infantSummaryBox.querySelector('.action-box-info strong');
+                    if (summaryInfoStrong) summaryInfoStrong.textContent = 'Register Another Infant';
+                    const summaryInfoP = infantSummaryBox.querySelector('.action-box-info p');
+                    if (summaryInfoP) summaryInfoP.textContent = 'Add another child or dependent under your patient profile.';
+
+                    alert('Infant "' + result.infant.full_name + '" registered successfully under your account!');
+                } else {
+                    if (infantRegAlert) {
+                        infantRegAlert.style.display = 'block';
+                        infantRegAlert.style.background = '#fef2f2';
+                        infantRegAlert.style.border = '1px solid #fecaca';
+                        infantRegAlert.style.color = '#dc2626';
+                        infantRegAlert.textContent = result.message || 'Error registering infant.';
+                    }
+                }
+            } catch (err) {
+                if (infantRegAlert) {
+                    infantRegAlert.style.display = 'block';
+                    infantRegAlert.style.background = '#fef2f2';
+                    infantRegAlert.style.border = '1px solid #fecaca';
+                    infantRegAlert.style.color = '#dc2626';
+                    infantRegAlert.textContent = 'An unexpected error occurred while saving the infant.';
+                }
+            } finally {
+                btnSaveInfantAction.disabled = false;
+                btnSaveInfantAction.innerHTML = '<span>Save & Register Infant</span>';
+            }
         });
     }
 
