@@ -349,7 +349,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
 
     if ($selectedProgram['slug'] === 'immunization') {
         $immRel = $formData['immunization_relationship'];
-        if ($immRel === '' || !in_array($immRel, ['Self', 'Parent', 'Guardian', 'Parent & Guardian', 'Parent / Guardian'], true)) {
+        if ($immRel === '' || !in_array($immRel, ['Self', 'Parent', 'Guardian'], true)) {
             $errors[] = 'Please select your relationship to the recipient (Self, Parent, or Guardian).';
         } elseif ($immRel !== 'Self') {
             $selectedInfantId = (int) ($_POST['selected_infant_id'] ?? 0);
@@ -861,14 +861,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                                         <select data-required name="immunization_relationship" id="immunization_relationship" class="form-select-field">
                                             <option value="">-- Select Relationship --</option>
                                             <option value="Self" <?= $formData['immunization_relationship'] === 'Self' ? 'selected' : ''; ?>>Self</option>
-                                            <option value="Parent" <?= in_array($formData['immunization_relationship'], ['Parent', 'Parent & Guardian'], true) ? 'selected' : ''; ?>>Parent</option>
+                                            <option value="Parent" <?= $formData['immunization_relationship'] === 'Parent' ? 'selected' : ''; ?>>Parent</option>
                                             <option value="Guardian" <?= $formData['immunization_relationship'] === 'Guardian' ? 'selected' : ''; ?>>Guardian</option>
-                                            <option value="Parent & Guardian" <?= $formData['immunization_relationship'] === 'Parent & Guardian' ? 'selected' : ''; ?>>Parent & Guardian</option>
                                         </select>
                                     </label>
                                 </div>
 
-                                <div id="extraRecipientFields" class="extra-recipient-fields-wrap" style="<?= in_array($formData['immunization_relationship'], ['Parent', 'Guardian', 'Parent & Guardian', 'Parent / Guardian'], true) ? '' : 'display:none;'; ?>">
+                                <div id="extraRecipientFields" class="extra-recipient-fields-wrap" style="<?= in_array($formData['immunization_relationship'], ['Parent', 'Guardian'], true) ? '' : 'display:none;'; ?>">
                                     <div class="recipient-subheading">
                                         <span class="subheading-icon" style="width: 18px; height: 18px; min-width: 18px; max-width: 18px; min-height: 18px; max-height: 18px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"><?= iconSvg('baby'); ?></span>
                                         <strong>Select Registered Infant / Child</strong>
