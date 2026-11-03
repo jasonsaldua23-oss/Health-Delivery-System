@@ -5848,6 +5848,40 @@ button { border: 0; cursor: pointer; }
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
 }
 
+.clinical-dialog-card.has-confidential-watermark {
+  position: relative;
+}
+
+.confidential-watermark-overlay {
+  position: absolute;
+  top: 72px;
+  bottom: 68px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+  z-index: 15;
+  overflow: hidden;
+}
+
+.confidential-watermark-stamp {
+  border: 6px solid rgba(211, 47, 47, 0.13);
+  border-radius: 18px;
+  padding: 12px 34px;
+  color: rgba(211, 47, 47, 0.13);
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  transform: rotate(-15deg);
+}
+
 .patient-modal-banner {
   display: flex;
   align-items: center;

@@ -4449,7 +4449,10 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                     : '?page=patients' . ($programFilter !== '' ? '&program=' . urlencode($programFilter) : '') . ($patientDateFilter !== '' ? '&patient_date=' . urlencode($patientDateFilter) : '');
                 ?>
                 <section class="account-modal-backdrop" id="viewClinicalModalBackdrop" data-return-url="<?= h($viewModalReturnUrl); ?>">
-                    <div class="account-modal-card clinical-dialog-card" role="dialog" aria-modal="true">
+                    <div class="account-modal-card clinical-dialog-card has-confidential-watermark" role="dialog" aria-modal="true">
+                        <div class="confidential-watermark-overlay" aria-hidden="true">
+                            <div class="confidential-watermark-stamp">CONFIDENTIAL</div>
+                        </div>
                         <div class="account-modal-header">
                             <div class="account-modal-title-group">
                                 <span class="account-modal-icon"><?= staff_icon('shield'); ?></span>
