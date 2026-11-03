@@ -453,6 +453,76 @@ const recipientDobInput = document.getElementById('recipient_birth_date');
 const recipientGenderInput = document.getElementById('recipient_gender');
 const recipientGenderRadios = document.querySelectorAll('input[name="recipient_gender"]');
 
+const allInfantOptions = selectedInfantSelect
+    ? Array.from(selectedInfantSelect.querySelectorAll('option'))
+        .filter((opt) => opt.value !== '')
+        .map((opt) => ({
+            value: opt.value,
+            text: opt.textContent,
+            firstName: opt.getAttribute('data-first-name') || '',
+            middleName: opt.getAttribute('data-middle-name') || '',
+            lastName: opt.getAttribute('data-last-name') || '',
+            birthDate: opt.getAttribute('data-birth-date') || '',
+            gender: opt.getAttribute('data-gender') || '',
+            relationship: (opt.getAttribute('data-relationship') || 'Parent').trim(),
+            initiallySelected: opt.selected,
+        }))
+    : [];
+
+function filterInfantsByRelationship(relValue) {
+    if (!selectedInfantSelect) return;
+
+    const currentSelectedValue = selectedInfantSelect.value || (allInfantOptions.find((o) => o.initiallySelected)?.value || '');
+    allInfantOptions.forEach((o) => { o.initiallySelected = false; });
+
+    const normalizedRel = (relValue || '').trim().toLowerCase();
+    const matchingInfants = (normalizedRel === 'parent' || normalizedRel === 'guardian')
+        ? allInfantOptions.filter((inf) => inf.relationship.toLowerCase() === normalizedRel)
+        : [];
+
+    selectedInfantSelect.innerHTML = '<option value="">-- Choose Registered Infant --</option>';
+
+    let preservedSelection = false;
+    matchingInfants.forEach((inf) => {
+        const option = document.createElement('option');
+        option.value = inf.value;
+        option.textContent = inf.text;
+        option.setAttribute('data-first-name', inf.firstName);
+        option.setAttribute('data-middle-name', inf.middleName);
+        option.setAttribute('data-last-name', inf.lastName);
+        option.setAttribute('data-birth-date', inf.birthDate);
+        option.setAttribute('data-gender', inf.gender);
+        option.setAttribute('data-relationship', inf.relationship);
+        if (currentSelectedValue && inf.value === currentSelectedValue) {
+            option.selected = true;
+            preservedSelection = true;
+        }
+        selectedInfantSelect.appendChild(option);
+    });
+
+    if (!preservedSelection) {
+        selectedInfantSelect.value = '';
+    }
+
+    const noInfantsNotice = document.getElementById('noInfantsNotice');
+    const noInfantsNoticeText = document.getElementById('noInfantsNoticeText');
+    if (noInfantsNotice && (normalizedRel === 'parent' || normalizedRel === 'guardian')) {
+        if (matchingInfants.length === 0) {
+            noInfantsNotice.style.display = 'block';
+            if (noInfantsNoticeText) {
+                if (allInfantOptions.length === 0) {
+                    noInfantsNoticeText.textContent = "You haven't registered an infant under your account yet. Please register your infant in Account Settings before booking an infant immunization appointment.";
+                } else {
+                    const roleLabel = normalizedRel === 'guardian' ? 'Guardian' : 'Parent';
+                    noInfantsNoticeText.textContent = `No registered infant under your account matches the "${roleLabel}" relationship role. Please choose the matching relationship to recipient or register the infant as a ${roleLabel} in Account Settings.`;
+                }
+            }
+        } else {
+            noInfantsNotice.style.display = 'none';
+        }
+    }
+}
+
 function updateSelectedInfantDetails() {
     if (!selectedInfantSelect) return;
     const opt = selectedInfantSelect.options[selectedInfantSelect.selectedIndex];
@@ -498,6 +568,7 @@ function toggleImmunizationRecipientFields() {
     if (isDependent) {
         extraRecipientFields.style.display = 'block';
         if (selectedInfantSelect) {
+            filterInfantsByRelationship(val);
             selectedInfantSelect.setAttribute('data-required', '');
             selectedInfantSelect.required = true;
             updateSelectedInfantDetails();
@@ -512,6 +583,7 @@ function toggleImmunizationRecipientFields() {
         if (selectedInfantSelect) {
             selectedInfantSelect.removeAttribute('data-required');
             selectedInfantSelect.required = false;
+            selectedInfantSelect.value = '';
             if (recipientFirstInput) recipientFirstInput.value = '';
             if (recipientMiddleInput) recipientMiddleInput.value = '';
             if (recipientLastInput) recipientLastInput.value = '';

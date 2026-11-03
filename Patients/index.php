@@ -353,17 +353,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
             $errors[] = 'Please select your relationship to the recipient (Self, Parent, or Guardian).';
         } elseif ($immRel !== 'Self') {
             $selectedInfantId = (int) ($_POST['selected_infant_id'] ?? 0);
-            if ($selectedInfantId > 0 && ($formData['recipient_first_name'] === '' || $formData['recipient_last_name'] === '')) {
-                $infantData = fetch_infant_profile_by_id($selectedInfantId);
-                if ($infantData && (string)$infantData['patient_id'] === $patientId) {
-                    $formData['recipient_first_name'] = $infantData['first_name'];
-                    $formData['recipient_middle_name'] = $infantData['middle_name'] ?? '';
-                    $formData['recipient_last_name'] = $infantData['last_name'];
-                    $formData['recipient_birth_date'] = $infantData['birth_date'];
-                    $formData['recipient_gender'] = $infantData['gender'] ?? '';
+            $matchedInfant = null;
+            foreach ($registeredInfants as $regInf) {
+                if ($selectedInfantId > 0 && (int)($regInf['id'] ?? 0) === $selectedInfantId) {
+                    $matchedInfant = $regInf;
+                    break;
+                }
+                if (
+                    $formData['recipient_first_name'] !== ''
+                    && $formData['recipient_last_name'] !== ''
+                    && strcasecmp($formData['recipient_first_name'], (string)$regInf['first_name']) === 0
+                    && strcasecmp($formData['recipient_last_name'], (string)$regInf['last_name']) === 0
+                ) {
+                    $matchedInfant = $regInf;
+                    break;
                 }
             }
-            if ($formData['recipient_first_name'] === '' || $formData['recipient_last_name'] === '' || $formData['recipient_birth_date'] === '' || $formData['recipient_gender'] === '') {
+
+            $roleMismatchError = false;
+            if ($matchedInfant !== null) {
+                $matchedRole = (string)($matchedInfant['role_type'] ?? 'Parent');
+                if (strcasecmp($matchedRole, $immRel) !== 0) {
+                    $errors[] = "The selected infant is registered under your account as {$matchedRole}, not {$immRel}. Please choose the matching relationship to recipient.";
+                    $roleMismatchError = true;
+                    $formData['recipient_first_name'] = '';
+                    $formData['recipient_middle_name'] = '';
+                    $formData['recipient_last_name'] = '';
+                    $formData['recipient_birth_date'] = '';
+                    $formData['recipient_gender'] = '';
+                } else {
+                    $formData['recipient_first_name'] = (string)$matchedInfant['first_name'];
+                    $formData['recipient_middle_name'] = (string)($matchedInfant['middle_name'] ?? '');
+                    $formData['recipient_last_name'] = (string)$matchedInfant['last_name'];
+                    $formData['recipient_birth_date'] = (string)$matchedInfant['birth_date'];
+                    $formData['recipient_gender'] = (string)($matchedInfant['gender'] ?? '');
+                }
+            } elseif ($selectedInfantId > 0) {
+                $infantData = fetch_infant_profile_by_id($selectedInfantId);
+                if ($infantData && (string)$infantData['patient_id'] === $patientId) {
+                    $infRoleInfo = resolve_infant_guardian_role_details((string)($infantData['relationship'] ?? 'Parent'), '');
+                    $infRoleType = $infRoleInfo['is_guardian'] ? 'Guardian' : 'Parent';
+                    if (strcasecmp($infRoleType, $immRel) !== 0) {
+                        $errors[] = "The selected infant is registered under your account as {$infRoleType}, not {$immRel}. Please choose the matching relationship to recipient.";
+                        $roleMismatchError = true;
+                        $formData['recipient_first_name'] = '';
+                        $formData['recipient_middle_name'] = '';
+                        $formData['recipient_last_name'] = '';
+                        $formData['recipient_birth_date'] = '';
+                        $formData['recipient_gender'] = '';
+                    } else {
+                        $formData['recipient_first_name'] = $infantData['first_name'];
+                        $formData['recipient_middle_name'] = $infantData['middle_name'] ?? '';
+                        $formData['recipient_last_name'] = $infantData['last_name'];
+                        $formData['recipient_birth_date'] = $infantData['birth_date'];
+                        $formData['recipient_gender'] = $infantData['gender'] ?? '';
+                    }
+                }
+            }
+
+            if (!$roleMismatchError && ($formData['recipient_first_name'] === '' || $formData['recipient_last_name'] === '' || $formData['recipient_birth_date'] === '' || $formData['recipient_gender'] === '')) {
                 $errors[] = 'Please select a registered infant under your account.';
             }
         }
@@ -880,8 +928,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                                                 <option value="">-- Choose Registered Infant --</option>
                                                 <?php foreach ($registeredInfants as $inf): ?>
                                                     <?php 
-                                                        $isSelected = (!empty($_POST['selected_infant_id']) && (string)$_POST['selected_infant_id'] === (string)$inf['id']) || 
-                                                            (strcasecmp($formData['recipient_first_name'], $inf['first_name']) === 0 && strcasecmp($formData['recipient_last_name'], $inf['last_name']) === 0);
+                                                        $infRoleType = (string)($inf['role_type'] ?? 'Parent');
+                                                        $matchesSelectedRel = ($formData['immunization_relationship'] === '' || strcasecmp($formData['immunization_relationship'], $infRoleType) === 0);
+                                                        $isSelected = $matchesSelectedRel && (
+                                                            (!empty($_POST['selected_infant_id']) && (string)$_POST['selected_infant_id'] === (string)$inf['id']) || 
+                                                            (strcasecmp($formData['recipient_first_name'], $inf['first_name']) === 0 && strcasecmp($formData['recipient_last_name'], $inf['last_name']) === 0)
+                                                        );
                                                     ?>
                                                     <option value="<?= h((string)$inf['id']); ?>" 
                                                         data-first-name="<?= h($inf['first_name']); ?>"
@@ -889,6 +941,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                                                         data-last-name="<?= h($inf['last_name']); ?>"
                                                         data-birth-date="<?= h($inf['birth_date']); ?>"
                                                         data-gender="<?= h($inf['gender']); ?>"
+                                                        data-relationship="<?= h($infRoleType); ?>"
                                                         <?= $isSelected ? 'selected' : ''; ?>>
                                                         <?= h($inf['full_name']); ?> (DOB: <?= h($inf['birth_date']); ?> &bull; <?= h($inf['gender']); ?>)
                                                     </option>
@@ -918,21 +971,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                                         <span style="color: #059669; display: flex; align-items: center;"><?= iconSvg('check'); ?></span>
                                     </div>
 
-                                    <?php if (empty($registeredInfants)): ?>
-                                        <div id="noInfantsNotice" style="margin-top: 10px; padding: 14px 16px; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; color: #92400e;">
-                                            <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.92rem; margin-bottom: 4px;">
-                                                <span><?= iconSvg('sparkle'); ?></span>
-                                                <span>No Registered Infant Found</span>
-                                            </div>
-                                            <p style="font-size: 0.85rem; margin: 0 0 10px 0; line-height: 1.4;">
-                                                You haven't registered an infant under your account yet. Please register your infant in Account Settings before booking an infant immunization appointment.
-                                            </p>
-                                            <a href="dashboard.php" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: #d97706; color: #ffffff; padding: 7px 14px; border-radius: 7px; text-decoration: none; font-size: 0.84rem; font-weight: 600;">
-                                                <?= iconSvg('user'); ?>
-                                                <span>Go to Account Settings</span>
-                                            </a>
+                                    <div id="noInfantsNotice" style="margin-top: 10px; padding: 14px 16px; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; color: #92400e; display: <?= empty($registeredInfants) ? 'block' : 'none'; ?>;">
+                                        <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.92rem; margin-bottom: 4px;">
+                                            <span><?= iconSvg('sparkle'); ?></span>
+                                            <span id="noInfantsNoticeTitle">No Registered Infant Found</span>
                                         </div>
-                                    <?php endif; ?>
+                                        <p id="noInfantsNoticeText" style="font-size: 0.85rem; margin: 0 0 10px 0; line-height: 1.4;">
+                                            You haven't registered an infant under your account yet. Please register your infant in Account Settings before booking an infant immunization appointment.
+                                        </p>
+                                        <a href="dashboard.php" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: #d97706; color: #ffffff; padding: 7px 14px; border-radius: 7px; text-decoration: none; font-size: 0.84rem; font-weight: 600;">
+                                            <?= iconSvg('user'); ?>
+                                            <span>Go to Account Settings</span>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         <?php endif; ?>

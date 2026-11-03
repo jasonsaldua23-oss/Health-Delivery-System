@@ -4032,7 +4032,7 @@ function resolve_infant_guardian_role_details(string $relationship, string $pare
     $isGuardian = (
         $rLower === 'guardian' ||
         $rLower === 'legal guardian' ||
-        stripos($rLower, 'guardian') !== false ||
+        (stripos($rLower, 'guardian') !== false && stripos($rLower, 'parent') === false) ||
         stripos($rLower, 'grand') !== false ||
         stripos($rLower, 'aunt') !== false ||
         stripos($rLower, 'uncle') !== false ||
@@ -5050,6 +5050,27 @@ function fetch_registered_infants_for_patient(string $patientId): array
     }
 
     $profiles = fetch_infant_profiles_by_patient_id($patientId);
+    $immList = [];
+    $immRelByKey = [];
+    try {
+        $immList = fetch_immunized_infants_by_patient_id($patientId);
+        foreach ($immList as $im) {
+            $rel = trim((string)($im['relationship'] ?? ''));
+            if ($rel === '' || strcasecmp($rel, 'self') === 0) {
+                continue;
+            }
+            $fn = trim((string)($im['first_name'] ?? ''));
+            $ln = trim((string)($im['last_name'] ?? ''));
+            $dob = trim((string)($im['birth_date'] ?? ''));
+            $k = strtolower($fn) . '|' . strtolower($ln) . '|' . $dob;
+            if (!isset($immRelByKey[$k]) && strcasecmp($rel, 'Child') !== 0) {
+                $immRelByKey[$k] = $rel;
+            }
+        }
+    } catch (Throwable $e) {
+        $immList = [];
+    }
+
     $seenKeys = [];
     $results = [];
 
@@ -5061,6 +5082,24 @@ function fetch_registered_infants_for_patient(string $patientId): array
         $key = strtolower($fn) . '|' . strtolower($ln) . '|' . $dob;
         $seenKeys[$key] = true;
         $fullName = trim($fn . ' ' . ($mn !== '' ? $mn . ' ' : '') . $ln);
+
+        $rawRel = trim((string)($p['relationship'] ?? ''));
+        if (($rawRel === '' || strcasecmp($rawRel, 'Child') === 0) && isset($immRelByKey[$key])) {
+            $rawRel = $immRelByKey[$key];
+        }
+        if ($rawRel === '') {
+            $rawRel = 'Parent';
+        }
+
+        $roleInfo = resolve_infant_guardian_role_details($rawRel, '');
+        $isGuardianRole = $roleInfo['is_guardian'] || (
+            strcasecmp($rawRel, 'Child') === 0
+            && trim((string)($p['guardian_name'] ?? '')) !== ''
+            && trim((string)($p['mother_name'] ?? '')) === ''
+            && trim((string)($p['father_name'] ?? '')) === ''
+        );
+        $roleType = $isGuardianRole ? 'Guardian' : 'Parent';
+
         $results[] = [
             'id' => (int) $p['id'],
             'first_name' => $fn,
@@ -5068,45 +5107,46 @@ function fetch_registered_infants_for_patient(string $patientId): array
             'last_name' => $ln,
             'birth_date' => $dob,
             'gender' => (string)($p['gender'] ?? ''),
-            'relationship' => (string)($p['relationship'] ?? 'Child'),
+            'relationship' => $rawRel,
+            'role_type' => $roleType,
             'full_name' => $fullName,
             'source' => 'infant_profiles'
         ];
     }
 
     // Also include historical infants from immunized_infants if not already present
-    try {
-        $immList = fetch_immunized_infants_by_patient_id($patientId);
-        foreach ($immList as $im) {
-            $rel = strtolower(trim((string)($im['relationship'] ?? '')));
-            if ($rel === 'self') {
-                continue;
-            }
-            $fn = trim((string)($im['first_name'] ?? ''));
-            $mn = trim((string)($im['middle_name'] ?? ''));
-            $ln = trim((string)($im['last_name'] ?? ''));
-            $dob = trim((string)($im['birth_date'] ?? ''));
-            if ($fn === '' || $ln === '') {
-                continue;
-            }
-            $key = strtolower($fn) . '|' . strtolower($ln) . '|' . $dob;
-            if (!isset($seenKeys[$key])) {
-                $seenKeys[$key] = true;
-                $fullName = trim($fn . ' ' . ($mn !== '' ? $mn . ' ' : '') . $ln);
-                $results[] = [
-                    'id' => (int) $im['id'],
-                    'first_name' => $fn,
-                    'middle_name' => $mn,
-                    'last_name' => $ln,
-                    'birth_date' => $dob,
-                    'gender' => (string)($im['gender'] ?? ''),
-                    'relationship' => (string)($im['relationship'] ?? 'Child'),
-                    'full_name' => $fullName,
-                    'source' => 'immunized_infants'
-                ];
-            }
+    foreach ($immList as $im) {
+        $rawRel = trim((string)($im['relationship'] ?? ''));
+        if (strcasecmp($rawRel, 'self') === 0) {
+            continue;
         }
-    } catch (Throwable $e) {}
+        $fn = trim((string)($im['first_name'] ?? ''));
+        $mn = trim((string)($im['middle_name'] ?? ''));
+        $ln = trim((string)($im['last_name'] ?? ''));
+        $dob = trim((string)($im['birth_date'] ?? ''));
+        if ($fn === '' || $ln === '') {
+            continue;
+        }
+        $key = strtolower($fn) . '|' . strtolower($ln) . '|' . $dob;
+        if (!isset($seenKeys[$key])) {
+            $seenKeys[$key] = true;
+            $fullName = trim($fn . ' ' . ($mn !== '' ? $mn . ' ' : '') . $ln);
+            $roleInfo = resolve_infant_guardian_role_details($rawRel !== '' ? $rawRel : 'Parent', '');
+            $roleType = $roleInfo['is_guardian'] ? 'Guardian' : 'Parent';
+            $results[] = [
+                'id' => (int) $im['id'],
+                'first_name' => $fn,
+                'middle_name' => $mn,
+                'last_name' => $ln,
+                'birth_date' => $dob,
+                'gender' => (string)($im['gender'] ?? ''),
+                'relationship' => $rawRel !== '' ? $rawRel : 'Child',
+                'role_type' => $roleType,
+                'full_name' => $fullName,
+                'source' => 'immunized_infants'
+            ];
+        }
+    }
 
     return $results;
 }
