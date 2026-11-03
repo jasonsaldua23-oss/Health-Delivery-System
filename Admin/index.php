@@ -1935,7 +1935,10 @@ if (!function_exists('peso')) {
                         $admRec = appointment_recipient_details($selectedAdminVisit);
                     ?>
                     <section class="service-modal-overlay report-modal-backdrop" style="display:flex;" onclick="if(event.target===this)window.location.href='?page=patients&<?= $patientHistoryBaseQuery; ?>'">
-                        <div class="service-modal-card clinical-modal-card-modern">
+                        <div class="service-modal-card clinical-modal-card-modern has-confidential-watermark">
+                            <div class="confidential-watermark-overlay" aria-hidden="true">
+                                <div class="confidential-watermark-stamp">CONFIDENTIAL</div>
+                            </div>
                             <div class="report-modal-header">
                                 <div class="report-modal-header-left">
                                     <div class="report-modal-icon-badge" style="background:#e8fbf3;color:#0db273;">
