@@ -6583,6 +6583,7 @@ window.dismissAdminToast = function() {
 let currentAdminInfantData = null;
 let currentAdminSelectedInfantIndex = 0;
 let currentAdminInfantsList = [];
+let currentAdminParentName = '';
 
 function adminEscapeHtml(str) {
     return (str || '').toString().replace(/[&<>"']/g, function(m) {
@@ -6634,7 +6635,8 @@ window.openAdminInfantViewer = function(data) {
     if (data.infant && !data.infants) {
         rawInfants = [data.infant];
     }
-    const parentName = (data.parent_name || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const parentNameDisplay = (data.parent_name || '').replace(/\s+/g, ' ').trim();
+    const parentNameLower = parentNameDisplay.toLowerCase();
 
     // Strictly filter out any account holder / parent mistakenly included in infant sub-profiles
     const infants = rawInfants.filter(function(inf) {
@@ -6642,7 +6644,7 @@ window.openAdminInfantViewer = function(data) {
         const infName = (inf.full_name || ((inf.first_name || '') + ' ' + (inf.last_name || ''))).replace(/\s+/g, ' ').trim().toLowerCase();
         const rel = (inf.relationship || '').trim().toLowerCase();
         if (rel === 'self') return false;
-        if (parentName && infName === parentName) return false;
+        if (parentNameLower && infName === parentNameLower) return false;
         // Age check: Infants/pediatric dependents are children under 18; exclude adults
         const ageLabel = (inf.age_label || '').toLowerCase();
         if (ageLabel.includes('yr') || ageLabel.includes('year')) {
@@ -6658,46 +6660,23 @@ window.openAdminInfantViewer = function(data) {
         return;
     }
 
-    // Store infants list for sub-profile selection
+    // Store infants list and account holder name for sub-profile selection
     currentAdminInfantsList = infants;
+    currentAdminParentName = parentNameDisplay || (infants[0] && infants[0].parent_name ? String(infants[0].parent_name).replace(/\s+/g, ' ').trim() : '');
 
-    // If single infant object was passed directly (legacy support), show it directly
-    if (data.infant && !data.infants) {
-        currentAdminInfantData = data.infant;
-        window.renderAdminSelectedInfant(data.infant);
-        const title = document.getElementById('adminInfantModalTitle');
-        if (title) title.textContent = 'Infant Profile & Immunization Record';
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        return;
-    }
-
-    // If only one infant, open directly
-    if (infants.length === 1) {
-        currentAdminInfantData = infants[0];
-        window.renderAdminSelectedInfant(infants[0]);
-        const title = document.getElementById('adminInfantModalTitle');
-        if (title) title.textContent = 'Infant Profile & Immunization Record';
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        return;
-    }
-
-    // Multiple infants: show selection list first
-    if (infants.length > 1) {
-        window.renderAdminInfantSelectionList(infants, parentName);
-        const title = document.getElementById('adminInfantModalTitle');
-        if (title) title.textContent = 'Registered Infant Profiles';
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        return;
-    }
+    // Always show the list of registered infants under the account holder first
+    window.renderAdminInfantSelectionList(infants, currentAdminParentName);
+    const title = document.getElementById('adminInfantModalTitle');
+    if (title) title.textContent = 'Registered Infant Profiles';
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
 };
 
 window.renderAdminInfantSelectionList = function(infants, parentName) {
     const body = document.getElementById('adminInfantModalBody');
     if (!body) return;
     const babySvg = `<?= addslashes(admin_icon('baby')); ?>`;
+    const resolvedParentName = ((parentName || currentAdminParentName || '').replace(/\s+/g, ' ').trim()) || 'Account Holder';
 
     let html = `
     <div style="margin-bottom: 20px; text-align: center;">
@@ -6707,7 +6686,7 @@ window.renderAdminInfantSelectionList = function(infants, parentName) {
         <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #1e1b4b;">Select an Infant Profile</h3>
         <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">
             ${infants.length} infant${infants.length !== 1 ? 's' : ''} registered under 
-            <strong style="color: #4c1d95;">${adminEscapeHtml(parentName.replace(/\s+/g, ' ').trim())}</strong>
+            <strong style="color: #4c1d95;">${adminEscapeHtml(resolvedParentName)}</strong>
         </p>
     </div>
     <div class="admin-infant-selection-grid">`;
@@ -6719,13 +6698,14 @@ window.renderAdminInfantSelectionList = function(infants, parentName) {
             ? '<span style="background: #fef3c7; color: #92400e; font-size: 0.7rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid #fde68a;">Guardian</span>'
             : '<span style="background: #ede9fe; color: #6d28d9; font-size: 0.7rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid #ddd6fe;">' + adminEscapeHtml(infant.role_label || 'Parent') + '</span>';
         const vaxCount = (infant.appointments && infant.appointments.length) || 0;
+        const dobFormatted = infant.birth_date ? new Date(infant.birth_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
 
         const avatarContent = photoSrc
             ? `<img src="${adminEscapeHtml(photoSrc)}" alt="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;" onerror="this.onerror=null; this.style.display='none';">`
             : '';
 
         html += `
-        <div class="admin-infant-selection-card" onclick="window.selectAdminInfantFromList(${idx})" title="Click to view ${adminEscapeHtml(infant.full_name)}'s profile">
+        <div class="admin-infant-selection-card" onclick="window.selectAdminInfantFromList(${idx})" title="Click to view ${adminEscapeHtml(infant.full_name)}'s profile and appointment history">
             <div class="admin-infant-sel-avatar">
                 ${avatarContent}
                 <span class="admin-infant-sel-avatar-fallback">${babySvg}</span>
@@ -6736,12 +6716,12 @@ window.renderAdminInfantSelectionList = function(infants, parentName) {
                     ${roleBadge}
                 </div>
                 <div class="admin-infant-sel-meta">
-                    <span>${adminEscapeHtml(infant.age_label || 'N/A')} &bull; ${adminEscapeHtml(infant.gender || 'Infant')}</span>
-                    <span class="admin-infant-sel-vax-count">${vaxCount} ${vaxCount === 1 ? 'Vaccination' : 'Vaccinations'}</span>
+                    <span>${adminEscapeHtml(infant.age_label || 'N/A')}${dobFormatted ? ' (DOB: ' + adminEscapeHtml(dobFormatted) + ')' : ''} &bull; ${adminEscapeHtml(infant.gender || 'Infant')}</span>
+                    <span class="admin-infant-sel-vax-count">${vaxCount} ${vaxCount === 1 ? 'Appointment' : 'Appointments'}</span>
                 </div>
             </div>
             <div class="admin-infant-sel-action">
-                <span>View</span>
+                <span>View Profile</span>
                 <span class="admin-infant-sel-arrow">&rarr;</span>
             </div>
         </div>`;
@@ -7008,9 +6988,9 @@ window.renderAdminSelectedInfant = function(targetInfant) {
     </div>
     `;
 
-    const backBtnHtml = (currentAdminInfantsList && currentAdminInfantsList.length > 1)
+    const backBtnHtml = (currentAdminInfantsList && currentAdminInfantsList.length >= 1)
         ? `<div style="margin-bottom: 14px;">
-               <button type="button" onclick="window.renderAdminInfantSelectionList(currentAdminInfantsList, ''); var t = document.getElementById('adminInfantModalTitle'); if(t) t.textContent='Registered Infant Profiles';" style="background: #f5f3ff; color: #6d28d9; border: 1.5px solid #ddd6fe; padding: 7px 16px; border-radius: 10px; font-weight: 700; font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s;">
+               <button type="button" onclick="window.renderAdminInfantSelectionList(currentAdminInfantsList, currentAdminParentName); var t = document.getElementById('adminInfantModalTitle'); if(t) t.textContent='Registered Infant Profiles';" style="background: #f5f3ff; color: #6d28d9; border: 1.5px solid #ddd6fe; padding: 7px 16px; border-radius: 10px; font-weight: 700; font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s;">
                    <span style="font-size: 1rem;">&larr;</span> Back to Infant List
                </button>
            </div>`

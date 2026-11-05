@@ -4363,11 +4363,6 @@ function fetch_infant_sub_profiles_by_patient_id(string $patientId, array $stati
             }
 
             $k = strtolower($spFirst . '_' . $spLast . '_' . $spDob);
-            
-            // If the infant has never been served yet, do not display the profile
-            if (empty($infantHasServedOrServing[$k])) {
-                continue;
-            }
 
             $roleInfo = resolve_infant_guardian_role_details($spRel, $parentName, $parentGender);
 
