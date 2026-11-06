@@ -749,11 +749,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $selectedStation !== null && $selec
                 <a class="home-button" href="<?= $isLoggedIn ? ('dashboard.php?booked=' . urlencode((string) ($confirmedAppointment['appointment_code'] ?? $confirmedAppointment['reference_code']))) : 'index.php'; ?>"><?= $isLoggedIn ? 'Go to My Appointments on Dashboard' : 'Return to Home'; ?></a>
                 <button
                     class="print-button"
-                    type="button"
-                    onclick="window.print()"
-                ><span class="inline-icon"><?= iconSvg('printer'); ?></span> Print Slip</button>
-                <button
-                    class="print-button"
                     id="downloadConfirmationButton"
                     type="button"
                     style="background: #e2e8f0; color: #1e293b;"
