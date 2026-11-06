@@ -614,6 +614,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appointment_id'], $_P
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'delete_on_hold_appointment')) {
+    if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
+        $apptId = (int) ($_POST['appointment_id'] ?? 0);
+        $deleted = delete_on_hold_appointment($apptId, (string) $station['slug']);
+        if (!$deleted && $apptId > 0) {
+            $deleted = delete_on_hold_appointment($apptId);
+        }
+
+        if ($deleted) {
+            $_SESSION['staff_flash'] = 'Unfinished on-hold appointment has been removed.';
+        } else {
+            $_SESSION['staff_flash'] = 'Unable to remove on-hold appointment. Please verify the appointment details.';
+            $_SESSION['staff_flash_type'] = 'error';
+        }
+    }
+
+    header('Location: ' . $_SERVER['REQUEST_URI']);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'activate_event')) {
     if (verify_staff_csrf($_POST['csrf_token'] ?? null)) {
         $eventId = (int) ($_POST['event_id'] ?? 0);
@@ -4157,6 +4177,14 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                             <button type="submit" class="resume-btn" title="Resume consultation and return to Active &amp; Ongoing">
                                                 <?= staff_icon('play'); ?>
                                                 <span>Resume</span>
+                                            </button>
+                                        </form>
+                                        <form method="post" style="margin:0; display:inline-block;" onsubmit="return confirm('Remove this unfinished and unattended on-hold appointment? This action cannot be undone.');">
+                                            <input type="hidden" name="csrf_token" value="<?= h($csrf); ?>">
+                                            <input type="hidden" name="action" value="delete_on_hold_appointment">
+                                            <input type="hidden" name="appointment_id" value="<?= h((string) $appointment['id']); ?>">
+                                            <button type="submit" class="hold-delete-btn" title="Remove unfinished and unattended on-hold appointment" aria-label="Remove on-hold appointment">
+                                                <?= staff_icon('trash'); ?>
                                             </button>
                                         </form>
                                     </div>
@@ -8697,7 +8725,7 @@ window.closeStaffInfantModal = function() {
 
 // Preserve scroll position when opening records or modals across the station (and when switching report periods)
 document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.report-record-btn, .remarks-btn, .view-medical-file-btn, .set-followup-btn, .queue-vitals-btn, .appt-action-btn, .queue-call-btn, .queue-done-btn, .confirm-save-btn, .select-patient-btn, .photo-req, .patient-profile-open-btn, .patient-infant-toggle-btn, .reports-quick-pill');
+    const btn = e.target.closest('.report-record-btn, .remarks-btn, .hold-btn, .resume-btn, .hold-delete-btn, .view-medical-file-btn, .set-followup-btn, .queue-vitals-btn, .appt-action-btn, .queue-call-btn, .queue-done-btn, .confirm-save-btn, .select-patient-btn, .photo-req, .patient-profile-open-btn, .patient-infant-toggle-btn, .reports-quick-pill');
     if (btn) {
         sessionStorage.setItem('station_scroll_pos', window.scrollY);
         if (btn.classList.contains('select-patient-btn') && !btn.classList.contains('is-disabled') && !btn.classList.contains('is-active-badge') && !btn.classList.contains('is-completed-badge')) {

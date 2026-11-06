@@ -5713,6 +5713,44 @@ button { border: 0; cursor: pointer; }
   box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
 }
 
+.hold-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(220, 38, 38, 0.08);
+  vertical-align: middle;
+}
+.hold-delete-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2;
+  transition: transform 0.2s ease;
+}
+.hold-delete-btn:hover {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  border-color: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.28);
+}
+.hold-delete-btn:hover svg {
+  transform: scale(1.1);
+}
+.hold-delete-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.2);
+}
+
 .modern-patient-record-card.is-hold {
   border-left: 4px solid #f59e0b;
 }

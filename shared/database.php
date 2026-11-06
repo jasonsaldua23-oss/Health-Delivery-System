@@ -5750,6 +5750,61 @@ function update_appointment_status(int $appointmentId, string $newStatus, ?strin
     return $result;
 }
 
+function delete_on_hold_appointment(int $appointmentId, ?string $stationSlug = null): bool
+{
+    if ($appointmentId <= 0) {
+        return false;
+    }
+
+    $appointment = fetch_appointment_by_id($appointmentId);
+    if (!$appointment || (string) ($appointment['status'] ?? '') !== 'On Hold') {
+        return false;
+    }
+
+    $apptStationSlug = (string) ($appointment['station_slug'] ?? '');
+    if ($stationSlug !== null && $stationSlug !== '' && $apptStationSlug !== '' && $apptStationSlug !== $stationSlug) {
+        return false;
+    }
+
+    $statement = db()->prepare('DELETE FROM appointments WHERE id = ? AND status = "On Hold"');
+    if (!$statement) {
+        return false;
+    }
+    $statement->bind_param('i', $appointmentId);
+    $deleted = $statement->execute() && $statement->affected_rows > 0;
+
+    if ($deleted) {
+        try {
+            $infStmt = db()->prepare('DELETE FROM ' . DB_TABLE_IMMUNIZED_INFANTS . ' WHERE appointment_id = ?');
+            if ($infStmt) {
+                $infStmt->bind_param('i', $appointmentId);
+                $infStmt->execute();
+            }
+        } catch (Throwable $e) {}
+
+        try {
+            $notifStmt = db()->prepare('DELETE FROM ' . DB_TABLE_APPOINTMENT_NOTIFICATIONS . ' WHERE appointment_id = ?');
+            if ($notifStmt) {
+                $notifStmt->bind_param('i', $appointmentId);
+                $notifStmt->execute();
+            }
+        } catch (Throwable $e) {}
+
+        log_activity(
+            'staff',
+            $apptStationSlug,
+            'deleted_on_hold',
+            'appointment',
+            (string) $appointmentId,
+            'On Hold',
+            'Deleted',
+            $apptStationSlug
+        );
+    }
+
+    return $deleted;
+}
+
 function fetch_station_counts(string $status = 'Pending', string $dateFilter = 'both'): array
 {
     $sql = 'SELECT station_slug, service_slug, MAX(station_name) AS station_name, COUNT(*) AS total FROM appointments WHERE 1=1';
