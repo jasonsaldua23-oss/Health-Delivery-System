@@ -5013,7 +5013,9 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                         $code = strtolower((string) ($item['appointment_code'] ?? $item['reference_code'] ?? ''));
                         $phone = strtolower((string) ($item['contact_number'] ?? ''));
                         $svc = strtolower((string) ($item['service_name'] ?? ''));
-                        return str_contains($name, $st) || str_contains($code, $st) || str_contains($phone, $st) || str_contains($svc, $st);
+                        $recDetails = appointment_recipient_details($item);
+                        $recName = !$recDetails['is_self'] ? strtolower((string) ($recDetails['recipient_full_name'] ?? '')) : '';
+                        return str_contains($name, $st) || str_contains($code, $st) || str_contains($phone, $st) || str_contains($svc, $st) || ($recName !== '' && str_contains($recName, $st));
                     }
                 ));
             }
@@ -5160,6 +5162,19 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
 
                                     <div class="patient-hero-main-info">
                                         <h3><?= h(full_name($captureAppointment)); ?></h3>
+                                        <?php
+                                        $capHeroRec = appointment_recipient_details($captureAppointment);
+                                        if (!$capHeroRec['is_self'] && $capHeroRec['recipient_full_name'] !== ''):
+                                        ?>
+                                            <div class="capture-pat-recipient-line" style="margin: 3px 0 6px; font-size: 0.82rem; color: #047857; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                <span style="font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><?= staff_icon($capHeroRec['is_immunization'] ? 'baby' : 'users'); ?> <?= $capHeroRec['is_immunization'] ? 'Infant:' : 'Recipient:'; ?></span>
+                                                <strong style="color: #065f46;"><?= h($capHeroRec['recipient_full_name']); ?></strong>
+                                                <span style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; padding: 1px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700;"><?= h($capHeroRec['relationship']); ?></span>
+                                                <?php if (!empty($capHeroRec['recipient_birth_date']) && $capHeroRec['recipient_birth_date'] !== '0000-00-00'): ?>
+                                                    <span style="color: #059669; font-size: 0.78rem;">(<?= h($capHeroRec['recipient_age_label']); ?>)</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                         <div class="hero-tag-row">
                                             <span class="appt-code-badge">#<?= h((string) ($captureAppointment['appointment_code'] ?? $captureAppointment['reference_code'])); ?></span>
                                             <span class="pat-meta-pill service"><?= staff_icon('stethoscope'); ?> <?= h((string) $captureAppointment['service_name']); ?></span>
@@ -5438,6 +5453,19 @@ $weeklyUnattendedStats = count_unattended_records((string) $station['slug'], [
                                                     <span class="photo-status-badge missing" style="position:static;transform:none;font-size:0.7rem;padding:3px 10px;">⚠️ Needs Photo</span>
                                                 <?php endif; ?>
                                             </div>
+                                            <?php
+                                            $patRec = appointment_recipient_details($pat);
+                                            if (!$patRec['is_self'] && $patRec['recipient_full_name'] !== ''):
+                                            ?>
+                                                <div class="capture-pat-recipient-line" style="margin: 2px 0 4px; font-size: 0.82rem; color: #047857; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                    <span style="font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><?= staff_icon($patRec['is_immunization'] ? 'baby' : 'users'); ?> <?= $patRec['is_immunization'] ? 'Infant:' : 'Recipient:'; ?></span>
+                                                    <strong style="color: #065f46;"><?= h($patRec['recipient_full_name']); ?></strong>
+                                                    <span style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; padding: 1px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700;"><?= h($patRec['relationship']); ?></span>
+                                                    <?php if (!empty($patRec['recipient_birth_date']) && $patRec['recipient_birth_date'] !== '0000-00-00'): ?>
+                                                        <span style="color: #059669; font-size: 0.78rem;">(<?= h($patRec['recipient_age_label']); ?>)</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
                                             <div class="capture-pat-meta">
                                                 <span><?= staff_icon('stethoscope'); ?> <?= h((string) $pat['service_name']); ?></span>
                                                 <span><?= staff_icon('calendar'); ?> <?= h(date('M j, Y', strtotime((string) $pat['preferred_date']))); ?></span>
