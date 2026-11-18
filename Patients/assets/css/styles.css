@@ -2062,6 +2062,11 @@ textarea { resize: vertical; min-height: 120px; }
     }
 
     /* Landing Header & Hero */
+    .main-header {
+        position: relative;
+        top: auto;
+    }
+
     .main-header .nav-bar {
         flex-direction: row;
         justify-content: space-between;
