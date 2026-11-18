@@ -3294,6 +3294,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                 padding: 36px 0 42px;
             }
 
+            .section-title-wrap {
+                align-items: flex-start;
+            }
+
+            .section-title-wrap .section-icon.gold,
+            .section-title-wrap .section-icon.emerald {
+                margin-top: 4px;
+            }
+
             .dashboard-hero-inner {
                 flex-direction: column;
                 align-items: flex-start;
@@ -3471,6 +3480,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
 
         @media (max-width: 480px) {
             .section-title-wrap {
+                align-items: flex-start;
                 gap: 12px;
             }
 
@@ -3479,6 +3489,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                 width: 48px;
                 height: 48px;
                 border-radius: 14px;
+                margin-top: 4px;
             }
 
             .section-title-wrap .section-icon svg {
@@ -3490,6 +3501,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
 
             .section-title-copy h2 {
                 font-size: 1.5rem;
+                line-height: 1.25;
             }
 
             .service-card,
