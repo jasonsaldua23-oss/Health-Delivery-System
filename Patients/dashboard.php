@@ -3061,6 +3061,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 12px;
             padding-top: 10px;
             margin-top: 10px;
             border-top: 1px solid #f1f5f9;
@@ -3073,6 +3074,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 12px;
             flex-shrink: 0;
         }
 
@@ -3351,7 +3353,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
             .appt-card-footer {
                 flex-direction: column;
                 align-items: stretch;
-                gap: 8px;
+                gap: 10px;
+            }
+
+            .history-item-footer {
+                gap: 12px;
+            }
+
+            .history-modal-footer .modal-done-btn {
+                width: auto;
+                flex-shrink: 0;
             }
 
             .btn-view-slip,
@@ -3370,20 +3381,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                 gap: 12px;
             }
 
-            #appointmentSlipModal {
+            #appointmentSlipModal,
+            #appointmentHistoryModal {
                 padding: max(20px, calc(env(safe-area-inset-top, 0px) + 16px)) 10px max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px));
                 overflow: hidden;
             }
 
-            .account-modal-card,
-            .history-modal-card {
+            .account-modal-card {
                 max-width: 100%;
                 border-radius: 20px;
                 max-height: calc(100vh - 24px);
                 max-height: min(calc(100dvh - 36px), calc(100% - 8px));
             }
 
-            .slip-modal-card {
+            .slip-modal-card,
+            .history-modal-card {
                 display: flex;
                 flex-direction: column;
                 width: 100%;
@@ -5728,15 +5740,33 @@ document.addEventListener('DOMContentLoaded', function () {
 function openAppointmentHistoryModal() {
     const modal = document.getElementById('appointmentHistoryModal');
     if (modal) {
+        const histCard = modal.querySelector('.history-modal-card');
+        const histBody = modal.querySelector('.history-modal-body');
+        modal.scrollTop = 0;
+        if (histCard) histCard.scrollTop = 0;
+        if (histBody) histBody.scrollTop = 0;
+
         modal.classList.add('active');
         modal.classList.add('open');
         document.body.style.overflow = 'hidden';
+
+        requestAnimationFrame(function () {
+            modal.scrollTop = 0;
+            if (histCard) histCard.scrollTop = 0;
+            if (histBody) histBody.scrollTop = 0;
+        });
     }
 }
 
 function closeAppointmentHistoryModal() {
     const modal = document.getElementById('appointmentHistoryModal');
     if (modal) {
+        const histCard = modal.querySelector('.history-modal-card');
+        const histBody = modal.querySelector('.history-modal-body');
+        modal.scrollTop = 0;
+        if (histCard) histCard.scrollTop = 0;
+        if (histBody) histBody.scrollTop = 0;
+
         modal.classList.remove('active');
         modal.classList.remove('open');
         const accountModal = document.getElementById('accountModal');
