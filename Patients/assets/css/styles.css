@@ -2134,13 +2134,33 @@ textarea { resize: vertical; min-height: 120px; }
     /* Schedule & Calendar */
     .schedule-board {
         grid-template-columns: 1fr;
-        gap: 14px;
-        padding: 14px;
+        gap: 12px;
+        padding: 10px 6px;
         border-radius: 18px;
     }
 
+    .schedule-calendar-panel {
+        padding: 8px 4px;
+        border-radius: 16px;
+    }
+
+    .schedule-times-panel {
+        padding: 10px 8px;
+        border-radius: 16px;
+    }
+
+    .schedule-month-bar {
+        padding: 0 4px;
+        gap: 10px;
+    }
+
+    .schedule-month-bar strong {
+        white-space: nowrap;
+        text-align: center;
+    }
+
     .schedule-picker {
-        padding: 16px;
+        padding: 14px 10px;
         border-radius: 18px;
     }
 
@@ -2148,6 +2168,7 @@ textarea { resize: vertical; min-height: 120px; }
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
+        padding: 0 4px;
     }
 
     .schedule-selection {
@@ -2160,7 +2181,7 @@ textarea { resize: vertical; min-height: 120px; }
     .booking-card,
     .confirmation-card,
     .next-steps-card {
-        padding: 20px 16px;
+        padding: 18px 12px;
         border-radius: 18px;
     }
 
@@ -2173,30 +2194,46 @@ textarea { resize: vertical; min-height: 120px; }
 }
 
 @media (max-width: 480px) {
+    .booking-card {
+        padding: 16px 10px;
+    }
+
+    .schedule-picker {
+        padding: 12px 8px;
+    }
+
+    .schedule-board {
+        padding: 8px 4px;
+    }
+
+    .schedule-calendar-panel {
+        padding: 6px 2px;
+    }
+
     .calendar-weekdays {
-        gap: 4px;
+        gap: 5px;
         margin-bottom: 8px;
     }
 
     .calendar-weekdays span {
-        font-size: 0.68rem;
+        font-size: 0.72rem;
     }
 
     .calendar-grid {
-        gap: 4px;
+        gap: 5px;
     }
 
     .calendar-day,
     .calendar-day.is-disabled,
     .calendar-spacer {
-        min-height: 46px;
-        border-radius: 10px;
+        min-height: 48px;
+        border-radius: 12px;
         padding: 6px 2px;
-        font-size: 0.82rem;
+        font-size: 0.9rem;
     }
 
     .calendar-day span {
-        font-size: 0.82rem;
+        font-size: 0.9rem;
     }
 
     .time-slots {
