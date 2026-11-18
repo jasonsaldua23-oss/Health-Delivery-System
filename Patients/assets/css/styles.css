@@ -1974,23 +1974,39 @@ textarea { resize: vertical; min-height: 120px; }
     }
 
     .modal-overlay {
-        padding: 12px;
+        padding: max(24px, calc(env(safe-area-inset-top, 0px) + 20px)) 14px max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px));
         align-items: center;
+        justify-content: center;
+        overflow: hidden;
     }
 
     .modal-content {
+        display: flex;
+        flex-direction: column;
         max-width: 100% !important;
+        width: 100%;
+        margin: auto;
         border-radius: 20px;
-        max-height: calc(100vh - 24px);
+        max-height: 85vh;
+        max-height: min(calc(100dvh - 48px), calc(100% - 8px));
+        overflow: hidden;
     }
 
     .modal-header {
-        padding: 18px 20px;
+        flex-shrink: 0;
+        position: relative;
+        top: auto;
+        padding: 16px 18px;
         border-radius: 20px 20px 0 0;
     }
 
     .modal-body {
-        padding: 18px 18px 22px;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding: 16px 18px 24px;
     }
 
     .gender-options {
