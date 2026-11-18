@@ -3370,25 +3370,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'logo
                 gap: 12px;
             }
 
+            #appointmentSlipModal {
+                padding: max(20px, calc(env(safe-area-inset-top, 0px) + 16px)) 10px max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+                overflow: hidden;
+            }
+
             .account-modal-card,
-            .slip-modal-card,
             .history-modal-card {
                 max-width: 100%;
                 border-radius: 20px;
                 max-height: calc(100vh - 24px);
+                max-height: min(calc(100dvh - 36px), calc(100% - 8px));
+            }
+
+            .slip-modal-card {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                max-width: 100%;
+                margin: auto;
+                border-radius: 20px;
+                max-height: 85vh;
+                max-height: min(calc(100dvh - 40px), calc(100% - 8px));
+                overflow: hidden;
             }
 
             .account-modal-header,
-            .slip-modal-header,
             .history-modal-header {
                 padding: 18px 20px;
                 border-radius: 20px 20px 0 0;
             }
 
+            .slip-modal-header {
+                flex-shrink: 0;
+                padding: 16px 18px;
+                border-radius: 20px 20px 0 0;
+            }
+
             .account-modal-body,
-            .slip-modal-body,
             .history-modal-body {
                 padding: 20px 18px 24px;
+            }
+
+            .slip-modal-body {
+                flex: 1 1 auto;
+                min-height: 0;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+                padding: 18px 18px 22px;
             }
 
             .account-action-box {
@@ -5934,16 +5964,34 @@ function openAppointmentSlipModal(appt) {
     }
 
     if (modal) {
+        const slipCard = modal.querySelector('.slip-modal-card');
+        const slipBody = modal.querySelector('.slip-modal-body');
+        modal.scrollTop = 0;
+        if (slipCard) slipCard.scrollTop = 0;
+        if (slipBody) slipBody.scrollTop = 0;
+
         modal.classList.add('active');
         modal.classList.add('open');
         document.body.classList.add('is-printing-slip');
         document.body.style.overflow = 'hidden';
+
+        requestAnimationFrame(function () {
+            modal.scrollTop = 0;
+            if (slipCard) slipCard.scrollTop = 0;
+            if (slipBody) slipBody.scrollTop = 0;
+        });
     }
 }
 
 function closeAppointmentSlipModal() {
     const modal = document.getElementById('appointmentSlipModal');
     if (modal) {
+        const slipCard = modal.querySelector('.slip-modal-card');
+        const slipBody = modal.querySelector('.slip-modal-body');
+        modal.scrollTop = 0;
+        if (slipCard) slipCard.scrollTop = 0;
+        if (slipBody) slipBody.scrollTop = 0;
+
         modal.classList.remove('active');
         modal.classList.remove('open');
         document.body.classList.remove('is-printing-slip');
@@ -6216,10 +6264,6 @@ function downloadAppointmentSlipDirectly(appt) {
             </div>
 
             <div class="slip-modal-actions">
-                <button type="button" class="btn-print-slip" onclick="printModalSlip()">
-                    <?= iconSvg('arrow'); ?>
-                    <span>Print Slip</span>
-                </button>
                 <button type="button" class="btn-quick-download modal-download-btn" onclick="downloadModalSlip()">
                     <?= iconSvg('download'); ?>
                     <span>Download Image Slip</span>
